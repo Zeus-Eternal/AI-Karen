@@ -6,7 +6,7 @@
     "user"
   ],
   "trusted_ui": false,
-  "module": "ai_karen_engine.plugins.time_query.handler",
+  "module": "extensions.plugins.time_query.handler",
   "name": "time-query",
   "display_name": "Date Time",
   "version": "0.1.0",

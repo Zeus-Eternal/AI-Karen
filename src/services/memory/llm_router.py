@@ -14,7 +14,17 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, AsyncIterator, Dict, Iterable, List, Optional, Sequence, Set, Union
+from typing import (
+    Any,
+    AsyncIterator,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Sequence,
+    Set,
+    Union,
+)
 
 from ai_karen_engine.config.llm_provider_config import (
     get_openai_compatible_provider_defaults,
@@ -125,6 +135,7 @@ class RoutingPolicy(Enum):
 @dataclass
 class ProviderHealth:
     """Provider health status"""
+
     name: str
     is_healthy: bool
     last_check: float
@@ -161,6 +172,7 @@ NON_CHAT_PROVIDERS: Set[str] = {
 @dataclass
 class ChatRequest:
     """Chat request model for LLM Router"""
+
     message: str
     context: Optional[Dict[str, Any]] = None
     tools: Optional[List[str]] = None
@@ -178,7 +190,7 @@ class LLMRouter:
     """
     LLM Router with local-first provider selection and health monitoring
     """
-    
+
     def __init__(self, registry: Optional[LLMRegistry] = None):
         """Initialize LLM Router"""
         self.registry = registry or get_registry()
@@ -227,7 +239,7 @@ class LLMRouter:
             "gemini": {"max_requests": 40, "window_seconds": 60},
             "deepseek": {"max_requests": 40, "window_seconds": 60},
         }
-        
+
         # Provider priority mapping
         self.provider_priorities = {
             "llamacpp": ProviderPriority.LOCAL,
@@ -265,11 +277,13 @@ class LLMRouter:
         self._round_robin_offset = 0
         self._hybrid_state.clear()
 
-    def set_provider_priority(self, provider_name: str, priority: ProviderPriority) -> None:
+    def set_provider_priority(
+        self, provider_name: str, priority: ProviderPriority
+    ) -> None:
         """Override the priority bucket for a specific provider."""
 
         self.provider_priorities[provider_name] = priority
-    
+
     def _initialize_health_monitoring(self):
         """Initialize health monitoring for all providers"""
         for provider_name in self.registry.list_providers():
@@ -280,17 +294,17 @@ class LLMRouter:
                 consecutive_failures=0,
                 window_start=time.time(),
             )
-    
+
     async def select_provider(
-        self,
-        request: ChatRequest,
-        user_preferences: Optional[Dict[str, Any]] = None
+        self, request: ChatRequest, user_preferences: Optional[Dict[str, Any]] = None
     ) -> Optional[tuple[str, Optional[str]]]:
         """Select the best available provider based on local-first priority."""
 
         await self._ensure_background_health_task()
         user_preferences = user_preferences or {}
-        preferred_provider = self._normalize_provider_name(user_preferences.get("preferred_llm_provider"))
+        preferred_provider = self._normalize_provider_name(
+            user_preferences.get("preferred_llm_provider")
+        )
         preferred_model = self._normalize_model_name(
             request.preferred_model or user_preferences.get("preferred_model")
         )
@@ -298,7 +312,9 @@ class LLMRouter:
         # If model specified with provider prefix, split it
         if preferred_model and ":" in preferred_model:
             provider_part, model_part = preferred_model.split(":", 1)
-            preferred_provider = preferred_provider or self._normalize_provider_name(provider_part)
+            preferred_provider = preferred_provider or self._normalize_provider_name(
+                provider_part
+            )
             preferred_model = self._normalize_model_name(model_part)
 
         # Validate preferred provider/model combination
@@ -314,11 +330,15 @@ class LLMRouter:
                         await self._is_provider_healthy(preferred_provider)
                         or (
                             self._health_allows_attempt(preferred_provider)
-                            and self._provider_has_runtime_readiness(preferred_provider, info)
+                            and self._provider_has_runtime_readiness(
+                                preferred_provider, info
+                            )
                         )
                     )
                     and await self._meets_requirements(preferred_provider, request)
-                    and self._provider_supports_model(preferred_provider, preferred_model, info)
+                    and self._provider_supports_model(
+                        preferred_provider, preferred_model, info
+                    )
                 ):
                     self._structured_log(
                         logging.INFO,
@@ -434,7 +454,7 @@ class LLMRouter:
         )
         self._record_selection_metric(selected_provider, "selected")
         return selected_provider, model_name
-    
+
     async def _get_available_providers_by_priority(self) -> List[str]:
         """Return healthy providers ordered according to the active policy."""
 
@@ -501,7 +521,11 @@ class LLMRouter:
             ".pt",
             ".pth",
         )
-        if "/" in normalized or "\\" in normalized or lowered.endswith(known_local_suffixes):
+        if (
+            "/" in normalized
+            or "\\" in normalized
+            or lowered.endswith(known_local_suffixes)
+        ):
             stem = Path(normalized).stem
             return stem or normalized
 
@@ -534,7 +558,9 @@ class LLMRouter:
 
         if provider_name in {"openai", "zai"}:
             candidate_models.extend(
-                get_openai_compatible_provider_defaults(provider_name).get("common_models", [])
+                get_openai_compatible_provider_defaults(provider_name).get(
+                    "common_models", []
+                )
             )
 
         normalized_candidates = {
@@ -568,13 +594,17 @@ class LLMRouter:
         if not isinstance(provider_info, dict):
             return False
 
-        if provider_info.get("requires_api_key", False) and not self._is_api_key_configured(provider_name, provider_info):
+        if provider_info.get(
+            "requires_api_key", False
+        ) and not self._is_api_key_configured(provider_name, provider_info):
             return False
 
         has_api_key = provider_info.get("has_api_key") is True
         api_key_valid = provider_info.get("api_key_valid") is not False
         available_models = provider_info.get("available_models")
-        has_available_models = isinstance(available_models, list) and len(available_models) > 0
+        has_available_models = (
+            isinstance(available_models, list) and len(available_models) > 0
+        )
         return has_api_key and api_key_valid and has_available_models
 
     def _health_allows_attempt(self, provider_name: str) -> bool:
@@ -589,8 +619,10 @@ class LLMRouter:
         if health.rate_limited_until and time.time() < health.rate_limited_until:
             return False
         return True
-    
-    async def _meets_requirements(self, provider_name: str, request: ChatRequest) -> bool:
+
+    async def _meets_requirements(
+        self, provider_name: str, request: ChatRequest
+    ) -> bool:
         """Check if provider meets request requirements"""
         if provider_name in NON_CHAT_PROVIDERS:
             return False
@@ -695,7 +727,9 @@ class LLMRouter:
                 continue
             if not await self._is_provider_healthy(provider_name):
                 continue
-            priority = self.provider_priorities.get(provider_name, ProviderPriority.FALLBACK)
+            priority = self.provider_priorities.get(
+                provider_name, ProviderPriority.FALLBACK
+            )
             if priority not in providers_by_priority:
                 providers_by_priority[priority] = []
             providers_by_priority[priority].append(provider_name)
@@ -726,9 +760,9 @@ class LLMRouter:
         """Check if provider is healthy"""
         if provider_name not in self.provider_health:
             return False
-        
+
         health = self.provider_health[provider_name]
-        
+
         # Check if health check is recent enough
         if time.time() - health.last_check > self.health_check_interval:
             await self._perform_health_check(provider_name)
@@ -751,7 +785,10 @@ class LLMRouter:
         if health.rate_limited_until and time.time() >= health.rate_limited_until:
             health.rate_limited_until = 0.0
 
-        if health.is_healthy and health.consecutive_failures < self.max_consecutive_failures:
+        if (
+            health.is_healthy
+            and health.consecutive_failures < self.max_consecutive_failures
+        ):
             return True
 
         provider_info = self.registry.get_provider_info(provider_name)
@@ -759,28 +796,35 @@ class LLMRouter:
             has_api_key = provider_info.get("has_api_key") is True
             api_key_valid = provider_info.get("api_key_valid") is not False
             available_models = provider_info.get("available_models")
-            has_available_models = isinstance(available_models, list) and len(available_models) > 0
+            has_available_models = (
+                isinstance(available_models, list) and len(available_models) > 0
+            )
 
             # Some providers fail an eager startup health probe before their persisted
             # secret/config state is fully loaded. If the provider now has a valid key
             # and successful model discovery, treat it as eligible for routing unless
             # a circuit breaker or active rate-limit cooldown says otherwise.
-            if has_api_key and api_key_valid and has_available_models and health.consecutive_failures == 0:
+            if (
+                has_api_key
+                and api_key_valid
+                and has_available_models
+                and health.consecutive_failures == 0
+            ):
                 return True
 
         return False
-    
+
     async def _perform_health_check(self, provider_name: str):
         """Perform health check on a provider"""
         try:
             start_time = time.time()
             health_result = self.registry.health_check(provider_name)
             response_time = time.time() - start_time
-            
+
             health = self.provider_health[provider_name]
             health.last_check = time.time()
             health.response_time = response_time
-            
+
             if health_result.get("status") == "healthy":
                 health.is_healthy = True
                 health.consecutive_failures = 0
@@ -791,9 +835,9 @@ class LLMRouter:
                 health.consecutive_failures += 1
                 health.error_message = health_result.get("error", "Unknown error")
                 health.last_exception_type = "HealthCheckError"
-            
+
             logger.debug(f"Health check for {provider_name}: {health_result}")
-            
+
         except Exception as e:
             health = self.provider_health[provider_name]
             health.last_check = time.time()
@@ -801,13 +845,11 @@ class LLMRouter:
             health.consecutive_failures += 1
             health.error_message = str(e)
             health.last_exception_type = type(e).__name__
-            
+
             logger.error(f"Health check failed for {provider_name}: {e}")
-    
+
     async def process_chat_request(
-        self,
-        request: ChatRequest,
-        user_preferences: Optional[Dict[str, Any]] = None
+        self, request: ChatRequest, user_preferences: Optional[Dict[str, Any]] = None
     ) -> AsyncIterator[str]:
         """
         Process chat request with automatic provider selection and fallback
@@ -863,16 +905,22 @@ class LLMRouter:
             )
             self._record_selection_metric(provider_name, "failure")
             await self._mark_provider_unhealthy(provider_name, str(error))
-            failure_records.append({
-                "provider": provider_name,
-                "error": str(error.last_error) if error.last_error else str(error),
-            })
+            failure_records.append(
+                {
+                    "provider": provider_name,
+                    "error": str(error.last_error) if error.last_error else str(error),
+                }
+            )
             previous_error = error.last_error or error
 
         fallback_providers = await self._get_fallback_providers(provider_name, request)
         for fallback_provider in fallback_providers:
             try:
-                reason = self._derive_error_reason(previous_error) if previous_error else "fallback"
+                reason = (
+                    self._derive_error_reason(previous_error)
+                    if previous_error
+                    else "fallback"
+                )
                 self._record_fallback_metric(
                     previous_provider or "none",
                     fallback_provider,
@@ -911,10 +959,14 @@ class LLMRouter:
                 )
                 self._record_selection_metric(fallback_provider, "failure")
                 await self._mark_provider_unhealthy(fallback_provider, str(error))
-                failure_records.append({
-                    "provider": fallback_provider,
-                    "error": str(error.last_error) if error.last_error else str(error),
-                })
+                failure_records.append(
+                    {
+                        "provider": fallback_provider,
+                        "error": str(error.last_error)
+                        if error.last_error
+                        else str(error),
+                    }
+                )
                 previous_provider = fallback_provider
                 previous_error = error.last_error or error
 
@@ -936,7 +988,7 @@ class LLMRouter:
             return
 
         raise RuntimeError("All providers failed to process the request")
-    
+
     async def _process_with_provider(
         self,
         provider_name: str,
@@ -970,7 +1022,9 @@ class LLMRouter:
                         async for chunk in stream_result:
                             yield chunk
                         return
-                    if hasattr(stream_result, "__iter__") and not isinstance(stream_result, (str, bytes)):
+                    if hasattr(stream_result, "__iter__") and not isinstance(
+                        stream_result, (str, bytes)
+                    ):
                         for chunk in stream_result:
                             yield chunk
                         return
@@ -981,7 +1035,9 @@ class LLMRouter:
             if stream_generate:
                 stream_result = stream_generate(provider_prompt, **provider_params)
                 if stream_result is not None:
-                    if hasattr(stream_result, "__iter__") and not isinstance(stream_result, (str, bytes)):
+                    if hasattr(stream_result, "__iter__") and not isinstance(
+                        stream_result, (str, bytes)
+                    ):
                         for chunk in stream_result:
                             yield chunk
                         return
@@ -992,7 +1048,9 @@ class LLMRouter:
         if generator_callable is None:
             generator_callable = getattr(provider, "generate_text", None)
         if generator_callable is None:
-            raise RuntimeError(f"Provider {provider_name} does not support text generation")
+            raise RuntimeError(
+                f"Provider {provider_name} does not support text generation"
+            )
 
         result = generator_callable(provider_prompt, **provider_params)
         if inspect.isawaitable(result):
@@ -1005,7 +1063,9 @@ class LLMRouter:
         if not result_text:
             raise RuntimeError(f"Provider {provider_name} returned an empty response")
         if self._looks_like_bad_completion(request, result_text):
-            raise RuntimeError(f"Provider {provider_name} returned a malformed response")
+            raise RuntimeError(
+                f"Provider {provider_name} returned a malformed response"
+            )
         yield result_text
 
     def _build_provider_prompt(self, request: ChatRequest) -> str:
@@ -1036,8 +1096,14 @@ class LLMRouter:
             "Do not prepend a greeting to non-greeting questions.",
         ]
 
-        profile = context.get("conversation_profile") if isinstance(context.get("conversation_profile"), dict) else {}
-        display_name = str(profile.get("preferred_address_name") or profile.get("display_name") or "").strip()
+        profile = (
+            context.get("conversation_profile")
+            if isinstance(context.get("conversation_profile"), dict)
+            else {}
+        )
+        display_name = str(
+            profile.get("preferred_address_name") or profile.get("display_name") or ""
+        ).strip()
         if display_name:
             lines.append(f"Known user name: {display_name}.")
 
@@ -1063,7 +1129,9 @@ class LLMRouter:
         lines.append("Assistant:")
         return "\n".join(lines)
 
-    def _looks_like_bad_completion(self, request: ChatRequest, result_text: str) -> bool:
+    def _looks_like_bad_completion(
+        self, request: ChatRequest, result_text: str
+    ) -> bool:
         """Reject obvious continuation artifacts from low-quality local completions."""
 
         normalized_request = request.message.strip().lower()
@@ -1114,17 +1182,41 @@ class LLMRouter:
             "hi! how can i assist you today?",
             "hi! how can i help you today?",
         )
-        if normalized_result in generic_greeting_answers and normalized_request not in {"hi", "hello", "hey", "yo"}:
+        if normalized_result in generic_greeting_answers and normalized_request not in {
+            "hi",
+            "hello",
+            "hey",
+            "yo",
+        }:
             return True
 
-        if normalized_result.startswith(("hello!", "hi!", "hello ", "hi ")) and "?" in normalized_request:
+        if (
+            normalized_result.startswith(("hello!", "hi!", "hello ", "hi "))
+            and "?" in normalized_request
+        ):
             return True
 
-        if "what's my name" in normalized_request or "whats my name" in normalized_request or "what is my name" in normalized_request:
+        if (
+            "what's my name" in normalized_request
+            or "whats my name" in normalized_request
+            or "what is my name" in normalized_request
+        ):
             context = request.context if isinstance(request.context, dict) else {}
-            profile = context.get("conversation_profile") if isinstance(context.get("conversation_profile"), dict) else {}
-            known_name = str(profile.get("preferred_address_name") or profile.get("display_name") or "").strip()
-            if known_name and ("do not have the ability to know personal information" in normalized_result or "i do not know" in normalized_result):
+            profile = (
+                context.get("conversation_profile")
+                if isinstance(context.get("conversation_profile"), dict)
+                else {}
+            )
+            known_name = str(
+                profile.get("preferred_address_name")
+                or profile.get("display_name")
+                or ""
+            ).strip()
+            if known_name and (
+                "do not have the ability to know personal information"
+                in normalized_result
+                or "i do not know" in normalized_result
+            ):
                 return True
 
         return False
@@ -1146,14 +1238,14 @@ class LLMRouter:
         for marker in marker_extractors:
             marker_index = lowered.rfind(marker)
             if marker_index != -1:
-                candidate = cleaned[marker_index + len(marker):].strip()
+                candidate = cleaned[marker_index + len(marker) :].strip()
                 if candidate:
                     cleaned = candidate
                     lowered = cleaned.lower()
 
         for prefix in (",", ".", ";", ":", "-", "and ", "but ", "or "):
             while lowered.startswith(prefix):
-                cleaned = cleaned[len(prefix):].lstrip()
+                cleaned = cleaned[len(prefix) :].lstrip()
                 lowered = cleaned.lower()
 
         speaker_assignment = inspect.cleandoc(
@@ -1164,7 +1256,9 @@ class LLMRouter:
             \s*
             """
         )
-        cleaned = re.sub(speaker_assignment, "", cleaned, count=1, flags=re.IGNORECASE | re.VERBOSE).strip()
+        cleaned = re.sub(
+            speaker_assignment, "", cleaned, count=1, flags=re.IGNORECASE | re.VERBOSE
+        ).strip()
 
         leaked_line_markers = (
             "first turn:",
@@ -1188,6 +1282,7 @@ class LLMRouter:
             "response=",
             "output:",
             "user:",
+            "bot:",
             "in this scenario,",
             "the assistant responds",
             "the user's message",
@@ -1206,24 +1301,24 @@ class LLMRouter:
             cleaned = "\n".join(filtered_lines).strip()
 
         return cleaned
-    
+
     async def _get_fallback_providers(
-        self,
-        failed_provider: str,
-        request: ChatRequest
+        self, failed_provider: str, request: ChatRequest
     ) -> List[str]:
         """Get fallback providers excluding the failed one"""
         all_providers = await self._get_available_providers_by_priority()
         fallback_providers = []
-        
+
         for provider_name in all_providers:
-            if (provider_name != failed_provider and 
-                await self._is_provider_healthy(provider_name) and
-                await self._meets_requirements(provider_name, request)):
+            if (
+                provider_name != failed_provider
+                and await self._is_provider_healthy(provider_name)
+                and await self._meets_requirements(provider_name, request)
+            ):
                 fallback_providers.append(provider_name)
-        
+
         return fallback_providers[:2]  # Limit to 2 fallback attempts
-    
+
     async def _mark_provider_unhealthy(self, provider_name: str, error_message: str):
         """Mark provider as unhealthy"""
         if provider_name in self.provider_health:
@@ -1242,7 +1337,7 @@ class LLMRouter:
                     provider_name,
                     self.circuit_breaker_timeout,
                 )
-    
+
     async def get_provider_status(self) -> Dict[str, Any]:
         """Get status of all providers"""
         status = {
@@ -1250,13 +1345,15 @@ class LLMRouter:
             "health_summary": {
                 "healthy": 0,
                 "unhealthy": 0,
-                "total": len(self.provider_health)
-            }
+                "total": len(self.provider_health),
+            },
         }
-        
+
         for provider_name, health in self.provider_health.items():
             provider_info = self.registry.get_provider_info(provider_name)
-            priority = self.provider_priorities.get(provider_name, ProviderPriority.FALLBACK)
+            priority = self.provider_priorities.get(
+                provider_name, ProviderPriority.FALLBACK
+            )
             latency_metrics = self._calculate_latency_metrics(health)
 
             status["providers"][provider_name] = {
@@ -1266,8 +1363,12 @@ class LLMRouter:
                 "response_time": health.response_time,
                 "error_message": health.error_message,
                 "priority": priority.name,
-                "supports_streaming": provider_info.get("supports_streaming", False) if provider_info else False,
-                "requires_api_key": provider_info.get("requires_api_key", False) if provider_info else False,
+                "supports_streaming": provider_info.get("supports_streaming", False)
+                if provider_info
+                else False,
+                "requires_api_key": provider_info.get("requires_api_key", False)
+                if provider_info
+                else False,
                 "circuit_open_until": health.circuit_open_until,
                 "rate_limited_until": health.rate_limited_until,
                 "latency_ms_avg": latency_metrics.get("avg_ms"),
@@ -1366,7 +1467,9 @@ class LLMRouter:
             request.stream,
         )
 
-        async for chunk in self._process_with_provider(provider_name, request, model_name):
+        async for chunk in self._process_with_provider(
+            provider_name, request, model_name
+        ):
             yield chunk
 
     def _log_provider_attempt(
@@ -1523,7 +1626,9 @@ class LLMRouter:
             result=self._normalize_metric_label(result),
         ).inc()
 
-    def _record_fallback_metric(self, from_provider: str, to_provider: str, reason: str) -> None:
+    def _record_fallback_metric(
+        self, from_provider: str, to_provider: str, reason: str
+    ) -> None:
         """Record fallback transitions between providers."""
 
         PROVIDER_FALLBACK_COUNTER.labels(
@@ -1557,7 +1662,17 @@ class LLMRouter:
         lowered = str(error_message or "").strip().lower()
         if not lowered:
             return "Unknown provider failure."
-        if any(term in lowered for term in ("api key", "unauthorized", "401", "forbidden", "403", "authentication")):
+        if any(
+            term in lowered
+            for term in (
+                "api key",
+                "unauthorized",
+                "401",
+                "forbidden",
+                "403",
+                "authentication",
+            )
+        ):
             return "The provider rejected the credentials or API key."
         if any(term in lowered for term in ("rate limit", "429", "quota")):
             return "The provider rejected the request because of rate limits or quota."
@@ -1566,7 +1681,9 @@ class LLMRouter:
         if any(term in lowered for term in ("timeout", "timed out")):
             return "The provider timed out while generating a response."
         if any(term in lowered for term in ("rejected", "safety", "moderat", "policy")):
-            return "The provider rejected the request under its policy or safety checks."
+            return (
+                "The provider rejected the request under its policy or safety checks."
+            )
         if any(term in lowered for term in ("connection", "network", "connect", "dns")):
             return "The system could not connect to the provider."
         if "empty response" in lowered:
@@ -1662,9 +1779,15 @@ class LLMRouter:
 
         if any(keyword in combined for keyword in ("rate limit", "429")):
             return DegradedModeReason.API_RATE_LIMITS
-        if any(keyword in combined for keyword in ("timeout", "timed out", "connection", "network")):
+        if any(
+            keyword in combined
+            for keyword in ("timeout", "timed out", "connection", "network")
+        ):
             return DegradedModeReason.NETWORK_ISSUES
-        if any(keyword in combined for keyword in ("quota", "exhaust", "memory", "resource")):
+        if any(
+            keyword in combined
+            for keyword in ("quota", "exhaust", "memory", "resource")
+        ):
             return DegradedModeReason.RESOURCE_EXHAUSTION
 
         return DegradedModeReason.ALL_PROVIDERS_FAILED
@@ -1684,7 +1807,9 @@ class LLMRouter:
             )
 
             manager = get_degraded_mode_manager()
-            failed_providers = [record.get("provider", "unknown") for record in failure_records]
+            failed_providers = [
+                record.get("provider", "unknown") for record in failure_records
+            ]
             degraded_reason = reason or DegradedModeReason.ALL_PROVIDERS_FAILED
 
             manager.activate_degraded_mode(degraded_reason, failed_providers)
@@ -1696,18 +1821,31 @@ class LLMRouter:
             if failure_records:
                 primary_failure = failure_records[0]
                 provider_name = primary_failure.get("provider", "provider")
-                provider_cause = self._classify_failure_detail(primary_failure.get("error", ""))
+                provider_cause = self._classify_failure_detail(
+                    primary_failure.get("error", "")
+                )
                 lowered_error = str(primary_failure.get("error", "")).lower()
-                if "api key" in lowered_error or "401" in lowered_error or "403" in lowered_error:
+                if (
+                    "api key" in lowered_error
+                    or "401" in lowered_error
+                    or "403" in lowered_error
+                ):
                     suggestion = "Check the provider credentials in Settings."
                 elif "timeout" in lowered_error or "timed out" in lowered_error:
                     suggestion = "Try a shorter prompt or switch to a faster model."
-                elif "malformed response" in lowered_error or "empty response" in lowered_error:
+                elif (
+                    "malformed response" in lowered_error
+                    or "empty response" in lowered_error
+                ):
                     suggestion = "Try again or switch to a different model in Settings."
                 elif "rate limit" in lowered_error or "429" in lowered_error:
-                    suggestion = "Wait a moment before trying again, or switch providers."
+                    suggestion = (
+                        "Wait a moment before trying again, or switch providers."
+                    )
                 elif "connect" in lowered_error or "network" in lowered_error:
-                    suggestion = "Check the provider connection and base URL in Settings."
+                    suggestion = (
+                        "Check the provider connection and base URL in Settings."
+                    )
 
             provider_block = (
                 f"Primary provider: {provider_name}\n"
@@ -1727,7 +1865,9 @@ class LLMRouter:
             )
             return final_text
         except Exception as degraded_error:  # pragma: no cover - defensive fallback
-            logger.exception("Failed to generate degraded mode response: %s", degraded_error)
+            logger.exception(
+                "Failed to generate degraded mode response: %s", degraded_error
+            )
 
         return None
 
@@ -1738,13 +1878,13 @@ class LLMRouter:
         tasks = []
         for provider_name in self.provider_health.keys():
             tasks.append(self._perform_health_check(provider_name))
-        
+
         await asyncio.gather(*tasks, return_exceptions=True)
-        
+
         logger.info("Provider health refresh completed")
-    
+
     @classmethod
-    def default(cls) -> 'LLMRouter':
+    def default(cls) -> "LLMRouter":
         """Create default LLM Router instance"""
         return cls()
 
@@ -1756,7 +1896,9 @@ class ProviderProcessingError(RuntimeError):
     def __init__(self, provider_name: str, errors: Sequence[BaseException]):
         self.provider_name = provider_name
         self.errors = list(errors)
-        self.last_error: Optional[BaseException] = self.errors[-1] if self.errors else None
+        self.last_error: Optional[BaseException] = (
+            self.errors[-1] if self.errors else None
+        )
 
         unique_messages: List[str] = []
         for error in self.errors:

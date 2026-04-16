@@ -155,7 +155,7 @@ async def get_conversation_service() -> Any:
 
     async def factory():
         from ai_karen_engine.chat.factory import get_chat_service_factory
-        from services.memory.conversation_service import WebUIConversationService
+        from services.memory.conversation_service import ConversationService
         from services.memory.memory_service import WebUIMemoryService
 
         factory_inst = get_chat_service_factory()
@@ -166,7 +166,7 @@ async def get_conversation_service() -> Any:
             return None
 
         # Inline minimal adapter if needed, though ideally this should be in a factory
-        return WebUIConversationService(
+        return ConversationService(
             base_conversation_manager=cast(Any, base_manager),
             memory_service=memory_service,
         )

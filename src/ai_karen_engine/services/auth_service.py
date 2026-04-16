@@ -326,7 +326,14 @@ class AuthService(BaseService):
         )
         return None
 
-    def _get_mock_developer_user(self, user_id: str, email: Optional[str], full_name: Optional[str], preferences: Optional[Dict[str, Any]]) -> UserAccount:
+    def _get_mock_developer_user(
+        self,
+        user_id: str,
+        email: Optional[str],
+        username: Optional[str],
+        full_name: Optional[str],
+        preferences: Optional[Dict[str, Any]],
+    ) -> UserAccount:
         """Create a mock UserAccount for developer bypass."""
         return UserAccount(
             id=user_id,
@@ -334,7 +341,7 @@ class AuthService(BaseService):
             full_name=full_name or "Developer Admin",
             preferences=preferences or {},
             is_active=True,
-            roles=["admin", "user"]
+            roles=["admin", "user"],
         )
 
     def _build_user_account(self, auth_user: AuthUser) -> UserAccount:
@@ -521,6 +528,7 @@ class AuthService(BaseService):
         password: str,
         full_name: str,
         *,
+        username: Optional[str] = None,
         tenant_id: Optional[str] = None,
         roles: Optional[List[UserRole]] = None,
         is_verified: bool = False,
@@ -532,6 +540,7 @@ class AuthService(BaseService):
             email: User email
             password: User password
             full_name: User full name
+            username: Username (optional, defaults to email prefix)
             roles: List of user roles
             is_verified: Whether the user is verified
 
@@ -573,6 +582,7 @@ class AuthService(BaseService):
                 auth_user = AuthUser(
                     user_id=uuid.uuid4(),
                     email=email,
+                    username=username or email.split("@")[0],
                     full_name=full_name,
                     password_hash=password_hash,
                     tenant_id=resolved_tenant_id,
@@ -933,6 +943,25 @@ class AuthService(BaseService):
         except Exception as e:
             logger.error("Error fetching user by username: %s", e)
             return None
+
+    async def get_all_users(self) -> List[UserAccount]:
+        """
+        Get all users in the system.
+
+        Returns:
+            List of user accounts
+        """
+        if not self._initialized:
+            await self.initialize()
+
+        try:
+            async with self._session_scope() as session:
+                result = await session.execute(select(AuthUser))
+                auth_users = result.scalars().all()
+                return [self._build_user_account(u) for u in auth_users]
+        except Exception as e:
+            logger.error("Error getting all users: %s", e)
+            return []
 
     async def create_session(
         self,
@@ -1440,6 +1469,7 @@ class AuthService(BaseService):
         self,
         user_id: str,
         email: Optional[str] = None,
+        username: Optional[str] = None,
         full_name: Optional[str] = None,
         preferences: Optional[Dict[str, Any]] = None,
     ) -> Tuple[Optional[UserAccount], Optional[str]]:
@@ -1449,6 +1479,7 @@ class AuthService(BaseService):
         Args:
             user_id: User ID
             email: New email address (optional)
+            username: New username (optional)
             full_name: New full name (optional)
             preferences: New user preferences (optional)
 
@@ -1458,12 +1489,13 @@ class AuthService(BaseService):
         try:
             # Handle non-UUID IDs if they are from the dev bypass
             import uuid
+
             try:
                 if isinstance(user_id, str) and not user_id.replace("-", "").isalnum():
-                     # Not a potential UUID string
-                     user_uuid = None
+                    # Not a potential UUID string
+                    user_uuid = None
                 else:
-                     user_uuid = uuid.UUID(str(user_id))
+                    user_uuid = uuid.UUID(str(user_id))
             except (ValueError, AttributeError):
                 logger.warning("Invalid user id format for profile update: %s", user_id)
                 user_uuid = None
@@ -1471,10 +1503,20 @@ class AuthService(BaseService):
             if not user_uuid:
                 # Check for special dev users if bypass is potentially active
                 from ai_karen_engine.core.auth_config import auth_config
-                if auth_config.should_bypass_auth() and user_id in ["dev-user", "admin", "dev"]:
-                     logger.info("Using developer bypass for profile update logic for user: %s", user_id)
-                     # Return a mock successful update for dev-user
-                     return self._get_mock_developer_user(user_id, email, full_name, preferences), None
+
+                if auth_config.should_bypass_auth() and user_id in [
+                    "dev-user",
+                    "admin",
+                    "dev",
+                ]:
+                    logger.info(
+                        "Using developer bypass for profile update logic for user: %s",
+                        user_id,
+                    )
+                    # Return a mock successful update for dev-user
+                    return self._get_mock_developer_user(
+                        user_id, email, username, full_name, preferences
+                    ), None
                 return None, "Invalid user ID"
 
             async with self._session_scope() as session:
@@ -1500,6 +1542,18 @@ class AuthService(BaseService):
 
                     auth_user.email = email
 
+                if username is not None:
+                    # Check if username is already taken by another user
+                    existing_user = await session.execute(
+                        select(AuthUser).where(
+                            AuthUser.username == username, AuthUser.user_id != user_uuid
+                        )
+                    )
+                    if existing_user.scalar_one_or_none():
+                        return None, "User with this username already exists"
+
+                    auth_user.username = username
+
                 if full_name is not None:
                     auth_user.full_name = full_name
 
@@ -1509,6 +1563,7 @@ class AuthService(BaseService):
                     if isinstance(preferences, dict):
                         auth_user.preferences.update(preferences)
                         from sqlalchemy.orm.attributes import flag_modified
+
                         flag_modified(auth_user, "preferences")
 
                 await session.flush()

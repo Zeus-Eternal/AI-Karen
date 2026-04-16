@@ -11,7 +11,7 @@ import React, { Suspense, ComponentType, ReactNode, ErrorInfo } from 'react';
 export interface PluginComponentDefinition {
   pluginId: string;
   componentId: string;
-  component: ComponentType<any>;
+  component: ComponentType<Record<string, unknown>>;
   zone: string;
   order?: number;
   label?: string;
@@ -115,7 +115,7 @@ class PluginComponentRegistry {
   private static instance: PluginComponentRegistry;
   private zones: Map<string, PluginZone> = new Map();
   private components: Map<string, PluginComponentDefinition> = new Map();
-  private lazyComponents: Map<string, ComponentType<any>> = new Map();
+  private lazyComponents: Map<string, ComponentType<Record<string, unknown>>> = new Map();
 
   private constructor() {
     // Initialize default zones
@@ -264,9 +264,9 @@ class PluginComponentRegistry {
   public deregisterPluginComponents(pluginId: string): ComponentDeregistrationResult[] {
     const results: ComponentDeregistrationResult[] = [];
     const componentsToRemove = Array.from(this.components.entries())
-      .filter(([_, def]) => def.pluginId === pluginId);
+      .filter(([, def]) => def.pluginId === pluginId);
 
-    for (const [componentKey, _] of componentsToRemove) {
+    for (const [componentKey] of componentsToRemove) {
       const [pid, cid] = componentKey.split(':');
       results.push(this.deregisterComponent(pid, cid));
     }
@@ -311,7 +311,7 @@ class PluginComponentRegistry {
   public renderComponent(
     pluginId: string,
     componentId: string,
-    props: Record<string, any> = {}
+    props: Record<string, unknown> = {}
   ): ReactNode {
     const definition = this.getComponent(pluginId, componentId);
 
@@ -338,7 +338,7 @@ class PluginComponentRegistry {
    */
   public renderZoneComponents(
     zoneId: string,
-    props: Record<string, any> = {}
+    props: Record<string, unknown> = {}
   ): ReactNode[] {
     const components = this.getZoneComponents(zoneId);
 
@@ -395,12 +395,12 @@ export const deregisterPluginComponents = (pluginId: string) =>
 export const renderPluginComponent = (
   pluginId: string,
   componentId: string,
-  props?: Record<string, any>
+  props?: Record<string, unknown>
 ) => pluginComponentRegistry.renderComponent(pluginId, componentId, props);
 
 export const renderZoneComponents = (
   zoneId: string,
-  props?: Record<string, any>
+  props?: Record<string, unknown>
 ) => pluginComponentRegistry.renderZoneComponents(zoneId, props);
 
 export const getPluginComponentStats = () => pluginComponentRegistry.getStats();

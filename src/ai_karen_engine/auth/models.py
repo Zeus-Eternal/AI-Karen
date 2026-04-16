@@ -12,6 +12,7 @@ class UserData(dict):
 
     user_id: str = ""
     email: Optional[str] = None
+    username: Optional[str] = None
     roles: List[str] = field(default_factory=list)
     tenant_id: str = "default"
     full_name: Optional[str] = None
@@ -24,6 +25,7 @@ class UserData(dict):
         super().__init__(
             user_id=self.user_id,
             email=self.email,
+            username=self.username,
             roles=list(self.roles or []),
             tenant_id=self.tenant_id,
             full_name=self.full_name,
@@ -41,7 +43,7 @@ class UserData(dict):
             raise AttributeError(item) from exc
 
     def __setattr__(self, key: str, value: Any) -> None:
-        if key in {"user_id", "email", "roles", "tenant_id", "full_name", "preferences", "org_id", "is_active", "is_verified"}:
+        if key in {"user_id", "email", "username", "roles", "tenant_id", "full_name", "preferences", "org_id", "is_active", "is_verified"}:
             super().__setattr__(key, value)
             self[key] = value
         else:
@@ -58,6 +60,7 @@ class UserData(dict):
         data = {
             "user_id": payload.get("user_id") or payload.get("id") or "",
             "email": payload.get("email"),
+            "username": payload.get("username"),
             "roles": list(payload.get("roles") or []),
             "tenant_id": payload.get("tenant_id") or payload.get("org_id") or "default",
             "full_name": payload.get("full_name") or payload.get("name"),

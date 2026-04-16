@@ -1,27 +1,34 @@
+import json
 import os
 import inspect
 import logging
 import time
 import uuid
-from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, AsyncIterator, cast
-from fastapi import APIRouter, Request, HTTPException, Depends
-from fastapi.responses import StreamingResponse, JSONResponse
+from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING
+from datetime import datetime, timezone
 
+from fastapi import APIRouter, HTTPException, Request, Depends
+from starlette.responses import JSONResponse, StreamingResponse
 
-from ai_karen_engine.chat.ChatOrchestrator import (
-    ProcessingStatus,
-    ChatRequest,
-    ChatResponse,
-)
 from ai_karen_engine.core.chat_runtime_control_plane import (
     get_chat_runtime_control_plane,
     DegradedResponse,
+    DegradedCapabilities,
     EmergencyFallbackResponse,
     serialize_runtime_response,
     runtime_response_http_status,
+    RuntimeConstants,
 )
 from ai_karen_engine.core.degraded_mode import generate_degraded_mode_response
+from ai_karen_engine.core.dependencies import bypass_user_context_func
+from ai_karen_engine.chat.ChatOrchestrator import (
+    ChatRequest,
+    ChatResponse,
+    normalize_session_id as _normalize_session_id,
+    resolve_user_context as _resolve_user_context,
+    json_safe as _json_safe,
+)
 
 if TYPE_CHECKING:
     from pydantic import BaseModel, ConfigDict, Field
@@ -41,19 +48,86 @@ else:
     except ImportError:
         pass
 
+
+def _is_placeholder_response(response_text: str) -> bool:
+    """Detect if orchestrator response contains static placeholder text that should trigger fallback."""
+    if not response_text or not response_text.strip():
+        return True
+
+    # Check for known placeholder patterns from centralized constants
+    response_lower = response_text.lower()
+    for pattern in RuntimeConstants.PLACEHOLDER_PATTERNS:
+        if pattern.lower() in response_lower:
+            return True
+
+    # Check for very short responses that might be placeholders
+    if len(response_text.strip()) < 10:
+        return True
+
+    return False
+
+
+def _extract_stream_text(payload: Dict[str, Any]) -> str:
+    """Extract user-visible response text from a runtime payload."""
+    for key in ("answer", "message", "response", "final", "content"):
+        value = payload.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ""
+
+
+def _build_degraded_sse_events(
+    payload: Dict[str, Any], correlation_id: str
+) -> List[Dict[str, Any]]:
+    """Build client-compatible SSE events for degraded/fallback payloads."""
+    text = _extract_stream_text(payload)
+    status = str(payload.get("mode") or payload.get("status") or "degraded")
+    metadata = {
+        **payload,
+        "status": status,
+        "degraded_mode": True,
+    }
+    events: List[Dict[str, Any]] = [
+        {
+            "type": "status",
+            "content": _PROCESSING_STATUS_MESSAGES.get(
+                status, "Karen is running in degraded mode..."
+            ),
+            "correlation_id": correlation_id,
+            "metadata": {"status": status, "degraded_mode": True},
+        }
+    ]
+    if text:
+        events.append(
+            {
+                "type": "content",
+                "content": text,
+                "correlation_id": correlation_id,
+                "metadata": metadata,
+            }
+        )
+    events.append(
+        {
+            "type": "complete",
+            "content": "",
+            "correlation_id": correlation_id,
+            "metadata": metadata,
+        }
+    )
+    return events
+
+
 logger = logging.getLogger(__name__)
 
 # Create router without prefix for automatic discovery alignment
 router = APIRouter(tags=["copilot"])
-
-print("DEBUG: Copilot router created")
 
 
 class SuggestedAction(BaseModel):
     type: str = Field(
         ..., examples=["add_task", "pin_memory", "open_doc", "export_note"]
     )
-    params: Dict[str, Any] = Field(default_factory=dict)
+    params: Optional[Dict[str, Any]] = Field(default_factory=dict)
     confidence: float = Field(0.8, ge=0.0, le=1.0)
     description: Optional[str] = None
 
@@ -123,6 +197,9 @@ def _build_degraded_assist_response(
     user_message: str,
     correlation_id: str,
     status_code: int = 200,
+    is_fallback: bool = False,
+    fallback_provider: Optional[str] = None,
+    fallback_model: Optional[str] = None,
 ) -> JSONResponse:
     """Return a useful degraded assistant payload (not just a mode banner)."""
     payload = serialize_runtime_response(degraded) or {}
@@ -138,19 +215,52 @@ def _build_degraded_assist_response(
     ).strip()
     answer = shim_answer or degraded.message
 
-    metadata = {
-        "runtime": payload,
-        "mode": payload.get("mode", "degraded"),
-        "degraded_mode": True,
-        "llm": {
-            "provider": "system",
-            "model_name": "Degraded Mode",
-            "source": "runtime_control_plane",
-            "is_degraded": True,
-            "fallback_level": "degraded",
-            "failure_reason": degraded.message,
-        },
-    }
+    # Use distinct metadata based on whether this is a fallback or static degraded response
+    if is_fallback and fallback_provider and fallback_model:
+        # This is a degraded LLM success (actual AI content from fallback)
+        metadata = {
+            "runtime": payload,
+            "mode": payload.get("mode", "degraded"),
+            "degraded_mode": True,
+            "capabilities": vars(degraded.capabilities)
+            if degraded.capabilities
+            else {},
+            "is_minimal": getattr(degraded, "is_minimal", True),
+            "retry_after_seconds": getattr(degraded, "retry_after_seconds", 30),
+            "system_status_code": getattr(degraded, "system_status_code", 503),
+            "support_hint": getattr(degraded, "support_hint", ""),
+            "llm": {
+                "provider": fallback_provider,
+                "model_name": fallback_model,
+                "source": "degraded_fallback_llm",
+                "is_degraded": True,
+                "fallback_level": "nlp_service",
+                "failure_reason": degraded.message,
+            },
+        }
+    else:
+        # This is a static fallback response
+        metadata = {
+            "runtime": payload,
+            "mode": payload.get("mode", "degraded"),
+            "degraded_mode": True,
+            "capabilities": vars(degraded.capabilities)
+            if degraded.capabilities
+            else {},
+            "is_minimal": getattr(degraded, "is_minimal", True),
+            "retry_after_seconds": getattr(degraded, "retry_after_seconds", 30),
+            "system_status_code": getattr(degraded, "system_status_code", 503),
+            "support_hint": getattr(degraded, "support_hint", ""),
+            "llm": {
+                "provider": "system",
+                "model_name": "Degraded Mode",
+                "source": "runtime_control_plane",
+                "is_degraded": True,
+                "fallback_level": "degraded",
+                "failure_reason": degraded.message,
+            },
+        }
+
     return _assist_response_json(
         answer=answer,
         structured_content={},
@@ -421,6 +531,7 @@ async def copilot_start_action_get(action: str, http_request: Request):
 async def copilot_assist(
     request: AssistRequest,
     http_request: Request,
+    user: Dict[str, Any] = Depends(bypass_user_context_func),
 ):
     """Copilot assist endpoint using runtime control plane."""
     start_time = time.time()
@@ -435,10 +546,11 @@ async def copilot_assist(
         },
     )
 
+    degraded_continuation_response: Optional[DegradedResponse] = None
+
     try:
         # Get runtime control plane
         runtime_plane = await get_chat_runtime_control_plane()
-        degraded_continuation_response: Optional[DegradedResponse] = None
 
         # Get runtime response based on current mode
         response = await runtime_plane.get_runtime_response(
@@ -451,10 +563,19 @@ async def copilot_assist(
         if response is not None:
             if isinstance(response, DegradedResponse):
                 logger.info(
-                    "Copilot continuing through degraded mode",
+                    "Copilot in degraded mode — will attempt orchestrator before returning degraded fallback",
                     extra={"correlation_id": correlation_id},
                 )
                 degraded_continuation_response = response
+            elif isinstance(response, EmergencyFallbackResponse):
+                payload = serialize_runtime_response(response) or {}
+                payload["correlation_id"] = correlation_id
+                status_code = runtime_response_http_status(response) or 503
+                return JSONResponse(
+                    status_code=status_code,
+                    content=payload,
+                    headers={"X-Correlation-Id": correlation_id},
+                )
             else:
                 payload = serialize_runtime_response(response) or {}
                 payload["correlation_id"] = correlation_id
@@ -465,7 +586,11 @@ async def copilot_assist(
                     headers={"X-Correlation-Id": correlation_id},
                 )
 
-        # Normal/degraded-chat path: execute via ChatOrchestrator.
+        # If no runtime response, proceed with factory-wired orchestrator
+        logger.info(
+            "Copilot proceeding with orchestrator",
+            extra={"correlation_id": correlation_id},
+        )
         try:
             orchestrator = await _get_chat_orchestrator()
         except Exception as orchestrator_error:
@@ -483,6 +608,7 @@ async def copilot_assist(
                         degraded_continuation_response
                     )
                     or 200,
+                    is_fallback=False,
                 )
             raise
 
@@ -528,44 +654,284 @@ async def copilot_assist(
                         degraded_continuation_response
                     )
                     or 200,
+                    is_fallback=False,
                 )
             raise
         if isinstance(orchestrator_response, ChatResponse):
-            response_text = str(orchestrator_response.response or "").strip()
-            if degraded_continuation_response is not None and (
-                not response_text
-                or response_text.lower().startswith("limited assistant with:")
-                or response_text == degraded_continuation_response.message
-            ):
+            response_text = str(
+                orchestrator_response.response or ""
+            ).strip()  # Check if response contains placeholder text that should trigger NLP fallback
+            if _is_placeholder_response(response_text):
                 logger.info(
-                    "Copilot replacing placeholder degraded text with degraded shim response",
+                    "Copilot detected placeholder response, attempting NLP fallback",
                     extra={"correlation_id": correlation_id},
                 )
+
+                # Try NLP service fallback
+                nlp_manager = None
+                nlp_result = None
+                try:
+                    from services.memory.nlp_service_manager import (
+                        NLPServiceManager,
+                    )
+
+                    nlp_manager = NLPServiceManager()
+
+                    # Determine fallback model from control plane
+                    fallback_provider, fallback_model = (
+                        runtime_plane.get_fallback_provider()
+                    )
+
+                    nlp_result = None
+                    if nlp_manager:
+                        try:
+                            nlp_result = await nlp_manager.generate_response(
+                                model_id=fallback_model,
+                                messages=[
+                                    {
+                                        "role": "system",
+                                        "content": "You are Karen, a helpful AI assistant. You are currently in degraded mode with limited capabilities, but you should still provide a helpful, coherent, and natural response to the user's question. Keep your response concise but informative, and maintain a friendly tone. If you cannot answer the question fully, explain what you can and cannot do. The user asked: '{user_message}'. Provide a direct and helpful response based on your knowledge.",
+                                    },
+                                    {"role": "user", "content": request.message},
+                                ],
+                                correlation_id=correlation_id,
+                                max_tokens=600,
+                                temperature=0.7,
+                            )
+                        except Exception as nlp_error:
+                            logger.warning(
+                                "NLP manager generate_response error: %s",
+                                nlp_error,
+                                extra={"correlation_id": correlation_id},
+                            )
+
+                    if (
+                        nlp_result
+                        and nlp_result.get("success")
+                        and nlp_result.get("content")
+                    ):
+                        content = nlp_result.get("content", "")
+                        logger.info(
+                            "Degraded mode response content: %s",
+                            content[:200] + "..." if len(content) > 200 else content,
+                            extra={"correlation_id": correlation_id},
+                        )
+
+                    if (
+                        nlp_result
+                        and nlp_result.get("success")
+                        and nlp_result.get("content")
+                    ):
+                        # NLP fallback succeeded - return actual AI content with degraded LLM metadata
+                        logger.info(
+                            "Copilot NLP fallback succeeded",
+                            extra={"correlation_id": correlation_id},
+                        )
+
+                        return _assist_response_json(
+                            answer=nlp_result["content"],
+                            structured_content={},
+                            actions=[],
+                            metadata={
+                                "status": "success",
+                                "processing_time": time.time() - start_time,
+                                "conversation_id": conversation_id,
+                                "used_fallback": True,
+                                "llm": {
+                                    "provider": fallback_provider,
+                                    "model_name": fallback_model,
+                                    "source": RuntimeConstants.SOURCE_DEGRADED_LLM,
+                                    "is_degraded": True,
+                                    "fallback_level": "nlp_service",
+                                },
+                            },
+                            correlation_id=correlation_id,
+                            status_code=200,
+                        )
+
+                    nlp_manager = NLPServiceManager()
+
+                    # Determine fallback model from control plane
+                    fallback_provider, fallback_model = (
+                        runtime_plane.get_fallback_provider()
+                    )
+
+                    nlp_manager = NLPServiceManager()
+
+                    # Determine fallback model from control plane
+                    fallback_provider, fallback_model = (
+                        runtime_plane.get_fallback_provider()
+                    )
+                    nlp_result = None
+                    if nlp_manager:
+                        try:
+                            nlp_result = await nlp_manager.generate_response(
+                                model_id=fallback_model,
+                                messages=[
+                                    {
+                                        "role": "system",
+                                        "content": "You are Karen, a helpful AI assistant. You are currently in degraded mode with limited capabilities, but you should still provide a helpful, coherent, and natural response to the user's question. Keep your response concise but informative, and maintain a friendly tone. If you cannot answer the question fully, explain what you can and cannot do. The user asked: '{user_message}'. Provide a direct and helpful response based on your knowledge.",
+                                    },
+                                    {"role": "user", "content": request.message},
+                                ],
+                                correlation_id=correlation_id,
+                                max_tokens=600,
+                                temperature=0.7,
+                            )
+                        except Exception as nlp_error:
+                            logger.warning(
+                                "NLP manager generate_response error: %s",
+                                nlp_error,
+                                extra={"correlation_id": correlation_id},
+                            )
+
+                    if (
+                        nlp_result
+                        and nlp_result.get("success")
+                        and nlp_result.get("content")
+                    ):
+                        content = nlp_result.get("content", "")
+                        logger.info(
+                            "Degraded mode response content: %s",
+                            content[:200] + "..." if len(content) > 200 else content,
+                            extra={"correlation_id": correlation_id},
+                        )
+
+                    if (
+                        nlp_result
+                        and nlp_result.get("success")
+                        and nlp_result.get("content")
+                    ):
+                        # NLP fallback succeeded - return actual AI content with degraded LLM metadata
+                        logger.info(
+                            "Copilot NLP fallback succeeded",
+                            extra={"correlation_id": correlation_id},
+                        )
+
+                        return _assist_response_json(
+                            answer=nlp_result["content"],
+                            structured_content={},
+                            actions=[],
+                            metadata={
+                                "status": "success",
+                                "processing_time": time.time() - start_time,
+                                "conversation_id": conversation_id,
+                                "used_fallback": True,
+                                "llm": {
+                                    "provider": fallback_provider,
+                                    "model_name": fallback_model,
+                                    "source": RuntimeConstants.SOURCE_DEGRADED_LLM,
+                                    "is_degraded": True,
+                                    "fallback_level": "nlp_service",
+                                },
+                            },
+                            correlation_id=correlation_id,
+                            status_code=200,
+                        )
+                    else:
+                        logger.warning(
+                            "Copilot NLP fallback failed to generate content",
+                            extra={"correlation_id": correlation_id},
+                        )
+
+                except Exception as nlp_error:
+                    logger.warning(
+                        "Copilot NLP fallback error: %s",
+                        nlp_error,
+                        extra={"correlation_id": correlation_id},
+                    )
+                    # Try with a simpler system prompt if the complex one failed
+                    if nlp_manager:
+                        try:
+                            logger.info(
+                                "Attempting NLP fallback with simpler prompt",
+                                extra={"correlation_id": correlation_id},
+                            )
+                            simple_nlp_result = await nlp_manager.generate_response(
+                                model_id="phi-3-mini",
+                                messages=[
+                                    {
+                                        "role": "system",
+                                        "content": "You are a helpful assistant. Answer the user's question simply and directly.",
+                                    },
+                                    {"role": "user", "content": request.message},
+                                ],
+                                correlation_id=correlation_id,
+                                max_tokens=300,
+                                temperature=0.7,
+                            )
+
+                            if simple_nlp_result.get(
+                                "success"
+                            ) and simple_nlp_result.get("content"):
+                                logger.info(
+                                    "Simple NLP fallback succeeded",
+                                    extra={"correlation_id": correlation_id},
+                                )
+                                nlp_result = simple_nlp_result
+                        except Exception as simple_error:
+                            logger.warning(
+                                "Simple NLP fallback also failed: %s",
+                                simple_error,
+                                extra={"correlation_id": correlation_id},
+                            )
+
+            # Check if we should return a final degraded response (hard failure)
+            if _is_placeholder_response(response_text):
+                logger.info(
+                    "Copilot returned placeholder text and fallback failed - returning degraded shim",
+                    extra={"correlation_id": correlation_id},
+                )
+
+                # Use existing degraded response or create a default one
+                if degraded_continuation_response is None:
+                    degraded_continuation_response = DegradedResponse(
+                        mode="degraded",
+                        message="I'm currently experiencing some technical difficulties and can only provide limited responses. I'm Karen - your AI assistant. While I'm in degraded mode, I may not be able to answer complex questions fully, but I'll do my best to help with simple requests. For the best experience, please try again later when the system is fully operational.",
+                        capabilities=DegradedCapabilities(
+                            memory_available=False,
+                            tools_available=True,
+                            plugins_available=True,
+                            external_providers_available=True,
+                            streaming_supported=False,
+                            local_model_available=False,
+                            description="Degraded mode active - system experiencing issues",
+                        ),
+                        is_minimal=True,
+                        retry_after_seconds=30,
+                        system_status_code=503,
+                        support_hint="Please try again in a few moments",
+                    )
+
                 return _build_degraded_assist_response(
                     degraded=degraded_continuation_response,
                     user_message=request.message,
                     correlation_id=correlation_id,
                     status_code=200,
+                    is_fallback=False,
                 )
 
-            action_models = [
-                SuggestedAction(
-                    type=str(action.get("type", "unknown")),
-                    params=(
-                        action.get("params")
-                        if isinstance(action.get("params"), dict)
-                        else {
-                            k: v
-                            for k, v in action.items()
-                            if k not in {"type", "confidence", "description"}
-                        }
-                    ),
-                    confidence=float(action.get("confidence", 0.8)),
-                    description=action.get("description"),
+            action_models = []
+            for action in orchestrator_response.actions or []:
+                if not isinstance(action, dict):
+                    continue
+                params_value = action.get("params")
+                if isinstance(params_value, dict):
+                    params = params_value
+                else:
+                    params = {
+                        k: v
+                        for k, v in action.items()
+                        if k not in {"type", "confidence", "description"}
+                    } or {}
+                action_models.append(
+                    SuggestedAction(
+                        type=str(action.get("type", "unknown")),
+                        params=params,
+                        confidence=float(action.get("confidence", 0.8)),
+                        description=action.get("description"),
+                    )
                 )
-                for action in (orchestrator_response.actions or [])
-                if isinstance(action, dict)
-            ]
 
             metadata: Dict[str, Any] = _json_safe(orchestrator_response.metadata or {})
             metadata["status"] = str(orchestrator_response.status.value)
@@ -596,10 +962,364 @@ async def copilot_assist(
         payload = serialize_runtime_response(fallback) or {}
         payload["correlation_id"] = correlation_id
         return JSONResponse(
-            status_code=runtime_response_http_status(fallback) or 503,
+            status_code=200,
             content=payload,
             headers={"X-Correlation-Id": correlation_id},
         )
+
+
+_PROCESSING_STATUS_MESSAGES = {
+    "initializing": "Karen is initializing the request pipeline...",
+    "processing": "Karen is analyzing your message...",
+    "extracting_context": "Karen is retrieving relevant context and memories...",
+    "generating_response": "Karen is generating a response...",
+    "streaming": "Karen is composing the response...",
+    "executing_tools": "Karen is executing tools and integrations...",
+    "recording_memory": "Karen is recording insights from this conversation...",
+    "post_processing": "Karen is finalizing the response...",
+    "completed": "Response complete.",
+    "degraded": "Karen is running in degraded mode...",
+    "failed": "Processing failed. Retrying or falling back...",
+    "cancelled": "Request was cancelled.",
+    "retrying": "Retrying with an alternative provider...",
+}
+
+
+@router.post("/assist/stream")
+async def copilot_assist_stream(
+    request: AssistRequest,
+    http_request: Request,
+    user: Dict[str, Any] = Depends(bypass_user_context_func),
+):
+    """Streaming copilot assist endpoint with real-time processing status via SSE."""
+    correlation_id = (
+        get_correlation_id(http_request) or f"copilot_stream_{int(time.time())}"
+    )
+
+    logger.info(
+        "Copilot assist stream request received",
+        extra={
+            "correlation_id": correlation_id,
+            "user_id": request.user_id,
+            "message_length": len(request.message),
+        },
+    )
+
+    degraded_continuation_response: Optional[DegradedResponse] = None
+
+    try:
+        runtime_plane = await get_chat_runtime_control_plane()
+
+        response = await runtime_plane.get_runtime_response(
+            user_id=request.user_id,
+            message=request.message,
+            session_id=request.session_id,
+            correlation_id=correlation_id,
+        )
+
+        if response is not None:
+            if isinstance(response, EmergencyFallbackResponse):
+                payload = serialize_runtime_response(response) or {}
+                payload["correlation_id"] = correlation_id
+
+                async def stream_emergency_fallback():
+                    for event in _build_degraded_sse_events(payload, correlation_id):
+                        yield f"data: {json.dumps(event)}\n\n"
+                    yield "data: [DONE]\n\n"
+
+                return StreamingResponse(
+                    stream_emergency_fallback(),
+                    media_type="text/event-stream",
+                    headers={
+                        "Cache-Control": "no-cache",
+                        "Connection": "keep-alive",
+                        "X-Correlation-Id": correlation_id,
+                    },
+                )
+
+            elif isinstance(response, DegradedResponse):
+                degraded_continuation_response = response
+                logger.info(
+                    "Copilot in degraded mode — will attempt orchestrator before returning degraded fallback",
+                    extra={"correlation_id": correlation_id},
+                )
+            else:
+                logger.info(
+                    "Copilot proceeding with orchestrator",
+                    extra={"correlation_id": correlation_id},
+                )
+
+        if isinstance(response, DegradedResponse):
+            logger.info(
+                "Copilot proceeding with orchestrator with degraded continuation",
+                extra={"correlation_id": correlation_id},
+            )
+
+    except Exception as runtime_exc:
+        logger.error(
+            "Runtime control plane error: %s",
+            runtime_exc,
+            extra={"correlation_id": correlation_id},
+        )
+        degraded_continuation_response = DegradedResponse(
+            mode="degraded",
+            message="I'm currently experiencing some technical difficulties and can only provide limited responses. I'm Karen - your AI assistant. While I'm in degraded mode, I may not be able to answer complex questions fully, but I'll do my best to help with simple requests. For the best experience, please try again later when the system is fully operational.",
+            capabilities=DegradedCapabilities(
+                memory_available=False,
+                tools_available=True,
+                plugins_available=True,
+                external_providers_available=True,
+                streaming_supported=False,
+                local_model_available=False,
+                description="Degraded mode active - runtime control plane unavailable",
+            ),
+            is_minimal=True,
+            retry_after_seconds=30,
+            system_status_code=503,
+            support_hint="Please try again in a few moments",
+        )
+
+    try:
+        orchestrator = await _get_chat_orchestrator()
+    except Exception as exc:
+        logger.error(
+            "Stream setup: orchestrator unavailable: %s",
+            exc,
+            extra={"correlation_id": correlation_id},
+        )
+        payload = (
+            serialize_runtime_response(
+                degraded_continuation_response or EmergencyFallbackResponse()
+            )
+            or {}
+        )
+        payload["correlation_id"] = correlation_id
+
+        async def stream_degraded_fallback():
+            for event in _build_degraded_sse_events(payload, correlation_id):
+                yield f"data: {json.dumps(event)}\n\n"
+            yield "data: [DONE]\n\n"
+
+        return StreamingResponse(
+            stream_degraded_fallback(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Correlation-Id": correlation_id,
+            },
+        )
+
+    conversation_id = _normalize_session_id(request.session_id)
+    if not conversation_id:
+        conversation_id = str(uuid.uuid4())
+
+    chat_request = ChatRequest(
+        correlation_id=correlation_id,
+        tenant_id=str(request.org_id or "default"),
+        message=request.message,
+        user_id=request.user_id,
+        org_id=request.org_id,
+        conversation_id=conversation_id,
+        session_id=conversation_id,
+        streaming=True,
+        stream=True,
+        include_context=True,
+        attachments=[],
+        metadata={
+            "surface": "copilot",
+            "top_k": request.top_k,
+            "context": _json_safe(request.context or {}),
+            "preferred_llm_provider": request.preferred_llm_provider,
+            "preferred_model": request.preferred_model,
+        },
+    )
+
+    async def generate_stream():
+        try:
+            # Emit an immediate status event so clients know the stream is alive
+            # while orchestrator startup/provider warmup is in progress.
+            initial_payload = {
+                "type": "status",
+                "content": _PROCESSING_STATUS_MESSAGES.get(
+                    "initializing",
+                    "Karen is initializing the request pipeline...",
+                ),
+                "correlation_id": correlation_id,
+                "metadata": {"status": "initializing"},
+            }
+            yield f"data: {json.dumps(initial_payload)}\n\n"
+
+            chunk_stream = await orchestrator.handle_chat_stream(chat_request)
+
+            collected_content = ""
+            async for chunk in chunk_stream:
+                if chunk.type == "metadata":
+                    status = (chunk.metadata or {}).get("status", "processing")
+                    status_message = _PROCESSING_STATUS_MESSAGES.get(
+                        status,
+                        "Karen is working on your request...",
+                    )
+
+                    payload = {
+                        "type": "status",
+                        "content": status_message,
+                        "correlation_id": chunk.correlation_id,
+                        "metadata": {
+                            "status": status,
+                            **(chunk.metadata or {}),
+                        },
+                    }
+                    yield f"data: {json.dumps(payload)}\n\n"
+
+                elif chunk.type == "content":
+                    collected_content += chunk.content or ""
+                    payload = {
+                        "type": "content",
+                        "content": chunk.content or "",
+                        "correlation_id": chunk.correlation_id,
+                        "metadata": chunk.metadata or {},
+                    }
+                    yield f"data: {json.dumps(payload)}\n\n"
+
+                elif chunk.type == "error":
+                    if degraded_continuation_response:
+                        fallback_payload = (
+                            serialize_runtime_response(degraded_continuation_response)
+                            or {}
+                        )
+                        fallback_payload["correlation_id"] = correlation_id
+                        for event in _build_degraded_sse_events(
+                            fallback_payload, correlation_id
+                        ):
+                            yield f"data: {json.dumps(event)}\n\n"
+                        yield "data: [DONE]\n\n"
+                        return
+
+                    payload = {
+                        "type": "error",
+                        "content": chunk.content or "Processing failed",
+                        "correlation_id": chunk.correlation_id,
+                        "metadata": chunk.metadata or {},
+                    }
+                    yield f"data: {json.dumps(payload)}\n\n"
+
+                elif chunk.type == "complete":
+                    completion_metadata = chunk.metadata or {}
+
+                    # Detect system fallback responses and mark as degraded
+                    llm_info = completion_metadata.get("llm", {})
+                    if (
+                        llm_info.get("provider") == "system"
+                        or llm_info.get("model_id") == "auto"
+                    ):
+                        completion_metadata["degraded_mode"] = True
+                        if "llm" not in completion_metadata:
+                            completion_metadata["llm"] = {}
+                        completion_metadata["llm"]["is_degraded"] = True
+                        completion_metadata["llm"]["fallback_level"] = "system"
+                        completion_metadata["llm"]["failure_reason"] = (
+                            "Using system fallback response"
+                        )
+
+                    if (
+                        _is_placeholder_response(collected_content)
+                        and degraded_continuation_response
+                    ):
+                        shim = generate_degraded_mode_response(request.message)
+                        response_text = str(
+                            (
+                                shim.get("final")
+                                or shim.get("message")
+                                or shim.get("response")
+                                or shim.get("answer")
+                                or ""
+                            )
+                        ).strip()
+                        payload = {
+                            "type": "content",
+                            "content": response_text,
+                            "correlation_id": correlation_id,
+                            "metadata": {
+                                "status": "degraded",
+                                "used_fallback": True,
+                                "degraded_mode": True,
+                                "llm": {
+                                    "is_degraded": True,
+                                    "fallback_level": "system",
+                                    "failure_reason": "Using system fallback response",
+                                },
+                            },
+                        }
+                        yield f"data: {json.dumps(payload)}\n\n"
+                        yield "data: [DONE]\n\n"
+                        return
+
+                    final_status = completion_metadata.get("status", "completed")
+                    final_message = _PROCESSING_STATUS_MESSAGES.get(
+                        final_status, "Complete"
+                    )
+
+                    payload = {
+                        "type": "complete",
+                        "content": "",
+                        "correlation_id": chunk.correlation_id,
+                        "metadata": {
+                            **completion_metadata,
+                            "status_message": final_message,
+                        },
+                    }
+                    yield f"data: {json.dumps(payload)}\n\n"
+
+                else:
+                    payload = {
+                        "type": chunk.type,
+                        "content": chunk.content or "",
+                        "correlation_id": chunk.correlation_id,
+                        "metadata": chunk.metadata or {},
+                    }
+                    yield f"data: {json.dumps(payload)}\n\n"
+
+            yield "data: [DONE]\n\n"
+
+        except Exception as stream_error:
+            logger.error(
+                "Streaming error in copilot assist: %s",
+                stream_error,
+                extra={"correlation_id": correlation_id},
+            )
+
+            if degraded_continuation_response:
+                fallback_payload = (
+                    serialize_runtime_response(degraded_continuation_response) or {}
+                )
+                fallback_payload["correlation_id"] = correlation_id
+                for event in _build_degraded_sse_events(
+                    fallback_payload, correlation_id
+                ):
+                    yield f"data: {json.dumps(event)}\n\n"
+                yield "data: [DONE]\n\n"
+                return
+
+            error_payload = {
+                "type": "error",
+                "content": "Streaming error: " + str(stream_error),
+                "correlation_id": correlation_id,
+                "metadata": {"error_type": "stream_error"},
+            }
+            yield f"data: {json.dumps(error_payload)}\n\n"
+            yield "data: [DONE]\n\n"
+            return
+
+    return StreamingResponse(
+        generate_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Correlation-Id": correlation_id,
+        },
+    )
 
 
 __all__ = ["router"]

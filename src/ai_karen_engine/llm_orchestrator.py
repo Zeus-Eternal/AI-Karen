@@ -459,9 +459,15 @@ class ExecutionPool:
 
     @staticmethod
     def _is_local_model(model_id: str) -> bool:
-        """Return whether the target model is a local runtime model."""
+        """Return whether the target model runs inside the API process.
+
+        Ollama is an external HTTP runtime from Karen's perspective, even when
+        it is deployed as a sidecar container. Guarding it behind the API
+        container's in-process memory threshold incorrectly degrades requests
+        before any Ollama call is attempted.
+        """
         normalized = (model_id or "").strip().lower()
-        return normalized.startswith(("local:", "llama-cpp:", "llamacpp:", "ollama:"))
+        return normalized.startswith(("local:", "llama-cpp:", "llamacpp:"))
 
     @staticmethod
     def _is_resource_pressure_error(error: Exception) -> bool:
@@ -2060,8 +2066,13 @@ class LLMOrchestrator:
         }
         self._degraded_events.append(event)
 
+        enable_model_degraded_fallback = (
+            os.getenv("KARI_ENABLE_MODEL_DEGRADED_FALLBACK", "").strip().lower()
+            in {"1", "true", "yes", "on"}
+        )
+
         fallback_entry = self._get_fallback_model()
-        if fallback_entry:
+        if enable_model_degraded_fallback and fallback_entry:
             fallback_id, fallback_model = fallback_entry
             fallback_prompt = textwrap.dedent(
                 f"""
@@ -2120,6 +2131,11 @@ class LLMOrchestrator:
                     fallback_id,
                     fallback_error,
                 )
+        elif fallback_entry:
+            logger.info(
+                "Skipping model-based degraded fallback for %s; using immediate rule-based degraded response",
+                fallback_entry[0],
+            )
 
         self._log_request_event(
             "fallback_rule_based",

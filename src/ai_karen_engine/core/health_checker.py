@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -55,35 +56,45 @@ class HealthChecker:
             "llamacpp": self._check_llamacpp,  # Support both naming conventions
             "transformers": self._check_transformers,
             "openai": self._check_openai,
-            "gemini": self._check_gemini,
             "deepseek": self._check_deepseek,
             "huggingface": self._check_huggingface,
         }
-        
+
+        # Only add Gemini if API key is available
+        if os.getenv("GEMINI_API_KEY"):
+            self._providers["gemini"] = self._check_gemini
+
         # Health check caching and periodic refresh (Requirement 5.4)
         self._cache_ttl = cache_ttl  # Cache TTL in seconds
         self._status_cache: Dict[str, ProviderStatus] = {}
         self._last_refresh = 0.0
         self._refresh_lock = asyncio.Lock()
 
-    async def check_health_and_readiness(self, force_refresh: bool = False) -> List[ProviderStatus]:
+    async def check_health_and_readiness(
+        self, force_refresh: bool = False
+    ) -> List[ProviderStatus]:
         """
         Run health checks for all providers with caching and periodic refresh.
         Requirements: 5.1, 5.2, 5.3, 5.4
         """
         current_time = time.time()
-        
+
         # Check if cache refresh is needed
         if force_refresh or (current_time - self._last_refresh) > self._cache_ttl:
             async with self._refresh_lock:
                 # Double-check after acquiring lock
-                if force_refresh or (current_time - self._last_refresh) > self._cache_ttl:
+                if (
+                    force_refresh
+                    or (current_time - self._last_refresh) > self._cache_ttl
+                ):
                     await self._refresh_all_providers()
                     self._last_refresh = current_time
-        
+
         return list(self._status_cache.values())
-    
-    async def check_single_provider(self, provider_name: str, force_refresh: bool = False) -> Optional[ProviderStatus]:
+
+    async def check_single_provider(
+        self, provider_name: str, force_refresh: bool = False
+    ) -> Optional[ProviderStatus]:
         """
         Check health of a single provider with caching.
         Requirements: 5.1, 5.2, 5.3
@@ -91,14 +102,14 @@ class HealthChecker:
         if provider_name not in self._providers:
             logger.warning(f"Unknown provider: {provider_name}")
             return None
-        
+
         # Check cache first
         cached_status = self._status_cache.get(provider_name)
         if not force_refresh and cached_status:
             cache_age = time.time() - cached_status.last_check.timestamp()
             if cache_age < self._cache_ttl:
                 return cached_status
-        
+
         # Refresh this provider
         try:
             checker = self._providers[provider_name]
@@ -119,25 +130,23 @@ class HealthChecker:
             )
             self._status_cache[provider_name] = status
             return status
-    
+
     async def _refresh_all_providers(self) -> None:
         """Refresh health status for all providers."""
         tasks = []
         for name, checker in self._providers.items():
             tasks.append(self._check_provider_with_error_handling(name, checker))
-        
+
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        
+
         for result in results:
             if isinstance(result, ProviderStatus):
                 self._status_cache[result.provider] = result
             elif isinstance(result, Exception):
                 logger.error(f"Provider health check failed: {result}")
-    
+
     async def _check_provider_with_error_handling(
-        self, 
-        name: str, 
-        checker: Callable[[], Awaitable[ProviderStatus]]
+        self, name: str, checker: Callable[[], Awaitable[ProviderStatus]]
     ) -> ProviderStatus:
         """Check a single provider with comprehensive error handling."""
         try:
@@ -159,30 +168,30 @@ class HealthChecker:
         """Enhanced LlamaCpp provider health check with comprehensive validation."""
         provider = LlamaCppProvider()
         start_time = time.time()
-        
+
         try:
             # Check basic health
             info = provider.health_check()
             available = info.get("status") == "ok" or info.get("healthy", False)
-            
+
             # Measure response time
             response_time = (time.time() - start_time) * 1000
-            
+
             # Enhanced authentication/quota checking (Requirement 5.2)
             authenticated = True  # Local provider doesn't need API key
             quota_remaining = None  # Local provider has no quota limits
-            
+
             # Tool support validation (Requirement 5.3)
             tool_support = self._validate_tool_support(provider)
-            
+
             # Policy gate validation (Requirement 5.3)
             policy_gates_passed = self._validate_policy_gates(provider, "llamacpp")
-            
+
         except Exception as exc:
             response_time = (time.time() - start_time) * 1000
             return ProviderStatus(
                 provider="llamacpp",
-                model=getattr(provider, 'model', 'unknown'),
+                model=getattr(provider, "model", "unknown"),
                 available=False,
                 authenticated=True,
                 tool_support=False,
@@ -191,10 +200,10 @@ class HealthChecker:
                 error_message=str(exc),
                 response_time_ms=response_time,
             )
-            
+
         return ProviderStatus(
             provider="llamacpp",
-            model=getattr(provider, 'model', 'default'),
+            model=getattr(provider, "model", "default"),
             available=available,
             authenticated=authenticated,
             tool_support=tool_support,
@@ -207,20 +216,20 @@ class HealthChecker:
     async def _check_transformers(self) -> ProviderStatus:
         """Check Transformers provider health (local transformers models)."""
         start_time = time.time()
-        
+
         try:
             # For transformers, we check if the library is available and models can be loaded
             import transformers
-            
+
             # Basic availability check - assume available if transformers library is installed
             available = True
             authenticated = True  # No API key needed for local transformers
             response_time = (time.time() - start_time) * 1000
-            
+
             # Tool support and policy validation
             tool_support = True  # Transformers supports text generation
             policy_gates_passed = True  # Local models pass policy gates
-            
+
         except ImportError:
             response_time = (time.time() - start_time) * 1000
             return ProviderStatus(
@@ -247,7 +256,7 @@ class HealthChecker:
                 error_message=str(exc),
                 response_time_ms=response_time,
             )
-            
+
         return ProviderStatus(
             provider="transformers",
             model="default",
@@ -263,31 +272,31 @@ class HealthChecker:
         """Enhanced OpenAI provider health check with quota and rate limit validation."""
         provider = OpenAIProvider()
         start_time = time.time()
-        
+
         try:
             # Check basic health and authentication
             info = provider.health_check()
             available = info.get("status") == "ok" or info.get("healthy", False)
             authenticated = not info.get("auth_error", False)
-            
+
             # Measure response time
             response_time = (time.time() - start_time) * 1000
-            
+
             # Enhanced quota/rate limit checking (Requirement 5.2)
             quota_remaining = info.get("quota_remaining")
             rate_limit_remaining = info.get("rate_limit_remaining")
-            
+
             # Tool support validation (Requirement 5.3)
             tool_support = self._validate_tool_support(provider)
-            
+
             # Policy gate validation (Requirement 5.3)
             policy_gates_passed = self._validate_policy_gates(provider, "openai")
-            
+
         except Exception as exc:
             response_time = (time.time() - start_time) * 1000
             return ProviderStatus(
                 provider="openai",
-                model=getattr(provider, 'model', 'unknown'),
+                model=getattr(provider, "model", "unknown"),
                 available=False,
                 authenticated=False,
                 tool_support=False,
@@ -296,10 +305,10 @@ class HealthChecker:
                 error_message=str(exc),
                 response_time_ms=response_time,
             )
-            
+
         return ProviderStatus(
             provider="openai",
-            model=getattr(provider, 'model', 'gpt-3.5-turbo'),
+            model=getattr(provider, "model", "gpt-3.5-turbo"),
             available=available,
             authenticated=authenticated,
             tool_support=tool_support,
@@ -311,27 +320,40 @@ class HealthChecker:
         )
 
     async def _check_gemini(self) -> ProviderStatus:
-        """Enhanced Gemini provider health check with comprehensive validation."""
+        """Enhanced Gemini provider health check with graceful handling."""
+        # Check if API key is available first
+        if not os.getenv("GEMINI_API_KEY"):
+            return ProviderStatus(
+                provider="gemini",
+                model="unknown",
+                available=False,
+                authenticated=False,
+                tool_support=False,
+                policy_gates_passed=False,
+                last_check=datetime.utcnow(),
+                error_message="Gemini API key not configured",
+            )
+
         provider = GeminiProvider()
         start_time = time.time()
-        
+
         try:
             info = provider.health_check()
             available = info.get("status") == "ok" or info.get("healthy", False)
             authenticated = not info.get("auth_error", False)
-            
+
             response_time = (time.time() - start_time) * 1000
             quota_remaining = info.get("quota_remaining")
             rate_limit_remaining = info.get("rate_limit_remaining")
-            
+
             tool_support = self._validate_tool_support(provider)
             policy_gates_passed = self._validate_policy_gates(provider, "gemini")
-            
+
         except Exception as exc:
             response_time = (time.time() - start_time) * 1000
             return ProviderStatus(
                 provider="gemini",
-                model=getattr(provider, 'model', 'unknown'),
+                model=getattr(provider, "model", "unknown"),
                 available=False,
                 authenticated=False,
                 tool_support=False,
@@ -340,10 +362,10 @@ class HealthChecker:
                 error_message=str(exc),
                 response_time_ms=response_time,
             )
-            
+
         return ProviderStatus(
             provider="gemini",
-            model=getattr(provider, 'model', 'gemini-1.5-pro'),
+            model=getattr(provider, "model", "gemini-1.5-pro"),
             available=available,
             authenticated=authenticated,
             tool_support=tool_support,
@@ -358,24 +380,24 @@ class HealthChecker:
         """Enhanced DeepSeek provider health check with comprehensive validation."""
         provider = DeepseekProvider()
         start_time = time.time()
-        
+
         try:
             info = provider.health_check()
             available = info.get("status") == "ok" or info.get("healthy", False)
             authenticated = not info.get("auth_error", False)
-            
+
             response_time = (time.time() - start_time) * 1000
             quota_remaining = info.get("quota_remaining")
             rate_limit_remaining = info.get("rate_limit_remaining")
-            
+
             tool_support = self._validate_tool_support(provider)
             policy_gates_passed = self._validate_policy_gates(provider, "deepseek")
-            
+
         except Exception as exc:
             response_time = (time.time() - start_time) * 1000
             return ProviderStatus(
                 provider="deepseek",
-                model=getattr(provider, 'model', 'unknown'),
+                model=getattr(provider, "model", "unknown"),
                 available=False,
                 authenticated=False,
                 tool_support=False,
@@ -384,10 +406,10 @@ class HealthChecker:
                 error_message=str(exc),
                 response_time_ms=response_time,
             )
-            
+
         return ProviderStatus(
             provider="deepseek",
-            model=getattr(provider, 'model', 'deepseek-chat'),
+            model=getattr(provider, "model", "deepseek-chat"),
             available=available,
             authenticated=authenticated,
             tool_support=tool_support,
@@ -402,24 +424,24 @@ class HealthChecker:
         """Enhanced HuggingFace provider health check with comprehensive validation."""
         provider = HuggingFaceProvider()
         start_time = time.time()
-        
+
         try:
             info = provider.health_check()
             available = info.get("status") == "ok" or info.get("healthy", False)
             authenticated = not info.get("auth_error", False)
-            
+
             response_time = (time.time() - start_time) * 1000
             quota_remaining = info.get("quota_remaining")
             rate_limit_remaining = info.get("rate_limit_remaining")
-            
+
             tool_support = self._validate_tool_support(provider)
             policy_gates_passed = self._validate_policy_gates(provider, "huggingface")
-            
+
         except Exception as exc:
             response_time = (time.time() - start_time) * 1000
             return ProviderStatus(
                 provider="huggingface",
-                model=getattr(provider, 'model', 'unknown'),
+                model=getattr(provider, "model", "unknown"),
                 available=False,
                 authenticated=False,
                 tool_support=False,
@@ -428,10 +450,10 @@ class HealthChecker:
                 error_message=str(exc),
                 response_time_ms=response_time,
             )
-            
+
         return ProviderStatus(
             provider="huggingface",
-            model=getattr(provider, 'model', 'distilbert-base-uncased'),
+            model=getattr(provider, "model", "distilbert-base-uncased"),
             available=available,
             authenticated=authenticated,
             tool_support=tool_support,
@@ -441,7 +463,7 @@ class HealthChecker:
             rate_limit_remaining=rate_limit_remaining,
             response_time_ms=response_time,
         )
-    
+
     def _validate_tool_support(self, provider) -> bool:
         """
         Validate tool support for the provider.
@@ -449,12 +471,12 @@ class HealthChecker:
         """
         try:
             # Check if provider has required methods for tool support
-            required_methods = ['generate_text', 'generate_response']
+            required_methods = ["generate_text", "generate_response"]
             return any(hasattr(provider, method) for method in required_methods)
         except Exception as e:
             logger.debug(f"Tool support validation failed: {e}")
             return False
-    
+
     def _validate_policy_gates(self, provider, provider_name: str) -> bool:
         """
         Validate policy gates for the provider.
@@ -463,12 +485,12 @@ class HealthChecker:
         try:
             # Basic policy validation - can be enhanced with actual policy checks
             # For now, assume all providers pass policy gates unless explicitly configured otherwise
-            
+
             # Could check for:
             # - Content filtering capabilities
             # - Safety model availability
             # - Compliance with usage policies
-            
+
             return True  # Default to passing policy gates
         except Exception as e:
             logger.debug(f"Policy gate validation failed for {provider_name}: {e}")

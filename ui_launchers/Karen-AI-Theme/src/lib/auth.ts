@@ -25,7 +25,7 @@ export interface LoginResponse {
     roles: string[];
     is_active: boolean;
     tenant_id: string;
-    preferences: Record<string, any>;
+    preferences: Record<string, unknown>;
     last_login?: string | null;
     permissions?: string[];
   };
@@ -39,7 +39,7 @@ export interface AuthUser {
   roles: string[];
   is_active: boolean;
   tenant_id: string;
-  preferences: Record<string, any>;
+  preferences: Record<string, unknown>;
   created_at?: string;
   last_login?: string | null;
   permissions?: string[];
@@ -126,7 +126,7 @@ class AuthService {
   private getConfiguredBackendUrl(): string | null {
     const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
     if (isBrowser) {
-      const env = (process as any).env || {};
+      const env = (process as unknown as { env?: Record<string, string> }).env || {};
       const configuredBaseUrl = (env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
       if (configuredBaseUrl) {
         return configuredBaseUrl;
@@ -142,7 +142,7 @@ class AuthService {
       return `${protocol}//${hostname}:${this.DIRECT_BROWSER_BACKEND_PORT}`;
     }
 
-    const env = (process as any).env || {};
+    const env = (process as unknown as { env?: Record<string, string> }).env || {};
     return (env.KAREN_BACKEND_URL || env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '') || null;
   }
 
@@ -465,7 +465,7 @@ class AuthService {
   /**
    * Persist current user data in local storage.
    */
-  setCurrentUser(user: AuthUser | (AuthUser & Record<string, any>)): void {
+  setCurrentUser(user: AuthUser | (AuthUser & Record<string, unknown>)): void {
     localStorage.setItem('user_data', JSON.stringify(user));
   }
 
@@ -556,6 +556,16 @@ class AuthService {
         hasSessionMarker = this.hasSessionMarker();
 
         if (!accessToken && !refreshToken && !currentUser && !hasSessionMarker) {
+          return false;
+        }
+
+        // Don't probe the backend with orphaned local auth artifacts.
+        // A valid client-side session must at least have user_data plus
+        // either an access token, a refresh token, or the backend session marker.
+        if (!currentUser) {
+          if (accessToken || refreshToken || hasSessionMarker) {
+            this.clearAuth();
+          }
           return false;
         }
 

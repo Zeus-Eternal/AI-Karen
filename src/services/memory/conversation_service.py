@@ -274,7 +274,7 @@ class WebUIConversation(Conversation):
 class ConversationContextBuilder:
     """Builds comprehensive conversation context for web UI."""
     
-    def __init__(self, conversation_service: 'WebUIConversationService'):
+    def __init__(self, conversation_service: 'ConversationService'):
         self.conversation_service = conversation_service
         self.memory_service = conversation_service.memory_service
         self.max_context_messages = 20
@@ -676,7 +676,7 @@ class ConversationContextBuilder:
         return flow
 
 
-class WebUIConversationService:
+class ConversationService:
     """Enhanced conversation service with web UI specific features."""
     
     def __init__(
@@ -1863,7 +1863,7 @@ class WebUIConversationService:
 
 
 __all__ = [
-    "WebUIConversationService",
+    "ConversationService",
     "WebUIConversation", 
     "WebUIMessage",
     "ConversationStatus",

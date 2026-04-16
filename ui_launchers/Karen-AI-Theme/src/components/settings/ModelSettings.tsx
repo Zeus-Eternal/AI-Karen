@@ -63,6 +63,19 @@ interface ProviderDetails {
   supports_model_pull: boolean;
   supports_custom_auth: boolean;
   supports_manual_model_entry: boolean;
+  runtime_source?: 'host' | 'container' | null;
+  runtime_options?: Array<{
+    source: 'host' | 'container';
+    label: string;
+    base_url: string;
+    available: boolean;
+    active?: boolean;
+    status: string;
+    message: string;
+    setup_required?: boolean;
+    setup_command?: string | null;
+    install_supported?: boolean;
+  }>;
 }
 
 interface ModelSettingsResponse {
@@ -119,13 +132,28 @@ function normalizeLocalOllamaAddress(address: string): string {
   return (address.trim() || 'http://localhost:11434').replace(/\/api\/?$/, '').replace(/\/$/, '');
 }
 
+function normalizeConfiguredOllamaAddress(address?: string | null): string {
+  const normalized = normalizeLocalOllamaAddress(address || 'http://host.docker.internal:11434');
+  try {
+    const parsed = new URL(normalized);
+    if (parsed.hostname === 'ollama') {
+      return normalized.replace('://ollama', '://host.docker.internal');
+    }
+  } catch {
+    if (normalized.startsWith('http://ollama')) {
+      return normalized.replace('http://ollama', 'http://host.docker.internal');
+    }
+  }
+  return normalized;
+}
+
 function canUseLocalOllamaAddress(address?: string): boolean {
   if (!address?.trim()) return false;
   try {
-    const parsed = new URL(normalizeLocalOllamaAddress(address));
+    const parsed = new URL(normalizeConfiguredOllamaAddress(address));
     return ['localhost', '127.0.0.1'].includes(parsed.hostname);
   } catch {
-    const normalized = normalizeLocalOllamaAddress(address);
+    const normalized = normalizeConfiguredOllamaAddress(address);
     return normalized.startsWith('http://localhost') || normalized.startsWith('http://127.0.0.1');
   }
 }
@@ -142,7 +170,7 @@ async function parseOllamaModels(response: Response): Promise<ProviderModel[]> {
 }
 
 async function loadLocalOllamaModels(address: string): Promise<ProviderModel[]> {
-  const normalized = normalizeLocalOllamaAddress(address);
+  const normalized = normalizeConfiguredOllamaAddress(address);
   try {
     return parseOllamaModels(await fetch(`/api/ollama/tags?base_url=${encodeURIComponent(normalized)}`, { cache: 'no-store' }));
   } catch {
@@ -155,6 +183,7 @@ export default function ModelSettings() {
   const [settings, setSettings] = useState<ModelSettingsResponse | null>(null);
   const [selectedProvider, setSelectedProvider] = useState('ollama');
   const [selectedModel, setSelectedModel] = useState('');
+  const [runtimeSource, setRuntimeSource] = useState<'host' | 'container'>('host');
   const [baseUrl, setBaseUrl] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [isEditingApiKey, setIsEditingApiKey] = useState(false);
@@ -191,6 +220,11 @@ export default function ModelSettings() {
   const providerGroups = useMemo(() => {
     return buildProviderGroups(settings?.providers ?? []);
   }, [settings]);
+
+  const selectedRuntimeOption = useMemo(() => {
+    if (selectedProviderDetails?.id !== 'ollama') return null;
+    return selectedProviderDetails.runtime_options?.find((option) => option.source === runtimeSource) ?? null;
+  }, [selectedProviderDetails, runtimeSource]);
 
   const loadSettings = useCallback(async () => {
     setIsLoading(true);
@@ -232,14 +266,19 @@ export default function ModelSettings() {
     } finally {
       setIsLoadingModels(false);
     }
-  }, [toast]);
+  }, [toast, selectedProviderDetails?.models]);
 
   useEffect(() => { void loadSettings(); }, [loadSettings]);
 
   useEffect(() => {
     if (!selectedProviderDetails) return;
     const providerDefaultModel = selectedProviderDetails.selected_model || selectedProviderDetails.default_model || selectedProviderDetails.models[0]?.id || '';
-    const providerBaseUrl = selectedProviderDetails.base_url || selectedProviderDetails.default_base_url || '';
+    const providerBaseUrl = selectedProviderDetails.id === 'ollama'
+      ? normalizeConfiguredOllamaAddress(selectedProviderDetails.base_url || selectedProviderDetails.default_base_url || '')
+      : (selectedProviderDetails.base_url || selectedProviderDetails.default_base_url || '');
+    if (selectedProviderDetails.id === 'ollama') {
+      setRuntimeSource(selectedProviderDetails.runtime_source === 'container' ? 'container' : 'host');
+    }
     setBaseUrl(selectedProviderDetails.id === 'ollama' ? providerBaseUrl.replace(/\/api$/, '') : providerBaseUrl);
     setApiKey('');
     setIsEditingApiKey(false);
@@ -251,6 +290,13 @@ export default function ModelSettings() {
     setSelectedModel(providerDefaultModel);
     void loadProviderModels(selectedProviderDetails.id, providerBaseUrl);
   }, [selectedProviderDetails, loadProviderModels]);
+
+  useEffect(() => {
+    if (selectedProviderDetails?.id !== 'ollama') return;
+    if (!selectedRuntimeOption) return;
+    const derivedBaseUrl = normalizeConfiguredOllamaAddress(selectedRuntimeOption.base_url);
+    setBaseUrl(derivedBaseUrl.replace(/\/api$/, ''));
+  }, [selectedProviderDetails, selectedRuntimeOption]);
 
   useEffect(() => {
     if (!selectedProviderDetails?.requires_api_key) {
@@ -368,6 +414,7 @@ export default function ModelSettings() {
         provider: selectedProvider,
         model: selectedModel.trim(),
         base_url: selectedProviderDetails.supports_base_url_override ? baseUrl.trim() : undefined,
+        runtime_source: selectedProviderDetails.id === 'ollama' ? runtimeSource : undefined,
         api_key: submittedApiKey || undefined,
         api_key_header: selectedProviderDetails.supports_custom_auth ? apiKeyHeader.trim() : undefined,
         api_key_prefix: selectedProviderDetails.supports_custom_auth ? apiKeyPrefix : undefined,
@@ -393,6 +440,7 @@ export default function ModelSettings() {
       const response = await apiClient.put<ModelSettingsResponse>('/api/settings/model', {
         provider: selectedProvider,
         model: selectedModel.trim(),
+        runtime_source: selectedProviderDetails?.id === 'ollama' ? runtimeSource : undefined,
         clear_api_key: true,
       });
       setSettings(response);
@@ -578,7 +626,82 @@ export default function ModelSettings() {
                   <div className="grid gap-8">
                     {/* Endpoint & Discovery Row */}
                       <div className="grid gap-6 md:grid-cols-2">
-                        {selectedProviderDetails.supports_base_url_override && (
+                        {selectedProviderDetails.id === 'ollama' ? (
+                          <div className="space-y-3 md:col-span-2">
+                            <Label htmlFor="ollama-runtime-source" className="flex items-center gap-2 font-semibold">
+                              <Server className="h-4 w-4 text-primary" /> Ollama Runtime Source
+                            </Label>
+                            <Select
+                              value={runtimeSource}
+                              onValueChange={(value: 'host' | 'container') => {
+                                setRuntimeSource(value);
+                                const nextOption = selectedProviderDetails.runtime_options?.find((option) => option.source === value);
+                                if (nextOption) {
+                                  const nextBaseUrl = normalizeConfiguredOllamaAddress(nextOption.base_url);
+                                  setBaseUrl(nextBaseUrl.replace(/\/api$/, ''));
+                                  void loadProviderModels('ollama', nextBaseUrl);
+                                }
+                              }}
+                            >
+                              <SelectTrigger id="ollama-runtime-source" className="h-11 bg-muted/20">
+                                <SelectValue placeholder="Choose Ollama runtime" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {(selectedProviderDetails.runtime_options ?? []).map((option) => (
+                                  <SelectItem key={option.source} value={option.source}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+
+                            <div className="grid gap-3 lg:grid-cols-2">
+                              {(selectedProviderDetails.runtime_options ?? []).map((option) => (
+                                <div
+                                  key={option.source}
+                                  className={cn(
+                                    "rounded-2xl border p-4 transition-all",
+                                    option.source === runtimeSource ? "border-primary/40 bg-primary/5" : "border-border/40 bg-muted/10",
+                                  )}
+                                >
+                                  <div className="flex items-center justify-between gap-3">
+                                    <div className="space-y-1">
+                                      <p className="text-sm font-semibold">{option.label}</p>
+                                      <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{option.status}</p>
+                                    </div>
+                                    <Badge variant="outline" className={cn("text-[10px] uppercase", option.available ? "text-emerald-600" : "text-amber-600")}>
+                                      {option.available ? "Available" : "Setup Required"}
+                                    </Badge>
+                                  </div>
+                                  <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{option.message}</p>
+                                  <div className="mt-3 rounded-lg border border-border/40 bg-background/60 px-3 py-2 font-mono text-[11px] text-muted-foreground">
+                                    {option.base_url}
+                                  </div>
+                                  {option.setup_command && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="mt-3 h-8 text-[10px] uppercase tracking-widest"
+                                      onClick={async () => {
+                                        await navigator.clipboard.writeText(option.setup_command || '');
+                                        toast({ title: 'Setup command copied', description: option.setup_command || '' });
+                                      }}
+                                    >
+                                      Copy Setup Command
+                                    </Button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+
+                            <div className="space-y-3">
+                              <Label htmlFor="base-url" className="flex items-center gap-2 font-semibold">
+                                <Server className="h-4 w-4 text-primary" /> Derived API Endpoint
+                              </Label>
+                              <Input id="base-url" value={baseUrl} readOnly className="h-11 bg-muted/20 font-mono" />
+                            </div>
+                          </div>
+                        ) : selectedProviderDetails.supports_base_url_override && (
                           <div className="space-y-3">
                             <Label htmlFor="base-url" className="flex items-center gap-2 font-semibold">
                               <Server className="h-4 w-4 text-primary" /> API Endpoint
@@ -703,6 +826,12 @@ export default function ModelSettings() {
                       <div className="flex items-center justify-between text-xs font-semibold">
                         <span className="text-muted-foreground">Active Model</span>
                         <span className="max-w-[120px] truncate font-mono text-primary/70">{selectedProviderDetails.selected_model}</span>
+                      </div>
+                    )}
+                    {selectedProviderDetails.id === 'ollama' && selectedRuntimeOption && (
+                      <div className="flex items-center justify-between text-xs font-semibold">
+                        <span className="text-muted-foreground">Runtime Source</span>
+                        <span className="uppercase tracking-widest text-primary/80">{selectedRuntimeOption.label}</span>
                       </div>
                     )}
                   </div>

@@ -17,8 +17,8 @@ interface BackendAgentInfo {
   execution_mode: BackendExecutionMode;
   status: BackendAgentStatus;
   capabilities: string[];
-  config: Record<string, any>;
-  metrics: Record<string, any>;
+  config: Record<string, unknown>;
+  metrics: Record<string, unknown>;
   created_at: string;
   last_activity?: string | null;
   version: string;
@@ -32,13 +32,13 @@ interface BackendAgentExecuteResponse {
   execution_mode: BackendExecutionMode;
   response: string;
   processing_time: number;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   confidence?: number | null;
   warnings: string[];
   error?: {
     code: string;
     message: string;
-    details?: Record<string, any>;
+    details?: Record<string, unknown>;
   } | null;
 }
 
@@ -55,15 +55,15 @@ export interface Agent {
 }
 
 export interface StructuredContent {
-  formatting?: Record<string, any>;
+  formatting?: Record<string, unknown>;
   layout_type?: string;
   output_profile?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface SuggestedAction {
   type: string;
-  params?: Record<string, any>;
+  params?: Record<string, string | number | boolean | null | undefined>;
   confidence?: number;
   description?: string;
 }
@@ -75,14 +75,14 @@ export interface Message {
   timestamp: number;
   structured_content?: StructuredContent;
   actions?: SuggestedAction[];
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface AgentResponse {
   answer: string;
   structured_content: StructuredContent;
   actions: SuggestedAction[];
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   correlation_id: string;
 }
 
@@ -119,7 +119,7 @@ export class AgentUIService {
     agentId: string,
     message: string,
     sessionId?: string,
-    context?: Record<string, any>,
+    context?: Record<string, unknown>,
     executionMode: BackendExecutionMode = 'native'
   ): Promise<AgentResponse> {
     const response = await apiClient.post<BackendAgentExecuteResponse>('/api/agents/execute', {

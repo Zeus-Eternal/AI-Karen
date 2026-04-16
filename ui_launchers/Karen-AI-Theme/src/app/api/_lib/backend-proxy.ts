@@ -11,8 +11,11 @@ const DEFAULT_BACKEND_URL = IS_DOCKER
   : process.env.KAREN_BACKEND_URL ||
     process.env.BACKEND_URL ||
     'http://localhost:8000';
-const DEFAULT_TIMEOUT_MS = Number.parseInt(process.env.NEXT_PUBLIC_API_PROXY_TIMEOUT_MS || '15000', 10);
-const LONG_TIMEOUT_MS = Number.parseInt(process.env.NEXT_PUBLIC_API_PROXY_LONG_TIMEOUT_MS || '30000', 10);
+const DEFAULT_TIMEOUT_MS = Number.parseInt(process.env.NEXT_PUBLIC_API_PROXY_TIMEOUT_MS || '30000', 10);
+const LONG_TIMEOUT_MS = Number.parseInt(
+  process.env.NEXT_PUBLIC_API_PROXY_LONG_TIMEOUT_MS || '120000',
+  10,
+);
 const RETRYABLE_PROXY_ERROR_CODES = new Set([
   'ECONNREFUSED',
   'ECONNRESET',
@@ -28,12 +31,8 @@ function getBackendBaseUrl(): string {
 function sanitizeHeaders(headers: Headers, backendBaseUrl: string): Headers {
   const nextHeaders = new Headers();
   
-  // Explicitly copy all headers from the incoming request
-  // This is more reliable than using the Headers constructor with a Headers object
   headers.forEach((value, key) => {
     const k = key.toLowerCase();
-    // Skip host as it will be set by the backend URL
-    // Skip hop-by-hop headers and other sensitive proxy headers
     const skipHeaders = [
       'host',
       'content-length',
@@ -53,8 +52,6 @@ function sanitizeHeaders(headers: Headers, backendBaseUrl: string): Headers {
     }
   });
 
-  // Explicitly ensure Authorization and Cookie headers are preserved
-  // These are critical for the backend authentication middleware
   const auth = headers.get('authorization');
   if (auth) nextHeaders.set('Authorization', auth);
   
@@ -66,6 +63,8 @@ function sanitizeHeaders(headers: Headers, backendBaseUrl: string): Headers {
   nextHeaders.set('x-forwarded-proto', 'http');
   return nextHeaders;
 }
+
+export { getBackendBaseUrl, sanitizeHeaders };
 
 async function buildInit(
   request: NextRequest,
@@ -141,7 +140,7 @@ export async function proxyToBackend(
   const timeoutMs = options?.longTimeout ? LONG_TIMEOUT_MS : DEFAULT_TIMEOUT_MS;
   const retryAttempts = Math.max(1, options?.retryAttempts ?? 2);
   const retryDelayMs = Math.max(0, options?.retryDelayMs ?? 250);
-  const retryOnStatusCodes = new Set(options?.retryOnStatusCodes ?? []);
+  const retryOnStatusCodes = new Set(options?.retryOnStatusCodes ?? [502]);
   const upstreamUrl = `${backendBaseUrl}${upstreamPath}${request.nextUrl.search}`;
 
   // Read the body once to avoid "Body has already been read" error on retries/redirects.

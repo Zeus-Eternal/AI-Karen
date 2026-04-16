@@ -2,6 +2,7 @@ import apiClient from './api';
 import {
   PluginSearchParams,
   PluginSearchResponse,
+  Plugin,
   PluginDetails,
   PluginInstallRequest,
   PluginInstallResponse,
@@ -11,6 +12,62 @@ import {
   CategoryInfo,
   PluginUpdate,
 } from '@/types/plugin';
+
+// API response types
+type PluginSearchApiResponse = {
+  plugins: Array<{
+    id: string;
+    name: string;
+    description: string;
+    author: string;
+    version: string;
+    status: string;
+    category: string;
+    downloads: number;
+    rating: number;
+    rating_count?: number;
+    tags?: string[];
+  }>;
+  total: number;
+  page: number;
+  per_page: number;
+  total_pages: number;
+  has_next: boolean;
+};
+
+type PluginDetailsApiResponse = {
+  plugin?: {
+    id: string;
+    name: string;
+    description: string;
+    author: string;
+    version: string;
+    status: string;
+    category: string;
+    downloads: number;
+    rating: number;
+    rating_count?: number;
+    tags?: string[];
+  };
+  marketplace_info?: unknown;
+  analytics?: unknown;
+  installed?: boolean;
+  update_available?: boolean;
+};
+
+type TrendingPluginApiResponse = {
+  id: string;
+  name: string;
+  description: string;
+  author: string;
+  version: string;
+  status: string;
+  category: string;
+  downloads: number;
+  rating: number;
+  rating_count?: number;
+  tags?: string[];
+};
 
 class PluginStoreService {
   private readonly baseUrl = '/api/store';
@@ -29,7 +86,7 @@ class PluginStoreService {
     const url = `${this.baseUrl}/search?${searchParams.toString()}`;
 
     try {
-      const response = await apiClient.get<any>(url);
+      const response = await apiClient.get<PluginSearchApiResponse>(url);
       console.log('[PluginStoreService] Search response:', response);
       return this.transformPluginSearchResponse(response);
     } catch (error) {
@@ -38,9 +95,9 @@ class PluginStoreService {
     }
   }
 
-  private transformPluginSearchResponse(response: any): PluginSearchResponse {
+  private transformPluginSearchResponse(response: PluginSearchApiResponse): PluginSearchResponse {
     return {
-      plugins: response.plugins.map((plugin: any) => this.transformPlugin(plugin)),
+      plugins: response.plugins.map((plugin: { id: string; name: string; description: string; author: string; version: string; status: string; category?: string; downloads?: number; rating?: number; rating_count?: number; tags?: string[] }) => this.transformPlugin(plugin)),
       total: response.total,
       page: response.page,
       per_page: response.per_page,
@@ -49,7 +106,7 @@ class PluginStoreService {
     };
   }
 
-  private transformPlugin(plugin: any) {
+  private transformPlugin(plugin: { id: string; name: string; description: string; author: string; version: string; status: string; category?: string; downloads?: number; rating?: number; rating_count?: number; tags?: string[] }) {
     // Ensure status is always a valid PluginStatus
     let status: 'installed' | 'available' | 'compatible' | 'incompatible' = 'available';
     if (plugin.status === 'installed') {
@@ -71,26 +128,44 @@ class PluginStoreService {
       author: plugin.author,
       version: plugin.version,
       status,
-      category: plugin.category,
+      category: plugin.category as 'productivity' | 'communication' | 'automation' | 'analytics' | 'utilities' | 'development' | 'integration' | 'security' | 'ai_ml' | undefined,
       downloads: plugin.downloads,
       rating: plugin.rating,
-      rating_count: plugin.rating_count || 0,
+      rating_count: plugin.rating_count,
       latest_version: plugin.version,
-      tags: plugin.tags || [],
+      installed_at: undefined,
+      icon: undefined,
+      marketplace_url: undefined,
+      homepage_url: undefined,
+      repository_url: undefined,
+      license: undefined,
+      tags: plugin.tags,
       compatibility: {
         min_karen_version: '1.0.0',
+        max_karen_version: undefined,
         requirements: [],
       },
       dependencies: [],
     };
   }
 
+  private transformPluginDetails(plugin: { id: string; name: string; description: string; author: string; version: string; status: string; category?: string; downloads?: number; rating?: number; rating_count?: number; tags?: string[] }) {
+    const pluginData = this.transformPlugin(plugin);
+    return {
+      plugin: pluginData,
+      installed: pluginData.status === 'installed',
+      update_available: false, // This would need to be calculated based on actual version comparison
+      analytics: undefined,
+      marketplace_info: undefined,
+    };
+  }
+
   async getPluginDetails(pluginId: string): Promise<PluginDetails> {
-    const response = await apiClient.get<any>(`${this.baseUrl}/plugins/${pluginId}`);
+    const response = await apiClient.get<PluginDetailsApiResponse>(`${this.baseUrl}/plugins/${pluginId}`);
     return this.transformPluginDetailsResponse(response);
   }
 
-  private transformPluginDetailsResponse(response: any): PluginDetails {
+  private transformPluginDetailsResponse(response: PluginDetailsApiResponse): PluginDetails {
     return {
       plugin: response.plugin ? this.transformPlugin(response.plugin) : undefined,
       marketplace_info: response.marketplace_info,
@@ -116,9 +191,9 @@ class PluginStoreService {
     return apiClient.get<CategoryInfo[]>(`${this.baseUrl}/categories`);
   }
 
-  async getTrendingPlugins(limit: number = 10): Promise<any[]> {
-    const response = await apiClient.get<any[]>(`${this.baseUrl}/trending?limit=${limit}`);
-    return response.map((plugin: any) => this.transformPlugin(plugin));
+  async getTrendingPlugins(limit: number = 10): Promise<Plugin[]> {
+    const response = await apiClient.get<TrendingPluginApiResponse[]>(`${this.baseUrl}/trending?limit=${limit}`);
+    return response.map((plugin: TrendingPluginApiResponse) => this.transformPlugin(plugin));
   }
 
   async getUpdates(installedPluginIds?: string[]): Promise<PluginUpdate[]> {

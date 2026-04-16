@@ -18,6 +18,16 @@ type ProviderInfo = {
   display_name: string;
   base_url?: string | null;
   default_base_url?: string | null;
+  runtime_source?: "host" | "container" | null;
+  runtime_options?: Array<{
+    source: "host" | "container";
+    label: string;
+    base_url: string;
+    available: boolean;
+    status: string;
+    message: string;
+    setup_command?: string | null;
+  }>;
   models: Array<{
     id: string;
     name: string;
@@ -37,6 +47,7 @@ export default function FallbackModelSettings() {
   const [isSaving, setIsSaving] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState("");
   const [selectedModel, setSelectedModel] = useState("");
+  const [runtimeSource, setRuntimeSource] = useState<"host" | "container">("host");
   const [baseUrl, setBaseUrl] = useState("");
   const [timeoutSeconds, setTimeoutSeconds] = useState("45");
   const [autoDownload, setAutoDownload] = useState(false);
@@ -49,6 +60,9 @@ export default function FallbackModelSettings() {
       setSelectedProvider(response.selected_provider || response.providers[0]?.id || "");
       setSelectedModel(response.selected_model || "");
       const provider = response.providers.find(p => p.id === response.selected_provider);
+      if (provider?.id === "ollama") {
+        setRuntimeSource(provider.runtime_source === "container" ? "container" : "host");
+      }
       setBaseUrl((provider?.base_url || provider?.default_base_url || "").replace(/\/api$/, ""));
     } catch {
       toast({
@@ -67,6 +81,17 @@ export default function FallbackModelSettings() {
 
   const currentProvider = settings?.providers.find(p => p.id === selectedProvider);
   const availableModels = currentProvider?.models ?? [];
+  const selectedRuntimeOption = currentProvider?.id === "ollama"
+    ? currentProvider.runtime_options?.find((option) => option.source === runtimeSource)
+    : null;
+
+  useEffect(() => {
+    if (currentProvider?.id !== "ollama") return;
+    const option = currentProvider.runtime_options?.find((item) => item.source === runtimeSource);
+    if (option) {
+      setBaseUrl((option.base_url || "").replace(/\/api$/, ""));
+    }
+  }, [currentProvider, runtimeSource]);
 
   const handleSave = async () => {
     if (!selectedProvider || !selectedModel) return;
@@ -76,6 +101,7 @@ export default function FallbackModelSettings() {
         provider: selectedProvider,
         model: selectedModel,
         base_url: baseUrl || undefined,
+        runtime_source: currentProvider?.id === "ollama" ? runtimeSource : undefined,
       });
       setSettings(response);
       setSelectedProvider(response.selected_provider);
@@ -142,6 +168,16 @@ export default function FallbackModelSettings() {
                 </Badge>
               </div>
             </div>
+            {currentProvider?.id === "ollama" && selectedRuntimeOption && (
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider">Runtime Source</Label>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="text-sm px-3 py-1">
+                    {selectedRuntimeOption.label}
+                  </Badge>
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -166,6 +202,9 @@ export default function FallbackModelSettings() {
               <Select value={selectedProvider} onValueChange={(value) => {
                 setSelectedProvider(value);
                 const provider = settings?.providers.find(p => p.id === value);
+                if (provider?.id === "ollama") {
+                  setRuntimeSource(provider.runtime_source === "container" ? "container" : "host");
+                }
                 setSelectedModel(provider?.models[0]?.id || "");
                 setBaseUrl((provider?.base_url || provider?.default_base_url || "").replace(/\/api$/, ""));
               }}>
@@ -201,6 +240,41 @@ export default function FallbackModelSettings() {
             </div>
           </div>
 
+          {currentProvider?.id === "ollama" && (
+            <div className="space-y-3">
+              <Label className="flex items-center gap-1.5">
+                <Globe className="h-3.5 w-3.5" /> Ollama Runtime Source
+              </Label>
+              <Select value={runtimeSource} onValueChange={(value: "host" | "container") => setRuntimeSource(value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select runtime source" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(currentProvider.runtime_options ?? []).map((option) => (
+                    <SelectItem key={option.source} value={option.source}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {selectedRuntimeOption && (
+                <div className="rounded-xl border border-border/50 bg-muted/20 p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold">{selectedRuntimeOption.label}</span>
+                    <Badge variant={selectedRuntimeOption.available ? "secondary" : "outline"}>
+                      {selectedRuntimeOption.available ? "Available" : "Setup Required"}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{selectedRuntimeOption.message}</p>
+                  {selectedRuntimeOption.setup_command && (
+                    <code className="block text-[10px] text-muted-foreground font-mono">{selectedRuntimeOption.setup_command}</code>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="admin-base-url" className="flex items-center gap-1.5">
               <Globe className="h-3.5 w-3.5" /> Base URL (optional)
@@ -209,10 +283,15 @@ export default function FallbackModelSettings() {
               id="admin-base-url"
               value={baseUrl}
               onChange={(e) => setBaseUrl(e.target.value)}
-              placeholder="http://localhost:8080"
+              placeholder="http://host.docker.internal:11434"
               className="font-mono text-sm"
+              readOnly={currentProvider?.id === "ollama"}
             />
-            <p className="text-xs text-muted-foreground">Override the provider&apos;s default API endpoint.</p>
+            <p className="text-xs text-muted-foreground">
+              {currentProvider?.id === "ollama"
+                ? "For Ollama, the runtime source determines the API endpoint."
+                : "Override the provider&apos;s default API endpoint."}
+            </p>
           </div>
 
           <Separator />
@@ -282,6 +361,15 @@ export default function FallbackModelSettings() {
                     {provider.base_url || provider.default_base_url}
                   </p>
                 )}
+                {provider.id === "ollama" && provider.runtime_options?.length ? (
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {provider.runtime_options.map((option) => (
+                      <Badge key={option.source} variant="outline" className="text-[10px]">
+                        {option.label}: {option.available ? "available" : "setup required"}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : null}
                 <div className="flex flex-wrap gap-1.5 mt-1">
                   {provider.models.map((model) => (
                     <Badge

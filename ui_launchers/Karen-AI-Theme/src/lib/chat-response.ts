@@ -233,6 +233,7 @@ export const deriveDegradedPresentation = (
     llm?.source === 'chat_orchestrator_local_fallback' ||
     llm?.source === 'configured_fallback_provider' ||
     llm?.source === 'runtime_error_fallback' ||
+    llm?.source === 'degraded_fallback_llm' ||
     llm?.fallback_level === 'local';
   const isDegraded =
     metadata?.degraded_mode === true ||
@@ -259,6 +260,14 @@ export const deriveDegradedPresentation = (
   const failureReasonLower = failureReason.toLowerCase();
   const normalizedRequestedModel = normalizeModelName(requestedModel);
   const normalizedActualModel = normalizeModelName(llm?.model_id || llm?.model_name || actualModel);
+  const ollamaHostRuntimeUnavailable =
+    normalizedRequestedProvider === 'ollama' && (
+      failureReasonLower.includes('host.docker.internal') ||
+      failureReasonLower.includes('172.17.0.1') ||
+      failureReasonLower.includes('connection refused') ||
+      failureReasonLower.includes('loopback') ||
+      failureReasonLower.includes('127.0.0.1:11434')
+    );
   const providerOrModelChanged =
     Boolean(normalizedRequestedProvider && normalizedActualProvider && normalizedRequestedProvider !== normalizedActualProvider) ||
     Boolean(normalizedRequestedModel && normalizedActualModel && normalizedRequestedModel !== normalizedActualModel);
@@ -273,6 +282,8 @@ export const deriveDegradedPresentation = (
           : '';
   const degradedBannerText = isSafetyBlocked
     ? 'Provider policy blocked this response.'
+    : ollamaHostRuntimeUnavailable
+      ? `Ollama host runtime is unavailable from the API container, so Karen switched to ${fallbackTargetLabel}.`
     : requestedProvider && isLlamaCppBackedFallback && normalizedRequestedProvider === 'llamacpp'
       ? `${requestedProvider} primary path failed, recovered via local llama.cpp fallback path${actualModel ? ` (${actualModel})` : ''}.`
     : requestedProvider && actualProvider && providerOrModelChanged
@@ -581,9 +592,7 @@ export function normalizeBackendChatResponse(
 
   return {
     answer:
-      (looksLikeCapabilityBanner && runtimeMode === 'degraded'
-        ? 'Karen is running in degraded mode right now, but can still help with brief answers. Please try your request again.'
-        : answer) ||
+      answer ||
       sanitizeChatContent(raw.message) ||
       (String(raw.mode || '').trim() === 'maintenance'
         ? 'Karen is temporarily unavailable while scheduled maintenance is in progress.'

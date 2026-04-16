@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { KAREN_SUGGESTED_FACTS_LS_KEY } from '@/lib/constants';
 import apiClient, { ApiError } from '@/lib/api';
+import { useAuth } from '@/lib/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -37,15 +38,29 @@ type GeneratedNote = {
     source: string; // e.g., "From chat on 2024-07-30"
 };
 
+type AuditEvent = {
+    message?: string;
+    event_type?: string;
+    timestamp?: string | Date;
+    [key: string]: unknown;
+};
+
+type TrainingSecurityEvent = {
+    event_type?: string;
+    message?: string;
+    timestamp?: string | Date;
+    [key: string]: unknown;
+};
+
 type ObservabilitySnapshot = {
     generated_at: string;
     audit: {
-        recent_events: Array<Record<string, unknown>>;
+        recent_events: AuditEvent[];
         event_counts: Record<string, number>;
     };
     training: {
         event_counts: Record<string, number>;
-        security_events: Array<Record<string, unknown>>;
+        security_events: TrainingSecurityEvent[];
     };
     memory: {
         available: boolean;
@@ -68,6 +83,7 @@ type ObservabilitySnapshot = {
  * @description A comprehensive mock-up of the Communications Center, showing system alerts, automation logs, suggested facts, and generated notes.
  */
 export default function CommsCenterPage() {
+    const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
     const [suggestedFacts, setSuggestedFacts] = useState<string[]>([]);
     const [observability, setObservability] = useState<ObservabilitySnapshot | null>(null);
     const [observabilityError, setObservabilityError] = useState<string | null>(null);
@@ -89,6 +105,9 @@ export default function CommsCenterPage() {
         let isMounted = true;
 
         const loadObservability = async () => {
+            if (isAuthLoading || !isAuthenticated) {
+                return;
+            }
             try {
                 if (isMounted) {
                     setObservabilityAuthRequired(false);
@@ -127,7 +146,7 @@ export default function CommsCenterPage() {
         return () => {
             isMounted = false;
         };
-    }, []);
+    }, [isAuthenticated, isAuthLoading]);
 
     // Mock data for other sections
     const mockAutomationLogs: LogItem[] = [
@@ -436,9 +455,9 @@ export default function CommsCenterPage() {
                                 <div className="space-y-3">
                                     {trainingSecurityEvents.length > 0 ? trainingSecurityEvents.slice(-5).map((event, index) => (
                                         <div key={`${event.timestamp ?? index}`} className="text-sm">
-                                            <div className="font-medium">{(event as any).message || (event as any).event_type}</div>
+                                            <div className="font-medium">{event.message || event.event_type}</div>
                                             <div className="text-xs text-muted-foreground">
-                                                {((event as any).timestamp ? format(new Date((event as any).timestamp), 'MMM d, HH:mm') : 'Unknown time')}
+                                                {event.timestamp ? format(new Date(event.timestamp), 'MMM d, HH:mm') : 'Unknown time'}
                                             </div>
                                         </div>
                                     )) : (
@@ -460,11 +479,11 @@ export default function CommsCenterPage() {
                                     {recentAuditEvents.length > 0 ? recentAuditEvents.map((event, index) => (
                                         <div key={`${event.timestamp ?? index}-${event.event_type ?? 'event'}`} className="rounded-md border bg-muted/40 p-3 text-sm">
                                             <div className="flex items-center justify-between gap-3">
-                                                <span className="font-medium">{((event as any).message || (event as any).event_type || 'Audit event')}</span>
-                                                <Badge variant="outline">{((event as any).event_type || 'unknown')}</Badge>
+                                                <span className="font-medium">{event.message || event.event_type || 'Audit event'}</span>
+                                                <Badge variant="outline">{event.event_type || 'unknown'}</Badge>
                                             </div>
                                             <div className="mt-1 text-xs text-muted-foreground">
-                                                {((event as any).timestamp ? format(new Date((event as any).timestamp), 'MMM d, HH:mm:ss') : 'Unknown time')}
+                                                {event.timestamp ? format(new Date(event.timestamp), 'MMM d, HH:mm:ss') : 'Unknown time'}
                                             </div>
                                         </div>
                                     )) : (

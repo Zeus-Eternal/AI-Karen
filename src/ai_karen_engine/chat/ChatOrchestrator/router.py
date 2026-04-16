@@ -36,7 +36,7 @@ class FallbackRouter:
         # Add local fallback if different from primary
         local_model = "Phi-3-mini-4k-instruct-q4.gguf"
         if primary_model != local_model:
-            plan.append({"model_id": local_model, "provider": "llama-cpp"})
+            plan.append({"model_id": local_model, "provider": "llamacpp"})
             
         return plan
 

@@ -26,8 +26,13 @@ import {
   AlertTitle
 } from "@/components/ui/alert";
 import { usePluginRegistry, usePluginHealth, type PluginHealthRecord, type FrontendMountState } from "@/plugin_host/registry";
-import { PluginHost } from "./PluginHost";
 import { apiClient } from "@/lib/api";
+
+type PluginOperationResult = {
+  success: boolean;
+  message?: string;
+  [key: string]: unknown;
+};
 import { getRegisteredPluginIds, refreshImportMap, normalizePluginId } from "@/plugin_host/loader";
 import {
   PlugZap,
@@ -269,7 +274,7 @@ function PluginHealthCard({ pluginId, displayName, description, version }: {
     setUiInstallStatus('installing');
     try {
       // Use the extensions endpoint (works without authentication)
-      const result: any = await apiClient.post('/api/extensions/install', {
+      const result: PluginOperationResult = await apiClient.post('/api/extensions/install', {
         plugin_id: pluginId,
       });
 
@@ -294,8 +299,8 @@ function PluginHealthCard({ pluginId, displayName, description, version }: {
   const handleRemoveUI = async () => {
     setIsOperationInProgress(true);
     setUiInstallStatus('removing');
-    try {
-      const result: any = await apiClient.post(`/api/plugins/${pluginId}/uninstall`);
+try {
+       const result: PluginOperationResult = await apiClient.post(`/api/plugins/${pluginId}/uninstall`);
       if (result.success) {
         await refreshImportMap();
         setUiInstallStatus('not_installed');
@@ -317,11 +322,11 @@ function PluginHealthCard({ pluginId, displayName, description, version }: {
   const handleRestoreUI = async () => {
     setIsOperationInProgress(true);
     setUiInstallStatus('restoring');
-    try {
-      // For restore, we'd need to specify a backup path, but for now just try install
-      const result: any = await apiClient.post('/api/extensions/install', {
-        plugin_id: pluginId,
-      });
+try {
+       // For restore, we'd need to specify a backup path, but for now just try install
+       const result: PluginOperationResult = await apiClient.post('/api/extensions/install', {
+         plugin_id: pluginId,
+       });
 
       if (result.success) {
         await refreshImportMap();
@@ -358,8 +363,8 @@ function PluginHealthCard({ pluginId, displayName, description, version }: {
 
   const handleEnablePlugin = async () => {
     setIsOperationInProgress(true);
-    try {
-      const result: any = await apiClient.post(`/api/plugins/${pluginId}/enable`);
+try {
+       const result: PluginOperationResult = await apiClient.post(`/api/plugins/${pluginId}/enable`);
       if (result.success) {
         setBackendStatusDetail('enabled');
         setUiRegistrationStatus(isUiRegistered ? 'registered' : 'not_registered');
@@ -378,8 +383,8 @@ function PluginHealthCard({ pluginId, displayName, description, version }: {
 
   const handleDisablePlugin = async () => {
     setIsOperationInProgress(true);
-    try {
-      const result: any = await apiClient.post(`/api/plugins/${pluginId}/disable`);
+try {
+       const result: PluginOperationResult = await apiClient.post(`/api/plugins/${pluginId}/disable`);
       if (result.success) {
         setBackendStatusDetail('disabled');
         setUiRegistrationStatus(isUiRegistered ? 'registered' : 'not_registered');

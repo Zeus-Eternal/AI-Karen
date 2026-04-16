@@ -177,13 +177,17 @@ def discover_and_mount_api_routes(app: FastAPI) -> None:
         from ai_karen_engine import api_routes
 
         # Iterate through all modules in api_routes
+        logger.info(f"Discovering API routes from {api_routes.__path__}")
         for loader, name, is_pkg in pkgutil.iter_modules(api_routes.__path__):
+            logger.info(f"Found module: {name}")
             try:
                 module = importlib.import_module(f"ai_karen_engine.api_routes.{name}")
 
                 # Look for router in the module
                 router = getattr(module, "router", None)
+                logger.info(f"Module {name} has router: {router is not None}")
                 if isinstance(router, APIRouter) and hasattr(router, "routes"):
+                    logger.info(f"Router {name} has {len(router.routes)} routes")
                     router_prefix = getattr(router, "prefix", "")
 
                     if router_prefix:
@@ -389,6 +393,15 @@ def setup_routing(app: FastAPI, service_container: ServiceContainer) -> None:
 
     # Discover and mount API routes
     discover_and_mount_api_routes(app)
+
+    # Manual registration of memory routes as fallback
+    try:
+        from ai_karen_engine.api_routes.memory_routes import router as memory_router
+
+        app.include_router(memory_router, prefix="/api", tags=["memory"])
+        logger.info("✓ Manually registered memory routes at /api/memory")
+    except Exception as e:
+        logger.warning(f"Failed to manually register memory routes: {e}")
 
     # Discover and mount plugin routes & UI
     discover_and_mount_plugin_routes(app)

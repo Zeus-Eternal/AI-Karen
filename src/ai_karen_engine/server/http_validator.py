@@ -247,6 +247,7 @@ class HTTPRequestValidator:
                 "/api/audit",
                 "/api/copilot",
                 "/copilot",
+                "/api/settings",
                 "/docs",
                 "/openapi.json",
                 "/favicon.ico"

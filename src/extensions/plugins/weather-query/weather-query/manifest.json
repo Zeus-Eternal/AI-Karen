@@ -1,5 +1,7 @@
 {
   "id": "weather-query",
+  "name": "weather-query",
+  "version": "1.0.0",
   "plugin_id": "weather-query",
   "category": "plugins",
   "gui_manifest_version": "1.0",
@@ -55,6 +57,7 @@
       "assets/weather-query---sidebar--main_00.svg"
     ]
   },
+
   "rbac": {
     "allowed_roles": [
       "user",

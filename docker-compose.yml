@@ -407,15 +407,17 @@ services:
       # Disable deferred router wiring to ensure auth routes are loaded
       KARI_DEFER_ROUTER_WIRING: "false"
       AUTH_ALLOW_DEV_LOGIN: "false"
-      
-      # Memory service configuration
+      # Explicitly disable auth bypass for regular operation
+      KARI_AUTH_BYPASS: "false"
+
+       # Memory service configuration
       KARI_ENABLE_MEMORY_SERVICE: "true"
       KARI_ENABLE_UNIFIED_MEMORY: "true"
       KARI_MEMORY_SERVICE_TIMEOUT: "30"
       KARI_MEMORY_SERVICE_MAX_RETRIES: "3"
       KARI_MEMORY_FALLBACK_ENABLED: "true"
       # Memory service offline mode settings
-      KARI_DISABLE_MEMORY_SURPRISE_FILTER: "true"
+      KARI_DISABLE_MEMORY_SURPRISE_FILTER: "false"
       KARI_MEMORY_CACHE_TTL: "300"
       KARI_MEMORY_FALLBACK_SCAN_LIMIT: "500"
       KARI_MEMORY_RECENCY_ALPHA: "0.05"
@@ -507,7 +509,10 @@ services:
       MODEL_ORCHESTRATOR_ENABLE_METRICS: "true"
       MODEL_ORCHESTRATOR_ENABLE_RBAC: "true"
       MODEL_ORCHESTRATOR_HEALTH_CHECK_INTERVAL: "60"
-      OLLAMA_BASE_URL: "${OLLAMA_BASE_URL:-http://ollama:11434/api}"
+      # Default to a host-installed Ollama reachable through Docker's host gateway.
+      # If you run the optional in-stack Ollama service, override this to
+      # http://ollama:11434 instead.
+      OLLAMA_BASE_URL: "${OLLAMA_BASE_URL:-http://host.docker.internal:11434}"
       NVIDIA_VISIBLE_DEVICES: "${NVIDIA_VISIBLE_DEVICES:-all}"
       NVIDIA_DRIVER_CAPABILITIES: "${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}"
     ports:
@@ -548,7 +553,7 @@ services:
         condition: service_started
     healthcheck:
       # Check simple /health 200 (binds quickly with fast startup)
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/health || exit 1"]
       interval: 15s
       timeout: 10s
       retries: 20
@@ -591,6 +596,8 @@ services:
       # Server-side (inside container) should call the API service directly
       KAREN_BACKEND_URL: http://api:8000
       KAREN_DOCKER: "true"
+      NEXT_PUBLIC_API_PROXY_TIMEOUT_MS: "30000"
+      NEXT_PUBLIC_API_PROXY_LONG_TIMEOUT_MS: "120000"
       # Client-side (browser) should call the backend directly
     ports:
       - "8010:8010"
@@ -621,6 +628,10 @@ services:
           memory: 2G
     depends_on:
       api:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
     networks:
       - ai-karen-net

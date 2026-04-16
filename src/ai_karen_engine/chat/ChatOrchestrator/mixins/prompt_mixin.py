@@ -17,6 +17,24 @@ else:
 logger = logging.getLogger(__name__)
 
 
+def _looks_like_transcript_dump(content: str) -> bool:
+    text = str(content or "").strip()
+    if not text:
+        return False
+    lowered = text.lower()
+    if "<|assistant|>" in lowered or "<|user|>" in lowered:
+        return True
+
+    lines = [line.strip().lower() for line in text.splitlines() if line.strip()]
+    if len(lines) < 3:
+        return False
+
+    user_lines = sum(1 for line in lines if line.startswith("user:"))
+    assistant_lines = sum(1 for line in lines if line.startswith("assistant:"))
+    bot_lines = sum(1 for line in lines if line.startswith("bot:"))
+    return user_lines >= 2 and (assistant_lines + bot_lines) >= 1
+
+
 def _extract_recent_history_lines(items: Any, limit: int = 6) -> List[str]:
     lines: List[str] = []
     if not isinstance(items, list):
@@ -27,6 +45,8 @@ def _extract_recent_history_lines(items: Any, limit: int = 6) -> List[str]:
         role = str(item.get("role", "")).strip().lower()
         content = str(item.get("content", "")).strip()
         if role not in {"user", "assistant"} or not content:
+            continue
+        if _looks_like_transcript_dump(content):
             continue
         lines.append(f"{role.title()}: {content}")
     return lines
@@ -178,6 +198,8 @@ class ChatPromptMixin(Base):
                     continue
                 role = str(item.get("role", "")).strip().lower()
                 content = str(item.get("content", "")).strip()
+                if not content or _looks_like_transcript_dump(content):
+                    continue
                 if role == "user":
                     messages.append(ChatMessage(role=MessageRole.USER, content=content))
                 elif role == "assistant":

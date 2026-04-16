@@ -67,14 +67,14 @@ def _get_service_classes():
             classes["UnifiedMemoryService"] = None
 
         try:
-            classes["WebUIConversationService"] = __import__(
+            classes["ConversationService"] = __import__(
                 "services.memory.conversation_service",
-                fromlist=["WebUIConversationService"],
-            ).WebUIConversationService
-            logger.info("✅ WebUIConversationService imported successfully")
+                fromlist=["ConversationService"],
+            ).ConversationService
+            logger.info("✅ ConversationService imported successfully")
         except Exception as e:
-            logger.warning(f"WebUIConversationService import failed: {e}")
-            classes["WebUIConversationService"] = None
+            logger.warning(f"ConversationService import failed: {e}")
+            classes["ConversationService"] = None
 
         try:
             classes["PluginService"] = __import__(
@@ -146,7 +146,7 @@ def _get_service_classes():
             def load_config(self):
                 return {"environment": "fallback", "debug": True}
 
-        class WebUIConversationService:
+        class ConversationService:
             def __init__(self, conversation_manager, memory_service):
                 self.conversation_manager = conversation_manager
                 self.memory_service = memory_service
@@ -218,7 +218,7 @@ def _get_service_classes():
         classes["AIOrchestrator"] = AIOrchestrator
         classes["WebUIMemoryService"] = WebUIMemoryService
         classes["UnifiedMemoryService"] = UnifiedMemoryService
-        classes["WebUIConversationService"] = WebUIConversationService
+        classes["ConversationService"] = ConversationService
         classes["PluginService"] = PluginService
         classes["ToolService"] = ToolService
         classes["AnalyticsService"] = AnalyticsService
@@ -302,7 +302,7 @@ def _get_service_class(name: str):
 AIOrchestrator = _get_service_class("AIOrchestrator")
 WebUIMemoryService = _get_service_class("WebUIMemoryService")
 UnifiedMemoryService = _get_service_class("UnifiedMemoryService")
-WebUIConversationService = _get_service_class("WebUIConversationService")
+ConversationService = _get_service_class("ConversationService")
 PluginService = _get_service_class("PluginService")
 ToolService = _get_service_class("ToolService")
 AnalyticsService = _get_service_class("AnalyticsService")
@@ -738,8 +738,8 @@ class ServiceRegistry:
                         )
                         instance = None
 
-                elif service_class_name == "WebUIConversationService":
-                    # WebUIConversationService needs memory_service dependency
+                elif service_class_name == "ConversationService":
+                    # ConversationService needs memory_service dependency
                     memory_service = dependency_instances.get("memory_service")
                     if memory_service:
                         try:
@@ -757,22 +757,22 @@ class ServiceRegistry:
                                         memory_manager, "embedding_manager", None
                                     ),
                                 )
-                                instance = WebUIConversationService(
+                                instance = ConversationService(
                                     conversation_manager, memory_service
                                 )
                             else:
                                 logger.warning(
-                                    "WebUIConversationService cannot initialize without proper memory_service"
+                                    "ConversationService cannot initialize without proper memory_service"
                                 )
                                 instance = None
                         except Exception as e:
                             logger.warning(
-                                f"Failed to initialize WebUIConversationService: {e}"
+                                f"Failed to initialize ConversationService: {e}"
                             )
                             instance = None
                     else:
                         logger.warning(
-                            "WebUIConversationService cannot initialize without memory_service"
+                            "ConversationService cannot initialize without memory_service"
                         )
                         instance = None
 
@@ -1433,20 +1433,20 @@ async def initialize_services() -> None:
         logger.error(f"❌ Could not register WebUIMemoryService: {e}", exc_info=True)
 
     try:
-        logger.info("🔍 DEBUG: Attempting to register WebUIConversationService...")
-        # Check if WebUIConversationService is available
-        if WebUIConversationService is None:
-            logger.error("❌ WebUIConversationService is None, cannot register")
+        logger.info("🔍 DEBUG: Attempting to register ConversationService...")
+        # Check if ConversationService is available
+        if ConversationService is None:
+            logger.error("❌ ConversationService is None, cannot register")
         else:
             registry.register_service(
                 "conversation_service",
-                WebUIConversationService,
+                ConversationService,
                 {"memory_service": True},
             )
-            logger.info("✅ Registered WebUIConversationService service")
+            logger.info("✅ Registered ConversationService service")
     except Exception as e:
         logger.error(
-            f"❌ Could not register WebUIConversationService: {e}", exc_info=True
+            f"❌ Could not register ConversationService: {e}", exc_info=True
         )
 
     try:

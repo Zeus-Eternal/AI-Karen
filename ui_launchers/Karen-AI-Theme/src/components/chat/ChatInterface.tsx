@@ -3,16 +3,7 @@
 import type { ChatMessage, ConversationResponse } from '@/lib/types';
 import type { SuggestedAction } from '@/lib/agent-ui/service';
 import { useState, useRef, useEffect, FormEvent, useCallback, useMemo, createContext, useContext, ReactNode } from 'react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Loader2, SendHorizontal, Mic, MicOff, Sparkles, Bot, Square, PlusCircle, ServerCrash, History, Clock, RefreshCw, AlertCircle, CheckCircle, XCircle, Edit2, Check } from 'lucide-react';
-import { MessageBubble } from './MessageBubble';
 import { useToast } from "@/hooks/use-toast";
 import { ApiError, apiClient } from '@/lib/api';
 import { useAuth } from '@/lib/useAuth';
@@ -24,9 +15,17 @@ import {
   normalizeProviderName,
 } from '@/lib/chat-response';
 import { formatModelSwitchError } from '@/lib/model-switch-errors';
+import { toast } from "@/hooks/use-toast";
+// Constants and utilities
+import { getStreamingStatus } from './const/getStreamingStatus';
+import { getDegradedResponseMessage } from './const/getDegradedResponseMessage';
+import { getAssistFailureMetadata } from './const/getAssistFailureMetadata';
+
+// Import interface components
+import { StatusIndicators, MessagesArea, ChatInput } from './interface';
 
 // Session Management Types
-interface Session {
+export interface Session {
   id: string;
   title: string;
   createdAt: Date;
@@ -471,12 +470,9 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
   );
 }
 
-const PROCESSING_INPUT_STATES = [
-  'Karen is reviewing your request...',
-  'Karen is checking context and recent conversation...',
-  'Karen is aligning tools, memory, and provider routing...',
-  'Karen is reasoning through the next response...',
-];
+  const DEFAULT_PROCESSING_MESSAGE = 'Karen is working on your request...';
+  const STREAMING_ERROR_MESSAGE = 'Connection issue - please try again';
+  const STREAM_TIMEOUT_MESSAGE = 'Request timed out - please try again';
 
 interface SpeechRecognitionConstructor {
   new(): SpeechRecognition;
@@ -597,11 +593,80 @@ export default function ChatInterface() {
   const [selectedProvider, setSelectedProvider] = useState('');
   const [selectedModel, setSelectedModel] = useState('');
   const [isUpdatingModelSelection, setIsUpdatingModelSelection] = useState(false);
-  
-  const [processingInputIndex, setProcessingInputIndex] = useState(0);
+
+  const [processingStatus, setProcessingStatus] = useState('');
+  const [streamedContent, setStreamedContent] = useState('');
   const [isEditingDuringProcessing, setIsEditingDuringProcessing] = useState(false);
   const activeRequestControllerRef = useRef<AbortController | null>(null);
   const [isBackendOffline, setIsBackendOffline] = useState(false);
+  const [streamingMetrics, setStreamingMetrics] = useState<{
+    chunksReceived: number;
+    totalBytes: number;
+    connectionHealth: 'excellent' | 'good' | 'poor' | 'critical';
+    lastChunkTime: number;
+  } | null>(null);
+
+  const normalizeProviderModels = useCallback((response: ModelSettingsResponse) => {
+    const allowedProviders = response.providers
+      .filter((provider) => provider.selectable !== false)
+      .map((provider) => {
+        const configuredModels = (provider.models || []).filter(
+          (model) => model.source !== 'discovered'
+        );
+        const fallbackModelId =
+          provider.selected_model ||
+          provider.default_model ||
+          (response.selected_provider === provider.id ? response.selected_model : null) ||
+          '';
+        return {
+          ...provider,
+          models:
+            configuredModels.length > 0
+              ? configuredModels
+              : fallbackModelId
+                ? [{ id: fallbackModelId, name: fallbackModelId, source: 'saved' }]
+                : [],
+        };
+      });
+
+    const resolvedProvider =
+      allowedProviders.find((provider) => provider.id === response.selected_provider)?.id ||
+      allowedProviders[0]?.id ||
+      '';
+    const resolvedModel =
+      allowedProviders.find((provider) => provider.id === resolvedProvider)?.selected_model ||
+      allowedProviders.find((provider) => provider.id === resolvedProvider)?.models[0]?.id ||
+      response.selected_model ||
+      '';
+
+    return { allowedProviders, resolvedProvider, resolvedModel };
+  }, []);
+
+  const loadModelSettings = useCallback(async () => {
+    try {
+      const response = await apiClient.get<ModelSettingsResponse>('/api/settings/model');
+      setModelSettings(response);
+      const { resolvedProvider, resolvedModel } = normalizeProviderModels(response);
+      setSelectedProvider(resolvedProvider);
+      setSelectedModel(resolvedModel);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        return;
+      }
+      toast({
+        title: 'Unable to load model settings',
+        description: 'Karen could not load configured providers/models for chat.',
+        variant: 'destructive',
+      });
+    }
+  }, [normalizeProviderModels, toast]);
+
+  useEffect(() => {
+    if (isAuthLoading) {
+      return;
+    }
+    void loadModelSettings();
+  }, [isAuthLoading, loadModelSettings]);
 
 
   type AssistResponse = {
@@ -612,128 +677,33 @@ export default function ChatInterface() {
     correlation_id?: string;
   };
 
-  const handleActionClick = (action: SuggestedAction) => {
-    // Basic implementation: send the action description or type as a new message
-    const messageText = action.description || action.type;
-    if (!messageText) return;
-    
-    // For specific action types, we could add custom logic here
-    if (action.type === 'routing.profile.list') {
-      // Just send the request to list profiles
-      setInput('List all available profiles');
-      handleSubmit('List all available profiles');
-      return;
-    }
+  // Error and Processing Message Constants
+  const DEFAULT_PROCESSING_MESSAGE = 'Karen is working on your request...';
+  const STREAMING_ERROR_MESSAGE = 'Connection issue - please try again';
+  const STREAM_TIMEOUT_MESSAGE = 'Request timed out - please try again';
 
-    setInput(messageText);
-    handleSubmit(messageText);
-  };
+  // Helper variables extracted for reuse
+  const displayedInputValue = isLoading && !isEditingDuringProcessing
+    ? processingStatus || DEFAULT_PROCESSING_MESSAGE
+    : input;
 
-  const getDegradedResponseMessage = (error: unknown): string => {
-    if (error instanceof ApiError) {
-      const errorPayload = error.details as Record<string, unknown>;
-      const runtimeMode = typeof errorPayload?.mode === 'string' ? errorPayload.mode : '';
+  const showStopButton = isLoading && submitInFlightRef.current;
 
-      if (
-        (runtimeMode === 'maintenance' ||
-          runtimeMode === 'emergency_fallback' ||
-          runtimeMode === 'degraded') &&
-        typeof errorPayload?.message === 'string'
-      ) {
-        return errorPayload.message;
-      }
 
-      const detail = error.message?.trim();
-      
-      // If we have a specific informative detail, prioritize it.
-      // We no longer strip the "HTTP [code]:" prefix if it contains useful info.
-      if (detail && detail.length > 3) {
-        return detail;
-      }
 
-       // If we have detailed error content in the response body, use it specifically.
-       if (errorPayload?.detail && typeof errorPayload.detail === 'string') {
-        return errorPayload.detail;
-      }
-      if (errorPayload?.error && typeof errorPayload.error === 'string') {
-        return errorPayload.error;
-      }
-
-      if (error.status >= 500) {
-        return detail || 'Karen is running in degraded mode right now. Model routing is currently unavailable or misconfigured.';
-      }
-
-      if (error.status === 401 || error.status === 403) {
-        return 'Karen could not use the requested provider with your current session permissions. Sign in again or switch to an available model.';
-      }
-
-      return detail || 'Karen encountered an API error while processing your request.';
-    }
-
-    if (error instanceof Error) {
-      return error.message;
-    }
-
-    return 'Karen is running in degraded mode right now and could not complete this message. Check model availability and try again.';
-  };
-
-   const getAssistFailureMetadata = useCallback((
-    error: unknown,
-    requestedProvider?: string,
-    requestedModel?: string,
-  ): Record<string, unknown> => {
-    const detail = getDegradedResponseMessage(error);
-    const normalizedProvider = normalizeProviderName(requestedProvider) || 'system';
-    const failureCategory =
-      error instanceof ApiError && (error.status === 401 || error.status === 403)
-        ? 'authorization'
-        : error instanceof TypeError
-          ? 'network'
-          : 'provider_error';
-
-    const metadata: Record<string, unknown> = {
-      degraded_mode: true,
-      failure_category: failureCategory,
-      orchestrator: {
-        used_fallback: true,
-      },
-      llm: {
-        provider: normalizedProvider,
-        model_id: requestedModel ? `${normalizedProvider}:${requestedModel}` : normalizedProvider,
-        model_name: requestedModel || undefined,
-        requested_provider: requestedProvider || undefined,
-        requested_model: requestedModel || undefined,
-        is_degraded: true,
-        source: 'assist_request_error',
-        fallback_level: 'error',
-        failure_reason: detail,
-        routing_rationale:
-          requestedProvider && requestedModel
-            ? `The request to ${requestedProvider}/${requestedModel} failed before Karen could complete the response.`
-            : 'The chat request failed before Karen could complete the response.',
-      },
-    };
-
-    if (error instanceof ApiError) {
-      metadata.http_status = error.status;
-      metadata.error_details = error.details;
-    }
-
-    return metadata;
-  },
-  [],
-);
-
-  const preferredAddressName =
+  // User preferences
+  const preferredAddressName = useMemo(() =>
     typeof user?.preferences?.preferred_address_name === 'string'
       ? user.preferences.preferred_address_name.trim()
-      : '';
+      : '', [user?.preferences?.preferred_address_name]);
+
   const fullName = user?.full_name?.trim() || '';
   const emailName = user?.email?.split('@')[0]?.trim() || '';
-  const displayName = (() => {
+  const displayName = useMemo(() => {
     const candidate = preferredAddressName || fullName || emailName || '';
     return candidate || null;
-  })();
+  }, [preferredAddressName, fullName, emailName]);
+
   const firstNameOption = fullName.split(/\s+/).filter(Boolean)[0] || displayName || null;
   const shouldPromptForPreferredName = Boolean(
     isAuthenticated &&
@@ -744,328 +714,27 @@ export default function ChatInterface() {
     firstNameOption.toLowerCase() !== fullName.toLowerCase()
   );
 
-  const recentMessages = messages
-    .filter((message) => message.role === 'user' || message.role === 'assistant')
-    .slice(-6)
-    .map((message) => ({
-      role: message.role,
-      content: message.content,
-    }));
-  
-  useEffect(() => {
-    if (isAuthLoading) {
-      return;
-    }
+  const recentMessages = useMemo(() =>
+    messages
+      .filter((message) => message.role === 'user' || message.role === 'assistant')
+      .slice(-6)
+      .map((message) => ({
+        role: message.role,
+        content: message.content,
+      })), [messages]);
 
-    const greeting = displayName
-      ? shouldPromptForPreferredName && firstNameOption
-        ? `Hello there! I'm Karen. ${fullName}, how may I assist you today? Would you rather I address you as ${firstNameOption} or ${fullName}?`
-        : `Hello there! I'm Karen. ${displayName}, how may I assist you today?`
-      : "Hello! I'm Karen, your intelligent assistant. How can I help you today?";
+  // Streaming status
+  const streamingStatus = useMemo(() =>
+    getStreamingStatus(isBackendOffline, isLoading, processingStatus, streamingMetrics),
+    [isBackendOffline, isLoading, processingStatus, streamingMetrics]);
 
-    setMessages((currentMessages) => {
-      // Don't add greeting if we already have messages (e.g. from history load)
-      if (currentMessages.length > 0) {
-        return currentMessages;
-      }
 
-      return [
-        {
-          id: 'karen-initial-' + Date.now(),
-          role: 'assistant',
-          content: greeting,
-          timestamp: new Date(),
-          status: 'completed',
-          metadata: shouldPromptForPreferredName && firstNameOption
-            ? {
-                addressPreferencePrompt: true,
-                addressOptions: [firstNameOption, fullName],
-              }
-            : undefined,
-        },
-      ];
-    });
-  }, [displayName, firstNameOption, fullName, isAuthLoading, shouldPromptForPreferredName]);
 
-  // Phase A: Load conversation history by session
-  useEffect(() => {
-    const loadHistory = async () => {
-      if (!isAuthenticated || isAuthLoading) return;
-      
-      console.log('🔍 DEBUG: Loading session history for session ID:', sessionIdRef.current);
-      console.log('🔍 DEBUG: Authentication status:', { isAuthenticated, isAuthLoading, user });
-      
-      try {
-        // First, ensure conversation record exists for this session
-        console.log('🔍 DEBUG: Ensuring conversation record exists for session...');
-        const ensureResponse = await apiClient.post<ConversationResponse>(`/api/conversations/ensure-session/${sessionIdRef.current}`);
-        console.log('🔍 DEBUG: Session ensure response:', ensureResponse);
-        
-        // Then load conversation history
-        const response = await apiClient.get<ConversationResponse>(`/api/conversations/by-session/${sessionIdRef.current}`);
-        console.log('🔍 DEBUG: Session history response:', response);
-        
-        if (response && response.messages && response.messages.length > 0) {
-          const historyMessages: ChatMessage[] = response.messages.map((m) =>
-            normalizeConversationMessage(m)
-          );
-          console.log('🔍 DEBUG: Loaded', historyMessages.length, 'messages from session history');
-          setMessages(historyMessages);
-        } else {
-          console.log('🔍 DEBUG: No messages found in session history, starting fresh with empty conversation');
-          // Set empty greeting message for new sessions
-          const greeting = displayName
-            ? shouldPromptForPreferredName && firstNameOption
-              ? `Hello there! I'm Karen. ${fullName}, how may I assist you today? Would you rather I address you as ${firstNameOption} or ${fullName}?`
-              : `Hello there! I'm Karen. ${displayName}, how may I assist you today?`
-            : "Hello! I'm Karen, your intelligent assistant. How can I help you today?";
-          
-          setMessages([{
-            id: 'karen-initial-' + Date.now(),
-            role: 'assistant',
-            content: greeting,
-            timestamp: new Date(),
-            status: 'completed',
-            metadata: shouldPromptForPreferredName && firstNameOption
-              ? {
-                  addressPreferencePrompt: true,
-                  addressOptions: [firstNameOption, fullName],
-                }
-              : undefined,
-          }]);
-        }
-      } catch (err) {
-        console.warn('🔍 DEBUG: Could not load session history, starting fresh:', err);
-        console.log('🔍 DEBUG: Error type:', err instanceof ApiError ? 'ApiError' : 'Other error');
-        if (err instanceof ApiError) {
-          console.log('🔍 DEBUG: API Error status:', err.status);
-          console.log('🔍 DEBUG: API Error message:', err.message);
-        }
-        
-        // Fallback to greeting message if everything fails
-        const greeting = displayName
-          ? shouldPromptForPreferredName && firstNameOption
-            ? `Hello there! I'm Karen. ${fullName}, how may I assist you today? Would you rather I address you as ${firstNameOption} or ${fullName}?`
-            : `Hello there! I'm Karen. ${displayName}, how may I assist you today?`
-          : "Hello! I'm Karen, your intelligent assistant. How can I help you today?";
-        
-        setMessages([{
-          id: 'karen-initial-' + Date.now(),
-          role: 'assistant',
-          content: greeting,
-          timestamp: new Date(),
-          status: 'completed',
-          metadata: shouldPromptForPreferredName && firstNameOption
-            ? {
-                addressPreferencePrompt: true,
-                addressOptions: [firstNameOption, fullName],
-              }
-            : undefined,
-        }]);
-      }
-    };
 
-    void loadHistory();
-  }, [isAuthenticated, isAuthLoading, displayName, firstNameOption, fullName, shouldPromptForPreferredName, user]);
 
-  useEffect(() => {
-    let isMounted = true;
 
-    const loadModelSettings = async () => {
-      try {
-        const response = await apiClient.get<{
-          selected_provider: string;
-          selected_model: string;
-          providers: Array<{
-            id: string;
-            display_name: string;
-            selectable?: boolean;
-            requires_api_key?: boolean;
-            api_key_configured?: boolean;
-            base_url?: string | null;
-            default_base_url?: string | null;
-            default_model?: string | null;
-            selected_model?: string;
-            models: Array<{
-              id: string;
-              name: string;
-              source?: string;
-            }>;
-          }>;
-        }>('/api/settings/model');
 
-        if (!isMounted) {
-          return;
-        }
-
-        setModelSettings(response);
-        const allowedProviders = response.providers
-          .filter((provider) => provider.selectable !== false)
-          .map((provider) => {
-            const configuredModels = (provider.models || []).filter((model) => model.source !== 'discovered');
-            return {
-              ...provider,
-              models: configuredModels.length > 0
-                ? configuredModels
-                : (
-                    provider.selected_model || provider.default_model
-                      ? [{ id: provider.selected_model || provider.default_model || '', name: provider.selected_model || provider.default_model || '', source: 'saved' }]
-                      : []
-                  ),
-            };
-          });
-        const resolvedProvider =
-          allowedProviders.find((provider) => provider.id === response.selected_provider)?.id ||
-          allowedProviders[0]?.id ||
-          '';
-        setSelectedProvider(resolvedProvider);
-        const resolvedModel = response.selected_model ||
-          allowedProviders.find((provider) => provider.id === resolvedProvider)?.models[0]?.id ||
-          '';
-        setSelectedModel(resolvedModel);
-
-        setIsBackendOffline(false);
-      } catch {
-        setIsBackendOffline(true);
-        // Chat should stay usable even if settings cannot be loaded.
-      }
-    };
-
-    void loadModelSettings();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  const selectableProviders = useMemo(() => {
-    const providers = modelSettings?.providers ?? [];
-    return providers
-      .filter((provider) => provider.selectable !== false)
-      .map((provider) => {
-        const configuredModels = (provider.models || []).filter((model) => model.source !== 'discovered');
-        return {
-          ...provider,
-          models: configuredModels.length > 0
-            ? configuredModels
-            : (
-                provider.selected_model || provider.default_model
-                  ? [{ id: provider.selected_model || provider.default_model || '', name: provider.selected_model || provider.default_model || '', source: 'saved' }]
-                  : []
-              ),
-        };
-       });
-    }, [modelSettings]);
-
-    const applyModelSelection = useCallback(async (providerId: string, modelId: string) => {
-    if (!modelSettings) {
-      return;
-    }
-
-    const provider = modelSettings.providers.find((item) => item.id === providerId);
-    if (!provider || !modelId) {
-      return;
-    }
-
-    setIsUpdatingModelSelection(true);
-    try {
-      const response = await apiClient.put<{
-        selected_provider: string;
-        selected_model: string;
-        providers: Array<{
-          id: string;
-          display_name: string;
-          description?: string;
-          provider_type?: string;
-          selectable?: boolean;
-          requires_api_key?: boolean;
-          api_key_configured?: boolean;
-          base_url?: string | null;
-          default_base_url?: string | null;
-          default_model?: string | null;
-          selected_model?: string | null;
-          supports_base_url_override?: boolean;
-          models: Array<{
-            id: string;
-            name: string;
-            source?: string;
-          }>;
-        }>;
-      }>('/api/settings/model', {
-        provider: providerId,
-        model: modelId,
-      });
-
-      setModelSettings(response as ModelSettingsResponse);
-      const allowedProviders = response.providers
-        .filter((item) => item.selectable !== false)
-        .map((item) => {
-          const configuredModels = (item.models || []).filter((model: { id: string; name: string; source?: string }) => model.source !== 'discovered');
-          return {
-            ...item,
-            models: configuredModels.length > 0
-              ? configuredModels
-              : (
-                  item.selected_model || item.default_model
-                    ? [{ id: item.selected_model || item.default_model || '', name: item.selected_model || item.default_model || '', source: 'saved' }]
-                    : []
-                ),
-          };
-        });
-      const resolvedProvider =
-        allowedProviders.find((item) => item.id === response.selected_provider)?.id ||
-        allowedProviders[0]?.id ||
-        '';
-      setSelectedProvider(resolvedProvider);
-      setSelectedModel(
-        allowedProviders.find((item) => item.id === resolvedProvider)?.selected_model ||
-        allowedProviders.find((item) => item.id === resolvedProvider)?.models[0]?.id ||
-        response.selected_model
-      );
-      toast({
-        title: 'Settings applied',
-        description: `Karen is now using ${modelId} via ${provider.display_name}.`,
-      });
-    } catch (err) {
-      toast({
-        title: 'Model switch failed',
-        description: formatModelSwitchError(err, provider.display_name),
-        variant: 'destructive',
-      });
-    } finally {
-      setIsUpdatingModelSelection(false);
-    }
-  }, [modelSettings, toast]);
-
-  const savePreferredAddressName = useCallback(async (preferredName: string) => {
-    if (!user) {
-      return false;
-    }
-
-    const nextPreferences = {
-      ...(user.preferences || {}),
-      preferred_address_name: preferredName,
-    };
-
-    await apiClient.put('/api/auth/me', {
-      preferences: nextPreferences,
-    });
-
-    authService.updateCurrentUser({
-      preferences: nextPreferences,
-    });
-
-    await apiClient.post('/api/memory/commit', {
-      user_id: user.user_id,
-      text: `The user prefers to be addressed as ${preferredName}.`,
-      tags: ['personal_fact', 'preferred_name', 'user_preference'],
-      importance: 9,
-      decay: 'pinned',
-    }).catch(() => undefined);
-
-    return true;
-  }, [user]);
-
+  // Submit handler
   const handleSubmit = useCallback(async (manualInput?: string) => {
     const rawInput = manualInput || input;
     if (!rawInput.trim() || isLoading || isAuthLoading || submitInFlightRef.current) return;
@@ -1118,85 +787,225 @@ export default function ChatInterface() {
       role: 'user',
       content: trimmedInput,
       timestamp: new Date(),
-      status: 'pending', // Initially pending until logic completes
+      status: 'pending',
     };
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
     submitInFlightRef.current = true;
     setIsLoading(true);
     setIsEditingDuringProcessing(false);
-    setProcessingInputIndex(0);
+    setProcessingStatus(DEFAULT_PROCESSING_MESSAGE);
+    setStreamedContent('');
+
+    const preferredProvider = selectedProvider;
+    const preferredModel = selectedModel;
+    const streamStartedAt = Date.now();
+
+    let collectedContent = '';
+    let completedMetadata: Record<string, unknown> | undefined;
+    let streamFailed = false;
+    let streamFailureMessage = '';
+    let retryCount = 0;
+    const MAX_RETRIES = 2;
+
+    const enrichStreamMetadata = (
+      rawMetadata?: Record<string, unknown>,
+    ): Record<string, unknown> => {
+      const metadata = { ...(rawMetadata || {}) } as Record<string, any>;
+      const llm = { ...(metadata.llm || {}) } as Record<string, any>;
+
+      if (!llm.provider) {
+        llm.provider =
+          (typeof metadata.provider === 'string' ? metadata.provider : '') ||
+          preferredProvider ||
+          'system';
+      }
+
+      if (!llm.model_id && !llm.model_name) {
+        const candidateModel =
+          (typeof metadata.model_id === 'string' ? metadata.model_id : '') ||
+          (typeof metadata.model_name === 'string' ? metadata.model_name : '') ||
+          (typeof metadata.model === 'string' ? metadata.model : '') ||
+          preferredModel ||
+          '';
+        if (candidateModel) {
+          llm.model_id = candidateModel;
+          llm.model_name = candidateModel;
+        }
+      }
+
+      if (!llm.source) {
+        llm.source =
+          (typeof metadata.source === 'string' ? metadata.source : '') ||
+          (typeof metadata.execution_path === 'string' ? metadata.execution_path : '') ||
+          'requested_model';
+      }
+
+      if (typeof llm.duration !== 'number') {
+        if (typeof metadata.total_ms === 'number') {
+          llm.duration = metadata.total_ms / 1000;
+        } else {
+          llm.duration = (Date.now() - streamStartedAt) / 1000;
+        }
+      }
+
+      if (typeof llm.tokens_per_second !== 'number') {
+        const tps =
+          typeof metadata.tokens_per_second === 'number'
+            ? metadata.tokens_per_second
+            : undefined;
+        if (typeof tps === 'number') {
+          llm.tokens_per_second = tps;
+        }
+      }
+
+      if (!llm.requested_provider && preferredProvider) {
+        llm.requested_provider = normalizeProviderName(preferredProvider);
+      }
+      if (!llm.requested_model && preferredModel) {
+        llm.requested_model = preferredModel;
+      }
+
+      metadata.llm = llm;
+      metadata.status = metadata.status || 'completed';
+      metadata.execution_path = metadata.execution_path || 'stream';
+      return metadata;
+    };
+
+    const attemptStream = async (attempt: number): Promise<void> => {
+      try {
+        streamFailureMessage = '';
+        const controller = new AbortController();
+        activeRequestControllerRef.current = controller;
+
+        const streamRequestPayload = {
+          user_id: user?.user_id || 'anonymous',
+          message: userMessage.content,
+          top_k: 6,
+          context: isAuthenticated && user
+            ? {
+                authenticated_user: {
+                  user_id: user.user_id,
+                  email: user.email,
+                  full_name: user.full_name,
+                  tenant_id: user.tenant_id,
+                  roles: user.roles,
+                },
+                conversation_profile: {
+                  display_name: displayName,
+                  preferred_address_name: preferredAddressName || undefined,
+                  source: 'authenticated_profile',
+                },
+                recent_messages: recentMessages,
+              }
+            : {
+                conversation_profile: {
+                  display_name: displayName,
+                  preferred_address_name: preferredAddressName || undefined,
+                  source: displayName ? 'derived_profile' : 'unknown',
+                },
+                recent_messages: recentMessages,
+              },
+          preferred_llm_provider: preferredProvider,
+          preferred_model: preferredModel,
+          session_id: sessionIdRef.current,
+        };
+
+      await apiClient.postStream(
+        '/api/copilot/assist/stream',
+        streamRequestPayload,
+        {
+          onStatus: (message) => {
+            setProcessingStatus(message || DEFAULT_PROCESSING_MESSAGE);
+          },
+          onContent: (token) => {
+            collectedContent += token;
+            setStreamedContent(collectedContent);
+          },
+          onError: (message) => {
+            streamFailed = true;
+            streamFailureMessage = message || 'Streaming endpoint reported an error';
+            setProcessingStatus(streamFailureMessage);
+          },
+          onComplete: (metadata) => {
+            completedMetadata = enrichStreamMetadata(metadata);
+          },
+          onMetrics: (metrics) => {
+            setStreamingMetrics({
+              chunksReceived: metrics.chunksReceived,
+              totalBytes: metrics.totalBytes,
+              connectionHealth: metrics.connectionHealth,
+              lastChunkTime: metrics.lastChunkTime,
+            });
+          },
+        },
+        controller.signal,
+      );
+
+         if (streamFailed) {
+           const errorMessage = streamFailureMessage || processingStatus || 'Streaming endpoint reported an error';
+           throw new Error(errorMessage);
+         }
+
+        setIsBackendOffline(false);
+
+        const fullContent = collectedContent.trim();
+
+        if (!fullContent) {
+          throw new Error('Empty response from streaming endpoint');
+        }
+
+        const streamResponse = {
+          answer: fullContent,
+          correlationId: completedMetadata?.correlation_id as string || undefined,
+          actions: (completedMetadata?.actions as SuggestedAction[]) || [],
+          metadata: completedMetadata || enrichStreamMetadata(),
+        };
+
+        const streamAssistantMessage: ChatMessage = {
+          id: streamResponse.correlationId || 'assistant-' + Date.now(),
+          role: 'assistant',
+          content: streamResponse.answer,
+          timestamp: new Date(),
+          status: 'completed',
+          actions: streamResponse.actions,
+          metadata: streamResponse.metadata,
+        };
+
+        setMessages((prev) => {
+          return prev.map(m => m.id === userMessage.id ? { ...m, status: 'completed' as const } : m)
+            .concat(streamAssistantMessage);
+        });
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          return;
+        }
+
+        // Retry on specific errors
+        const shouldRetry = attempt < MAX_RETRIES && (
+          error instanceof ApiError && (
+            error.status >= 500 ||
+            error.status === 502 ||
+            error.status === 504 ||
+            error.message.includes('timeout') ||
+            error.message.includes('connection')
+          )
+        );
+
+        if (shouldRetry) {
+          retryCount++;
+          const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+          console.log(`Retrying stream attempt ${attempt + 1}/${MAX_RETRIES} after ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return attemptStream(attempt + 1);
+        }
+
+        throw error; // Re-throw if no more retries or not retryable error
+      }
+    };
 
     try {
-      const controller = new AbortController();
-      activeRequestControllerRef.current = controller;
-
-      const response = await apiClient.post<AssistResponse>('/api/copilot/assist', {
-        user_id: user?.user_id || 'anonymous',
-        message: userMessage.content,
-        top_k: 6,
-        context: isAuthenticated && user
-          ? {
-              authenticated_user: {
-                user_id: user.user_id,
-                email: user.email,
-                full_name: user.full_name,
-                tenant_id: user.tenant_id,
-                roles: user.roles,
-              },
-              conversation_profile: {
-                display_name: displayName,
-                preferred_address_name: preferredAddressName || undefined,
-                source: 'authenticated_profile',
-              },
-              recent_messages: recentMessages,
-            }
-          : {
-              conversation_profile: {
-                display_name: displayName,
-                preferred_address_name: preferredAddressName || undefined,
-                source: displayName ? 'derived_profile' : 'unknown',
-              },
-              recent_messages: recentMessages,
-            },
-        preferred_llm_provider: selectedProvider || undefined,
-        preferred_model: selectedModel || undefined,
-        session_id: sessionIdRef.current,
-      }, {
-        signal: controller.signal,
-      });
-
-      setIsBackendOffline(false);
-
-      const normalizedResponse = normalizeBackendChatResponse(response, {
-        requestedProvider: selectedProvider,
-        requestedModel: selectedModel,
-      });
-
-      const assistantMessage: ChatMessage = {
-        id: normalizedResponse.correlationId || 'assistant-' + Date.now(),
-        role: 'assistant',
-        content: normalizedResponse.answer,
-        timestamp: new Date(),
-        status: 'completed',
-        structuredContent: normalizedResponse.structuredContent,
-        actions: normalizedResponse.actions,
-        metadata: normalizedResponse.metadata,
-        aiData: normalizedResponse.metadata?.context && Array.isArray(normalizedResponse.metadata.context) && normalizedResponse.metadata.context.length > 0
-          ? {
-              knowledgeGraphInsights: normalizedResponse.metadata.context
-                .map((item: { preview?: string; text?: string }) => item.preview || item.text)
-                .filter(Boolean)
-                .join('\n'),
-            }
-          : undefined,
-      };
-
-      setMessages((prev) => {
-        // Update user message to completed and add assistant response
-        return prev.map(m => m.id === userMessage.id ? { ...m, status: 'completed' as const } : m)
-          .concat(assistantMessage);
-      });
+      await attemptStream(0);
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
         return;
@@ -1220,40 +1029,44 @@ export default function ChatInterface() {
           ? (error.details as Record<string, unknown>)
           : null;
 
-      const normalizedErrorResponse = runtimePayload
+      const fallbackErrorResponse = runtimePayload
         ? normalizeBackendChatResponse(runtimePayload)
         : null;
 
-      const assistantMessage: ChatMessage = {
-        id: normalizedErrorResponse?.correlationId || 'assistant-error-' + Date.now(),
+      const errorAssistantMessage: ChatMessage = {
+        id: fallbackErrorResponse?.correlationId || 'assistant-error-' + Date.now(),
         role: 'assistant',
-        content: normalizedErrorResponse?.answer || getDegradedResponseMessage(error),
+        content: fallbackErrorResponse?.answer || getDegradedResponseMessage(error),
         timestamp: new Date(),
-        status: normalizedErrorResponse ? 'completed' : 'failed',
-        structuredContent: normalizedErrorResponse?.structuredContent,
-        actions: normalizedErrorResponse?.actions,
+        status: fallbackErrorResponse ? 'completed' : 'failed',
+        structuredContent: fallbackErrorResponse?.structuredContent,
+        actions: fallbackErrorResponse?.actions,
         metadata:
-          normalizedErrorResponse?.metadata ||
-          getAssistFailureMetadata(error, selectedProvider, selectedModel),
+          fallbackErrorResponse?.metadata ||
+          getAssistFailureMetadata(
+            error,
+            preferredProvider || selectedProvider,
+            preferredModel || selectedModel,
+          ),
       };
       setMessages((prev) => {
         // Update user message to failed and add error response
         return prev.map(m => m.id === userMessage.id ? {
           ...m,
-          status: normalizedErrorResponse ? 'completed' as const : 'failed' as const,
+          status: fallbackErrorResponse ? 'completed' as const : 'failed' as const,
         } : m)
-          .concat(assistantMessage);
+          .concat(errorAssistantMessage);
       });
       toast(
-        normalizedErrorResponse
+        fallbackErrorResponse
           ? {
               title:
-                runtimePayload?.mode === 'maintenance'
+                (fallbackErrorResponse.metadata as Record<string, unknown>)?.mode === 'maintenance'
                   ? 'Maintenance mode active'
-                  : runtimePayload?.mode === 'emergency_fallback'
+                  : (fallbackErrorResponse.metadata as Record<string, unknown>)?.mode === 'emergency_fallback'
                     ? 'Emergency fallback active'
                     : 'Limited chat mode',
-              description: normalizedErrorResponse.answer,
+              description: fallbackErrorResponse.answer,
             }
           : {
               title: 'Chat request failed',
@@ -1267,32 +1080,121 @@ export default function ChatInterface() {
       activeRequestControllerRef.current = null;
       setIsLoading(false);
       setIsEditingDuringProcessing(false);
-      setProcessingInputIndex(0);
+      setProcessingStatus('');
+      setStreamedContent('');
+      setStreamingMetrics(null);
     }
 
-  }, [displayName, input, isAuthLoading, isAuthenticated, isLoading, messages, preferredAddressName, recentMessages, savePreferredAddressName, selectedProvider, selectedModel, toast, user, getAssistFailureMetadata]); 
+  }, [input, isLoading, isAuthLoading, input, messages, displayName, preferredAddressName, recentMessages, selectedProvider, selectedModel, toast, user, getAssistFailureMetadata, setInput, setMessages, setIsLoading, setIsEditingDuringProcessing, setProcessingStatus, setStreamedContent, setStreamingMetrics, activeRequestControllerRef, sessionIdRef, isAuthenticated]);
 
-  useEffect(() => {
-    if (!isLoading || isEditingDuringProcessing) {
-      return;
+  // Save preferred address name
+  const savePreferredAddressName = useCallback(async (preferredName: string) => {
+    if (!user) {
+      return false;
     }
 
-    const timer = window.setInterval(() => {
-      setProcessingInputIndex((current) => (current + 1) % PROCESSING_INPUT_STATES.length);
-    }, 1800);
-
-    return () => {
-      window.clearInterval(timer);
+    const nextPreferences = {
+      ...(user.preferences || {}),
+      preferred_address_name: preferredName,
     };
-  }, [isEditingDuringProcessing, isLoading]);
 
+    await apiClient.put('/api/auth/me', {
+      preferences: nextPreferences,
+    });
+
+    authService.updateCurrentUser({
+      preferences: nextPreferences,
+    });
+
+    await apiClient.post('/api/memory/commit', {
+      user_id: user.user_id,
+      text: `The user prefers to be addressed as ${preferredName}.`,
+      tags: ['personal_fact', 'preferred_name', 'user_preference'],
+      importance: 9,
+      decay: 'pinned',
+    }).catch(() => undefined);
+
+    return true;
+  }, [user]);
+
+  // Stop active request
   const stopActiveRequest = useCallback(() => {
     submitInFlightRef.current = false;
     activeRequestControllerRef.current?.abort();
     activeRequestControllerRef.current = null;
     setIsLoading(false);
+    setProcessingStatus('Request cancelled by user.');
+    setTimeout(() => {
+      setProcessingStatus('');
+    }, 2000);
   }, []);
 
+  // Handle functions
+  const handleActionClick = useCallback((action: SuggestedAction) => {
+    const messageText = action.description || action.type;
+    if (!messageText) return;
+    if (action.type === 'routing.profile.list') {
+      setInput('List all available profiles');
+      handleSubmit('List all available profiles');
+      return;
+    }
+    setInput(messageText);
+    handleSubmit(messageText);
+  }, [setInput, handleSubmit]);
+
+  const handleFormSubmit = useCallback((e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (isLoading && input.trim()) {
+      stopActiveRequest();
+      return;
+    }
+    handleSubmit();
+  }, [isLoading, input, stopActiveRequest, handleSubmit]);
+
+  const handleSuggestStarter = useCallback(() => {
+    setIsSuggestingStarter(true);
+    try {
+      setInput('Tell me a fun fact about space.');
+    } finally {
+      setIsSuggestingStarter(false);
+    }
+  }, [setIsSuggestingStarter, setInput]);
+
+  const handleNewChat = useCallback(async () => {
+    if (isLoading) stopActiveRequest();
+    await createNewSession();
+    setMessages([]);
+  }, [isLoading, stopActiveRequest, createNewSession, setMessages]);
+
+  // Scroll functions
+  const scrollChatToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    viewport.scrollTo({
+      top: viewport.scrollHeight,
+      behavior,
+    });
+  }, []);
+
+  // Handle mic click
+  const handleMicClick = useCallback(async () => {
+    if (!speechRecognitionSupported) return;
+    if (!recognitionRef.current) return;
+
+    if (isRecording) {
+      recognitionRef.current.stop();
+    } else {
+      try {
+        setInput('');
+        recognitionRef.current.start();
+        setIsRecording(true);
+      } catch (err) {
+        console.error('Error starting mic:', err);
+      }
+    }
+  }, [speechRecognitionSupported, isRecording, setInput, setIsRecording]);
+
+  // Speech recognition setup
   useEffect(() => {
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognitionAPI) {
@@ -1326,7 +1228,7 @@ export default function ChatInterface() {
       setIsRecording(false);
       setShouldSubmitVoiceInput(true);
     };
-    
+
     recognitionRef.current = recognitionInstance;
 
     return () => {
@@ -1334,35 +1236,84 @@ export default function ChatInterface() {
         recognitionRef.current.stop();
       }
     };
-  }, [toast]); 
+  }, [setInput, setIsRecording, setShouldSubmitVoiceInput]);
 
-
+  // Dynamic greeting system
   useEffect(() => {
-    if (shouldSubmitVoiceInput) {
-      if (input.trim() && !isLoading) {
-        handleSubmit();
+    if (isAuthLoading) return;
+
+    const generateGreeting = () => {
+      if (isAuthenticated && user) {
+        const preferredAddressName =
+          typeof user?.preferences?.preferred_address_name === 'string'
+            ? user.preferences.preferred_address_name.trim()
+            : '';
+        const fullName = user?.full_name?.trim() || '';
+        const displayName = (() => {
+          const candidate = preferredAddressName || fullName || user?.email?.split('@')[0]?.trim() || '';
+          return candidate || null;
+        })();
+
+        const firstNameOption = fullName.split(/\s+/).filter(Boolean)[0] || displayName || null;
+        const shouldPromptForPreferredName = Boolean(
+          isAuthenticated &&
+          !preferredAddressName &&
+          fullName &&
+          firstNameOption &&
+          fullName.includes(' ') &&
+          firstNameOption.toLowerCase() !== fullName.toLowerCase()
+        );
+
+        if (displayName) {
+          if (shouldPromptForPreferredName && firstNameOption) {
+            return `Hello there! I'm Karen. ${fullName}, how may I assist you today? Would you rather I address you as ${firstNameOption} or ${fullName}?`;
+          } else {
+            return `Hello there! I'm Karen. ${displayName}, how may I assist you today?`;
+          }
+        }
       }
-      setShouldSubmitVoiceInput(false); 
-    }
-  }, [shouldSubmitVoiceInput, input, isLoading, handleSubmit]);
 
-  const scrollChatToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
-    const viewport = viewportRef.current;
-    if (!viewport) {
-      return;
-    }
+      return "Hello! I'm Karen, your intelligent assistant. How can I help you today?";
+    };
 
-    viewport.scrollTo({
-      top: viewport.scrollHeight,
-      behavior,
+    const greeting = generateGreeting();
+
+    setMessages((currentMessages) => {
+      // Don't add greeting if we already have messages (e.g. from history load)
+      if (currentMessages.length > 0) {
+        return currentMessages;
+      }
+
+      const shouldPromptForPreferredName = isAuthenticated && user &&
+        typeof user?.preferences?.preferred_address_name === 'string' &&
+        user.preferences.preferred_address_name.trim() === '' &&
+        user?.full_name?.trim() &&
+        user.full_name.includes(' ');
+
+      return [
+        {
+          id: 'karen-initial-' + Date.now(),
+          role: 'assistant',
+          content: greeting,
+          timestamp: new Date(),
+          status: 'completed',
+          metadata: shouldPromptForPreferredName ? {
+            addressPreferencePrompt: true,
+            addressOptions: [
+              user.full_name.split(/\s+/).filter(Boolean)[0],
+              user.full_name
+            ],
+          } : undefined,
+        },
+      ];
     });
-  }, []);
+  }, [isAuthenticated, isAuthLoading, user]);
 
+  // Scroll stickiness
   useEffect(() => {
     const viewport = viewportRef.current;
-    if (!viewport) {
-      return;
-    }
+    const container = messagesContainerRef.current;
+    if (!viewport) return;
 
     const updateStickiness = () => {
       const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
@@ -1377,8 +1328,6 @@ export default function ChatInterface() {
     };
   }, []);
 
-
-  // Keep the latest response pinned at the bottom while the user is already near the bottom.
   useEffect(() => {
     if (shouldStickToBottomRef.current) {
       requestAnimationFrame(() => {
@@ -1387,774 +1336,160 @@ export default function ChatInterface() {
     }
   }, [messages, isLoading, scrollChatToBottom]);
 
-  useEffect(() => {
-    const viewport = viewportRef.current;
-    const container = messagesContainerRef.current;
-    if (!viewport || !container || typeof ResizeObserver === 'undefined') {
+  // Selectable providers
+  const selectableProviders = useMemo(() => {
+    const providers = modelSettings?.providers ?? [];
+    return providers
+      .filter((provider) => provider.selectable !== false)
+      .map((provider) => {
+        const configuredModels = (provider.models || []).filter((model) => model.source !== 'discovered');
+        const fallbackModelId =
+          provider.selected_model ||
+          provider.default_model ||
+          (modelSettings?.selected_provider === provider.id
+            ? modelSettings?.selected_model
+            : null) ||
+          '';
+        return {
+          ...provider,
+          models: configuredModels.length > 0
+            ? configuredModels
+            : (
+                fallbackModelId
+                  ? [{ id: fallbackModelId, name: fallbackModelId, source: 'saved' }]
+                  : []
+              ),
+        };
+       });
+    }, [modelSettings]);
+
+  // Apply model selection
+  const applyModelSelection = useCallback(async (providerId: string, modelId: string) => {
+    if (!modelSettings) {
       return;
     }
 
-    const observer = new ResizeObserver(() => {
-      if (shouldStickToBottomRef.current) {
-        requestAnimationFrame(() => {
-          scrollChatToBottom('auto');
-        });
-      }
-    });
-
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, [scrollChatToBottom]);
-
-
-  const handleMicClick = async () => {
-    if (!speechRecognitionSupported) return;
-    if (!recognitionRef.current) return;
-
-    if (isRecording) {
-      recognitionRef.current.stop(); 
-    } else {
-      try {
-        setInput(''); 
-        recognitionRef.current.start();
-        setIsRecording(true);
-      } catch (err) { 
-        console.error('Error starting mic:', err);
-      }
-    }
-  };
-  
-  const handleFormSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (isLoading) {
-      if (input.trim()) {
-        stopActiveRequest();
-      }
+    const provider = modelSettings.providers.find((item) => item.id === providerId);
+    if (!provider || !modelId) {
       return;
     }
-    handleSubmit();
-  };
 
-  const handleSuggestStarter = async () => {
-    setIsSuggestingStarter(true);
+    setIsUpdatingModelSelection(true);
     try {
-      setInput('Tell me a fun fact about space.');
-    } finally {
-      setIsSuggestingStarter(false);
-    }
-  };
-
-  const handleNewChat = async () => {
-    if (isLoading) stopActiveRequest();
-    await createNewSession();
-    setMessages([]);
-  };
-
-  // Session History Component
-  const SessionHistory = () => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
-    const [editingTitle, setEditingTitle] = useState('');
-    const [searchQuery, setSearchQuery] = useState('');
-    const [sortMode, setSortMode] = useState<'recent' | 'oldest' | 'most-messages' | 'title'>('recent');
-    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-    const [isSelectionMode, setIsSelectionMode] = useState(false);
-    const [isDeletingBulk, setIsDeletingBulk] = useState(false);
-
-    const normalizedQuery = searchQuery.trim().toLowerCase();
-
-    const filteredSessions = sessions
-      .filter((session) =>
-        !normalizedQuery ||
-        session.title.toLowerCase().includes(normalizedQuery) ||
-        session.lastMessage?.toLowerCase().includes(normalizedQuery)
-      )
-      .sort((a, b) => {
-        switch (sortMode) {
-          case 'oldest':
-            return a.updatedAt.getTime() - b.updatedAt.getTime();
-          case 'most-messages':
-            return b.messageCount - a.messageCount || b.updatedAt.getTime() - a.updatedAt.getTime();
-          case 'title':
-            return a.title.localeCompare(b.title);
-          case 'recent':
-          default:
-            return b.updatedAt.getTime() - a.updatedAt.getTime();
-        }
+      const response = await apiClient.put<{
+        selected_provider: string;
+        selected_model: string;
+        providers: Array<{
+          id: string;
+          display_name: string;
+          description?: string;
+          provider_type?: string;
+          selectable?: boolean;
+          requires_api_key?: boolean;
+          api_key_configured?: boolean;
+          base_url?: string | null;
+          default_base_url?: string | null;
+          default_model?: string | null;
+          selected_model?: string | null;
+          supports_base_url_override?: boolean;
+          models: Array<{
+            id: string;
+            name: string;
+            source?: string;
+          }>;
+        }>;
+      }>('/api/settings/model', {
+        provider: providerId,
+        model: modelId,
       });
 
-    const groupedSessions = filteredSessions.reduce<Record<string, Session[]>>((groups, session) => {
-      const now = new Date();
-      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const startOfYesterday = new Date(startOfToday);
-      startOfYesterday.setDate(startOfYesterday.getDate() - 1);
-      const startOfWeek = new Date(startOfToday);
-      startOfWeek.setDate(startOfWeek.getDate() - 7);
-      const sessionTime = session.updatedAt.getTime();
-
-      let bucket = 'Earlier';
-      if (sessionTime >= startOfToday.getTime()) {
-        bucket = 'Today';
-      } else if (sessionTime >= startOfYesterday.getTime()) {
-        bucket = 'Yesterday';
-      } else if (sessionTime >= startOfWeek.getTime()) {
-        bucket = 'Last 7 Days';
-      }
-
-      if (!groups[bucket]) {
-        groups[bucket] = [];
-      }
-      groups[bucket].push(session);
-      return groups;
-    }, {});
-
-    const groupOrder = ['Today', 'Yesterday', 'Last 7 Days', 'Earlier'].filter((label) => groupedSessions[label]?.length);
-    const totalMessages = sessions.reduce((sum, session) => sum + session.messageCount, 0);
-
-    const formatDate = (date: Date) => {
-      return new Intl.DateTimeFormat('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      }).format(date);
-    };
-
-    const formatRelativeDate = (date: Date) => {
-      const diff = Date.now() - date.getTime();
-      const minute = 60 * 1000;
-      const hour = 60 * minute;
-      const day = 24 * hour;
-
-      if (diff < hour) {
-        return `${Math.max(1, Math.floor(diff / minute))}m ago`;
-      }
-      if (diff < day) {
-        return `${Math.floor(diff / hour)}h ago`;
-      }
-      return formatDate(date);
-    };
-
-    const handleSessionClick = async (session: Session) => {
-      if (isSelectionMode) {
-        toggleSelection(session.id);
-        return;
-      }
-      if (editingSessionId === session.id) return;
-      setIsOpen(false);
-      await loadSession(session.id);
-      setMessages([]);
-    };
-
-    const toggleSelection = (id: string) => {
-      const newSelected = new Set(selectedIds);
-      if (newSelected.has(id)) {
-        newSelected.delete(id);
-      } else {
-        newSelected.add(id);
-      }
-      setSelectedIds(newSelected);
-    };
-
-    const toggleAll = () => {
-      if (selectedIds.size === filteredSessions.length) {
-        setSelectedIds(new Set());
-      } else {
-        setSelectedIds(new Set(filteredSessions.map(s => s.id)));
-      }
-    };
-
-    const handleDeleteSession = async (e: React.MouseEvent, sessionId: string) => {
-      e.stopPropagation();
-      const success = await deleteSession(sessionId);
-      if (success) {
-        toast({
-          title: 'Session deleted',
-          description: 'Chat session has been removed.',
-        });
-      }
-    };
-
-    const handleBulkDelete = async () => {
-      if (selectedIds.size === 0) return;
-      
-      setIsDeletingBulk(true);
-      try {
-        const success = await deleteSessions(Array.from(selectedIds));
-        if (success) {
-          toast({
-            title: 'Sessions deleted',
-            description: `${selectedIds.size} chat sessions have been removed.`,
-          });
-          setSelectedIds(new Set());
-          setIsSelectionMode(false);
-        }
-      } finally {
-        setIsDeletingBulk(false);
-      }
-    };
-
-    const handleStartEdit = (session: Session) => {
-      setEditingSessionId(session.id);
-      setEditingTitle(session.title);
-    };
-
-    const handleSaveEdit = async (sessionId: string) => {
-      if (editingTitle.trim()) {
-        const success = await updateSessionTitle(sessionId, editingTitle.trim());
-        if (success) {
-          setEditingSessionId(null);
-          toast({
-            title: 'Chat renamed',
-            description: `Session renamed to "${editingTitle.trim()}".`,
-          });
-        }
-      }
-    };
-
-    return (
-      <Dialog open={isOpen} onOpenChange={(open) => {
-        setIsOpen(open);
-        if (!open) {
-          setEditingSessionId(null);
-          setIsSelectionMode(false);
-          setSelectedIds(new Set());
-          setSearchQuery('');
-        }
-      }}>
-        <DialogTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="flex gap-2 h-9 px-3 border border-input bg-background hover:bg-accent hover:text-accent-foreground"
-          >
-            <History className="h-4 w-4" />
-            HISTORY
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-[720px]">
-          <DialogHeader>
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <DialogTitle>Chat History</DialogTitle>
-                <DialogDescription className="text-xs text-muted-foreground">
-                  Review, reopen, rename, and clean up durable conversation sessions.
-                </DialogDescription>
-              </div>
-              <div className="flex gap-2">
-                {sessions.length > 0 && (
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => setIsSelectionMode(!isSelectionMode)}
-                    className="h-8 text-xs"
-                  >
-                    {isSelectionMode ? "Cancel" : "Select"}
-                  </Button>
-                )}
-              </div>
-            </div>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <div className="grid gap-3 rounded-xl border border-border/60 bg-muted/20 p-4 md:grid-cols-3">
-              <div className="rounded-lg border border-border/60 bg-background px-3 py-2">
-                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Sessions</div>
-                <div className="mt-1 text-lg font-semibold">{sessions.length}</div>
-              </div>
-              <div className="rounded-lg border border-border/60 bg-background px-3 py-2">
-                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Messages</div>
-                <div className="mt-1 text-lg font-semibold">{totalMessages}</div>
-              </div>
-              <div className="rounded-lg border border-border/60 bg-background px-3 py-2">
-                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Active Session</div>
-                <div className="mt-1 truncate text-sm font-semibold">{currentSession?.title || 'None selected'}</div>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div className="relative flex-1">
-                <Input
-                  placeholder="Search conversations..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-10 pr-8"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-2.5 top-3 text-muted-foreground hover:text-foreground"
-                  >
-                    <XCircle className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <Select value={sortMode} onValueChange={(value: 'recent' | 'oldest' | 'most-messages' | 'title') => setSortMode(value)}>
-                  <SelectTrigger className="h-10 w-[180px] bg-background">
-                    <SelectValue placeholder="Sort sessions" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="recent">Most Recent</SelectItem>
-                    <SelectItem value="oldest">Oldest First</SelectItem>
-                    <SelectItem value="most-messages">Most Messages</SelectItem>
-                    <SelectItem value="title">Title A-Z</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => void refreshSessions()}
-                  disabled={isLoadingSessions}
-                  className="h-10 w-10"
-                  title="Refresh History"
-                >
-                  <RefreshCw className={`h-4 w-4 ${isLoadingSessions ? 'animate-spin' : ''}`} />
-                </Button>
-              </div>
-            </div>
-
-            {error && (
-              <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            {isSelectionMode && filteredSessions.length > 0 && (
-              <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-xs">
-                <div className="flex items-center gap-2">
-                  <div
-                    className="flex h-4 w-4 items-center justify-center rounded border cursor-pointer"
-                    onClick={toggleAll}
-                  >
-                    {selectedIds.size === filteredSessions.length && selectedIds.size > 0 && (
-                      <Check className="h-3 w-3" />
-                    )}
-                  </div>
-                  <span className="text-muted-foreground">
-                    {selectedIds.size} selected
-                  </span>
-                </div>
-                {selectedIds.size > 0 && (
-                  <Button 
-                    variant="destructive" 
-                    size="sm" 
-                    onClick={handleBulkDelete}
-                    disabled={isDeletingBulk}
-                    className="h-7 px-2 text-[10px]"
-                  >
-                    {isDeletingBulk ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
-                    Delete Selected
-                  </Button>
-                )}
-              </div>
-            )}
-
-            <ScrollArea className="h-[52vh] pr-4">
-              {isLoadingSessions ? (
-                <div className="flex flex-col items-center justify-center py-12 gap-3">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <span className="text-sm text-muted-foreground">Loading history...</span>
-                </div>
-              ) : filteredSessions.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <p className="text-sm">{searchQuery ? "No matching sessions found." : "No chat sessions found."}</p>
-                  {!searchQuery && <p className="text-xs mt-2">Start a new conversation to begin.</p>}
-                </div>
-              ) : (
-                <div className="space-y-5">
-                  {groupOrder.map((groupLabel) => (
-                    <div key={groupLabel} className="space-y-2">
-                      <div className="flex items-center gap-3">
-                        <h4 className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                          {groupLabel}
-                        </h4>
-                        <Separator className="flex-1" />
-                      </div>
-                      <div className="space-y-2">
-                        {groupedSessions[groupLabel].map((session) => (
-                          <div
-                            key={session.id}
-                            className={`group rounded-xl border p-3 cursor-pointer transition-all hover:bg-muted/50 relative ${
-                              session.isActive ? 'bg-muted border-primary/50' : 'border-border'
-                            } ${selectedIds.has(session.id) ? 'ring-2 ring-primary ring-offset-1 ring-offset-background' : ''}`}
-                            onClick={() => handleSessionClick(session)}
-                          >
-                            <div className="flex items-start gap-3">
-                              {isSelectionMode && (
-                                <div
-                                  className={`mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
-                                    selectedIds.has(session.id) ? 'bg-primary border-primary' : 'border-muted-foreground/30'
-                                  }`}
-                                >
-                                  {selectedIds.has(session.id) && <Check className="h-3 w-3 text-primary-foreground" />}
-                                </div>
-                              )}
-                              <div className="min-w-0 flex-1">
-                                {editingSessionId === session.id ? (
-                                  <div className="mb-2 flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                                    <Input
-                                      value={editingTitle}
-                                      onChange={e => setEditingTitle(e.target.value)}
-                                      className="h-8 text-sm"
-                                      autoFocus
-                                      onKeyDown={e => {
-                                        if (e.key === 'Enter') void handleSaveEdit(session.id);
-                                        if (e.key === 'Escape') setEditingSessionId(null);
-                                      }}
-                                    />
-                                    <Button size="icon" className="h-8 w-8" onClick={() => void handleSaveEdit(session.id)}>
-                                      <Check className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                ) : (
-                                  <div className="mb-1 flex items-center gap-2">
-                                    <h4 className="truncate font-semibold text-sm">{session.title}</h4>
-                                    {session.isActive && (
-                                      <Badge variant="secondary" className="h-5 border-none bg-primary/10 px-1.5 text-[10px] leading-none text-primary">
-                                        CURRENT
-                                      </Badge>
-                                    )}
-                                  </div>
-                                )}
-                                <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                                  <div className="flex items-center gap-1">
-                                    <Clock className="h-3 w-3" />
-                                    {formatRelativeDate(session.updatedAt)}
-                                  </div>
-                                  <div className="h-1 w-1 rounded-full bg-border" />
-                                  <div>{session.messageCount} message{session.messageCount === 1 ? '' : 's'}</div>
-                                  <div className="h-1 w-1 rounded-full bg-border" />
-                                  <div>{formatDate(session.createdAt)}</div>
-                                </div>
-                                <div className="line-clamp-2 text-xs text-muted-foreground">
-                                  {session.lastMessage || "No messages yet"}
-                                </div>
-                              </div>
-
-                              {!isSelectionMode && editingSessionId !== session.id && (
-                                <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleStartEdit(session);
-                                    }}
-                                    title="Rename conversation"
-                                  >
-                                    <Edit2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                    onClick={(e) => handleDeleteSession(e, session.id)}
-                                    title="Delete conversation"
-                                  >
-                                    <XCircle className="h-3.5 w-3.5" />
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
-          </div>
-
-          <div className="mt-2 flex items-center justify-between gap-3 border-t pt-4">
-            <div className="text-xs text-muted-foreground">
-              {filteredSessions.length} visible of {sessions.length} total conversation{sessions.length === 1 ? '' : 's'}
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setIsOpen(false);
-                  void handleNewChat();
-                }}
-                className="flex items-center h-9 px-3"
-              >
-                <PlusCircle className="mr-2 h-4 w-4" />
-                New Chat
-              </Button>
-            </div>
-            <Button variant="secondary" onClick={() => setIsOpen(false)} className="h-9 px-4">
-              Finish
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  };
-
-  // Provider Selector Modal (Single Source of Truth)
-  const ProviderSettingsModal = () => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [localProvider, setLocalProvider] = useState(selectedProvider);
-    const [localModel, setLocalModel] = useState(selectedModel);
-    
-    // Sync local state when modal opens
-    useEffect(() => {
-      if (isOpen) {
-        setLocalProvider(selectedProvider);
-        setLocalModel(selectedModel);
-      }
-    }, [isOpen]);
-
-    const activeProviderDetails = selectableProviders.find(p => p.id === localProvider);
-    const providerModels = activeProviderDetails?.models || [];
-
-    useEffect(() => {
-      if (!isOpen || !activeProviderDetails) {
-        return;
-      }
-
-      setLocalModel(activeProviderDetails.selected_model || activeProviderDetails.models[0]?.id || '');
-    }, [isOpen, activeProviderDetails]);
-
-    const handleApply = async () => {
-      await applyModelSelection(localProvider, localModel);
-      setIsOpen(false);
-    };
-
-    return (
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogTrigger asChild>
-          <Button 
-            variant="outline" 
-            className="flex items-center gap-2 h-9 px-3 border border-input bg-background hover:bg-accent hover:text-accent-foreground font-medium"
-          >
-            <Bot className="h-4 w-4" />
-            PROVIDER
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-[850px] gap-0 p-0 overflow-hidden">
-          <DialogHeader className="sr-only">
-            <DialogTitle>AI Provider Settings</DialogTitle>
-            <DialogDescription>
-              Configure AI providers, models, and connection settings for Karen.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex h-[600px]">
-            {/* Sidebar: Provider Selection */}
-            <div className="w-[180px] bg-muted/30 border-r border-border p-3 flex flex-col gap-1 overflow-y-auto">
-              <div className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground mb-2 px-2">AI Providers</div>
-              {selectableProviders.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => {
-                    setLocalProvider(p.id);
-                  }}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors text-left ${
-                    localProvider === p.id 
-                      ? 'bg-primary text-primary-foreground font-medium' 
-                      : 'hover:bg-muted text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <Bot className={`h-4 w-4 ${localProvider === p.id ? 'opacity-100' : 'opacity-60'}`} />
-                  <span className="truncate">{p.display_name}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Main Content Area */}
-            <div className="flex-1 flex flex-col min-w-0">
-              <DialogHeader className="p-6 pb-2">
-                <DialogTitle className="flex items-center gap-2">
-                  {activeProviderDetails?.display_name || 'Select Provider'} Models
-                </DialogTitle>
-                <DialogDescription className="text-xs">
-                  Choose from the providers and models already configured in settings.
-                </DialogDescription>
-              </DialogHeader>
-
-              <ScrollArea className="flex-1 p-6 pt-2">
-                <div className="space-y-3">
-                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Available Models</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {providerModels.map((m) => (
-                      <button
-                        key={m.id}
-                        onClick={() => setLocalModel(m.id)}
-                        className={`p-3 rounded-lg border text-left transition-all ${
-                          localModel === m.id 
-                            ? 'bg-primary/5 border-primary ring-1 ring-primary' 
-                            : 'border-border hover:bg-muted/50 hover:border-muted-foreground/30'
-                        }`}
-                      >
-                        <div className="text-sm font-medium leading-tight truncate">{m.name}</div>
-                        <div className="text-[10px] text-muted-foreground mt-1 truncate">{m.id}</div>
-                      </button>
-                    ))}
-                    {providerModels.length === 0 && (
-                      <div className="col-span-2 py-8 text-center border border-dashed rounded-lg text-muted-foreground text-sm">
-                        No configured models found for this provider. Use Application Settings to configure one.
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </ScrollArea>
-
-              <div className="p-6 pt-4 border-t border-border bg-muted/10 flex justify-end gap-3">
-                <Button variant="ghost" onClick={() => setIsOpen(false)} className="h-9">
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleApply} 
-                  disabled={isUpdatingModelSelection || !localModel}
-                  className="h-9 min-w-[120px]"
-                >
-                  {isUpdatingModelSelection ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                  Apply Changes
-                </Button>
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  };
-
-  const displayedInputValue = isLoading && !isEditingDuringProcessing
-    ? PROCESSING_INPUT_STATES[processingInputIndex]
-    : input;
-  const showStopButton = isLoading && submitInFlightRef.current;
+      setModelSettings(response as ModelSettingsResponse);
+      const { resolvedProvider, resolvedModel } = normalizeProviderModels(
+        response as ModelSettingsResponse
+      );
+      setSelectedProvider(resolvedProvider);
+      setSelectedModel(resolvedModel);
+      toast({
+        title: 'Settings applied',
+        description: `Karen is now using ${modelId} via ${provider.display_name}.`,
+      });
+    } catch (err) {
+      toast({
+        title: 'Model switch failed',
+        description: formatModelSwitchError(err, provider.display_name),
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUpdatingModelSelection(false);
+    }
+  }, [modelSettings, normalizeProviderModels, setModelSettings, setSelectedProvider, setSelectedModel, setIsUpdatingModelSelection, toast]);
   
   return (
     <div className="flex flex-col flex-1">
-      {isBackendOffline && (
-        <div className="bg-destructive/10 text-destructive border-b border-destructive/20 p-2 text-xs flex items-center justify-center gap-2 sticky top-0 z-10 backdrop-blur-sm shadow-sm ring-1 ring-destructive/20">
-          <ServerCrash className="h-4 w-4 shrink-0" />
-          <span>Backend services are currently unavailable or unreachable. Continuing in detached mode.</span>
-        </div>
-      )}
-      
-      {error && (
-        <div className="bg-destructive/10 text-destructive border-b border-destructive/20 p-2 text-xs flex items-center justify-center gap-2 sticky top-0 z-10 backdrop-blur-sm shadow-sm ring-1 ring-destructive/20">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
-      
-      {currentSession && (
-        <div className="bg-muted/50 border-b border-border p-2 text-xs flex items-center justify-center gap-2 sticky top-0 z-10 backdrop-blur-sm">
-          <CheckCircle className="h-4 w-4 shrink-0 text-green-500" />
-          <span>Session: {currentSession.title}</span>
-          <Badge variant="outline" className="text-xs">
-            {currentSession.messageCount} messages
-          </Badge>
-        </div>
-      )}
-      <ScrollArea className="flex-1 p-4 md:p-6" viewportRef={viewportRef}>
-        <div ref={messagesContainerRef} className="w-full space-y-1 pb-4">
-          {messages.map((msg) => (
-            <MessageBubble 
-              key={msg.id} 
-              message={msg} 
-              onActionClick={handleActionClick}
-            />
-          ))}
-        </div>
-      </ScrollArea>
-      <div id="chat-input-area">
-      <div className="chat-input-container border-t border-border p-3 md:p-4 bg-background/80 backdrop-blur-sm sticky bottom-0">
-        <div className="mb-2 flex w-full flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div className="flex gap-2">
-            <ProviderSettingsModal />
-            <SessionHistory />
-          </div>
-          <div className="flex self-center md:self-auto">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleSuggestStarter}
-              disabled={isLoading || isSuggestingStarter || isRecording}
-              className="h-9 px-3"
-            >
-              <Sparkles className="mr-2 h-4 w-4" />
-              {isSuggestingStarter ? "Getting idea..." : "Need an idea?"}
-            </Button>
-          </div>
-        </div>
-        <form onSubmit={handleFormSubmit} className="w-full flex gap-2 md:gap-3 items-center">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className={`${isRecording ? 'text-destructive animate-pulse' : ''}`}
-            onClick={handleMicClick}
-            disabled={isLoading || isAuthLoading || !speechRecognitionSupported}
-          >
-            {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-          </Button>
-          <Input
-            type="text"
-            value={displayedInputValue}
-            onChange={(e) => {
-              if (isLoading && !isEditingDuringProcessing) {
-                return;
-              }
-              setInput(e.target.value);
-            }}
-            onKeyDown={(e) => {
-              if (
-                isLoading &&
-                !isEditingDuringProcessing &&
-                (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Delete')
-              ) {
-                setIsEditingDuringProcessing(true);
-                setInput('');
-              }
-            }}
-            onPaste={(e) => {
-              if (isLoading && !isEditingDuringProcessing) {
-                e.preventDefault();
-                const pastedText = e.clipboardData.getData('text');
-                setIsEditingDuringProcessing(true);
-                setInput(pastedText);
-              }
-            }}
-            placeholder={
-              isAuthLoading
-                ? "Loading your profile..."
-                : isLoading && isEditingDuringProcessing
-                  ? "Type while Karen is still processing..."
-                  : "Ask Karen anything..."
-            }
-            className="flex-1 bg-[#292929]"
-            disabled={isAuthLoading}
-          />
-          <Button
-            type={isLoading ? 'button' : 'submit'}
-            size="icon"
-            onClick={isLoading ? stopActiveRequest : undefined}
-            disabled={
-              isAuthLoading ||
-              isRecording ||
-              (!isLoading && !input.trim()) ||
-              (isLoading && !showStopButton)
-            }
-          >
-            {isLoading ? (
-              showStopButton ? <Square className="h-4 w-4" /> : <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <SendHorizontal className="h-5 w-5" />
-            )}
-          </Button>
-        </form>
-      </div>
-      </div>
+      <StatusIndicators
+        isBackendOffline={isBackendOffline}
+        error={error}
+        currentSession={currentSession}
+      />
+
+      <MessagesArea
+        messages={messages}
+        onActionClick={handleActionClick}
+        viewportRef={viewportRef}
+        messagesContainerRef={messagesContainerRef}
+      />
+
+      <ChatInput
+        onSubmit={handleFormSubmit}
+        displayedInputValue={displayedInputValue}
+        onInputChange={setInput}
+        onKeyDown={(e) => {
+          if (
+            isLoading &&
+            !isEditingDuringProcessing &&
+            (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Delete')
+          ) {
+            setIsEditingDuringProcessing(true);
+            setInput('');
+          }
+        }}
+        onPaste={(e) => {
+          if (isLoading && !isEditingDuringProcessing) {
+            e.preventDefault();
+            const pastedText = e.clipboardData.getData('text');
+            setIsEditingDuringProcessing(true);
+            setInput(pastedText);
+          }
+        }}
+        isLoading={isLoading}
+        isAuthLoading={isAuthLoading}
+        isRecording={isRecording}
+        isSuggestingStarter={isSuggestingStarter}
+        isEditingDuringProcessing={isEditingDuringProcessing}
+        isBackendOffline={isBackendOffline}
+        speechRecognitionSupported={speechRecognitionSupported}
+        showStopButton={showStopButton}
+        onMicClick={handleMicClick}
+        onSuggestStarter={handleSuggestStarter}
+        onStopRequest={stopActiveRequest}
+        selectableProviders={selectableProviders}
+        selectedProvider={selectedProvider}
+        selectedModel={selectedModel}
+        applyModelSelection={applyModelSelection}
+        isUpdatingModelSelection={isUpdatingModelSelection}
+        sessions={sessions}
+        currentSession={currentSession}
+        isLoadingSessions={isLoadingSessions}
+        error={error}
+        loadSession={loadSession}
+        deleteSession={deleteSession}
+        deleteSessions={deleteSessions}
+        updateSessionTitle={updateSessionTitle}
+        refreshSessions={refreshSessions}
+        createNewSession={createNewSession}
+        setMessages={setMessages}
+        streamingStatus={streamingStatus}
+      />
     </div>
   );
 }

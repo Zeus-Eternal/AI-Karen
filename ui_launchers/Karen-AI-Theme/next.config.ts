@@ -61,6 +61,7 @@ const nextConfig: NextConfig = {
   /* config options here */
   outputFileTracingRoot: path.resolve(__dirname, '../..'),
   allowedDevOrigins,
+
   typescript: {
     ignoreBuildErrors: true,
   },

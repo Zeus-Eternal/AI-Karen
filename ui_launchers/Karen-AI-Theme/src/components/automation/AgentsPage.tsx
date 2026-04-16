@@ -105,7 +105,7 @@ export default function AgentsPage() {
      setErrorMsg("");
      try {
        const { apiClient } = await import("@/lib/api");
-       const data = await apiClient.get<AgentRecord[]>("/api/agents/");
+       const data = await apiClient.get<AgentRecord[]>("/api/agents");
        setAgents(data || []);
 
        if (isAdmin) {

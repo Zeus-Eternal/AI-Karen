@@ -64,6 +64,38 @@ class DependencyStatus(str, Enum):
 
 
 # ---------------------------------------------------------------------------
+# Centralized Runtime Constants
+# ---------------------------------------------------------------------------
+
+
+class RuntimeConstants:
+    """Centralized strings and labels for runtime communication."""
+
+    # Standard fallback messages
+    DEGRADED_BRAIN_ERROR = "I'm having trouble connecting to my brain right now. Please try again in a moment."
+    EMERGENCY_UNAVAILABLE = "Service temporarily unavailable. Please try again shortly."
+    MAINTENANCE_MESSAGE = "We're performing scheduled improvements to enhance your experience."
+
+    # Detection patterns for placeholder responses
+    PLACEHOLDER_PATTERNS = [
+        DEGRADED_BRAIN_ERROR,
+        EMERGENCY_UNAVAILABLE,
+        "Service is temporarily operating with limited capabilities",
+        "I understand you're asking about:",
+        "I'm currently operating with limited capabilities",
+        "limited assistant with:",
+        "trouble connecting",
+        "Error: Generation failed",
+        "Error:",
+    ]
+
+    # Source labels
+    SOURCE_DEGRADED_LLM = "degraded_fallback_llm"
+    SOURCE_DEGRADED_STATIC = "degraded_fallback"
+    SOURCE_EMERGENCY = "emergency_fallback"
+
+
+# ---------------------------------------------------------------------------
 # Structured Response Contracts
 # ---------------------------------------------------------------------------
 
@@ -98,7 +130,7 @@ class MaintenanceResponse:
     """Structured maintenance response — sent to clients during planned maintenance."""
 
     mode: str = "maintenance"
-    message: str = "We're performing scheduled improvements to enhance your experience."
+    message: str = RuntimeConstants.MAINTENANCE_MESSAGE
     estimated_completion_time: Optional[str] = None
     notification_supported: bool = True
     notification_request_allowed: bool = True
@@ -116,9 +148,7 @@ class EmergencyFallbackResponse:
     """
 
     mode: str = "emergency_fallback"
-    message: str = (
-        "Service temporarily unavailable. Please try again shortly."
-    )
+    message: str = RuntimeConstants.EMERGENCY_UNAVAILABLE
     retry_after_seconds: int = 60
     system_status_code: int = 503
     support_hint: str = "If this persists, please contact support."
@@ -282,14 +312,16 @@ class PostgreSQLProbe:
             if hasattr(client, "async_comprehensive_health_check"):
                 health_result = await client.async_comprehensive_health_check()
                 healthy = bool(getattr(health_result, "is_healthy", False))
-                reason = None if healthy else (
-                    getattr(health_result, "error_details", None)
-                    or getattr(health_result, "message", None)
-                    or "Database unhealthy"
+                reason = (
+                    None
+                    if healthy
+                    else (
+                        getattr(health_result, "error_details", None)
+                        or getattr(health_result, "message", None)
+                        or "Database unhealthy"
+                    )
                 )
-                response_time_ms = getattr(
-                    health_result, "response_time_ms", elapsed
-                )
+                response_time_ms = getattr(health_result, "response_time_ms", elapsed)
             else:
                 healthy = await client.async_health_check()
                 reason = None if healthy else "SELECT 1 failed"
@@ -410,16 +442,17 @@ class ProviderRouterProbe:
     async def check(self) -> DependencyHealth:
         start = time.time()
         try:
-            from services.memory.provider_registry import get_provider_registry
+            from services.memory.llm_router import LLMRouter
 
-            registry = get_provider_registry()
-            providers = (
-                registry.list_healthy_providers()
-                if hasattr(registry, "list_healthy_providers")
-                else []
-            )
+            router = LLMRouter()
+            # Check if router can select a provider for a basic request
+            from services.memory.llm_router import ChatRequest
+
+            test_request = ChatRequest(message="test", stream=False)
+            provider_selection = await router.select_provider(test_request)
+
             elapsed = (time.time() - start) * 1000
-            has_providers = len(providers) > 0
+            has_providers = provider_selection is not None
             return DependencyHealth(
                 name=self.name,
                 status=DependencyStatus.HEALTHY
@@ -484,6 +517,7 @@ class ChatRuntimeControlPlane:
             "database",
             "redis",
             "chat_orchestrator",
+            "provider_router",
         }
     )
 
@@ -592,6 +626,17 @@ class ChatRuntimeControlPlane:
         """Get the current runtime mode. The single source of truth."""
         return self._current_mode
 
+    def get_fallback_provider(self) -> tuple[str, str]:
+        """Return (provider, model) for fallback generation."""
+        from ai_karen_engine.config.config_manager import (
+            get_default_model,
+            get_default_provider,
+        )
+
+        provider = os.getenv("KARI_DEGRADED_PROVIDER", get_default_provider())
+        model = os.getenv("KARI_DEGRADED_MODEL", get_default_model())
+        return provider, model
+
     def get_snapshot(self) -> RuntimeSnapshot:
         """Get complete runtime snapshot for admin/API inspection."""
         return RuntimeSnapshot(
@@ -662,7 +707,12 @@ class ChatRuntimeControlPlane:
         positive integers everywhere.
         """
         env_name = os.getenv("KAREN_ENV", "development").strip().lower()
-        required_in_current_env = env_name in {"production", "staging", "public", "public-launch"}
+        required_in_current_env = env_name in {
+            "production",
+            "staging",
+            "public",
+            "public-launch",
+        }
         missing_required: List[str] = []
         invalid_values: Dict[str, str] = {}
         warnings: List[str] = []
@@ -950,7 +1000,9 @@ class ChatRuntimeControlPlane:
             async with db.get_async_session() as session:
                 stmt = (
                     update(MaintenanceWindow)
-                    .where(MaintenanceWindow.id == uuid.UUID(self._maintenance_window_id))
+                    .where(
+                        MaintenanceWindow.id == uuid.UUID(self._maintenance_window_id)
+                    )
                     .values(**update_values)
                 )
                 await session.execute(stmt)
@@ -1050,7 +1102,9 @@ class ChatRuntimeControlPlane:
             return [
                 {
                     "id": str(req.id),
-                    "user_id": str(req.user_id) if getattr(req, "user_id", None) else None,
+                    "user_id": str(req.user_id)
+                    if getattr(req, "user_id", None)
+                    else None,
                     "session_id": getattr(req, "session_id", None),
                     "channel": getattr(req, "notification_channel", None),
                     "status": getattr(req, "status", None),
@@ -1068,7 +1122,9 @@ class ChatRuntimeControlPlane:
                 for req in requests
             ]
         except Exception as e:
-            logger.warning(f"Failed to fetch maintenance notification subscriptions: {e}")
+            logger.warning(
+                f"Failed to fetch maintenance notification subscriptions: {e}"
+            )
             return []
 
     # -----------------------------------------------------------------------

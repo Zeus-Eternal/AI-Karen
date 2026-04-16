@@ -16,17 +16,120 @@ import jinja2
 
 logger = logging.getLogger(__name__)
 
-try:
-    from llama_cpp import Llama, LlamaGrammar # type: ignore
+
+def _try_import_llama_cpp():
+    """Try to import llama-cpp-python, checking multiple possible locations."""
+    import sys
+    import os
+    import glob
+
+    # First try standard import
     try:
-        from llama_cpp import llama_supports_gpu_offload  # type: ignore
+        from llama_cpp import Llama, LlamaGrammar  # type: ignore
+
+        try:
+            from llama_cpp import llama_supports_gpu_offload  # type: ignore
+        except ImportError:
+            llama_supports_gpu_offload = None  # type: ignore[assignment]
+        return Llama, LlamaGrammar, llama_supports_gpu_offload
     except ImportError:
-        llama_supports_gpu_offload = None  # type: ignore[assignment]
+        pass
+
+    # Try to add user site-packages to path and retry
+    user_sites = glob.glob(os.path.expanduser("~/.local/lib/python*/site-packages"))
+    for user_site in user_sites:
+        if user_site not in sys.path:
+            sys.path.insert(0, user_site)
+            try:
+                from llama_cpp import Llama, LlamaGrammar  # type: ignore
+
+                try:
+                    from llama_cpp import llama_supports_gpu_offload  # type: ignore
+                except ImportError:
+                    llama_supports_gpu_offload = None  # type: ignore[assignment]
+                return Llama, LlamaGrammar, llama_supports_gpu_offload
+            except ImportError:
+                pass
+
+    # Try common alternative locations
+    for site_path in [
+        "/usr/local/lib/python3.13/site-packages",
+        "/opt/conda/lib/python3.13/site-packages",
+    ]:
+        if os.path.exists(site_path) and site_path not in sys.path:
+            sys.path.insert(0, site_path)
+            try:
+                from llama_cpp import Llama, LlamaGrammar  # type: ignore
+
+                try:
+                    from llama_cpp import llama_supports_gpu_offload  # type: ignore
+                except ImportError:
+                    llama_supports_gpu_offload = None  # type: ignore[assignment]
+                return Llama, LlamaGrammar, llama_supports_gpu_offload
+            except ImportError:
+                pass
+
+    # Check if it's installed but PYTHONPATH is wrong
+    import subprocess
+
+    try:
+        result = subprocess.run(
+            [sys.executable, "-c", "import llama_cpp; print('found')"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode == 0 and "found" in result.stdout:
+            logger.warning(
+                "llama-cpp-python found via subprocess but not in current environment"
+            )
+            # Try one more time with subprocess PYTHONPATH
+            env = os.environ.copy()
+            if "PYTHONPATH" in env:
+                env["PYTHONPATH"] = env["PYTHONPATH"] + ":" + ":".join(user_sites)
+            else:
+                env["PYTHONPATH"] = ":".join(user_sites)
+
+            result2 = subprocess.run(
+                [sys.executable, "-c", "import llama_cpp; print(llama_cpp.__file__)"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                env=env,
+            )
+            if result2.returncode == 0:
+                llama_path = result2.stdout.strip()
+                llama_dir = os.path.dirname(os.path.dirname(llama_path))
+                if llama_dir not in sys.path:
+                    sys.path.insert(0, llama_dir)
+                    try:
+                        from llama_cpp import Llama, LlamaGrammar  # type: ignore
+
+                        try:
+                            from llama_cpp import llama_supports_gpu_offload  # type: ignore
+                        except ImportError:
+                            llama_supports_gpu_offload = None  # type: ignore[assignment]
+                        return Llama, LlamaGrammar, llama_supports_gpu_offload
+                    except ImportError:
+                        pass
+    except Exception:
+        pass
+
+    raise ImportError("llama-cpp-python not found in any expected location")
+
+
+try:
+    Llama, LlamaGrammar, llama_supports_gpu_offload = _try_import_llama_cpp()
+
     # Patch noisy __del__ AttributeError in some llama-cpp-python versions
     try:  # defensive: best-effort monkey patch to suppress sampler AttributeError
         from llama_cpp import _internals as _ll_internals  # type: ignore
-        _orig_del = getattr(getattr(_ll_internals, "LlamaModel", object), "__del__", None)
+
+        _orig_del = getattr(
+            getattr(_ll_internals, "LlamaModel", object), "__del__", None
+        )
         if callable(_orig_del):
+
             def _safe_del(self):  # type: ignore
                 try:
                     if _orig_del is not None and callable(_orig_del):
@@ -35,6 +138,7 @@ try:
                 except AttributeError:
                     # Older builds may not set attributes on failed init; ignore cleanup errors
                     return None
+
             try:
                 _ll_internals.LlamaModel.__del__ = _safe_del  # type: ignore
             except Exception:
@@ -45,28 +149,44 @@ try:
 except ImportError:
     logger.warning("llama-cpp-python not available. LlamaCppRuntime will be disabled.")
     LLAMACPP_AVAILABLE = False
-    
+
     # Use dummy classes to satisfy type hints while LLAMACPP_AVAILABLE = False
-    class Llama: # type: ignore
-        def __init__(self, *args: Any, **kwargs: Any) -> None: pass
-        def __call__(self, *args: Any, **kwargs: Any) -> Any: pass
-        def create_chat_completion(self, *args: Any, **kwargs: Any) -> Any: pass
-        def embed(self, *args: Any, **kwargs: Any) -> Any: pass
-        def tokenize(self, *args: Any, **kwargs: Any) -> Any: pass
-        def detokenize(self, *args: Any, **kwargs: Any) -> Any: pass
+    class Llama:  # type: ignore
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            pass
+
+        def __call__(self, *args: Any, **kwargs: Any) -> Any:
+            pass
+
+        def create_chat_completion(self, *args: Any, **kwargs: Any) -> Any:
+            pass
+
+        def embed(self, *args: Any, **kwargs: Any) -> Any:
+            pass
+
+        def tokenize(self, *args: Any, **kwargs: Any) -> Any:
+            pass
+
+        def detokenize(self, *args: Any, **kwargs: Any) -> Any:
+            pass
+
         @property
-        def metadata(self) -> Dict[str, Any]: return {}
-    class LlamaGrammar: pass
+        def metadata(self) -> Dict[str, Any]:
+            return {}
+
+    class LlamaGrammar:
+        pass
+
     llama_supports_gpu_offload = None  # type: ignore[assignment]
 
 
 class LlamaCppRuntime:
     """
     Runtime for executing GGUF models using llama.cpp.
-    
+
     This runtime is designed to be the default backbone for local model execution,
     providing privacy-focused, resource-efficient inference for GGUF models.
-    
+
     Key Features:
     - GGUF model support with automatic format detection
     - Configurable context length, batch size, and GPU layers
@@ -75,8 +195,8 @@ class LlamaCppRuntime:
     - Health monitoring and resource tracking
     - Streaming and non-streaming inference modes
     """
-    
-    _instance: Optional['LlamaCppRuntime'] = None
+
+    _instance: Optional["LlamaCppRuntime"] = None
     _singleton_lock = threading.Lock()
 
     @staticmethod
@@ -89,7 +209,11 @@ class LlamaCppRuntime:
                 with open(config_path, "r", encoding="utf-8") as handle:
                     raw = json.load(handle)
             except Exception as exc:
-                logger.warning("Failed to load llama.cpp runtime config from %s: %s", config_path, exc)
+                logger.warning(
+                    "Failed to load llama.cpp runtime config from %s: %s",
+                    config_path,
+                    exc,
+                )
                 raw = {}
 
             for key in (
@@ -112,26 +236,36 @@ class LlamaCppRuntime:
 
         # Runtime optimization settings are the system source of truth for CUDA behavior.
         try:
-            from services.memory.optimization_configuration_manager import get_optimization_config_manager
+            from services.memory.optimization_configuration_manager import (
+                get_optimization_config_manager,
+            )
 
             config = get_optimization_config_manager().get_configuration()
             cuda_cfg = getattr(config, "cuda", None)
             if cuda_cfg and getattr(cuda_cfg, "enable_cuda", False):
                 if int(defaults.get("n_gpu_layers", 0) or 0) <= 0:
-                    defaults["n_gpu_layers"] = int(os.getenv("LLAMA_N_GPU_LAYERS", "-1"))
-                if defaults.get("main_gpu") is None and getattr(cuda_cfg, "preferred_device_id", None) is not None:
+                    defaults["n_gpu_layers"] = int(
+                        os.getenv("LLAMA_N_GPU_LAYERS", "-1")
+                    )
+                if (
+                    defaults.get("main_gpu") is None
+                    and getattr(cuda_cfg, "preferred_device_id", None) is not None
+                ):
                     defaults["main_gpu"] = int(cuda_cfg.preferred_device_id)
                 defaults.setdefault("offload_kqv", True)
                 defaults.setdefault(
                     "flash_attn",
-                    os.getenv("LLAMA_FLASH_ATTN", "true").lower() in {"1", "true", "yes"},
+                    os.getenv("LLAMA_FLASH_ATTN", "true").lower()
+                    in {"1", "true", "yes"},
                 )
         except Exception as exc:
-            logger.debug("Failed to apply optimization-driven llama.cpp GPU defaults: %s", exc)
+            logger.debug(
+                "Failed to apply optimization-driven llama.cpp GPU defaults: %s", exc
+            )
         return defaults
 
     @classmethod
-    def get_instance(cls, **kwargs) -> 'LlamaCppRuntime':
+    def get_instance(cls, **kwargs) -> "LlamaCppRuntime":
         """
         Get or create the global LlamaCppRuntime singleton.
         """
@@ -143,8 +277,10 @@ class LlamaCppRuntime:
                 cls._instance = cls(**init_kwargs)
             elif kwargs:
                 # Optionally update parameters if specified, though usually we want consistency
-                logger.debug("LlamaCppRuntime singleton already exists, ignoring new kwargs")
-            
+                logger.debug(
+                    "LlamaCppRuntime singleton already exists, ignoring new kwargs"
+                )
+
             # Use assert to help type checkers know it's not None
             assert cls._instance is not None
             return cls._instance
@@ -163,11 +299,11 @@ class LlamaCppRuntime:
         use_mmap: Optional[bool] = None,
         use_mlock: Optional[bool] = None,
         verbose: Optional[bool] = None,
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize llama.cpp runtime.
-        
+
         Args:
             model_path: Path to GGUF model file
             n_ctx: Context length (default: 2048)
@@ -180,28 +316,42 @@ class LlamaCppRuntime:
             **kwargs: Additional llama.cpp parameters
         """
         if not LLAMACPP_AVAILABLE:
-            raise RuntimeError("llama-cpp-python is not available. Please install it to use LlamaCppRuntime.")
+            raise RuntimeError(
+                "llama-cpp-python is not available. Please install it to use LlamaCppRuntime."
+            )
 
         defaults = self._load_runtime_defaults()
 
         self.model_path = model_path or defaults.get("model_path")
         self.n_ctx = int(n_ctx if n_ctx is not None else defaults.get("n_ctx", 4096))
-        self.n_batch = int(n_batch if n_batch is not None else defaults.get("n_batch", 512))
-        self.n_gpu_layers = int(n_gpu_layers if n_gpu_layers is not None else defaults.get("n_gpu_layers", 0))
+        self.n_batch = int(
+            n_batch if n_batch is not None else defaults.get("n_batch", 512)
+        )
+        self.n_gpu_layers = int(
+            n_gpu_layers
+            if n_gpu_layers is not None
+            else defaults.get("n_gpu_layers", 0)
+        )
         # Allow env overrides for performance tuning
         try:
             env_threads = int(os.getenv("LLAMA_THREADS", "0"))
         except ValueError:
             env_threads = 0
         default_threads = int(defaults.get("n_threads", 4))
-        self.n_threads = n_threads or (env_threads if env_threads > 0 else default_threads)
+        self.n_threads = n_threads or (
+            env_threads if env_threads > 0 else default_threads
+        )
         env_main_gpu = os.getenv("LLAMA_MAIN_GPU")
         self.main_gpu = (
             main_gpu
             if main_gpu is not None
-            else defaults.get("main_gpu", int(env_main_gpu) if env_main_gpu is not None else 0)
+            else defaults.get(
+                "main_gpu", int(env_main_gpu) if env_main_gpu is not None else 0
+            )
         )
-        raw_tensor_split = tensor_split if tensor_split is not None else defaults.get("tensor_split")
+        raw_tensor_split = (
+            tensor_split if tensor_split is not None else defaults.get("tensor_split")
+        )
         if raw_tensor_split is None and os.getenv("LLAMA_TENSOR_SPLIT"):
             try:
                 raw_tensor_split = [
@@ -215,20 +365,35 @@ class LlamaCppRuntime:
         self.offload_kqv = bool(
             offload_kqv
             if offload_kqv is not None
-            else defaults.get("offload_kqv", os.getenv("LLAMA_OFFLOAD_KQV", "true").lower() in ("1", "true", "yes"))
+            else defaults.get(
+                "offload_kqv",
+                os.getenv("LLAMA_OFFLOAD_KQV", "true").lower() in ("1", "true", "yes"),
+            )
         )
         self.flash_attn = bool(
             flash_attn
             if flash_attn is not None
-            else defaults.get("flash_attn", os.getenv("LLAMA_FLASH_ATTN", "true").lower() in ("1", "true", "yes"))
+            else defaults.get(
+                "flash_attn",
+                os.getenv("LLAMA_FLASH_ATTN", "true").lower() in ("1", "true", "yes"),
+            )
         )
-        self.use_mmap = bool(use_mmap if use_mmap is not None else defaults.get("use_mmap", True))
+        self.use_mmap = bool(
+            use_mmap if use_mmap is not None else defaults.get("use_mmap", True)
+        )
         # Enable mlock via env if requested
         env_mlock = os.getenv("LLAMA_MLOCK", "false").lower() in ("1", "true", "yes")
-        self.use_mlock = bool(use_mlock if use_mlock is not None else defaults.get("use_mlock", False)) or env_mlock
-        self.verbose = bool(verbose if verbose is not None else defaults.get("verbose", False))
+        self.use_mlock = (
+            bool(
+                use_mlock if use_mlock is not None else defaults.get("use_mlock", False)
+            )
+            or env_mlock
+        )
+        self.verbose = bool(
+            verbose if verbose is not None else defaults.get("verbose", False)
+        )
         self.kwargs = kwargs
-        
+
         self._model: Optional[Llama] = None
         self._lock = threading.RLock()
         self._loaded = False
@@ -249,7 +414,9 @@ class LlamaCppRuntime:
                     "llama.cpp GPU offload requested but this llama-cpp-python build does not expose GPU offload. "
                     "Use the CUDA image target and run the container with GPU devices enabled."
                 )
-            elif not (os.getenv("NVIDIA_VISIBLE_DEVICES") or os.getenv("CUDA_VISIBLE_DEVICES")):
+            elif not (
+                os.getenv("NVIDIA_VISIBLE_DEVICES") or os.getenv("CUDA_VISIBLE_DEVICES")
+            ):
                 logger.warning(
                     "llama.cpp GPU offload requested but no GPU devices are visible inside the container. "
                     "Set NVIDIA_VISIBLE_DEVICES/CUDA_VISIBLE_DEVICES and start Docker with GPU access."
@@ -258,15 +425,15 @@ class LlamaCppRuntime:
         # Load model if path provided
         if model_path:
             self.load_model(model_path)
-    
+
     def load_model(self, model_path: str, **override_kwargs) -> bool:
         """
         Load a GGUF model file.
-        
+
         Args:
             model_path: Path to GGUF model file
             **override_kwargs: Override initialization parameters
-            
+
         Returns:
             True if model loaded successfully, False otherwise
         """
@@ -286,32 +453,46 @@ class LlamaCppRuntime:
                 p = p.resolve()
                 canonical_model_path = str(p)
                 if p.suffix.lower() != ".gguf":
-                    logger.error(f"Invalid model format (expected .gguf): {canonical_model_path}")
+                    logger.error(
+                        f"Invalid model format (expected .gguf): {canonical_model_path}"
+                    )
                     return False
                 size = p.stat().st_size
                 if size < 50 * 1024 * 1024:
-                    logger.error(f"Model file too small to be valid GGUF: {canonical_model_path}")
+                    logger.error(
+                        f"Model file too small to be valid GGUF: {canonical_model_path}"
+                    )
                     return False
                 try:
                     with open(p, "rb") as f:
                         magic = f.read(4)
                     if magic != b"GGUF":
-                        logger.error(f"Model file header invalid (no GGUF magic): {canonical_model_path}")
+                        logger.error(
+                            f"Model file header invalid (no GGUF magic): {canonical_model_path}"
+                        )
                         return False
                 except Exception as e:
                     logger.error(f"Failed to read model header: {e}")
                     return False
 
                 if self._loaded and self._model is not None:
-                    loaded_path = str(Path(self.model_path).expanduser().resolve()) if self.model_path else None
+                    loaded_path = (
+                        str(Path(self.model_path).expanduser().resolve())
+                        if self.model_path
+                        else None
+                    )
                     if loaded_path == canonical_model_path:
-                        logger.info(f"GGUF model already loaded: {canonical_model_path}")
+                        logger.info(
+                            f"GGUF model already loaded: {canonical_model_path}"
+                        )
                         return True
                     self.unload_model()
 
-                if not canonical_model_path.lower().endswith('.gguf'):
-                    logger.warning(f"Model file may not be GGUF format: {canonical_model_path}")
-                
+                if not canonical_model_path.lower().endswith(".gguf"):
+                    logger.warning(
+                        f"Model file may not be GGUF format: {canonical_model_path}"
+                    )
+
                 # Merge override parameters
                 params = {
                     "model_path": canonical_model_path,
@@ -325,44 +506,62 @@ class LlamaCppRuntime:
                     "use_mlock": self.use_mlock,
                     "verbose": self.verbose,
                     **self.kwargs,
-                    **override_kwargs
+                    **override_kwargs,
                 }
                 if self.tensor_split:
                     params["tensor_split"] = self.tensor_split
 
                 logger.info(f"Loading GGUF model: {canonical_model_path}")
                 logger.debug(f"llama.cpp parameters: {params}")
-                
+
                 # Create llama.cpp instance
                 if Llama is not None:
                     self._model = Llama(**params)
                 else:
-                    raise RuntimeError("Llama class is None even though LLAMACPP_AVAILABLE is True")
+                    raise RuntimeError(
+                        "Llama class is None even though LLAMACPP_AVAILABLE is True"
+                    )
                 self.model_path = canonical_model_path
                 self._loaded = True
                 self._load_time = time.time() - start_time
-                
+
                 # Estimate memory usage (rough approximation)
                 model_size = p.stat().st_size
-                self._memory_usage = model_size + (self.n_ctx * 4 * 1024)  # Context memory
-                
+                self._memory_usage = model_size + (
+                    self.n_ctx * 4 * 1024
+                )  # Context memory
+
                 logger.info(f"Model loaded successfully in {self._load_time:.2f}s")
                 return True
-                
+
             except Exception as e:
-                logger.error(f"Failed to load model {canonical_model_path or model_path}: {e}")
+                logger.error(
+                    f"Failed to load model {canonical_model_path or model_path}: {e}"
+                )
                 # Attempt automatic recovery for known default model
                 try:
                     filename = Path(canonical_model_path or model_path).name
-                    auto_fix = os.getenv("KARI_AUTO_FIX_GGUF", "1").lower() in {"1", "true", "yes"}
+                    auto_fix = os.getenv("KARI_AUTO_FIX_GGUF", "1").lower() in {
+                        "1",
+                        "true",
+                        "yes",
+                    }
                     # Get default model info from config
                     try:
-                        from ai_karen_engine.config.config_manager import get_default_model
-                        _default_model = get_default_model("llamacpp") or "Phi-3-mini-4k-instruct-q4.gguf"
+                        from ai_karen_engine.config.config_manager import (
+                            get_default_model,
+                        )
+
+                        _default_model = (
+                            get_default_model("llamacpp")
+                            or "Phi-3-mini-4k-instruct-q4.gguf"
+                        )
                     except Exception:
                         _default_model = "Phi-3-mini-4k-instruct-q4.gguf"
                     if auto_fix and _default_model.lower() in filename.lower():
-                        logger.warning(f"Attempting to re-download default model ({_default_model}) due to load failure...")
+                        logger.warning(
+                            f"Attempting to re-download default model ({_default_model}) due to load failure..."
+                        )
                         # Move corrupt file aside first
                         try:
                             p = Path(canonical_model_path or model_path)
@@ -373,7 +572,9 @@ class LlamaCppRuntime:
                                 except Exception:
                                     pass
                                 p.rename(corrupt_path)
-                                logger.warning(f"Renamed suspected corrupt file to {corrupt_path}")
+                                logger.warning(
+                                    f"Renamed suspected corrupt file to {corrupt_path}"
+                                )
                         except Exception as mv_err:
                             logger.debug(f"Could not move corrupt file aside: {mv_err}")
 
@@ -381,8 +582,13 @@ class LlamaCppRuntime:
                         downloaded = False
                         try:
                             from huggingface_hub import hf_hub_download  # type: ignore
-                            target_dir = str(Path(canonical_model_path or model_path).parent)
-                            token = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_TOKEN")
+
+                            target_dir = str(
+                                Path(canonical_model_path or model_path).parent
+                            )
+                            token = os.getenv("HF_TOKEN") or os.getenv(
+                                "HUGGINGFACE_TOKEN"
+                            )
                             # Derive repo_id from default model filename pattern
                             # _repo_id defined above
                             hf_hub_download(
@@ -402,6 +608,7 @@ class LlamaCppRuntime:
                         if not downloaded:
                             try:
                                 import requests  # type: ignore
+
                                 url = (
                                     f"https://huggingface.co/{_repo_id}/resolve/main/"
                                     f"{_default_model}?download=1"
@@ -410,7 +617,9 @@ class LlamaCppRuntime:
                                 with requests.get(url, stream=True, timeout=120) as r:
                                     r.raise_for_status()
                                     with open(tmp_path, "wb") as f:
-                                        for chunk in r.iter_content(chunk_size=1024 * 1024):
+                                        for chunk in r.iter_content(
+                                            chunk_size=1024 * 1024
+                                        ):
                                             if chunk:
                                                 f.write(chunk)
                                 # Basic validation: check magic and size
@@ -432,7 +641,9 @@ class LlamaCppRuntime:
                                         Path(tmp_path).unlink(missing_ok=True)  # type: ignore[arg-type]
                                     except Exception:
                                         pass
-                                    logger.error("Direct download failed validation; keeping no file")
+                                    logger.error(
+                                        "Direct download failed validation; keeping no file"
+                                    )
                             except Exception as http_err:
                                 logger.error(f"Direct download failed: {http_err}")
 
@@ -448,19 +659,25 @@ class LlamaCppRuntime:
                             self._load_time = time.time() - start_time
                             model_size = Path(model_path).stat().st_size
                             self._memory_usage = model_size + (self.n_ctx * 4 * 1024)
-                            logger.info(f"Model loaded successfully after re-download in {self._load_time:.2f}s")
+                            logger.info(
+                                f"Model loaded successfully after re-download in {self._load_time:.2f}s"
+                            )
                             return True
                         else:
-                            logger.error("Auto re-download failed; model remains unavailable")
+                            logger.error(
+                                "Auto re-download failed; model remains unavailable"
+                            )
                     else:
-                        logger.debug("Auto-fix disabled or not applicable for this model")
+                        logger.debug(
+                            "Auto-fix disabled or not applicable for this model"
+                        )
                 except Exception as rec_err:
                     logger.debug(f"Auto-fix logic encountered an error: {rec_err}")
                 finally:
                     self._model = None
                     self._loaded = False
                 return False
-    
+
     def unload_model(self) -> None:
         """Unload the current model and free memory."""
         with self._lock:
@@ -471,7 +688,7 @@ class LlamaCppRuntime:
                 self._load_time = None
                 self._memory_usage = None
                 logger.info("Model unloaded")
-    
+
     def generate(
         self,
         prompt: str,
@@ -482,11 +699,11 @@ class LlamaCppRuntime:
         repeat_penalty: float = 1.1,
         stop: Optional[List[str]] = None,
         stream: bool = False,
-        **kwargs
+        **kwargs,
     ) -> Union[str, Iterator[str]]:
         """
         Generate text from a prompt.
-        
+
         Args:
             prompt: Input prompt
             max_tokens: Maximum tokens to generate
@@ -497,13 +714,13 @@ class LlamaCppRuntime:
             stop: Stop sequences
             stream: Whether to stream tokens
             **kwargs: Additional generation parameters
-            
+
         Returns:
             Generated text (string) or token iterator if streaming
         """
         if not self.is_loaded():
             raise RuntimeError("No model loaded. Call load_model() first.")
-        
+
         with self._lock:
             try:
                 # Define default stop sequences to prevent hallucinated turns
@@ -518,9 +735,6 @@ class LlamaCppRuntime:
                     "response:",
                     "Solution>",
                     "provide a detailed solution.",
-                    "<|user|>",
-                    "<|assistant|>",
-                    "<|end|>",
                     "</s>",
                     "\n\nUser:",
                     "\n\nAssistant:",
@@ -533,10 +747,10 @@ class LlamaCppRuntime:
                     "\n\nSolution>",
                     "\n\nprovide a detailed solution.",
                 ]
-                
+
                 # Combine provided stop sequences with defaults, ensuring no duplicates
                 combined_stop = list(set((stop or []) + default_stop))
-                
+
                 generation_params = {
                     "max_tokens": max_tokens,
                     "temperature": temperature,
@@ -545,16 +759,16 @@ class LlamaCppRuntime:
                     "repeat_penalty": repeat_penalty,
                     "stop": combined_stop,
                     "stream": stream,
-                    **kwargs
+                    **kwargs,
                 }
-                
+
                 logger.debug(f"Generating with params: {generation_params}")
-                
+
                 if stream:
                     return self._stream_generate(prompt, **generation_params)
                 else:
                     return self._complete_generate(prompt, **generation_params)
-                    
+
             except Exception as e:
                 logger.error(f"Generation failed: {e}")
                 raise
@@ -569,11 +783,11 @@ class LlamaCppRuntime:
         repeat_penalty: float = 1.1,
         stop: Optional[List[str]] = None,
         stream: bool = False,
-        **kwargs
+        **kwargs,
     ) -> Union[str, Iterator[str]]:
         """
         Generate chat response from messages.
-        
+
         Args:
             messages: List of chat messages (OpenAI format)
             max_tokens: Maximum tokens to generate
@@ -584,13 +798,13 @@ class LlamaCppRuntime:
             stop: Stop sequences
             stream: Whether to stream tokens
             **kwargs: Additional parameters
-            
+
         Returns:
             Generated text or iterator
         """
         if not self.is_loaded():
             raise RuntimeError("No model loaded. Call load_model() first.")
-            
+
         with self._lock:
             try:
                 # Basic stop sequences that might not be in the template but help prevent run-on
@@ -605,13 +819,10 @@ class LlamaCppRuntime:
                     "response:",
                     "Solution>",
                     "provide a detailed solution.",
-                    "<|user|>",
-                    "<|assistant|>",
-                    "<|end|>",
                     "</s>",
                 ]
                 combined_stop = list(set((stop or []) + default_stop))
-                
+
                 chat_params = {
                     "max_tokens": max_tokens,
                     "temperature": temperature,
@@ -620,15 +831,17 @@ class LlamaCppRuntime:
                     "repeat_penalty": repeat_penalty,
                     "stop": combined_stop,
                     "stream": stream,
-                    **kwargs
+                    **kwargs,
                 }
 
                 # Check if we should use a manual template fallback if 'auto' is unreliable
                 formatted_prompt = self._apply_universal_chat_template(messages)
-                
+
                 if formatted_prompt:
                     print("!!! UNIVERSAL TEMPLATE SUCCESS !!!", flush=True)
-                    logger.info("Universal Template: SUCCESS. Using manually formatted prompt.")
+                    logger.info(
+                        "Universal Template: SUCCESS. Using manually formatted prompt."
+                    )
                     # For manually formatted prompts, we use generate() on the string
                     return self.generate(
                         prompt=formatted_prompt,
@@ -639,10 +852,12 @@ class LlamaCppRuntime:
                         repeat_penalty=repeat_penalty,
                         stop=combined_stop,
                         stream=stream,
-                        **kwargs
+                        **kwargs,
                     )
                 else:
-                    print("!!! UNIVERSAL TEMPLATE FAILED - FALLING BACK !!!", flush=True)
+                    print(
+                        "!!! UNIVERSAL TEMPLATE FAILED - FALLING BACK !!!", flush=True
+                    )
 
                 if stream:
                     return self._stream_chat(messages, **chat_params)
@@ -652,47 +867,64 @@ class LlamaCppRuntime:
                 logger.error(f"Chat completion failed: {e}")
                 raise
 
-    def _apply_universal_chat_template(self, messages: List[Dict[str, str]]) -> Optional[str]:
+    def _apply_universal_chat_template(
+        self, messages: List[Dict[str, str]]
+    ) -> Optional[str]:
         """
-        Reasoning-based template application. 
+        Reasoning-based template application.
         Attempts to find the model's intrinsic template in GGUF metadata.
         """
         try:
             model = self._model
             if not model:
                 return None
-                
+
             # Most modern GGUFs have a 'tokenizer.chat_template' in metadata
             template = None
-            metadata = getattr(self._model, 'metadata', {})
+            metadata = getattr(self._model, "metadata", {})
             print(f"!!! LLAMACPP METADATA: {metadata} !!!", flush=True)
             if metadata:
-                template = metadata.get("tokenizer.chat_template")
-            
+                raw_template = metadata.get("tokenizer.chat_template")
+                # Ensure template is a string, handle cases where it might be a list
+                if isinstance(raw_template, list):
+                    template = raw_template[0] if raw_template else None
+                elif isinstance(raw_template, str):
+                    template = raw_template
+                else:
+                    template = None
+
             if not template:
                 # Reasoning-based fallback: check architecture metadata
                 arch = metadata.get("general.architecture")
                 print(f"!!! LLAMACPP ARCH: {arch} !!!", flush=True)
                 if arch == "phi3":
-                    logger.info("Reasoning: Phi-3 architecture detected, using Instruct fallback template")
+                    logger.info(
+                        "Reasoning: Phi-3 architecture detected, using Instruct fallback template"
+                    )
                     template = "{{ bos_token }}{% for message in messages %}{% if (message['role'] == 'user') %}{{'<|user|>' + '\n' + message['content'] + '<|end|>' + '\n' + '<|assistant|>' + '\n'}}{% elif (message['role'] == 'assistant') %}{{message['content'] + '<|end|>' + '\n'}}{% elif (message['role'] == 'system') %}{{'<|system|>' + '\n' + message['content'] + '<|end|>' + '\n'}}{% endif %}{% endfor %}"
                 elif arch == "llama":
-                    logger.info("Reasoning: Llama architecture detected, using Llama-3 fallback template")
+                    logger.info(
+                        "Reasoning: Llama architecture detected, using Llama-3 fallback template"
+                    )
                     template = "{% if not add_generation_prompt is defined %}{% set add_generation_prompt = false %}{% endif %}{% for message in messages %}{{'<|start_header_id|>' + message['role'] + '<|end_header_id|>\n\n' + message['content'] | trim + '<|eot_id|>'}}{% endfor %}{% if add_generation_prompt %}{{'<|start_header_id|>assistant<|end_header_id|>\n\n'}}{% endif %}"
-                
+
             if not template:
-                logger.warning("Reasoning FAILURE: No intrinsic or architecture-based chat template found")
+                logger.warning(
+                    "Reasoning FAILURE: No intrinsic or architecture-based chat template found"
+                )
                 return None
 
             try:
-                # Pre-process messages: if the template doesn't support 'system', 
+                # Pre-process messages: if the template doesn't support 'system',
                 # merge it into the first user message.
                 processed_messages = list(messages)
                 has_system_support = "role" in template and "system" in template
-                
+
                 # Check for explicit system role support in common templates
                 if not has_system_support:
-                    system_msg = next((m for m in messages if m["role"] == "system"), None)
+                    system_msg = next(
+                        (m for m in messages if m["role"] == "system"), None
+                    )
                     if system_msg:
                         # Find the first user message to merge into
                         new_messages: List[Dict[str, str]] = []
@@ -700,21 +932,22 @@ class LlamaCppRuntime:
                         for msg in messages:
                             if msg["role"] == "user" and not merged:
                                 # Prepend system content to user content
-                                new_messages.append({
-                                    "role": "user",
-                                    "content": f"{system_msg['content']}\n\n{msg['content']}"
-                                })
+                                new_messages.append(
+                                    {
+                                        "role": "user",
+                                        "content": f"{system_msg['content']}\n\n{msg['content']}",
+                                    }
+                                )
                                 merged = True
                             elif msg["role"] != "system":
                                 new_messages.append(msg)
-                        
+
                         if merged:
                             processed_messages = new_messages
-                                
+
                 # Render the template with the provided (or processed) messages
                 rendered = jinja2.Template(template).render(
-                    messages=processed_messages, 
-                    add_generation_prompt=True
+                    messages=processed_messages, add_generation_prompt=True
                 )
                 return rendered
             except Exception as jinja_err:
@@ -729,7 +962,7 @@ class LlamaCppRuntime:
         if self._model is None:
             raise RuntimeError("Model instance is None")
         response = self._model.create_chat_completion(messages=messages, **params)
-        
+
         if isinstance(response, dict) and "choices" in response:
             self.last_usage = response.get("usage", {})
             return response["choices"][0]["message"]["content"]
@@ -752,7 +985,7 @@ class LlamaCppRuntime:
         if self._model is None:
             raise RuntimeError("Model instance is None")
         response = self._model(prompt, **params)
-        
+
         if isinstance(response, dict) and "choices" in response:
             self.last_usage = response.get("usage", {})
             return response["choices"][0]["text"]
@@ -761,13 +994,13 @@ class LlamaCppRuntime:
         else:
             logger.warning(f"Unexpected response format: {type(response)}")
             return str(response)
-    
+
     def _stream_generate(self, prompt: str, **params) -> Iterator[str]:
         """Generate streaming response."""
         params["stream"] = True
         if self._model is None:
             raise RuntimeError("Model instance is None")
-        
+
         for chunk in self._model(prompt, **params):
             if isinstance(chunk, dict):
                 if "choices" in chunk and chunk["choices"]:
@@ -778,81 +1011,85 @@ class LlamaCppRuntime:
                         yield choice["delta"]["content"]
             elif isinstance(chunk, str):
                 yield chunk
-    
+
     def embed(self, text: str) -> List[float]:
         """
         Generate embeddings for text.
-        
+
         Args:
             text: Input text
-            
+
         Returns:
             Embedding vector
         """
         if not self.is_loaded():
             raise RuntimeError("No model loaded. Call load_model() first.")
-        
+
         with self._lock:
             try:
                 if self._model is None:
                     raise RuntimeError("Model instance is None")
                 embedding = self._model.embed(text)
-                return embedding.tolist() if hasattr(embedding, "tolist") else list(embedding)
-                
+                return (
+                    embedding.tolist()
+                    if hasattr(embedding, "tolist")
+                    else list(embedding)
+                )
+
             except Exception as e:
                 logger.error(f"Embedding generation failed: {e}")
                 raise
-    
+
     def tokenize(self, text: str) -> List[int]:
         """
         Tokenize text.
-        
+
         Args:
             text: Input text
-            
+
         Returns:
             List of token IDs
         """
         if not self.is_loaded():
             raise RuntimeError("No model loaded. Call load_model() first.")
-        
+
         with self._lock:
             try:
                 if self._model is None:
                     raise RuntimeError("Model instance is None")
-                tokens = self._model.tokenize(text.encode('utf-8'))
+                tokens = self._model.tokenize(text.encode("utf-8"))
                 return tokens
             except Exception as e:
                 logger.error(f"Tokenization failed: {e}")
                 raise
-    
+
     def detokenize(self, tokens: List[int]) -> str:
         """
         Detokenize token IDs to text.
-        
+
         Args:
             tokens: List of token IDs
-            
+
         Returns:
             Decoded text
         """
         if not self.is_loaded():
             raise RuntimeError("No model loaded. Call load_model() first.")
-        
+
         with self._lock:
             try:
                 if self._model is None:
                     raise RuntimeError("Model instance is None")
                 text = self._model.detokenize(tokens)
-                return text.decode('utf-8') if isinstance(text, bytes) else text
+                return text.decode("utf-8") if isinstance(text, bytes) else text
             except Exception as e:
                 logger.error(f"Detokenization failed: {e}")
                 raise
-    
+
     def is_loaded(self) -> bool:
         """Check if a model is currently loaded."""
         return self._loaded and self._model is not None
-    
+
     def get_model_info(self) -> Dict[str, Any]:
         """Get information about the loaded model."""
         with self._lock:
@@ -867,19 +1104,19 @@ class LlamaCppRuntime:
                 "gpu_layers": self.n_gpu_layers,
                 "threads": self.n_threads,
             }
-            
+
             if self._model and hasattr(self._model, "metadata"):
                 try:
                     info["metadata"] = self._model.metadata
                 except:
                     pass
-            
+
             return info
-    
+
     def health_check(self) -> Dict[str, Any]:
         """
         Perform health check on the runtime.
-        
+
         Returns:
             Health status information
         """
@@ -890,9 +1127,9 @@ class LlamaCppRuntime:
                 return {
                     "status": "unhealthy",
                     "error": "llama-cpp-python not available",
-                    "response_time": time.time() - start_time
+                    "response_time": time.time() - start_time,
                 }
-            
+
             # Check if model is loaded
             if not self.is_loaded():
                 return {
@@ -903,54 +1140,54 @@ class LlamaCppRuntime:
                         "model_loading": True,
                         "text_generation": False,
                         "embeddings": False,
-                        "streaming": True
-                    }
+                        "streaming": True,
+                    },
                 }
-            
+
             # Test basic functionality with loaded model
             try:
                 # Simple tokenization test
                 tokens = self.tokenize("Hello")
                 if not tokens:
                     raise RuntimeError("Tokenization returned empty result")
-                
+
                 # Test detokenization
                 text = self.detokenize(tokens)
                 if not text:
                     raise RuntimeError("Detokenization returned empty result")
-                
+
                 capabilities = {
                     "model_loading": True,
                     "text_generation": True,
                     "embeddings": hasattr(self._model, "embed"),
                     "streaming": True,
-                    "tokenization": True
+                    "tokenization": True,
                 }
-                
+
                 return {
                     "status": "healthy",
                     "message": "All systems operational",
                     "response_time": time.time() - start_time,
                     "model_info": self.get_model_info(),
-                    "capabilities": capabilities
+                    "capabilities": capabilities,
                 }
-                
+
             except Exception as e:
                 return {
                     "status": "degraded",
                     "error": f"Model functionality test failed: {e}",
                     "response_time": time.time() - start_time,
-                    "model_info": self.get_model_info()
+                    "model_info": self.get_model_info(),
                 }
-                
+
         except Exception as e:
-            _stime = start_time if 'start_time' in locals() else time.time()
+            _stime = start_time if "start_time" in locals() else time.time()
             return {
                 "status": "unhealthy",
                 "error": str(e),
-                "response_time": time.time() - _stime
+                "response_time": time.time() - _stime,
             }
-    
+
     def get_resource_usage(self) -> Dict[str, Any]:
         """Get current resource usage statistics."""
         return {
@@ -960,28 +1197,44 @@ class LlamaCppRuntime:
             "gpu_layers": self.n_gpu_layers,
             "threads": self.n_threads,
         }
-    
+
     def shutdown(self) -> None:
         """Shutdown the runtime and cleanup resources."""
         logger.info("Shutting down llama.cpp runtime")
         self.unload_model()
-    
+
     @staticmethod
     def is_available() -> bool:
-        """Check if llama.cpp runtime is available."""
-        return LLAMACPP_AVAILABLE
-    
+        """Check if llama-cpp-python is available for use."""
+        if LLAMACPP_AVAILABLE:
+            return True
+
+        # Try one more time to import in case environment changed
+        try:
+            _try_import_llama_cpp()
+            return True
+        except ImportError:
+            return False
+
     @staticmethod
     def supports_format(format_name: str) -> bool:
         """Check if runtime supports a specific model format."""
         return format_name.lower() in ["gguf"]
-    
+
     @staticmethod
     def supports_family(family_name: str) -> bool:
         """Check if runtime supports a specific model family."""
         supported_families = [
-            "llama", "mistral", "qwen", "phi", "gemma", "codellama",
-            "small_llm", "vicuna", "alpaca", "orca"
+            "llama",
+            "mistral",
+            "qwen",
+            "phi",
+            "gemma",
+            "codellama",
+            "small_llm",
+            "vicuna",
+            "alpaca",
+            "orca",
         ]
         return family_name.lower() in supported_families
 

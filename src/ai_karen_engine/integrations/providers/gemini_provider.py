@@ -58,8 +58,12 @@ class GeminiProvider(LLMProviderBase):
             "HARM_CATEGORY_DANGEROUS_CONTENT": "BLOCK_MEDIUM_AND_ABOVE",
         }
 
-        # Graceful initialization - don't fail if API key is missing
-        self._initialize_client()
+        # Defer client initialization until first use (lazy initialization)
+
+    def _ensure_initialized(self):
+        """Lazy initialization of Gemini client."""
+        if self.genai is None and self.initialization_error is None:
+            self._initialize_client()
 
     def _initialize_client(self):
         """Initialize Gemini client with graceful error handling."""
@@ -209,6 +213,9 @@ class GeminiProvider(LLMProviderBase):
 
     def _discover_generation_models(self) -> List[str]:
         """Return live generateContent-capable Gemini models without stale fallback aliases."""
+        # Lazy initialization
+        self._ensure_initialized()
+
         if self.initialization_error or not self.genai:
             return []
 
@@ -310,6 +317,9 @@ class GeminiProvider(LLMProviderBase):
         """Generate text using Gemini API."""
         t0 = time.time()
 
+        # Lazy initialization
+        self._ensure_initialized()
+
         # Check initialization status
         if self.initialization_error:
             raise GenerationFailed(self.initialization_error)
@@ -408,6 +418,9 @@ class GeminiProvider(LLMProviderBase):
 
     def stream_generate(self, prompt: str, **kwargs) -> Iterator[str]:
         """Generate text with streaming support."""
+        # Lazy initialization
+        self._ensure_initialized()
+
         # Check initialization status
         if self.initialization_error:
             raise GenerationFailed(self.initialization_error)
@@ -477,6 +490,9 @@ class GeminiProvider(LLMProviderBase):
         """Generate embeddings using Gemini embedding models."""
         t0 = time.time()
 
+        # Lazy initialization
+        self._ensure_initialized()
+
         # Check initialization status
         if self.initialization_error:
             raise EmbeddingFailed(self.initialization_error)
@@ -536,6 +552,9 @@ class GeminiProvider(LLMProviderBase):
             return self._get_common_models()
 
         try:
+            # Lazy initialization
+            self._ensure_initialized()
+
             if self.initialization_error or not self.genai:
                 logger.info("Using fallback model list due to initialization issues")
                 return self._get_common_models()
@@ -585,6 +604,9 @@ class GeminiProvider(LLMProviderBase):
 
     def health_check(self) -> Dict[str, Any]:
         """Perform comprehensive health check on Gemini API."""
+        # Lazy initialization
+        self._ensure_initialized()
+
         # Check initialization status first
         if self.initialization_error:
             return {

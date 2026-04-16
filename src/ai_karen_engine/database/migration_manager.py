@@ -19,6 +19,7 @@ SCHEMA_MIGRATIONS: List[str] = [
     "002_context_management.sql",
     "003_persona_persistence.sql",
     "004_chat_runtime_control_plane.sql",
+    "005_fix_auth_user_schema.sql",
 ]
 
 

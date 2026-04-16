@@ -749,7 +749,7 @@ def create_memory_service_factory():
 
 def create_conversation_service_factory():
     async def factory():
-        from services.memory.conversation_service import WebUIConversationService
+        from services.memory.conversation_service import ConversationService
         from ai_karen_engine.chat.factory import get_chat_service_factory
 
         factory = get_chat_service_factory()
@@ -757,7 +757,7 @@ def create_conversation_service_factory():
         memory_service = (
             factory.get_service("memory_service") or factory.create_memory_service()
         )
-        return WebUIConversationService(
+        return ConversationService(
             base_conversation_manager=base_manager, memory_service=memory_service
         )
 

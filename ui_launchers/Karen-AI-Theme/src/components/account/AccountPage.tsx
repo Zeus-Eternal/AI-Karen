@@ -7,12 +7,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User, Mail, Camera, Save, Lock, LogOut, Sun, Moon } from 'lucide-react';
+import { User, Mail, Camera, Save, Lock, LogOut, Sun, Moon, Shield } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useTheme } from '@/providers/theme-provider';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { ApiError, apiClient } from '@/lib/api';
-import { authService } from '@/lib/auth';
+import { apiClient } from '@/lib/api';
 import { useAuth } from '@/lib/useAuth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
@@ -21,6 +20,7 @@ interface AccountUser {
   user_id: string;
   email: string;
   full_name: string;
+  username: string;
   roles: string[];
   is_active: boolean;
   created_at: string;
@@ -35,19 +35,11 @@ interface UserPreferences {
   [key: string]: unknown;
 }
 
-interface ProfileUpdatePayload {
-  email: string;
-  full_name?: string;
-}
-
-interface PasswordPayloadResponse {
-  detail: string;
-}
-
 const emptyAccountUser: AccountUser = {
   user_id: '',
   email: '',
   full_name: '',
+  username: '',
   roles: [],
   is_active: true,
   created_at: '',
@@ -86,10 +78,11 @@ const formatRoleLabel = (roles: string[]) => {
 export default function AccountPage() {
     const router = useRouter();
     const { toast } = useToast();
-    const { logout } = useAuth();
+    const { logout, refreshSession } = useAuth();
     const { theme, setTheme } = useTheme();
     const [account, setAccount] = useState<AccountUser>(emptyAccountUser);
     const [name, setName] = useState('');
+    const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
@@ -98,150 +91,195 @@ export default function AccountPage() {
     const [isProfileSaving, setIsProfileSaving] = useState(false);
     const [isPasswordSaving, setIsPasswordSaving] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const [isProfileIncomplete, setIsProfileIncomplete] = useState(false);
 
     useEffect(() => {
-        let isMounted = true;
+        const fetchProfile = async () => {
+            try {
+                setIsLoading(true);
+                const user = await apiClient.get<AccountUser>("/api/auth/me");
 
-         const loadAccount = async () => {
-             try {
-                 setIsLoading(true);
-                 const currentUser = await apiClient.get<AccountUser>('/api/auth/me');
-                 if (!isMounted) {
-                     return;
-                 }
+                console.log("Fetched user profile:", user); // Debug log
 
-                 setAccount(currentUser);
-                 setName(currentUser.full_name || '');
-                 setEmail(currentUser.email || '');
-                 authService.updateCurrentUser(currentUser);
+                setAccount(user);
+                setUsername(user.username || "");
+                setName(user.full_name || "");
+                setEmail(user.email || "");
 
-                 const preferredTheme = currentUser.preferences?.theme;
-                 if ((preferredTheme === 'light' || preferredTheme === 'dark') && preferredTheme !== theme) {
-                     setTheme(preferredTheme);
-                 }
-             } catch (error) {
-                 if (!isMounted) {
-                     return;
-                 }
+                // Auto-suggest username if empty and email is available
+                if (!user.username && user.email) {
+                    const suggestedUsername = user.email.split('@')[0];
+                    setUsername(suggestedUsername);
+                }
 
-                 if (error instanceof ApiError && error.status === 401) {
-                     authService.clearAuth();
-                     router.replace('/login');
-                     return;
-                 }
+                // Check if profile is incomplete and show prompt
+                const profileIncomplete = !user.username || !user.full_name;
+                setIsProfileIncomplete(profileIncomplete);
+                if (profileIncomplete) {
+                    setTimeout(() => {
+                        toast({
+                            title: "Complete Your Profile",
+                            description: "Please fill in your username and full name to personalize your account.",
+                            variant: "default",
+                        });
+                    }, 1000); // Delay to show after page loads
+                }
 
-                 toast({
-                     title: 'Failed to load account',
-                     description: error instanceof Error ? error.message : 'Unable to load account details.',
-                     variant: 'destructive',
-                 });
-             } finally {
-                 if (isMounted) {
-                     setIsLoading(false);
-                 }
-             }
-         };
-
-        loadAccount();
-
-        return () => {
-            isMounted = false;
+                const preferredTheme = user.preferences?.theme;
+                if ((preferredTheme === 'light' || preferredTheme === 'dark') && preferredTheme !== theme) {
+                    setTheme(preferredTheme);
+                }
+            } catch (error) {
+                console.error("Error fetching profile:", error);
+                toast({
+                    title: "Error",
+                    description: "Failed to load user profile. Please try again.",
+                    variant: "destructive",
+                });
+            } finally {
+                setIsLoading(false);
+            }
         };
-    }, [router, setTheme, theme, toast]);
 
-    const syncAccount = (nextAccount: AccountUser) => {
-        setAccount(nextAccount);
-        setName(nextAccount.full_name || '');
-        setEmail(nextAccount.email || '');
-        authService.updateCurrentUser({
-            ...nextAccount,
-            permissions: authService.getCurrentUser()?.permissions,
-        });
+        fetchProfile();
+    }, [toast, theme, setTheme]);
+
+    const handleProfileSave = async (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        try {
+            setIsProfileSaving(true);
+            
+            await apiClient.put<AccountUser>("/api/auth/me", {
+                username: username,
+                full_name: name,
+                email: email
+            });
+
+            // Fetch fresh user data from server to update local state
+            const freshUser = await apiClient.get<AccountUser>("/api/auth/me");
+
+            setAccount(freshUser);
+            setUsername(freshUser.username || "");
+            setName(freshUser.full_name || "");
+            setEmail(freshUser.email || "");
+
+            // Update profile completeness status
+            const profileIncomplete = !freshUser.username || !freshUser.full_name;
+            setIsProfileIncomplete(profileIncomplete);
+
+            toast({
+                title: "Profile Updated",
+                description: "Your account information has been saved successfully.",
+            });
+
+            if (refreshSession) {
+                await refreshSession();
+            }
+        } catch (error: unknown) {
+            console.error("Error saving profile:", error);
+            toast({
+                title: "Save Failed",
+                description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
+                variant: "destructive",
+            });
+        } finally {
+            setIsProfileSaving(false);
+        }
     };
 
-       const handleProfileSave = async () => {
-           try {
-               setIsProfileSaving(true);
-                const payload: ProfileUpdatePayload = {
-                   email,
-               };
-               // Only include full_name if it's not empty
-               if (name.trim()) {
-                   payload.full_name = name;
-               }
-               console.log('Profile update payload:', payload);
-               const updatedAccount = await apiClient.put<AccountUser>('/api/auth/me', payload);
-               syncAccount(updatedAccount);
-               toast({
-                   title: 'Profile updated',
-                   description: 'Your account details have been saved.',
-               });
-           } catch (error) {
-               console.error('Profile update error:', error);
-               toast({
-                   title: 'Profile update failed',
-                   description: error instanceof Error ? error.message : 'Unable to save profile changes.',
-                   variant: 'destructive',
-               });
-           } finally {
-               setIsProfileSaving(false);
-           }
-       };
+    const handleThemeChange = async (value: 'light' | 'dark') => {
+        const previousTheme = theme;
+        setTheme(value);
 
-      const handleThemeChange = async (value: 'light' | 'dark') => {
-          const previousTheme = theme;
-          setTheme(value);
-
-          try {
-              const updatedAccount = await apiClient.put<AccountUser>('/api/auth/me', {
-                  preferences: {
-                      theme: value,
-                  },
-              });
-              syncAccount(updatedAccount);
-          } catch (error) {
-              setTheme(previousTheme);
-              toast({
-                  title: 'Theme update failed',
-                  description: error instanceof Error ? error.message : 'Unable to save theme preference.',
-                  variant: 'destructive',
-              });
-          }
-      };
-
-    const handlePasswordUpdate = async () => {
-        if (!currentPassword || !newPassword || !confirmPassword) {
+        try {
+            const updatedAccount = await apiClient.put<AccountUser>('/api/auth/me', {
+                preferences: {
+                    theme: value,
+                },
+            });
+            setAccount(updatedAccount);
+        } catch (error) {
+            setTheme(previousTheme);
             toast({
-                title: 'Missing password fields',
-                description: 'Fill in all password fields before updating.',
+                title: 'Theme update failed',
+                description: error instanceof Error ? error.message : 'Unable to save theme preference.',
                 variant: 'destructive',
+            });
+        }
+    };
+
+    const handlePasswordChange = async (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        if (newPassword !== confirmPassword) {
+            toast({
+                title: "Error",
+                description: "Passwords do not match.",
+                variant: "destructive",
             });
             return;
         }
 
         try {
             setIsPasswordSaving(true);
-            const response = await apiClient.post<PasswordPayloadResponse>('/api/auth/change-password', {
+            
+            await apiClient.post("/api/auth/change-password", {
                 current_password: currentPassword,
                 new_password: newPassword,
-                confirm_password: confirmPassword,
+                confirm_password: confirmPassword
             });
-            setCurrentPassword('');
-            setNewPassword('');
-            setConfirmPassword('');
+            
             toast({
-                title: 'Password updated',
-                description: response.detail,
+                title: "Password Changed",
+                description: "Your security credentials have been updated.",
             });
-        } catch (error) {
+            
+            setCurrentPassword("");
+            setNewPassword("");
+            setConfirmPassword("");
+        } catch (error: unknown) {
+            console.error("Error changing password:", error);
             toast({
-                title: 'Password update failed',
-                description: error instanceof Error ? error.message : 'Unable to update password.',
-                variant: 'destructive',
+                title: "Update Failed",
+                description: error instanceof Error ? error.message : "Failed to change password. Please check your current password.",
+                variant: "destructive",
             });
         } finally {
             setIsPasswordSaving(false);
         }
+    };
+
+    const handleRefreshProfile = async () => {
+        const fetchProfile = async () => {
+            try {
+                setIsLoading(true);
+                const user = await apiClient.get<AccountUser>("/api/auth/me");
+
+                console.log("Refreshed user profile:", user); // Debug log
+
+                setAccount(user);
+                setUsername(user.username || "");
+                setName(user.full_name || "");
+                setEmail(user.email || "");
+
+                toast({
+                    title: "Profile Refreshed",
+                    description: "Your profile data has been updated.",
+                });
+            } catch (error) {
+                console.error("Error refreshing profile:", error);
+                toast({
+                    title: "Refresh Failed",
+                    description: "Failed to refresh profile data. Please try again.",
+                    variant: "destructive",
+                });
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        await fetchProfile();
     };
 
     const handleLogout = async () => {
@@ -308,13 +346,37 @@ export default function AccountPage() {
                             <CardDescription>Update your personal details here.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="name">Full Name</Label>
-                                <div className="relative">
-                                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="pl-10" disabled={isLoading || isProfileSaving} />
-                                </div>
-                            </div>
+<div className="space-y-2">
+                                  <Label htmlFor="full-name" className={isProfileIncomplete && !name ? "text-orange-600" : ""}>
+                                      Full Name {isProfileIncomplete && !name && <span className="text-orange-500">(required)</span>}
+                                  </Label>
+                                  <div className="relative">
+                                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                      <Input
+                                          id="full-name"
+                                          value={name}
+                                          onChange={(e) => setName(e.target.value)}
+                                          className={`pl-10 ${isProfileIncomplete && !name ? "border-orange-300 focus:border-orange-500" : ""}`}
+                                          disabled={isLoading || isProfileSaving}
+                                      />
+                                  </div>
+                              </div>
+
+                              <div className="space-y-2">
+                                  <Label htmlFor="username" className={isProfileIncomplete && !username ? "text-orange-600" : ""}>
+                                      Username {isProfileIncomplete && !username && <span className="text-orange-500">(required)</span>}
+                                  </Label>
+                                  <div className="relative">
+                                      <Shield className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                      <Input
+                                          id="username"
+                                          value={username}
+                                          onChange={(e) => setUsername(e.target.value)}
+                                          className={`pl-10 ${isProfileIncomplete && !username ? "border-orange-300 focus:border-orange-500" : ""}`}
+                                          disabled={isLoading || isProfileSaving}
+                                      />
+                                  </div>
+                              </div>
                             <div className="space-y-2">
                                 <Label htmlFor="email">Email Address</Label>
                                 <div className="relative">
@@ -323,7 +385,10 @@ export default function AccountPage() {
                                 </div>
                             </div>
                         </CardContent>
-                        <CardFooter className="border-t pt-6">
+                        <CardFooter className="border-t pt-6 flex justify-between">
+                            <Button variant="outline" onClick={handleRefreshProfile} disabled={isLoading}>
+                                🔄 Refresh Profile
+                            </Button>
                             <Button onClick={handleProfileSave} disabled={isLoading || isProfileSaving}>
                                 <Save className="mr-2 h-4 w-4"/>
                                 {isProfileSaving ? 'Saving...' : 'Save Changes'}
@@ -386,7 +451,7 @@ export default function AccountPage() {
                             </div>
                         </CardContent>
                         <CardFooter className="border-t pt-6">
-                            <Button onClick={handlePasswordUpdate} disabled={isPasswordSaving}>
+                            <Button onClick={handlePasswordChange} disabled={isPasswordSaving}>
                                 <Lock className="mr-2 h-4 w-4"/>
                                 {isPasswordSaving ? 'Updating...' : 'Update Password'}
                             </Button>

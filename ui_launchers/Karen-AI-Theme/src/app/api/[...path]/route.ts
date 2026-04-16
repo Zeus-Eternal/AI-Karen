@@ -23,8 +23,9 @@ async function handle(
   const fullPath = path.join('/');
   
   // Delegate the actual proxy logic to the existing backend-proxy utility.
-  // Note: We prepend /api/ because the backend expects the full path starting from the root.
-  return proxyToBackend(request, `/api/${fullPath}`);
+  // The backend expects routes with the /api prefix (e.g., /api/auth/me).
+  // Retry on 502 Bad Gateway errors to handle startup timing issues.
+  return proxyToBackend(request, `/api/${fullPath}`, { retryOnStatusCodes: [502] });
 }
 
 export const GET = handle;

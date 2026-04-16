@@ -212,13 +212,58 @@ python create_tables.py
 python create_admin_user.py  # follow prompts
 ```
 
-To run Ollama inside the Docker stack instead of relying on a host install:
+#### Ollama Options
+
+For Docker installs, the default and more robust path is to let the `api` container reach an Ollama instance already running on the host machine:
+
+```bash
+OLLAMA_BASE_URL=http://host.docker.internal:11434
+```
+
+That keeps one local Ollama runtime on the user machine and avoids making the optional compose-side Ollama service a hidden requirement.
+
+If you want Ollama fully inside the compose stack instead, start the optional `ollama` service:
 
 ```bash
 docker compose --profile ollama up -d
 ```
 
-That gives the API container a stable in-network Ollama endpoint at `http://ollama:11434` and avoids the common host-loopback and browser CORS issues from host-installed Ollama.
+Then point the API at the in-network service:
+
+```bash
+OLLAMA_BASE_URL=http://ollama:11434
+```
+
+Summary:
+- Host Ollama: recommended default when the user already has Ollama running locally.
+- In-stack Ollama: optional compose profile named `ollama`, on the same Docker network as `api`.
+
+If host Ollama is installed but Karen still reports that the API container cannot reach it, the usual cause on Linux is that Ollama is bound only to `127.0.0.1:11434`. The Docker container cannot reach the host through loopback-only binding.
+
+Use this systemd override on the host to expose Ollama on the host gateway interface:
+
+```bash
+sudo mkdir -p /etc/systemd/system/ollama.service.d
+printf '[Service]\nEnvironment="OLLAMA_HOST=0.0.0.0:11434"\n' | sudo tee /etc/systemd/system/ollama.service.d/10-host-access.conf
+sudo systemctl daemon-reload
+sudo systemctl restart ollama
+```
+
+Verify both host and container reachability after the restart:
+
+```bash
+ss -ltnp | grep 11434
+curl http://127.0.0.1:11434/api/tags
+docker compose exec -T api curl http://host.docker.internal:11434/api/tags
+```
+
+Expected result:
+- The Ollama listener must not be loopback-only.
+- The API container must be able to reach `http://host.docker.internal:11434/api/tags`.
+
+Windows note:
+- Docker Desktop already supports `host.docker.internal`.
+- No extra systemd step is required, but Ollama still needs to be reachable from the host gateway path.
 
 #### Choose Your Startup Mode
 

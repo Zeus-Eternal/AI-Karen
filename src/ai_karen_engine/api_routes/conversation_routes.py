@@ -22,7 +22,7 @@ from ai_karen_engine.models.web_api_error_responses import (
 from services.memory.conversation_service import (
     ConversationPriority,
     UISource,
-    WebUIConversationService,
+    ConversationService,
 )
 from ai_karen_engine.utils.dependency_checks import import_fastapi, import_pydantic
 
@@ -282,7 +282,7 @@ def _convert_conversation_to_response(conversation) -> ConversationResponse:
 @router.post("/create", response_model=CreateConversationResponse)
 async def create_conversation(
     request: CreateConversationRequest,
-    conversation_service: WebUIConversationService = Depends(get_conversation_service),
+    conversation_service: ConversationService = Depends(get_conversation_service),
     tenant_id: str = Depends(get_current_tenant_id),
     user_ctx: Dict[str, Any] = Depends(bypass_user_context_func),
 ):
@@ -343,7 +343,7 @@ async def create_conversation(
 async def get_conversation(
     conversation_id: str,
     include_context: bool = Query(True, description="Include context data"),
-    conversation_service: WebUIConversationService = Depends(get_conversation_service),
+    conversation_service: ConversationService = Depends(get_conversation_service),
     tenant_id: str = Depends(get_current_tenant_id),
     user_ctx: Dict[str, Any] = Depends(bypass_user_context_func),
 ):
@@ -400,7 +400,7 @@ async def get_conversation(
 async def get_conversation_by_session(
     session_id: str,
     include_context: bool = Query(True, description="Include context data"),
-    conversation_service: WebUIConversationService = Depends(get_conversation_service),
+    conversation_service: ConversationService = Depends(get_conversation_service),
     tenant_id: str = Depends(get_current_tenant_id),
     user_ctx: Dict[str, Any] = Depends(bypass_user_context_func),
 ):
@@ -497,7 +497,7 @@ async def get_conversation_by_session(
 async def add_message(
     conversation_id: str,
     request: AddMessageRequest,
-    conversation_service: WebUIConversationService = Depends(get_conversation_service),
+    conversation_service: ConversationService = Depends(get_conversation_service),
     tenant_id: str = Depends(get_current_tenant_id),
 ):
     """Add a message to conversation with web UI features."""
@@ -572,7 +572,7 @@ async def add_message(
 async def build_context(
     conversation_id: str,
     request: BuildContextRequest,
-    conversation_service: WebUIConversationService = Depends(get_conversation_service),
+    conversation_service: ConversationService = Depends(get_conversation_service),
     tenant_id: str = Depends(get_current_tenant_id),
 ):
     """Build comprehensive conversation context."""
@@ -607,7 +607,7 @@ async def build_context(
 async def update_ui_context(
     conversation_id: str,
     request: UpdateUIContextRequest,
-    conversation_service: WebUIConversationService = Depends(get_conversation_service),
+    conversation_service: ConversationService = Depends(get_conversation_service),
     tenant_id: str = Depends(get_current_tenant_id),
 ):
     """Update conversation UI context."""
@@ -654,7 +654,7 @@ async def update_ui_context(
 async def update_ai_insights(
     conversation_id: str,
     request: UpdateAIInsightsRequest,
-    conversation_service: WebUIConversationService = Depends(get_conversation_service),
+    conversation_service: ConversationService = Depends(get_conversation_service),
     tenant_id: str = Depends(get_current_tenant_id),
 ):
     """Update conversation AI insights."""
@@ -701,7 +701,7 @@ async def update_ai_insights(
 async def add_tags(
     conversation_id: str,
     request: AddTagsRequest,
-    conversation_service: WebUIConversationService = Depends(get_conversation_service),
+    conversation_service: ConversationService = Depends(get_conversation_service),
     tenant_id: str = Depends(get_current_tenant_id),
 ):
     """Add tags to conversation."""
@@ -752,7 +752,7 @@ async def list_conversations(
     active_only: bool = Query(True, description="Only return active conversations"),
     limit: int = Query(50, ge=1, le=100, description="Maximum number of conversations"),
     offset: int = Query(0, ge=0, description="Number of conversations to skip"),
-    conversation_service: WebUIConversationService = Depends(get_conversation_service),
+    conversation_service: ConversationService = Depends(get_conversation_service),
     tenant_id: str = Depends(get_current_tenant_id),
     user_ctx: Dict[str, Any] = Depends(bypass_user_context_func),
 ):
@@ -914,7 +914,7 @@ async def update_conversation(
     conversation_id: str,
     title: Optional[str] = Query(None, description="New title"),
     is_active: Optional[bool] = Query(None, description="Active status"),
-    conversation_service: WebUIConversationService = Depends(get_conversation_service),
+    conversation_service: ConversationService = Depends(get_conversation_service),
     tenant_id: str = Depends(get_current_tenant_id),
 ):
     """Update conversation properties."""
@@ -961,7 +961,7 @@ async def update_conversation(
 @router.delete("/{conversation_id}")
 async def delete_conversation(
     conversation_id: str,
-    conversation_service: WebUIConversationService = Depends(get_conversation_service),
+    conversation_service: ConversationService = Depends(get_conversation_service),
     tenant_id: str = Depends(get_current_tenant_id),
 ):
     """Delete a conversation."""
@@ -1010,7 +1010,7 @@ async def get_analytics(
         None, description="Start of time range"
     ),
     time_range_end: Optional[datetime] = Query(None, description="End of time range"),
-    conversation_service: WebUIConversationService = Depends(get_conversation_service),
+    conversation_service: ConversationService = Depends(get_conversation_service),
     tenant_id: str = Depends(get_current_tenant_id),
     user_ctx: Dict[str, Any] = Depends(bypass_user_context_func),
 ):
@@ -1052,7 +1052,7 @@ async def get_analytics(
 async def get_conversation_stats(
     tenant_id: str = Depends(get_current_tenant),
     user_ctx: Dict[str, Any] = Depends(bypass_user_context_func),
-    conversation_service: WebUIConversationService = Depends(get_conversation_service),
+    conversation_service: ConversationService = Depends(get_conversation_service),
 ):
     """Get basic conversation statistics."""
     try:
@@ -1087,7 +1087,7 @@ async def get_conversation_stats(
 @router.post("/cleanup-inactive")
 async def cleanup_inactive_conversations(
     days_inactive: int = Query(30, ge=1, description="Days of inactivity threshold"),
-    conversation_service: WebUIConversationService = Depends(get_conversation_service),
+    conversation_service: ConversationService = Depends(get_conversation_service),
     tenant_id: str = Depends(get_current_tenant_id),
 ):
     """Mark old conversations as inactive."""
@@ -1133,7 +1133,7 @@ async def health_check():
 @router.post("/ensure-session/{session_id}")
 async def ensure_session_conversation(
     session_id: str,
-    conversation_service: WebUIConversationService = Depends(get_conversation_service),
+    conversation_service: ConversationService = Depends(get_conversation_service),
     tenant_id: str = Depends(get_current_tenant_id),
     user_ctx: Dict[str, Any] = Depends(bypass_user_context_func),
 ):
@@ -1225,7 +1225,7 @@ async def ensure_session_conversation(
 @router.get("/ensure-session/{session_id}")
 async def ensure_session_conversation_get(
     session_id: str,
-    conversation_service: WebUIConversationService = Depends(get_conversation_service),
+    conversation_service: ConversationService = Depends(get_conversation_service),
     tenant_id: str = Depends(get_current_tenant_id),
     user_ctx: Dict[str, Any] = Depends(bypass_user_context_func),
 ):
@@ -1242,7 +1242,7 @@ async def ensure_session_conversation_get(
 async def update_session_activity(
     session_id: str,
     activity_data: Optional[Dict[str, Any]] = None,
-    conversation_service: WebUIConversationService = Depends(get_conversation_service),
+    conversation_service: ConversationService = Depends(get_conversation_service),
 ):
     """Update session activity timestamp and data."""
     try:

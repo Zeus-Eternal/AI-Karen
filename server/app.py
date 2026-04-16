@@ -131,7 +131,6 @@ def create_app() -> FastAPI:
     # Default to immediate wiring so critical routes (e.g. auth) are available
     # before the first request without requiring special environment flags.
     _defer_wiring = os.getenv("KARI_DEFER_ROUTER_WIRING", "false").lower() in (
-        "1",
         "true",
         "yes",
     )
@@ -139,7 +138,9 @@ def create_app() -> FastAPI:
         logger.info("⚡ Deferring router wiring to background for faster readiness")
     else:
         # Wire all routers immediately (production/default)
+        logger.info("🔧 Wiring routers immediately...")
         wire_routers(app, settings)
+        logger.info("✅ Routers wired successfully")
 
     # Register startup tasks
     register_startup_tasks(app)

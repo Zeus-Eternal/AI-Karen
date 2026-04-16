@@ -144,8 +144,9 @@ export function MessageBubble({ message, onActionClick }: MessageBubbleProps) {
           <div className="flex justify-between items-start gap-2">
             <div className="flex-1 space-y-2 overflow-hidden">
               {!isUser && message.role === 'assistant' && shouldShowDegradedNotice && (
-                <div className="rounded-xl border border-amber-500/20 bg-amber-500/8 px-3 py-2 text-[11px] text-amber-200/90">
-                  {normalizedDegradedNotice}
+                <div className="rounded-xl border border-amber-500/20 bg-amber-500/8 px-3 py-2 text-[11px] text-amber-200/90 flex items-center justify-between">
+                  <span>{normalizedDegradedNotice}</span>
+                  <span className="text-[10px] text-amber-500/70 font-medium tracking-tight animate-pulse">degraded mode</span>
                 </div>
               )}
 
@@ -157,7 +158,7 @@ export function MessageBubble({ message, onActionClick }: MessageBubbleProps) {
               )}
 
               {/* Compact Metadata Badge — always visible for assistant messages */}
-              {!isUser && message.role === 'assistant' && shouldRenderBadge && (
+              {!isUser && message.role === 'assistant' && shouldRenderBadge && !badgeIsDegraded && (
                 <div className="flex items-center gap-2 flex-wrap mt-2 overflow-hidden">
                   <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold tracking-wide uppercase border transition-all duration-300 ${
                     badgeIsDegraded

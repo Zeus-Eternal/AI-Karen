@@ -15,6 +15,30 @@ export class ApiError extends Error {
   }
 }
 
+export interface StreamEvent {
+  type: 'status' | 'content' | 'error' | 'complete';
+  content: string;
+  correlation_id: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface StreamingMetrics {
+  startTime: number;
+  chunksReceived: number;
+  totalBytes: number;
+  lastChunkTime: number;
+  connectionHealth: 'excellent' | 'good' | 'poor' | 'critical';
+}
+
+export interface AssistStreamCallbacks {
+  onStatus?: (message: string, metadata?: Record<string, unknown>) => void;
+  onContent?: (token: string) => void;
+  onError?: (message: string) => void;
+  onComplete?: (metadata?: Record<string, unknown>) => void;
+  onDone?: () => void;
+  onMetrics?: (metrics: StreamingMetrics) => void;
+}
+
 class ApiClient {
   private readonly SESSION_MARKER_KEY = 'kari_session_expected';
 
@@ -51,6 +75,30 @@ class ApiClient {
 
   private async sleep(ms: number): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private async retryWithExponentialBackoff<T>(
+    operation: () => Promise<T>,
+    maxRetries: number = 3,
+    baseDelay: number = 1000,
+    shouldRetry: (error: unknown) => boolean
+  ): Promise<T> {
+    let lastError: unknown;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error;
+        if (attempt < maxRetries && shouldRetry(error)) {
+          const delay = baseDelay * Math.pow(2, attempt);
+          console.log(`[ApiClient] Retrying after ${delay}ms (attempt ${attempt + 1}/${maxRetries + 1})`);
+          await this.sleep(delay);
+        } else {
+          throw error;
+        }
+      }
+    }
+    throw lastError;
   }
 
   private isBrowser(): boolean {
@@ -94,13 +142,13 @@ class ApiClient {
    */
   private getPreferredBaseUrl(): string {
     if (this.isBrowser()) {
-      const env = (process as any).env || {};
+      const env = (process as unknown as { env?: Record<string, string> }).env || {};
       console.log('[ApiClient] Browser context, forcing relative URLs');
       return '';
     }
 
     // Server-side only
-    const env = (process as any).env || {};
+    const env = (process as unknown as { env?: Record<string, string> }).env || {};
     if (env.KAREN_DOCKER === 'true' || env.KARI_DOCKER === 'true' || 
         env.HOSTNAME?.includes('api') || env.HOSTNAME?.includes('web')) {
       return 'http://api:8000';
@@ -114,7 +162,7 @@ class ApiClient {
       return null;
     }
 
-    const env = (process as any).env || {};
+    const env = (process as unknown as { env?: Record<string, string> }).env || {};
     const configuredBackendUrl = (env.KAREN_BACKEND_URL || env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
     
     if (preferredBaseUrl === SAME_ORIGIN_API_BASE_URL) {
@@ -230,7 +278,10 @@ class ApiClient {
             const newToken = localStorage.getItem('access_token');
             if (newToken) headers['Authorization'] = `Bearer ${newToken}`;
           } catch {
-            console.warn('Failed to refresh token, proceeding without auth');
+            console.warn('Failed to refresh token, using existing token for this request');
+            // Do not silently drop auth headers on refresh failure; let backend
+            // return an explicit 401 and keep client auth state intact.
+            headers['Authorization'] = `Bearer ${accessToken}`;
           }
         } else {
           console.log('[ApiClient] Using access token for Authorization header');
@@ -282,14 +333,8 @@ class ApiClient {
       const data = await response.json();
       localStorage.setItem('access_token', data.access_token);
     } catch (error) {
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-      localStorage.removeItem('user_data');
-      if (typeof document !== 'undefined') {
-        document.cookie = 'kari_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
-        document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-        document.cookie = 'refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      }
+      // Do not clear auth state here; callers decide how to handle 401.
+      // This prevents accidental hard logout during transient refresh issues.
       throw error;
     }
   }
@@ -352,9 +397,25 @@ class ApiClient {
       response = await send(preferredBaseUrl);
     }
 
+    // 502 Retry with backoff for startup timing issues
+    if (response.status === 502) {
+      console.log('[ApiClient] 502 Bad Gateway detected, retrying with backoff for startup timing');
+      await this.sleep(2000); // Wait 2s before retry
+      try {
+        response = await send(preferredBaseUrl);
+        if (this.shouldRetryWithDirectBackend(response, fallbackBaseUrl) ||
+            this.shouldRetryMissingApiRoute(endpoint, response, fallbackBaseUrl)) {
+          response = await send(fallbackBaseUrl);
+        }
+      } catch (retryError) {
+        console.warn('[ApiClient] Retry after 502 failed:', retryError);
+        // Continue with original 502 response for error handling
+      }
+    }
+
     if (!response.ok) {
       const rawText = await response.text().catch(() => '');
-      let errorData: Record<string, any> = {};
+      let errorData: Record<string, unknown> = {};
       try {
         errorData = JSON.parse(rawText);
       } catch {
@@ -376,9 +437,14 @@ class ApiClient {
         return undefined as T;
       }
 
+      // Provide user-friendly message for 502 Bad Gateway (startup timing)
+      const errorMessage = response.status === 502
+        ? 'The backend service is starting up. Please wait a moment and try again.'
+        : this.formatApiErrorMessage(errorPayload, fallbackMessage);
+
       throw new ApiError(
         response.status,
-        this.formatApiErrorMessage(errorPayload, fallbackMessage),
+        errorMessage,
         errorData,
       );
     }
@@ -396,7 +462,7 @@ class ApiClient {
     return this.request<T>(endpoint, {}, true);
   }
 
-  async post<T>(endpoint: string, data?: any, init: RequestInit = {}): Promise<T> {
+  async post<T>(endpoint: string, data?: unknown, init: RequestInit = {}): Promise<T> {
     return this.request<T>(endpoint, {
       ...init,
       method: 'POST',
@@ -404,7 +470,7 @@ class ApiClient {
     });
   }
 
-  async put<T>(endpoint: string, data?: any, init: RequestInit = {}): Promise<T> {
+  async put<T>(endpoint: string, data?: unknown, init: RequestInit = {}): Promise<T> {
     return this.request<T>(endpoint, {
       ...init,
       method: 'PUT',
@@ -416,6 +482,207 @@ class ApiClient {
     return this.request<T>(endpoint, {
       method: 'DELETE',
     });
+  }
+
+  async postStream(
+    endpoint: string,
+    data?: unknown,
+    callbacks?: AssistStreamCallbacks,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    const preferredBaseUrl = this.getPreferredBaseUrl();
+    const url = this.forceBrowserRelativeApiUrl(this.buildUrl(preferredBaseUrl, endpoint));
+
+    // Streaming configuration
+    // Local runtimes (ollama/llama.cpp) can take a while to emit first tokens.
+    const STREAMING_TIMEOUT = 300000; // 5 minutes total
+    const CHUNK_TIMEOUT = 60000; // 60 seconds between chunks after stream starts
+    let timeoutId: NodeJS.Timeout;
+    let heartbeatId: NodeJS.Timeout;
+    let lastChunkTime = Date.now();
+    let collectedContent = '';
+    let chunksReceived = 0;
+    let totalBytes = 0;
+
+    // Initialize metrics
+    const startTime = Date.now();
+    const metrics: StreamingMetrics = {
+      startTime,
+      chunksReceived: 0,
+      totalBytes: 0,
+      lastChunkTime: startTime,
+      connectionHealth: 'excellent',
+    };
+
+    const updateMetrics = () => {
+      const now = Date.now();
+      const timeSinceLastChunk = now - lastChunkTime;
+      
+      // Update connection health based on chunk reception
+      if (timeSinceLastChunk > CHUNK_TIMEOUT * 2) {
+        metrics.connectionHealth = 'critical';
+      } else if (timeSinceLastChunk > CHUNK_TIMEOUT) {
+        metrics.connectionHealth = 'poor';
+      } else if (timeSinceLastChunk > CHUNK_TIMEOUT / 2) {
+        metrics.connectionHealth = 'good';
+      } else {
+        metrics.connectionHealth = 'excellent';
+      }
+      
+      metrics.lastChunkTime = now;
+      callbacks?.onMetrics?.(metrics);
+    };
+
+    const setupTimeouts = () => {
+      timeoutId = setTimeout(() => {
+        cleanup();
+        callbacks?.onError?.('Stream timeout - total session exceeded limit');
+      }, STREAMING_TIMEOUT);
+
+      heartbeatId = setInterval(() => {
+        // Do not enforce "first chunk" heartbeat timeout. Some local/runtime paths
+        // can take a long time before first SSE bytes are emitted.
+        if (chunksReceived > 0 && Date.now() - lastChunkTime > CHUNK_TIMEOUT) {
+          cleanup();
+          callbacks?.onError?.('Stream connection timeout - no chunks received');
+        }
+      }, 1000);
+    };
+
+    const cleanup = () => {
+      clearTimeout(timeoutId);
+      clearInterval(heartbeatId);
+    };
+
+    const sendStreamRequest = async (): Promise<Response> => {
+      const authHeaders = await this.getAuthHeaders();
+      return fetch(url, {
+        method: 'POST',
+        headers: {
+          ...authHeaders,
+          'Accept': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+        },
+        credentials: 'include',
+        body: data ? JSON.stringify(data) : undefined,
+        signal,
+      });
+    };
+
+    let response = await sendStreamRequest();
+    if (response.status === 401) {
+      try {
+        await this.refreshAccessToken();
+        response = await sendStreamRequest();
+      } catch {
+        // Keep original 401 response path below.
+      }
+    }
+
+    if (!response.ok) {
+      cleanup();
+      const rawText = await response.text().catch(() => '');
+      let errorData: Record<string, unknown> = {};
+      try {
+        errorData = JSON.parse(rawText);
+      } catch {
+        errorData = { detail: rawText.trim() };
+      }
+      throw new ApiError(
+        response.status,
+        this.formatApiErrorMessage(errorData, `HTTP ${response.status}: ${response.statusText}`),
+        errorData,
+      );
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      cleanup();
+      throw new ApiError(0, 'No readable stream available');
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    setupTimeouts();
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        lastChunkTime = Date.now();
+        chunksReceived++;
+        totalBytes += value?.length || 0;
+        
+        // Update metrics
+        metrics.chunksReceived = chunksReceived;
+        metrics.totalBytes = totalBytes;
+        updateMetrics();
+
+        buffer += decoder.decode(value, { stream: true });
+
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith('data: ')) continue;
+
+          const payload = trimmed.slice(6);
+          if (payload === '[DONE]') {
+            cleanup();
+            callbacks?.onDone?.();
+            return;
+          }
+
+          let parsed: StreamEvent;
+          try {
+            parsed = JSON.parse(payload);
+          } catch {
+            continue;
+          }
+
+          switch (parsed.type) {
+            case 'status':
+              callbacks?.onStatus?.(parsed.content, parsed.metadata);
+              break;
+            case 'content':
+              collectedContent += parsed.content;
+              // Prevent memory bloat with reasonable limits
+              if (collectedContent.length > 100000) { // 100k chars
+                collectedContent = collectedContent.slice(-50000); // Keep last 50k
+              }
+              callbacks?.onContent?.(parsed.content);
+              break;
+            case 'error':
+              cleanup();
+              callbacks?.onError?.(parsed.content);
+              return;
+            case 'complete':
+              cleanup();
+              callbacks?.onComplete?.(parsed.metadata);
+              return;
+          }
+        }
+      }
+    } finally {
+      cleanup();
+      reader.releaseLock();
+    }
+  }
+
+  /**
+   * Check if the backend is healthy and ready to accept requests.
+   * Useful for handling startup timing issues.
+   */
+  async healthCheck(): Promise<boolean> {
+    try {
+      await this.getUnauthenticated('/api/health');
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 

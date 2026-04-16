@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useEffect } from 'react';
 import Image from 'next/image';
 import { AuthWrapper } from '@/components/AuthWrapper';
 import { Brain, MessageSquare, SettingsIcon as SettingsIconLucide, Bell, SlidersHorizontal, LayoutGrid, PlugZap, Binary, Bot as BotIcon, ScrollText, UserCircle, Loader2 } from 'lucide-react';
@@ -50,8 +50,46 @@ type ActiveView = string;
 export default function DashboardPage() {
   const [activeMainView, setActiveMainView] = useState<ActiveView>('chat');
   const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({});
+  const [backendReady, setBackendReady] = useState(false);
+  const [backendCheckRetries, setBackendCheckRetries] = useState(0);
   const { loading: pluginsLoading } = usePluginRegistry();
   const { sidebarEntries, viewMap } = usePluginRoutes();
+
+  // Backend health check on mount
+  useEffect(() => {
+    const checkBackendHealth = async () => {
+      try {
+        const response = await fetch('/api/health', {
+          method: 'GET',
+          cache: 'no-cache',
+        });
+        if (response.ok) {
+          setBackendReady(true);
+        } else {
+          // Retry with exponential backoff (max 10 retries)
+          if (backendCheckRetries < 10) {
+            const delay = Math.min(1000 * Math.pow(2, backendCheckRetries), 30000);
+            setTimeout(() => {
+              setBackendCheckRetries(prev => prev + 1);
+              checkBackendHealth();
+            }, delay);
+          }
+        }
+      } catch (error) {
+        console.warn('[Dashboard] Backend health check failed:', error);
+        // Retry with exponential backoff (max 10 retries)
+        if (backendCheckRetries < 10) {
+          const delay = Math.min(1000 * Math.pow(2, backendCheckRetries), 30000);
+          setTimeout(() => {
+            setBackendCheckRetries(prev => prev + 1);
+            checkBackendHealth();
+          }, delay);
+        }
+      }
+    };
+
+    checkBackendHealth();
+  }, [backendCheckRetries]);
 
   function renderPluginMenuIcon(pluginId: string, iconPath?: string) {
     const imgKey = `${pluginId}-${iconPath}`;
@@ -72,6 +110,30 @@ export default function DashboardPage() {
       );
     }
     return <PlugZap className="h-4 w-4" />;
+  }
+
+  // Show loading screen while backend initializes
+  if (!backendReady) {
+    return (
+      <AuthWrapper>
+        <div className="flex h-screen w-full items-center justify-center bg-background">
+          <div className="flex flex-col items-center space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="text-center">
+              <h2 className="text-lg font-semibold text-foreground">Initializing Karen AI</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Connecting to backend services...
+              </p>
+              {backendCheckRetries > 0 && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Retrying connection ({backendCheckRetries}/10)...
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </AuthWrapper>
+    );
   }
 
   return (

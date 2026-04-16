@@ -1,6 +1,7 @@
 """
 Authentication Service implementation.
 """
+
 import asyncio
 import hashlib
 import os
@@ -51,6 +52,7 @@ class UserAccount:
 
     id: str
     email: str
+    username: str
     full_name: str
     password_hash: str
     roles: List[UserRole] = field(default_factory=list)
@@ -207,7 +209,7 @@ class AuthService(BaseService):
         async with self.lock:
             if self._initialized:
                 return
-            
+
             logger.info("AuthService: Starting initialization...")
 
             self._initializing_task = current_task
@@ -255,34 +257,57 @@ class AuthService(BaseService):
         logger.info("AuthService: Ensuring database tables exist...")
         try:
             # Use the established synchronous table creation method from db_client
-            # This is safer as it handles engine binding correctly.
-            self._get_db_client().create_tables()
+            # Add timeout to prevent hanging
+            import asyncio
+
+            await asyncio.wait_for(
+                asyncio.get_event_loop().run_in_executor(
+                    None, self._get_db_client().create_tables
+                ),
+                timeout=10.0,  # 10 second timeout for table creation
+            )
             logger.info("AuthService: Database tables created or verified.")
+        except asyncio.TimeoutError:
+            logger.warning(
+                "AuthService: Database table creation timed out - continuing without database tables"
+            )
         except Exception as e:
-            logger.error(f"AuthService: Error ensuring database tables: {e}")
-            # Don't re-raise yet, maybe tables already exist from another source
+            logger.warning(
+                f"AuthService: Database not available: {e} - continuing in offline mode"
+            )
 
     async def _ensure_default_admin_user(self) -> None:
         """Ensure default admin user exists."""
         try:
-            # Check if admin user exists
-            admin_user = await self.get_user_by_email("admin@kari.ai")
-            if not admin_user:
-                # Create default admin user
-                default_password = os.environ.get("KARI_ADMIN_PASSWORD", "Admin@123!")
-                user, error = await self.create_user(
-                    email="admin@kari.ai",
-                    password=default_password,
-                    full_name="System Administrator",
-                    roles=[UserRole.ADMIN, UserRole.USER],
-                    is_verified=True,
-                )
-                if error:
-                    logger.error(f"Failed to create default admin user: {error}")
-                else:
-                    logger.info("Created default admin user")
+            # Add timeout to prevent hanging
+            await asyncio.wait_for(
+                self._create_default_admin_user(),
+                timeout=5.0,  # 5 second timeout for admin user creation
+            )
+        except asyncio.TimeoutError:
+            logger.warning("AuthService: Admin user creation timed out - continuing")
         except Exception as e:
-            logger.error(f"Error creating default admin user: {e}")
+            logger.warning(f"AuthService: Admin user creation failed: {e} - continuing")
+
+    async def _create_default_admin_user(self) -> None:
+        """Helper method to create default admin user."""
+        # Check if admin user exists
+        admin_user = await self.get_user_by_email("admin@kari.ai")
+        if not admin_user:
+            # Create default admin user
+            default_password = os.environ.get("KARI_ADMIN_PASSWORD", "Admin@123!")
+            user, error = await self.create_user(
+                email="admin@kari.ai",
+                username="admin",
+                password=default_password,
+                full_name="System Administrator",
+                roles=[UserRole.ADMIN, UserRole.USER],
+                is_verified=True,
+            )
+            if error:
+                logger.error(f"Failed to create default admin user: {error}")
+            else:
+                logger.info("Created default admin user")
 
     def set_db_session(self, session: AsyncSession) -> None:
         """Set the database session for the service."""
@@ -343,6 +368,7 @@ class AuthService(BaseService):
         return UserAccount(
             id=str(getattr(auth_user, "user_id", "")),
             email=str(getattr(auth_user, "email", "")),
+            username=str(getattr(auth_user, "username", "") or ""),
             full_name=str(getattr(auth_user, "full_name", "") or ""),
             password_hash=str(getattr(auth_user, "password_hash", "")),
             tenant_id=str(getattr(auth_user, "tenant_id", ""))
@@ -518,6 +544,7 @@ class AuthService(BaseService):
         password: str,
         full_name: str,
         *,
+        username: Optional[str] = None,
         tenant_id: Optional[str] = None,
         roles: Optional[List[UserRole]] = None,
         is_verified: bool = False,
@@ -570,6 +597,7 @@ class AuthService(BaseService):
                 auth_user = AuthUser(
                     user_id=uuid.uuid4(),
                     email=email,  # type: ignore
+                    username=username or email.split("@")[0],
                     full_name=full_name,
                     password_hash=password_hash,  # type: ignore
                     tenant_id=resolved_tenant_id,
@@ -600,6 +628,7 @@ class AuthService(BaseService):
         user_id: str,
         *,
         email: Optional[str] = None,
+        username: Optional[str] = None,
         full_name: Optional[str] = None,
         preferences: Optional[Dict[str, Any]] = None,
         db_session: Optional[AsyncSession] = None,
@@ -633,7 +662,9 @@ class AuthService(BaseService):
         if normalized_name is not None and not normalized_name:
             return None, "Full name is required"
 
-        async def _update_impl(session: AsyncSession) -> Tuple[Optional[UserAccount], Optional[str]]:
+        async def _update_impl(
+            session: AsyncSession,
+        ) -> Tuple[Optional[UserAccount], Optional[str]]:
             result = await session.execute(
                 select(AuthUser).where(AuthUser.user_id == user_uuid)
             )
@@ -652,10 +683,11 @@ class AuthService(BaseService):
             if normalized_name is not None:
                 auth_user.full_name = normalized_name  # type: ignore
 
+            if username is not None:
+                auth_user.username = username  # type: ignore
+
             if preferences is not None:
-                current_preferences = dict(
-                    getattr(auth_user, "preferences", {}) or {}
-                )
+                current_preferences = dict(getattr(auth_user, "preferences", {}) or {})
                 current_preferences.update(preferences)
                 auth_user.preferences = current_preferences  # type: ignore
 
@@ -669,14 +701,18 @@ class AuthService(BaseService):
             user, error = await _update_impl(db_session)
             if not error:
                 await db_session.commit()
-                logger.debug(f"AuthService: Committed update to user {user_id} using injected session")
+                logger.debug(
+                    f"AuthService: Committed update to user {user_id} using injected session"
+                )
             return user, error
-        
+
         async with self._session_scope() as session:
             user, error = await _update_impl(session)
             if not error:
                 await session.commit()
-                logger.debug(f"AuthService: Committed update to user {user_id} using scoped session")
+                logger.debug(
+                    f"AuthService: Committed update to user {user_id} using scoped session"
+                )
             return user, error
 
     async def change_user_password(
@@ -1051,6 +1087,8 @@ class AuthService(BaseService):
 
         # Check cache first
         for user in self._user_cache.values():
+            if (user.username or "").lower() == normalized_username:
+                return user
             cached_email = (user.email or "").lower()
             if cached_email == normalized_username:
                 return user
@@ -1059,7 +1097,20 @@ class AuthService(BaseService):
 
         try:
             async with self._session_scope() as session:
-                # Backward-compat deterministic aliases (admin@karen.ai <-> admin@kari.ai)
+                # 1. Direct username column match (Preferred)
+                result = await session.execute(
+                    select(AuthUser).where(
+                        AuthUser.username == normalized_username,
+                        AuthUser.is_active == True,  # type: ignore
+                    )
+                )
+                auth_user = result.scalar_one_or_none()
+                if auth_user:
+                    user = self._build_user_account(auth_user)
+                    self._user_cache[user.id] = user
+                    return user
+
+                # 2. Backward-compat deterministic aliases (admin@karen.ai <-> admin@kari.ai)
                 for candidate in self._iter_email_alias_candidates(normalized_username):
                     result = await session.execute(
                         select(AuthUser).where(
@@ -1096,6 +1147,25 @@ class AuthService(BaseService):
         except Exception as e:
             logger.error(f"Error fetching user by username: {e}")
             return None
+
+    async def get_all_users(self) -> List[UserAccount]:
+        """
+        Get all users in the system.
+
+        Returns:
+            List of user accounts
+        """
+        if not self._initialized:
+            await self.initialize()
+
+        try:
+            async with self._session_scope() as session:
+                result = await session.execute(select(AuthUser))
+                auth_users = result.scalars().all()
+                return [self._build_user_account(u) for u in auth_users]
+        except Exception as e:
+            logger.error(f"Error getting all users: {e}")
+            return []
 
     def _iter_email_alias_candidates(self, identifier: str) -> List[str]:
         """Return deterministic email candidates for login identifier."""

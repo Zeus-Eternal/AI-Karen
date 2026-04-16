@@ -44,10 +44,12 @@ class FallbackProvider(LLMProviderBase):
         self._history: List[str] = []
         self.last_usage: Dict[str, Any] = {}
         self.provider_name = "fallback"
-        
+
         # Initialize local model paths
         self._local_models = self._discover_local_models()
-        logger.info(f"FallbackProvider initialized with {len(self._local_models)} local models")
+        logger.info(
+            f"FallbackProvider initialized with {len(self._local_models)} local models"
+        )
 
     # ------------------------------------------------------------------
     # Core helpers
@@ -104,7 +106,7 @@ class FallbackProvider(LLMProviderBase):
 
     def _discover_local_models(self) -> Dict[str, str]:
         """Discover available local models on the system.
-        
+
         Returns:
             Dictionary mapping model types to their paths
         """
@@ -113,7 +115,7 @@ class FallbackProvider(LLMProviderBase):
         if not base_path.is_absolute():
             # Resolve relative to app root if possible
             base_path = Path(os.getcwd()) / base_path
-        
+
         # Check for llama-cpp models
         llama_path = base_path / "llama-cpp"
         if llama_path.exists():
@@ -123,23 +125,25 @@ class FallbackProvider(LLMProviderBase):
                 if gguf.stat().st_size > 1000:
                     models[f"llamacpp_{gguf.stem}"] = str(gguf)
                     logger.debug(f"Found llama-cpp model: {gguf.name}")
-        
+
         # Check for transformers models
         transformers_path = base_path / "transformers"
         if transformers_path.exists():
             # Look for model directories (contain config.json or model files)
             for model_dir in transformers_path.iterdir():
-                if model_dir.is_dir() and not model_dir.name.startswith('.'):
+                if model_dir.is_dir() and not model_dir.name.startswith("."):
                     # Check if it's a valid model directory
-                    if (model_dir / "config.json").exists() or \
-                       (model_dir / "pytorch_model.bin").exists() or \
-                       (model_dir / "model.safetensors").exists():
+                    if (
+                        (model_dir / "config.json").exists()
+                        or (model_dir / "pytorch_model.bin").exists()
+                        or (model_dir / "model.safetensors").exists()
+                    ):
                         models[f"transformers_{model_dir.name}"] = str(model_dir)
                         logger.debug(f"Found transformers model: {model_dir.name}")
-        
+
         logger.info(f"Discovered {len(models)} local models: {list(models.keys())}")
         return models
-    
+
     # Removed direct llama.cpp runtime ownership here. The registry-owned
     # `llamacpp` provider is now the single authoritative local GGUF path.
     def _try_local_llamacpp(
@@ -175,10 +179,9 @@ class FallbackProvider(LLMProviderBase):
                 if runtime and hasattr(runtime, "chat"):
                     response = runtime.chat(
                         prepared_messages,
-                        max_tokens=192,
+                        max_tokens=384,
                         temperature=0.7,
                         top_p=0.9,
-                        stop=["\n\n", "Human:", "User:"],
                     )
                 else:
                     raise GenerationFailed(
@@ -193,95 +196,106 @@ class FallbackProvider(LLMProviderBase):
 
             if response and len(response.strip()) > 0:
                 model_path = getattr(llamacpp_provider, "model_path", None)
-                model_name = Path(model_path).stem if model_path else str(requested_model or "local")
+                model_name = (
+                    Path(model_path).stem
+                    if model_path
+                    else str(requested_model or "local")
+                )
                 self._current_model_id = f"llamacpp:{model_name}"
                 return response
         except Exception as e:
             logger.warning("Authoritative llamacpp provider failed: %s", e)
         return None
-    
+
     # Shared cache for transformers runtimes across instances to prevent OOM
     _transformers_runtimes: Dict[str, Any] = {}
 
     def _try_local_transformers(self, prompt: str, **kwargs: Any) -> Optional[str]:
         """Try to use local transformers model for generation.
-        
+
         Returns:
             Generated text or None if failed
         """
         # Find transformers model paths
-        transformer_models = {k: v for k, v in self._local_models.items() if k.startswith("transformers_")}
-        
+        transformer_models = {
+            k: v for k, v in self._local_models.items() if k.startswith("transformers_")
+        }
+
         if not transformer_models:
             logger.debug("No local transformers models found")
             return None
-        
+
         # Determine model attempt order
         requested_model = kwargs.get("model")
         attempt_order = []
-        
+
         # 1. First priority: Specifically requested model
         if requested_model:
             for m_name, m_path in transformer_models.items():
-                if m_name == requested_model or m_name == f"transformers_{requested_model}":
+                if (
+                    m_name == requested_model
+                    or m_name == f"transformers_{requested_model}"
+                ):
                     attempt_order.append((m_name, m_path))
                     break
-        
+
         # 2. Rest of the models by preferred order
         preferred_order = ["DialoGPT", "gpt2", "deepseek", "default_model"]
         remaining = [
-            (name, path) for name, path in transformer_models.items()
+            (name, path)
+            for name, path in transformer_models.items()
             if (name, path) not in attempt_order
         ]
-        
+
         remaining_sorted = sorted(
-            remaining, 
+            remaining,
             key=lambda x: any(p in x[0].lower() for p in preferred_order),
-            reverse=True
+            reverse=True,
         )
         attempt_order.extend(remaining_sorted)
-        
+
         for model_name, model_path in attempt_order:
             try:
-                from ai_karen_engine.inference.transformers_runtime import TransformersRuntime
-                
+                from ai_karen_engine.inference.transformers_runtime import (
+                    TransformersRuntime,
+                )
+
                 # Check shared cache
                 if model_name not in FallbackProvider._transformers_runtimes:
                     logger.info(f"Initializing new transformers model: {model_name}")
                     runtime = TransformersRuntime(
                         model_path=model_path,
                         device="cpu",  # Use CPU for compatibility
-                        torch_dtype="float32"
+                        torch_dtype="float32",
                     )
                     if not runtime.load_model(model_path):
-                        logger.warning(f"Failed to load transformers model: {model_name}")
+                        logger.warning(
+                            f"Failed to load transformers model: {model_name}"
+                        )
                         continue
                     FallbackProvider._transformers_runtimes[model_name] = runtime
                 else:
                     logger.debug(f"Using cached transformers model: {model_name}")
-                
+
                 # Generate response
                 runtime = FallbackProvider._transformers_runtimes[model_name]
                 response = runtime.generate(
-                    prompt,
-                    max_tokens=150,
-                    temperature=0.8,
-                    top_p=0.9,
-                    do_sample=True
+                    prompt, max_tokens=150, temperature=0.8, top_p=0.9, do_sample=True
                 )
-                
+
                 if response and len(response.strip()) > 0:
                     logger.info(f"Successfully generated response using {model_name}")
                     # Store a canonical provider-prefixed model id for correct attribution.
                     logical_name = str(model_name).removeprefix("transformers_")
                     self._current_model_id = f"transformers:{logical_name}"
                     return response
-                
+
             except Exception as e:
                 logger.warning(f"Failed to use transformers model {model_name}: {e}")
                 continue
-        
+
         return None
+
     def _summarize_prompt(self, prompt: str) -> str:
         """Create a compact summary snippet for the prompt."""
 
@@ -316,13 +330,15 @@ class FallbackProvider(LLMProviderBase):
 
     # ------------------------------------------------------------------
     # LLMProviderBase interface
-    def generate_text(self, prompt: Union[str, List[Dict[str, str]]], **kwargs: Any) -> str:  # type: ignore[override]
+    def generate_text(
+        self, prompt: Union[str, List[Dict[str, str]]], **kwargs: Any
+    ) -> str:  # type: ignore[override]
         """Intelligent fallback with local model support.
-        
+
         Args:
             prompt: Either a prompt string or a list of messages (OpenAI format).
             **kwargs: Additional parameters.
-            
+
         Fallback hierarchy:
         1. Try registered llamacpp provider (if available)
         2. Try local llama-cpp through the authoritative registry provider
@@ -332,7 +348,7 @@ class FallbackProvider(LLMProviderBase):
 
         start = datetime.utcnow()
         error_details = []
-        
+
         # Determine log identity
         if isinstance(prompt, list):
             log_desc = f"list of {len(prompt)} messages"
@@ -340,15 +356,16 @@ class FallbackProvider(LLMProviderBase):
         else:
             log_desc = f"prompt length {len(prompt)}"
             prompt_str = prompt
-            
+
         logger.info(f"FallbackProvider invoked with {log_desc}")
 
         # Step 1: Try registered llamacpp provider
         try:
             from ai_karen_engine.integrations.llm_registry import get_registry
+
             registry = get_registry()
             llamacpp_provider = registry.get_provider("llamacpp")
-            
+
             if llamacpp_provider:
                 logger.info("Attempting to use registered llamacpp provider")
                 real_response = None
@@ -359,19 +376,28 @@ class FallbackProvider(LLMProviderBase):
                     if runtime and hasattr(runtime, "chat"):
                         real_response = runtime.chat(prepared_messages, **kwargs)
                     elif hasattr(llamacpp_provider, "generate_chat"):
-                        real_response = llamacpp_provider.generate_chat(prepared_messages, **kwargs)  # type: ignore[attr-defined]
+                        real_response = llamacpp_provider.generate_chat(
+                            prepared_messages, **kwargs
+                        )  # type: ignore[attr-defined]
                     elif hasattr(llamacpp_provider, "generate_response"):
-                        real_response = llamacpp_provider.generate_response(prepared_messages, **kwargs)  # type: ignore[attr-defined]
+                        real_response = llamacpp_provider.generate_response(
+                            prepared_messages, **kwargs
+                        )  # type: ignore[attr-defined]
                 else:
                     real_response = llamacpp_provider.generate_text(prompt, **kwargs)
-                    
+
                 if real_response and len(real_response.strip()) > 0:
                     logger.info("✓ Successfully used registered llamacpp provider")
-                    return self._record_success(real_response, start, "registered_llamacpp", model_id="llamacpp:local")
+                    return self._record_success(
+                        real_response,
+                        start,
+                        "registered_llamacpp",
+                        model_id="llamacpp:local",
+                    )
         except Exception as e:
             error_details.append(f"Registered llamacpp: {str(e)}")
             logger.debug(f"Registered llamacpp provider failed: {e}")
-        
+
         # Step 2: Retry through the authoritative local llamacpp path.
         # This keeps fallback behavior on the same provider/runtime authority
         # while still allowing trimmed-message degraded execution semantics.
@@ -379,7 +405,9 @@ class FallbackProvider(LLMProviderBase):
             logger.info("Attempting authoritative local llama-cpp fallback path")
             local_llama_response = self._try_local_llamacpp(prompt, **kwargs)
             if local_llama_response:
-                logger.info("✓ Successfully used authoritative local llama-cpp fallback path")
+                logger.info(
+                    "✓ Successfully used authoritative local llama-cpp fallback path"
+                )
                 return self._record_success(
                     local_llama_response,
                     start,
@@ -389,7 +417,7 @@ class FallbackProvider(LLMProviderBase):
         except Exception as e:
             error_details.append(f"Local llama-cpp: {str(e)}")
             logger.debug(f"Local llama-cpp failed: {e}")
-        
+
         # Step 4: Try local transformers models
         if not isinstance(prompt, list):
             try:
@@ -397,20 +425,35 @@ class FallbackProvider(LLMProviderBase):
                 transformers_response = self._try_local_transformers(prompt, **kwargs)
                 if transformers_response:
                     logger.info("✓ Successfully used local transformers model")
-                    return self._record_success(transformers_response, start, "local_transformers", model_id=getattr(self, '_current_model_id', 'local:transformers'))
+                    return self._record_success(
+                        transformers_response,
+                        start,
+                        "local_transformers",
+                        model_id=getattr(
+                            self, "_current_model_id", "local:transformers"
+                        ),
+                    )
             except Exception as e:
                 error_details.append(f"Local transformers: {str(e)}")
                 logger.debug(f"Local transformers failed: {e}")
-        
+
         # Step 5: Intelligent deterministic fallback based on errors
-        logger.warning(f"All model attempts failed. Using intelligent fallback. Errors: {error_details}")
+        logger.warning(
+            f"All model attempts failed. Using intelligent fallback. Errors: {error_details}"
+        )
         return self._intelligent_fallback(prompt_str, start, error_details, **kwargs)
-    
-    def _record_success(self, response: str, start: datetime, source: str, model_id: Optional[str] = None) -> str:
+
+    def _record_success(
+        self,
+        response: str,
+        start: datetime,
+        source: str,
+        model_id: Optional[str] = None,
+    ) -> str:
         """Record successful generation metrics."""
         duration = (datetime.utcnow() - start).total_seconds()
         token_estimate = max(1, len(response.split()))
-        
+
         self.last_usage = {
             "prompt_tokens": token_estimate,
             "completion_tokens": token_estimate,
@@ -418,24 +461,26 @@ class FallbackProvider(LLMProviderBase):
             "cost": 0.0,
             "source": source,
             "model_id": model_id or source,
-            "confidence": 0.75, # High confidence for real local models
+            "confidence": 0.75,  # High confidence for real local models
         }
-        
+
         record_llm_metric("generate_text", duration, True, source)
         return response
-    
-    def _intelligent_fallback(self, prompt: str, start: datetime, errors: List[str], **kwargs: Any) -> str:
+
+    def _intelligent_fallback(
+        self, prompt: str, start: datetime, errors: List[str], **kwargs: Any
+    ) -> str:
         """Generate intelligent fallback response based on actual errors."""
-        
+
         # Analyze errors to provide helpful guidance
         error_type = self._classify_error(errors)
-        
+
         # Build context-aware response
         prompt_summary = self._summarize_prompt(prompt)
         self._history.append(prompt_summary)
-        
+
         if len(self._history) > self.max_history:
-            self._history = self._history[-self.max_history:]
+            self._history = self._history[-self.max_history :]
 
         # Generate intelligent error message
         if error_type == "model_load_failed":
@@ -449,7 +494,7 @@ This appears to be a model loading issue. Here are some suggestions:
 • Check the application logs for specific error details
 
 The system has {len(self._local_models)} local models discovered but unavailable."""
-        
+
         elif error_type == "generation_failed":
             message = f"""I attempted to process your message about: {prompt_summary}
 
@@ -459,7 +504,7 @@ However, the AI generation encountered an error. This could be due to:
 • Temporary system resource constraints
 
 Would you like to rephrase your request or try again?"""
-        
+
         elif error_type == "no_models":
             message = f"""I received your message about: {prompt_summary}
 
@@ -468,7 +513,7 @@ However, no local AI models are currently available. The system needs:
 • Proper model configuration and initialization
 
 Please ensure models are downloaded and configured."""
-        
+
         else:
             # Generic fallback with context
             suggestions = self._build_suggestions(prompt)
@@ -483,7 +528,7 @@ The system is working to restore full AI capabilities."""
 
         duration = (datetime.utcnow() - start).total_seconds()
         token_estimate = max(1, len(prompt.split()))
-        
+
         self.last_usage = {
             "prompt_tokens": token_estimate,
             "completion_tokens": max(1, len(message.split()) // 2),
@@ -491,17 +536,17 @@ The system is working to restore full AI capabilities."""
             "cost": 0.0,
             "source": f"{error_type}_fallback",
             "model_id": "fallback:intelligent",
-            "confidence": 0.35, # Conservative confidence for deterministic fallback
+            "confidence": 0.35,  # Conservative confidence for deterministic fallback
             "error_type": error_type,
         }
 
         record_llm_metric("generate_text", duration, True, "intelligent_fallback")
         return message
-    
+
     def _classify_error(self, errors: List[str]) -> str:
         """Classify errors to provide intelligent fallback responses."""
         error_text = " ".join(errors).lower()
-        
+
         if any(term in error_text for term in ["load", "not found", "file", "path"]):
             return "model_load_failed"
         elif any(term in error_text for term in ["generate", "inference", "runtime"]):
@@ -522,7 +567,9 @@ The system is working to restore full AI capabilities."""
         """Alias for generate_response to maintain compatibility."""
         return self.generate_text(messages, **kwargs)
 
-    def enhanced_generate_response(self, messages: Union[str, List[Dict[str, str]]], **kwargs: Any) -> str:  # type: ignore[override]
+    def enhanced_generate_response(
+        self, messages: Union[str, List[Dict[str, str]]], **kwargs: Any
+    ) -> str:  # type: ignore[override]
         if isinstance(messages, str):
             return self.generate_text(messages, **kwargs)
         return self.generate_text(messages, **kwargs)
@@ -576,8 +623,8 @@ The system is working to restore full AI capabilities."""
                 "registered_llamacpp",
                 "local_llamacpp",
                 "local_transformers",
-                "intelligent_fallback"
-            ]
+                "intelligent_fallback",
+            ],
         }
 
     def health_check(self) -> Dict[str, Any]:
@@ -586,14 +633,18 @@ The system is working to restore full AI capabilities."""
             "message": "Fallback provider operational",
             "checked_at": datetime.utcnow().isoformat(),
             "local_models_count": len(self._local_models),
-            "local_models_discovered": list(self._local_models.keys()) if self._local_models else [],
+            "local_models_discovered": list(self._local_models.keys())
+            if self._local_models
+            else [],
         }
-        
+
         # Check if any local models are actually available
         if not self._local_models:
-            health_status["warning"] = "No local models discovered - will use intelligent fallback only"
+            health_status["warning"] = (
+                "No local models discovered - will use intelligent fallback only"
+            )
             health_status["status"] = "degraded"
-        
+
         return health_status
 
 

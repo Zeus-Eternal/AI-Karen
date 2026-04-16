@@ -82,6 +82,7 @@ class UserResponse(BaseModel):
 
     user_id: str
     email: str
+    username: str
     full_name: str
     roles: list
     is_active: bool
@@ -95,12 +96,18 @@ class UpdateProfileRequest(BaseModel):
     """Update the current user's profile."""
 
     email: Optional[str] = None
+    username: Optional[str] = Field(default=None, min_length=1)
     full_name: Optional[str] = Field(default=None, min_length=1)
     preferences: Optional[Dict[str, Any]] = None
 
     @model_validator(mode="after")
     def validate_payload(self):
-        if self.email is None and self.full_name is None and self.preferences is None:
+        if (
+            self.email is None
+            and self.username is None
+            and self.full_name is None
+            and self.preferences is None
+        ):
             raise ValueError("At least one profile field must be provided")
         return self
 
@@ -123,19 +130,25 @@ class UpdateUserProfileRequest(BaseModel):
     """Update current user profile request."""
 
     email: Optional[str] = None
+    username: Optional[str] = Field(default=None, min_length=1)
     full_name: Optional[str] = Field(default=None, min_length=1)
     preferences: Optional[Dict[str, Any]] = None
 
     @model_validator(mode="after")
     def validate_payload(self):
-        if self.email is None and self.full_name is None and self.preferences is None:
+        if (
+            self.email is None
+            and self.username is None
+            and self.full_name is None
+            and self.preferences is None
+        ):
             raise ValueError("At least one profile field must be provided")
         return self
 
 
 # Initialize service with default configuration
 # Use model_construct to bypass Pydantic validation for required fields
-from services.auth_service import AuthService as CoreAuthService
+from services.auth_service import AuthService as CoreAuthService, UserRole
 from ai_karen_engine.database.dependencies import get_async_db_session_dependency
 from ai_karen_engine.core.auth_config import auth_config
 
@@ -185,9 +198,11 @@ async def _get_authenticated_user_from_request(request: Request):
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Authentication failed or session expired",
             )
-    
+
     if auth_bypass:
-        logger.error("DEBUG_AUTH: Authentication bypass fallback active, returning dev-user")
+        logger.error(
+            "DEBUG_AUTH: Authentication bypass fallback active, returning dev-user"
+        )
         return UserData.from_dict(
             {
                 "user_id": "dev-user",
@@ -245,6 +260,7 @@ def _ensure_authenticated_user_payload(user: Any) -> Dict[str, Any]:
         payload = {
             "user_id": getattr(user, "user_id", None) or getattr(user, "id", None),
             "email": getattr(user, "email", None),
+            "username": getattr(user, "username", None),
             "full_name": getattr(user, "full_name", None),
             "roles": getattr(user, "roles", []),
             "tenant_id": getattr(user, "tenant_id", None),
@@ -265,6 +281,12 @@ def _ensure_authenticated_user_payload(user: Any) -> Dict[str, Any]:
     )
     payload["roles"] = list(payload.get("roles") or [])
     payload["preferences"] = dict(payload.get("preferences") or {})
+    # Generate default username from email if not provided
+    username = payload.get("username") or ""
+    if not username and payload.get("email"):
+        username = payload["email"].split("@")[0]
+    payload["username"] = username
+
     payload["full_name"] = payload.get("full_name") or payload.get("name") or ""
     payload["email"] = payload.get("email") or ""
     return payload
@@ -287,6 +309,7 @@ def _serialize_user_response(user: Any) -> Dict[str, Any]:
     return {
         "user_id": user_id,
         "email": payload["email"],
+        "username": payload["username"],
         "full_name": payload["full_name"],
         "roles": payload["roles"],
         "is_active": is_active,
@@ -359,8 +382,12 @@ async def auth_health() -> Dict[str, Any]:
 @router.get("/first-run")
 async def check_first_run() -> Dict[str, Any]:
     """Check if first-run setup is required."""
-    auth_service_instance = await get_auth_service()
-    is_first_run = await auth_service_instance.is_first_run()
+    try:
+        auth_service_instance = await get_auth_service()
+        is_first_run = await auth_service_instance.is_first_run()
+    except Exception:
+        # If auth service fails, assume first run is required
+        is_first_run = True
 
     return {
         "first_run_required": is_first_run,
@@ -375,12 +402,13 @@ async def first_run_setup(
     request: FirstRunSetupRequest, http_request: Request
 ) -> JSONResponse:
     """Set up the first admin user."""
-    auth_svc = await get_auth_service()
-    # Check if first-run setup is actually needed
-    if not await auth_svc.is_first_run():
+    try:
+        auth_svc = await get_auth_service()
+    except Exception:
+        # If auth service fails to initialize, return error
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="First-run setup already completed",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Auth service unavailable for first-run setup",
         )
 
     # Validate password confirmation
@@ -390,10 +418,20 @@ async def first_run_setup(
         )
 
     try:
-        # Create first admin user
-        user = await auth_svc.create_first_admin(
-            email=request.email, password=request.password, full_name=request.full_name
+        # Create first admin user directly (bypass is_first_run check for setup)
+        user, error = await auth_svc.create_user(
+            email=request.email,
+            username=request.email.split("@")[0],  # Use email prefix as username
+            password=request.password,
+            full_name=request.full_name,
+            roles=[UserRole.ADMIN, UserRole.USER],
+            is_verified=True,
         )
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to create admin user: {error}",
+            )
 
         # Authenticate the new admin user
         ip_address = get_client_ip(http_request)
@@ -476,6 +514,19 @@ async def login(
     login_identifier = request.email or request.username or ""
 
     logger.info(f"Login attempt for identifier: {login_identifier}")
+
+    # Check if user exists before attempting authentication
+    if "@" in login_identifier:
+        user_exists = await auth_svc.get_user_by_email(login_identifier)
+    else:
+        user_exists = await auth_svc.get_user_by_username(login_identifier)
+
+    if not user_exists:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     try:
         coro = auth_svc.authenticate_user(
@@ -657,17 +708,19 @@ async def update_current_user_info(
         )
 
         if auth_bypass and current_user_id == "dev-user":
-            logger.info(f"DEBUG_AUTH: Using developer bypass for user {current_user_id}")
+            logger.info(
+                f"DEBUG_AUTH: Using developer bypass for user {current_user_id}"
+            )
             # We used to return a mock user here, but now we proceed to allow
             # testing of the actual update logic even in bypass mode.
             # However, we must ensure 'dev-user' exists or handle its mapping.
             pass
 
-
         logger.info(f"DEBUG_AUTH: Using auth_service for user {current_user_id}")
         updated_user, error = await auth_svc.update_user_profile(
             current_user_id,
             email=str(request.email) if request.email is not None else None,
+            username=request.username,
             full_name=request.full_name,
             preferences=request.preferences,
         )

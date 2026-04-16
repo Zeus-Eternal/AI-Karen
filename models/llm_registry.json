@@ -7,9 +7,21 @@
     "supports_embeddings": true,
     "requires_api_key": false,
     "default_model": "Phi-3-mini-4k-instruct-q4.gguf",
-    "health_status": "unhealthy",
-    "last_health_check": 1775494042.3679993,
-    "error_message": "LlamaCpp initialization failed: llama-cpp-python is not available. Please install it to use LlamaCppRuntime."
+    "health_status": "healthy",
+    "last_health_check": 1776382652.2835107,
+    "error_message": null
+  },
+  {
+    "name": "ollama",
+    "provider_class": "OllamaProvider",
+    "description": "Local Ollama server reachable from Karen runtime",
+    "supports_streaming": true,
+    "supports_embeddings": false,
+    "requires_api_key": false,
+    "default_model": "starcoder:128k",
+    "health_status": "healthy",
+    "last_health_check": 1776382652.28718,
+    "error_message": null
   },
   {
     "name": "openai",
@@ -18,9 +30,9 @@
     "supports_streaming": true,
     "supports_embeddings": true,
     "requires_api_key": true,
-    "default_model": "gpt-3.5-turbo",
+    "default_model": "gpt-4o-mini",
     "health_status": "unhealthy",
-    "last_health_check": 1774889050.9844644,
+    "last_health_check": 1776382652.28855,
     "error_message": "No OpenAI API key provided. Set OPENAI_API_KEY environment variable."
   },
   {
@@ -30,10 +42,10 @@
     "supports_streaming": true,
     "supports_embeddings": false,
     "requires_api_key": true,
-    "default_model": "glm-5",
+    "default_model": "glm-4.5",
     "health_status": "unhealthy",
-    "last_health_check": 1774889051.7213674,
-    "error_message": "Error code: 429 - {'error': {'code': '1113', 'message': 'Insufficient balance or no resource package. Please recharge.'}}"
+    "last_health_check": 1776382651.135785,
+    "error_message": "API key validation failed: Error code: 401 - {'error': {'code': '401', 'message': 'token expired or incorrect'}}"
   },
   {
     "name": "gemini",
@@ -42,9 +54,9 @@
     "supports_streaming": true,
     "supports_embeddings": true,
     "requires_api_key": true,
-    "default_model": "gemini-1.5-flash",
+    "default_model": "gemini-2.5-flash",
     "health_status": "unhealthy",
-    "last_health_check": 1774889051.9414296,
+    "last_health_check": 1776382651.5232234,
     "error_message": "Quota exceeded or rate limited"
   },
   {
@@ -56,7 +68,7 @@
     "requires_api_key": true,
     "default_model": "deepseek-chat",
     "health_status": "unhealthy",
-    "last_health_check": 1774889051.9422169,
+    "last_health_check": 1776382651.5244877,
     "error_message": "No DeepSeek API key provided. Set DEEPSEEK_API_KEY environment variable."
   },
   {
@@ -66,9 +78,9 @@
     "supports_streaming": false,
     "supports_embeddings": true,
     "requires_api_key": true,
-    "default_model": "gpt2",
+    "default_model": "microsoft/DialoGPT-large",
     "health_status": "unhealthy",
-    "last_health_check": 1774889051.9430776,
+    "last_health_check": 1776382651.5248919,
     "error_message": "No API token provided"
   },
   {
@@ -80,7 +92,7 @@
     "requires_api_key": true,
     "default_model": "gpt-4",
     "health_status": "healthy",
-    "last_health_check": 1774889051.943756,
+    "last_health_check": 1776382651.525241,
     "error_message": null
   },
   {
@@ -92,43 +104,19 @@
     "requires_api_key": false,
     "default_model": "kari-fallback-v1",
     "health_status": "healthy",
-    "last_health_check": 1774889051.9443412,
+    "last_health_check": 1776382651.5255866,
     "error_message": null
   },
   {
-    "name": "custom_copilotkit",
-    "provider_class": "CopilotKitProvider",
-    "description": "Custom CopilotKit instance",
-    "supports_streaming": false,
-    "supports_embeddings": false,
-    "requires_api_key": false,
-    "default_model": "gpt-3.5-turbo",
-    "health_status": "healthy",
-    "last_health_check": 1774889051.945008,
-    "error_message": null
-  },
-  {
-    "name": "nanovllm",
-    "provider_class": "NanoVLLMProvider",
-    "description": "Blazing fast local native execution via Nano-vLLM",
+    "name": "llamacpp-optimized",
+    "provider_class": "OptimizedLlamaCppProvider",
+    "description": "Optimized local llama-cpp-python with better async support and performance",
     "supports_streaming": true,
-    "supports_embeddings": false,
+    "supports_embeddings": true,
     "requires_api_key": false,
-    "default_model": "Qwen/Qwen3-0.6B",
-    "health_status": "unknown",
-    "last_health_check": null,
-    "error_message": null
-  },
-  {
-    "name": "sdcpp",
-    "provider_class": "SDCPPProvider",
-    "description": "Local low-VRAM image generation via stable-diffusion.cpp",
-    "supports_streaming": false,
-    "supports_embeddings": false,
-    "requires_api_key": false,
-    "default_model": "v1-5-pruned-emaonly.safetensors",
-    "health_status": "unknown",
-    "last_health_check": null,
+    "default_model": "Phi-3-mini-4k-instruct-q4.gguf",
+    "health_status": "healthy",
+    "last_health_check": 1776382651.526056,
     "error_message": null
   }
 ]

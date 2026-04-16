@@ -15,13 +15,14 @@ import time
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Type, Union, cast
 import asyncio
 import threading
 
 try:
     from watchdog.observers import Observer
     from watchdog.events import FileSystemEventHandler
+
     WATCHDOG_AVAILABLE = True
 except ImportError:
     WATCHDOG_AVAILABLE = False
@@ -31,14 +32,21 @@ except ImportError:
 try:
     import jsonschema
     from jsonschema import validate, ValidationError
+
     JSONSCHEMA_AVAILABLE = True
 except ImportError:
     JSONSCHEMA_AVAILABLE = False
+    validate = None
     ValidationError = Exception
 
 from ai_karen_engine.integrations.llm_utils import LLMProviderBase
 from importlib import import_module
 from ai_karen_engine.routing.types import RouteRequest
+from ai_karen_engine.config.llm_provider_config import (
+    get_provider_class_module,
+    resolve_provider_class_name,
+    resolve_provider_name,
+)
 
 logger = logging.getLogger("kari.llm_registry")
 
@@ -49,17 +57,6 @@ try:
 except Exception as kire_import_error:  # pragma: no cover - optional dependency path
     KIREAdapter = None  # type: ignore[assignment]
     _KIRE_IMPORT_ERROR = kire_import_error
-
-_PROVIDER_MODULES = {
-    "LlamaCppProvider": "ai_karen_engine.integrations.providers.llamacpp_provider",
-    "OpenAIProvider": "ai_karen_engine.integrations.providers.openai_provider",
-    "GeminiProvider": "ai_karen_engine.integrations.providers.gemini_provider",
-    "DeepseekProvider": "ai_karen_engine.integrations.providers.deepseek_provider",
-    "HuggingFaceProvider": "ai_karen_engine.integrations.providers.huggingface_provider",
-    "CopilotKitProvider": "ai_karen_engine.integrations.providers.copilotkit_provider",
-    "FallbackProvider": "ai_karen_engine.integrations.providers.fallback_provider",
-}
-
 
 @dataclass
 class ProviderRegistration:
@@ -80,7 +77,7 @@ class ProviderRegistration:
 @dataclass
 class ModelEntry:
     """Model registry entry with enhanced metadata."""
-    
+
     model_id: str
     library: str
     revision: str
@@ -97,50 +94,53 @@ class ModelEntry:
 
 class RegistryValidationError(Exception):
     """Registry validation error."""
+
     pass
 
 
 class RegistryIntegrityError(Exception):
     """Registry integrity verification error."""
+
     pass
 
 
-if WATCHDOG_AVAILABLE:
-    class RegistryWatcher(FileSystemEventHandler):
-        """File system watcher for registry changes."""
-        
-        def __init__(self, registry: 'LLMRegistry'):
-            self.registry = registry
-            self.logger = logging.getLogger("kari.registry_watcher")
-            
-        def on_modified(self, event):
-            """Handle registry file modifications."""
-            if not event.is_directory and event.src_path.endswith('llm_registry.json'):
-                self.logger.info(f"Registry file modified: {event.src_path}")
+class RegistryWatcher(FileSystemEventHandler if WATCHDOG_AVAILABLE else object):  # type: ignore[misc]
+    """File system watcher for registry changes."""
+
+    def __init__(self, registry: "LLMRegistry"):
+        self.registry = registry
+        self.logger = logging.getLogger("kari.registry_watcher")
+
+    def on_modified(self, event: Any) -> None:
+        """Handle registry file modifications."""
+        if not WATCHDOG_AVAILABLE:
+            return
+        if not event.is_directory and str(event.src_path).endswith("llm_registry.json"):
+            self.logger.info(f"Registry file modified: {event.src_path}")
+            try:
+                # Reload registry and update LLM settings
+                self.registry._load_registry()
                 try:
-                    # Reload registry and update LLM settings
-                    self.registry._load_registry()
-                    try:
-                        loop = asyncio.get_running_loop()
-                    except RuntimeError:
-                        self.logger.debug(
-                            "No running event loop available for registry update; deferred"
-                        )
-                    else:
-                        loop.create_task(self.registry.update_llm_settings())
-                except Exception as ex:
-                    self.logger.error(f"Failed to handle registry change: {ex}")
-else:
-    class RegistryWatcher:
-        """Dummy watcher when watchdog is not available."""
-        def __init__(self, registry): pass
+                    loop = asyncio.get_running_loop()
+                except RuntimeError:
+                    self.logger.debug(
+                        "No running event loop available for registry update; deferred"
+                    )
+                else:
+                    loop.create_task(self.registry.update_llm_settings())
+            except Exception as ex:
+                self.logger.error(f"Failed to handle registry change: {ex}")
 
 
 class LLMRegistry:
     """Registry for managing LLM providers."""
 
-    def __init__(self, registry_path: Optional[Path] = None, schema_path: Optional[Path] = None, 
-                 llm_settings_path: Optional[Path] = None):
+    def __init__(
+        self,
+        registry_path: Optional[Path] = None,
+        schema_path: Optional[Path] = None,
+        llm_settings_path: Optional[Path] = None,
+    ):
         """
         Initialize LLM registry.
 
@@ -157,7 +157,9 @@ class LLMRegistry:
         self._registrations: Dict[str, ProviderRegistration] = {}
         self._model_entries: Dict[str, ModelEntry] = {}
         self._priorities: List[str] = [
+            "llamacpp-optimized",
             "llamacpp",
+            "ollama",
             "openai",
             "zai",
             "gemini",
@@ -171,101 +173,79 @@ class LLMRegistry:
         self._schema = self._load_schema()
         self._llm_settings_schema = self._load_llm_settings_schema()
 
-        # Register built-in providers
+        # Register built-in providers first so runtime lookups always have a canonical
+        # baseline for local + cloud providers, then layer persisted registry state.
         self._register_builtin_providers()
 
-        # Load existing registry
+        # Load existing registry data next
         self._load_registry()
-        
-        # Set up file watcher for automatic updates (requirement 2.1)
-        self._setup_registry_watcher()
 
-        # Lazy KIRE adapter
-        self._kire: Optional[Any] = None
+        # Ensure critical built-ins remain available (race-condition hardening).
+        self.ensure_builtin_providers_registered()
 
-    def _load_schema(self) -> Optional[Dict[str, Any]]:
-        """Load registry schema for validation."""
-        if not JSONSCHEMA_AVAILABLE:
-            logger.warning("jsonschema not available, schema validation disabled")
-            return None
-            
-        if not self.schema_path.exists():
-            logger.warning(f"Schema file not found: {self.schema_path}")
-            return None
-            
-        try:
-            with open(self.schema_path, 'r') as f:
-                schema = json.load(f)
-            logger.info(f"Loaded registry schema from {self.schema_path}")
-            return schema
-        except Exception as ex:
-            logger.error(f"Failed to load schema from {self.schema_path}: {ex}")
-            return None
-
-    def _load_llm_settings_schema(self) -> Optional[Dict[str, Any]]:
-        """Load LLM settings schema for validation."""
-        if not JSONSCHEMA_AVAILABLE:
-            return None
-            
-        # Create basic schema for LLM settings validation (requirement 2.7)
-        schema = {
-            "$schema": "http://json-schema.org/draft-07/schema#",
+    def _load_schema(self):
+        """Load schema for validation."""
+        return {
             "type": "object",
             "properties": {
-                "provider": {"type": "string"},
-                "model": {"type": "string"},
-                "api_key": {"type": ["string", "null"]},
-                "base_url": {"type": ["string", "null"]},
-                "temperature": {"type": "number", "minimum": 0, "maximum": 2},
-                "max_tokens": {"type": "integer", "minimum": 1},
-                "timeout": {"type": "integer", "minimum": 1},
-                "max_retries": {"type": "integer", "minimum": 0},
-                "fallback_providers": {
+                "providers": {
                     "type": "array",
-                    "items": {"type": "string"}
-                },
-                "provider_configs": {
-                    "type": "object",
-                    "patternProperties": {
-                        "^[a-zA-Z0-9_-]+$": {
-                            "type": "object",
-                            "properties": {
-                                "base_url": {"type": "string"},
-                                "models": {
-                                    "type": "array",
-                                    "items": {"type": "string"}
-                                },
-                                "model_path": {"type": "string"},
-                                "context_length": {"type": "integer"}
-                            }
-                        }
-                    }
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string"},
+                            "provider_class": {"type": "string"},
+                            "description": {"type": "string"},
+                            "supports_streaming": {"type": "boolean"},
+                            "supports_embeddings": {"type": "boolean"},
+                            "requires_api_key": {"type": "boolean"},
+                            "default_model": {"type": "string"},
+                        },
+                        "required": ["name", "provider_class"],
+                    },
                 }
             },
-            "required": ["provider", "model"]
+            "required": ["providers"],
         }
-        return schema
+
+    def _load_llm_settings_schema(self):
+        """Load LLM settings schema for validation."""
+        return {
+            "type": "object",
+            "properties": {
+                "model": {"type": "string"},
+                "temperature": {"type": "number", "minimum": 0, "maximum": 2},
+                "max_tokens": {"type": "integer", "minimum": 1},
+                "top_p": {"type": "number", "minimum": 0, "maximum": 1},
+                "stream": {"type": "boolean"},
+            },
+            "required": ["provider", "model"],
+        }
 
     def _setup_registry_watcher(self):
         """Set up file system watcher for registry changes."""
-        if not WATCHDOG_AVAILABLE:
+        if not WATCHDOG_AVAILABLE or Observer is None or FileSystemEventHandler is None:
             logger.info("watchdog not available, registry auto-update disabled")
             self._observer = None
             return
-            
+
         try:
             self._observer = Observer()
             self._watcher = RegistryWatcher(self)
-            
+
             # Watch the directory containing the registry file
             watch_dir = self.registry_path.parent
             if watch_dir.exists():
-                self._observer.schedule(self._watcher, str(watch_dir), recursive=False)
+                self._observer.schedule(
+                    cast(Any, self._watcher),
+                    str(watch_dir),
+                    recursive=False,
+                )
                 self._observer.start()
                 logger.info(f"Started registry watcher for {watch_dir}")
             else:
                 logger.warning(f"Registry directory does not exist: {watch_dir}")
-                
+
         except Exception as ex:
             logger.error(f"Failed to setup registry watcher: {ex}")
             self._observer = None
@@ -273,28 +253,30 @@ class LLMRegistry:
     def validate_registry_data(self, data: Dict[str, Any]) -> None:
         """
         Validate registry data against schema.
-        
+
         Args:
             data: Registry data to validate
-            
+
         Raises:
             RegistryValidationError: If validation fails
         """
         if not self._schema or not JSONSCHEMA_AVAILABLE:
             return
-            
+
         try:
+            if validate is None:
+                return
             validate(instance=data, schema=self._schema)
         except ValidationError as ex:
-            raise RegistryValidationError(f"Registry validation failed: {ex.message}")
+            raise RegistryValidationError(f"Registry validation failed: {ex}")
 
     def compute_file_checksum(self, file_path: Path) -> str:
         """
         Compute SHA256 checksum of a file.
-        
+
         Args:
             file_path: Path to file
-            
+
         Returns:
             SHA256 checksum as hex string
         """
@@ -311,103 +293,114 @@ class LLMRegistry:
     def verify_model_integrity(self, model_key: str) -> Dict[str, Any]:
         """
         Verify integrity of a model's files against stored checksums.
-        
+
         Args:
             model_key: Model registry key
-            
+
         Returns:
             Dict with verification results
         """
         if model_key not in self._model_entries:
-            return {"status": "not_found", "error": f"Model {model_key} not in registry"}
-            
+            return {
+                "status": "not_found",
+                "error": f"Model {model_key} not in registry",
+            }
+
         entry = self._model_entries[model_key]
         install_path = Path(entry.install_path)
-        
+
         if not install_path.exists():
-            return {"status": "missing", "error": f"Install path {install_path} does not exist"}
-            
-        results = {
+            return {
+                "status": "missing",
+                "error": f"Install path {install_path} does not exist",
+            }
+
+        results: Dict[str, Any] = {
             "status": "verified",
             "files_checked": 0,
             "files_missing": 0,
             "files_corrupted": 0,
             "missing_files": [],
-            "corrupted_files": []
+            "corrupted_files": [],
         }
-        
+
         for file_info in entry.files:
-            file_path = install_path / file_info["path"]
+            file_rel_path = str(file_info.get("path", ""))
+            file_path = install_path / file_rel_path
             results["files_checked"] += 1
-            
+
             if not file_path.exists():
                 results["files_missing"] += 1
-                results["missing_files"].append(file_info["path"])
+                results["missing_files"].append(file_rel_path)
                 continue
-                
+
             # Check size
             actual_size = file_path.stat().st_size
-            expected_size = file_info["size"]
-            
+            expected_size = int(file_info.get("size", 0))
+
             if actual_size != expected_size:
                 results["files_corrupted"] += 1
-                results["corrupted_files"].append({
-                    "path": file_info["path"],
-                    "reason": "size_mismatch",
-                    "expected_size": expected_size,
-                    "actual_size": actual_size
-                })
+                results["corrupted_files"].append(
+                    {
+                        "path": file_rel_path,
+                        "reason": "size_mismatch",
+                        "expected_size": expected_size,
+                        "actual_size": actual_size,
+                    }
+                )
                 continue
-                
+
             # Check checksum if available
-            if "sha256" in file_info and file_info["sha256"]:
+            if "sha256" in file_info and file_info.get("sha256"):
                 actual_checksum = self.compute_file_checksum(file_path)
-                expected_checksum = file_info["sha256"]
-                
+                expected_checksum = str(file_info["sha256"])
+
                 if actual_checksum != expected_checksum:
                     results["files_corrupted"] += 1
-                    results["corrupted_files"].append({
-                        "path": file_info["path"],
-                        "reason": "checksum_mismatch",
-                        "expected_checksum": expected_checksum,
-                        "actual_checksum": actual_checksum
-                    })
-        
+                    results["corrupted_files"].append(
+                        {
+                            "path": file_rel_path,
+                            "reason": "checksum_mismatch",
+                            "expected_checksum": expected_checksum,
+                            "actual_checksum": actual_checksum,
+                        }
+                    )
+
         if results["files_missing"] > 0 or results["files_corrupted"] > 0:
             results["status"] = "corrupted"
-            
+
         return results
 
     def atomic_registry_update(self, update_func, *args, **kwargs) -> Any:
         """
         Perform atomic registry update with backup and rollback capability.
-        
+
         Args:
             update_func: Function to perform the update
             *args, **kwargs: Arguments for update function
-            
+
         Returns:
             Result of update function
-            
+
         Raises:
             Exception: If update fails and rollback is performed
         """
         # Create backup
         backup_path = None
         if self.registry_path.exists():
-            backup_path = self.registry_path.with_suffix('.backup')
+            backup_path = self.registry_path.with_suffix(".backup")
             shutil.copy2(self.registry_path, backup_path)
-            
+
         try:
             # Perform update
             result = update_func(*args, **kwargs)
-            
+
             # Clean up backup on success
             if backup_path and backup_path.exists():
                 backup_path.unlink()
-                
+
             return result
-            
+
         except Exception as ex:
             # Rollback on failure
             if backup_path and backup_path.exists():
@@ -420,65 +413,67 @@ class LLMRegistry:
     def add_model_entry(self, model_key: str, entry: ModelEntry) -> None:
         """
         Add or update a model entry in the registry.
-        
+
         Args:
             model_key: Model registry key
             entry: Model entry data
         """
+
         def _update():
             # Load current registry data
             registry_data = self._load_model_registry_data()
-            
+
             # Add/update entry
             entry_dict = asdict(entry)
             registry_data[model_key] = entry_dict
-            
+
             # Validate updated data
             self.validate_registry_data(registry_data)
-            
+
             # Save atomically
             self._save_model_registry_data(registry_data)
-            
+
             # Update in-memory cache
             self._model_entries[model_key] = entry
-            
+
         self.atomic_registry_update(_update)
 
     def remove_model_entry(self, model_key: str) -> None:
         """
         Remove a model entry from the registry.
-        
+
         Args:
             model_key: Model registry key
         """
+
         def _update():
             # Load current registry data
             registry_data = self._load_model_registry_data()
-            
+
             if model_key in registry_data:
                 del registry_data[model_key]
-                
+
                 # Validate updated data
                 self.validate_registry_data(registry_data)
-                
+
                 # Save atomically
                 self._save_model_registry_data(registry_data)
-                
+
                 # Update in-memory cache
                 if model_key in self._model_entries:
                     del self._model_entries[model_key]
-                    
+
         self.atomic_registry_update(_update)
 
     def _load_model_registry_data(self) -> Dict[str, Any]:
         """Load model registry data from file."""
         if not self.registry_path.exists():
             return {}
-            
+
         try:
-            with open(self.registry_path, 'r') as f:
+            with open(self.registry_path, "r") as f:
                 data = json.load(f)
-                
+
             # Handle both old and new registry formats
             if isinstance(data, list):
                 # Old format - convert to new format
@@ -491,7 +486,7 @@ class LLMRegistry:
                 return data
             else:
                 return {}
-                
+
         except Exception as ex:
             logger.error(f"Failed to load model registry data: {ex}")
             return {}
@@ -500,17 +495,17 @@ class LLMRegistry:
         """Save model registry data to file."""
         # Ensure directory exists
         self.registry_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         # Write to temporary file first
-        temp_path = self.registry_path.with_suffix('.tmp')
-        
+        temp_path = self.registry_path.with_suffix(".tmp")
+
         try:
-            with open(temp_path, 'w') as f:
+            with open(temp_path, "w") as f:
                 json.dump(data, f, indent=2, sort_keys=True)
-                
+
             # Atomic move
             temp_path.replace(self.registry_path)
-            
+
         except Exception as ex:
             # Clean up temp file on failure
             if temp_path.exists():
@@ -528,6 +523,15 @@ class LLMRegistry:
                 "supports_embeddings": True,
                 "requires_api_key": False,
                 "default_model": "Phi-3-mini-4k-instruct-q4.gguf",
+            },
+            {
+                "name": "ollama",
+                "provider_class": "OllamaProvider",
+                "description": "Local Ollama server reachable from Karen runtime",
+                "supports_streaming": True,
+                "supports_embeddings": False,
+                "requires_api_key": False,
+                "default_model": "deepseek-r1:1.5b",
             },
             {
                 "name": "openai",
@@ -595,8 +599,25 @@ class LLMRegistry:
             },
         ]
 
+        # Get default models from config system
+        try:
+            from ai_karen_engine.config.llm_provider_config import (
+                get_provider_config_manager,
+            )
+
+            config_mgr = get_provider_config_manager()
+        except Exception:
+            config_mgr = None
+
         for provider_info in builtin_providers:
             registration = ProviderRegistration(**provider_info)
+
+            # Override default_model with config value if available
+            if config_mgr:
+                config = config_mgr.get_provider(provider_info["name"])
+                if config and config.default_model:
+                    registration.default_model = config.default_model
+
             self._registrations[provider_info["name"]] = registration
 
     def _load_registry(self):
@@ -616,20 +637,20 @@ class LLMRegistry:
                             if name in self._registrations:
                                 # Update existing registration with saved data
                                 registration = self._registrations[name]
-                                registration.health_status = item.get(
-                                    "health_status", "unknown"
-                                )
-                                registration.last_health_check = item.get(
-                                    "last_health_check"
-                                )
-                                registration.error_message = item.get("error_message")
-                                # Also update the default_model if provided
-                                if "default_model" in item:
-                                    registration.default_model = item["default_model"]
+                                # Update all savable fields from JSON
+                                for field in [
+                                    "health_status",
+                                    "last_health_check",
+                                    "error_message",
+                                    "supports_streaming",
+                                    "default_model",
+                                ]:
+                                    if field in item:
+                                        setattr(registration, field, item[field])
                             else:
                                 # Create new registration from saved data
                                 self._registrations[name] = ProviderRegistration(**item)
-                                
+
                 elif isinstance(data, dict):
                     # New format - model entries
                     for model_key, entry_data in data.items():
@@ -646,17 +667,27 @@ class LLMRegistry:
                                     registration.last_health_check = entry_data.get(
                                         "last_health_check"
                                     )
-                                    registration.error_message = entry_data.get("error_message")
+                                    registration.error_message = entry_data.get(
+                                        "error_message"
+                                    )
                                     if "default_model" in entry_data:
-                                        registration.default_model = entry_data["default_model"]
+                                        registration.default_model = entry_data[
+                                            "default_model"
+                                        ]
                                 else:
-                                    self._registrations[name] = ProviderRegistration(**entry_data)
+                                    self._registrations[name] = ProviderRegistration(
+                                        **entry_data
+                                    )
                             elif "model_id" in entry_data:
                                 # Model entry
                                 try:
-                                    self._model_entries[model_key] = ModelEntry(**entry_data)
+                                    self._model_entries[model_key] = ModelEntry(
+                                        **entry_data
+                                    )
                                 except Exception as ex:
-                                    logger.warning(f"Failed to load model entry {model_key}: {ex}")
+                                    logger.warning(
+                                        f"Failed to load model entry {model_key}: {ex}"
+                                    )
 
                 logger.info(f"Loaded registry from {self.registry_path}")
 
@@ -664,6 +695,10 @@ class LLMRegistry:
                 logger.warning(
                     f"Could not load registry from {self.registry_path}: {ex}"
                 )
+        else:
+            logger.info(
+                f"Registry file not found at {self.registry_path}, starting fresh"
+            )
 
     def _save_registry(self):
         """Save registry to JSON file."""
@@ -698,18 +733,28 @@ class LLMRegistry:
             description: Provider description
             **kwargs: Additional registration parameters
         """
-        registration = ProviderRegistration(
-            name=name,
-            provider_class=provider_class.__name__,
-            description=description,
-            **kwargs,
-        )
+        # Thread-safe registration
+        with _registry_lock:
+            registration = ProviderRegistration(
+                name=name,
+                provider_class=provider_class.__name__,
+                description=description,
+                **kwargs,
+            )
 
-        self._registrations[name] = registration
-        logger.info(f"Registered provider: {name}")
+            self._registrations[name] = registration
+            logger.info(f"Registered provider: {name}")
 
-        # Save updated registry
-        self._save_registry()
+            # Save updated registry (don't wait for this to complete registration)
+            try:
+                self._save_registry()
+            except Exception as e:
+                logger.debug(
+                    f"Registry save failed, but provider still registered: {e}"
+                )
+
+        # Ensure registration is immediately visible
+        logger.info(f"Provider {name} registration completed")
 
     def _resolve_provider_alias(self, name: str) -> str:
         """Resolve common provider aliases to canonical registry names."""
@@ -719,16 +764,11 @@ class LLMRegistry:
         if raw in self._registrations:
             return raw
 
-        normalized = raw.lower().replace("_", "-")
-        alias_map = {
-            "llama-cpp": "llamacpp",
-            "llama.cpp": "llamacpp",
-            "llamacpp": "llamacpp",
-        }
-        canonical = alias_map.get(normalized)
+        canonical = resolve_provider_name(raw)
         if canonical and canonical in self._registrations:
             return canonical
 
+        normalized = raw.lower().replace("_", "-")
         if normalized == "local" and "llamacpp" in self._registrations:
             return "llamacpp"
 
@@ -745,88 +785,139 @@ class LLMRegistry:
         Returns:
             Provider instance or None if not found
         """
+        # Thread-safe provider lookup with retry mechanism for race conditions
+        max_retries = 3
+        retry_delay = 0.01  # 10ms between retries
+
         resolved_name = self._resolve_provider_alias(name)
-        if resolved_name not in self._registrations:
-            logger.error(f"Provider '{name}' not registered")
-            return None
+        for attempt in range(max_retries):
+            try:
+                resolved_name = self._resolve_provider_alias(name)
+                if resolved_name not in self._registrations:
+                    if attempt < max_retries - 1:
+                        # Provider not found, but maybe it's being registered in another thread
+                        time.sleep(retry_delay)
+                        continue
+                    else:
+                        logger.error(
+                            f"Provider '{name}' not registered after {max_retries} attempts"
+                        )
+                        return None
 
-        # Build cache key including model so different model inits are not conflated
-        model_key = init_kwargs.get("model") or self._registrations[resolved_name].default_model or ""
-        cache_key = f"{resolved_name}|{model_key}"
+                # Build cache key including model so different model inits are not conflated
+                model_key = (
+                    init_kwargs.get("model")
+                    or self._registrations[resolved_name].default_model
+                    or ""
+                )
+                cache_key = f"{resolved_name}|{model_key}"
 
-        # Return cached instance if available, unless it is a stale failed instance
-        if cache_key in self._providers:
-            cached = self._providers[cache_key]
-            if not getattr(cached, "initialization_error", None):
-                return cached
-            logger.info(
-                "Discarding stale cached provider instance for %s (model=%s) due to initialization error: %s",
-                resolved_name,
-                model_key,
-                getattr(cached, "initialization_error", None),
-            )
-            self._providers.pop(cache_key, None)
+                # Return cached instance if available, unless it is a stale failed instance
+                if cache_key in self._providers:
+                    cached = self._providers[cache_key]
+                    if not getattr(cached, "initialization_error", None):
+                        return cached
+                    logger.info(
+                        "Discarding stale cached provider instance for %s (model=%s) due to initialization error: %s",
+                        resolved_name,
+                        model_key,
+                        getattr(cached, "initialization_error", None),
+                    )
+                    with _registry_lock:
+                        self._providers.pop(cache_key, None)
 
-        # Create new instance
-        try:
-            registration = self._registrations[resolved_name]
-            provider_class = self._get_provider_class(registration.provider_class)
+                # Create new instance
+                registration = self._registrations[resolved_name]
+                provider_class = self._get_provider_class(registration.provider_class)
 
-            if provider_class:
-                # Use default model if not specified
-                if "model" not in init_kwargs and registration.default_model:
-                    init_kwargs["model"] = registration.default_model
+                if provider_class:
+                    # Use default model if not specified
+                    if "model" not in init_kwargs and registration.default_model:
+                        init_kwargs["model"] = registration.default_model
 
-                init_kwargs = self._apply_saved_provider_settings(resolved_name, init_kwargs)
+                    init_kwargs = self._apply_saved_provider_settings(
+                        resolved_name, init_kwargs
+                    )
 
-                if registration.provider_class == "OpenAIProvider" and "provider_name" not in init_kwargs:
-                    init_kwargs["provider_name"] = resolved_name
+                    if (
+                        registration.provider_class == "OpenAIProvider"
+                        and "provider_name" not in init_kwargs
+                    ):
+                        init_kwargs["provider_name"] = resolved_name
 
-                # Translate llamacpp model id to a concrete model_path when possible
-                if resolved_name == "llamacpp":
-                    # If a specific GGUF model was selected, resolve to a verified file path
-                    model_id = init_kwargs.get("model")
-                    if model_id and "model_path" not in init_kwargs:
-                        resolved = self._resolve_llamacpp_model_path_by_id(model_id)
-                        if resolved:
-                            init_kwargs["model_path"] = resolved
-                        else:
-                            logger.error(f"Unable to resolve verified GGUF for model_id '{model_id}'")
-                            return None
+                    # Translate llamacpp model id to a concrete model_path when possible
+                    if resolved_name == "llamacpp":
+                        # If a specific GGUF model was selected, resolve to a verified file path
+                        model_id = init_kwargs.get("model")
+                        if model_id and "model_path" not in init_kwargs:
+                            resolved = self._resolve_llamacpp_model_path_by_id(model_id)
+                            if resolved:
+                                init_kwargs["model_path"] = resolved
+                            else:
+                                logger.error(
+                                    f"Unable to resolve verified GGUF for model_id '{model_id}'"
+                                )
+                                return None
 
-                if registration.provider_class == "CopilotKitProvider":
-                    model_name = init_kwargs.get("model") or registration.default_model
-                    provider_config = {
-                        "model": model_name,
-                        "base_url": init_kwargs.get("base_url"),
-                        "api_key": init_kwargs.get("api_key"),
-                    }
-                    if model_name:
-                        provider_config["models"] = {
-                            "completion": model_name,
-                            "chat": model_name,
+                    if registration.provider_class == "CopilotKitProvider":
+                        model_name = (
+                            init_kwargs.get("model") or registration.default_model
+                        )
+                        provider_config = {
+                            "model": model_name,
+                            "base_url": init_kwargs.get("base_url"),
+                            "api_key": init_kwargs.get("api_key"),
                         }
-                    provider = provider_class(provider_config)
+                        if model_name:
+                            provider_config["models"] = {
+                                "completion": model_name,
+                                "chat": model_name,
+                            }
+                        provider = cast(Any, provider_class)(provider_config)
+                    else:
+                        provider = cast(Any, provider_class)(**init_kwargs)
+
+                    # Thread-safe cache update
+                    with _registry_lock:
+                        self._providers[cache_key] = provider
+
+                    logger.info(
+                        f"Created provider instance: {resolved_name} (model={init_kwargs.get('model')})"
+                    )
+                    return provider
                 else:
-                    provider = provider_class(**init_kwargs)
-                self._providers[cache_key] = provider
+                    if attempt < max_retries - 1:
+                        # Provider class not found, maybe still being imported
+                        time.sleep(retry_delay)
+                        continue
+                    else:
+                        logger.error(f"Provider class for '{resolved_name}' not found")
+                        return None
 
-                logger.info(f"Created provider instance: {resolved_name} (model={init_kwargs.get('model')})")
-                return provider
+            except Exception as ex:
+                if attempt < max_retries - 1:
+                    # Retry on transient errors
+                    time.sleep(retry_delay)
+                    continue
+                else:
+                    logger.error(
+                        f"Failed to create provider '{name}' after {max_retries} attempts: {ex}"
+                    )
+                    registration = self._registrations.get(resolved_name)
+                    if registration:
+                        registration.health_status = "unhealthy"
+                        registration.last_health_check = time.time()
+                        registration.error_message = str(ex)
+                        try:
+                            self._save_registry()
+                        except Exception:
+                            logger.debug(
+                                "Failed to persist registry after provider error",
+                                exc_info=True,
+                            )
+                    return None
 
-        except Exception as ex:
-            logger.error(f"Failed to create provider '{resolved_name}': {ex}")
-            registration = self._registrations.get(resolved_name)
-            if registration:
-                registration.health_status = "unhealthy"
-                registration.last_health_check = time.time()
-                registration.error_message = str(ex)
-                try:
-                    self._save_registry()
-                except Exception:
-                    logger.debug("Failed to persist registry after provider error", exc_info=True)
-
-        return None
+        return None  # Should never reach here, but just in case
 
     def invalidate_provider_cache(self, name: str) -> None:
         """Remove cached provider instances for a provider so new config/secrets take effect."""
@@ -842,15 +933,23 @@ class LLMRegistry:
         for cache_key in stale_keys:
             self._providers.pop(cache_key, None)
         if stale_keys:
-            logger.info("Invalidated %d cached provider instance(s) for %s", len(stale_keys), name)
+            logger.info(
+                "Invalidated %d cached provider instance(s) for %s",
+                len(stale_keys),
+                name,
+            )
 
-    def _apply_saved_provider_settings(self, name: str, init_kwargs: Dict[str, Any]) -> Dict[str, Any]:
+    def _apply_saved_provider_settings(
+        self, name: str, init_kwargs: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Augment provider init args from persisted provider config and local secrets."""
 
         resolved = dict(init_kwargs)
 
         try:
-            from ai_karen_engine.config.llm_provider_config import get_provider_config_manager
+            from ai_karen_engine.config.llm_provider_config import (
+                get_provider_config_manager,
+            )
             from services.models.secret_manager import get_secret_manager
         except Exception:
             return resolved
@@ -859,10 +958,18 @@ class LLMRegistry:
         if not provider_config:
             return resolved
 
-        if "base_url" not in resolved and provider_config.endpoint and provider_config.endpoint.base_url:
+        if (
+            "base_url" not in resolved
+            and provider_config.endpoint
+            and provider_config.endpoint.base_url
+        ):
             resolved["base_url"] = provider_config.endpoint.base_url
 
-        if "timeout" not in resolved and provider_config.endpoint and provider_config.endpoint.timeout:
+        if (
+            "timeout" not in resolved
+            and provider_config.endpoint
+            and provider_config.endpoint.timeout
+        ):
             resolved["timeout"] = provider_config.endpoint.timeout
 
         if "max_retries" not in resolved and provider_config.endpoint:
@@ -883,8 +990,13 @@ class LLMRegistry:
             if "base_url" in resolved and "inference_endpoint" not in resolved:
                 resolved["inference_endpoint"] = resolved.pop("base_url")
 
-        provider_class_name = self._registrations.get(name).provider_class if name in self._registrations else None
-        provider_class = self._get_provider_class(provider_class_name) if provider_class_name else None
+        registration = self._registrations.get(name)
+        provider_class_name = registration.provider_class if registration else None
+        provider_class = (
+            self._get_provider_class(provider_class_name)
+            if provider_class_name
+            else None
+        )
         if provider_class is None:
             return resolved
 
@@ -949,7 +1061,11 @@ class LLMRegistry:
         except Exception as ex:
             logger.error(f"KIRE routing failed, falling back. Error: {ex}")
             # Fallback to default provider construction
-            prov = self.default_chain(healthy_only=False)[0] if self.default_chain() else None
+            prov = (
+                self.default_chain(healthy_only=False)[0]
+                if self.default_chain()
+                else None
+            )
             instance = self.get_provider(prov) if prov else None
             return {
                 "provider_instance": instance,
@@ -960,7 +1076,8 @@ class LLMRegistry:
 
     def _get_provider_class(self, class_name: str) -> Optional[Type[LLMProviderBase]]:
         """Get provider class by name."""
-        module_path = _PROVIDER_MODULES.get(class_name)
+        canonical_class_name = resolve_provider_class_name(class_name)
+        module_path = get_provider_class_module(canonical_class_name)
         if not module_path:
             return None
 
@@ -970,10 +1087,12 @@ class LLMRegistry:
             logger.error("Failed to import provider module '%s': %s", module_path, exc)
             return None
 
-        provider_cls = getattr(module, class_name, None)
+        provider_cls = getattr(module, canonical_class_name, None)
         if provider_cls is None:
             logger.error(
-                "Provider class '%s' not found in module '%s'", class_name, module_path
+                "Provider class '%s' not found in module '%s'",
+                canonical_class_name,
+                module_path,
             )
         return provider_cls
 
@@ -1020,7 +1139,11 @@ class LLMRegistry:
                         # Try integrity verification when file list/checksums are present
                         try:
                             result = self.verify_model_integrity(entry_key)
-                            if result.get("status") in {"verified", "missing", "corrupted"}:
+                            if result.get("status") in {
+                                "verified",
+                                "missing",
+                                "corrupted",
+                            }:
                                 # Even if some files in registry are missing, the main file is header-checked
                                 return str(p)
                         except Exception:
@@ -1038,7 +1161,10 @@ class LLMRegistry:
 
             if search_dir.exists():
                 for candidate in search_dir.glob("*.gguf"):
-                    if candidate.stem == normalized_stem and self._is_probably_valid_gguf(candidate):
+                    if (
+                        candidate.stem == normalized_stem
+                        and self._is_probably_valid_gguf(candidate)
+                    ):
                         return str(candidate)
         except Exception:
             pass
@@ -1047,6 +1173,92 @@ class LLMRegistry:
     def list_providers(self) -> List[str]:
         """Get list of registered provider names."""
         return list(self._registrations.keys())
+
+    def ensure_builtin_providers_registered(self) -> None:
+        """Ensure all built-in providers are registered, fixing any race conditions."""
+        # Define built-in providers that should always be available
+        builtin_providers = [
+            {
+                "name": "llamacpp",
+                "provider_class": "LlamaCppProvider",
+                "description": "Local llama-cpp-python for running open-source models",
+                "supports_streaming": True,
+                "supports_embeddings": True,
+                "requires_api_key": False,
+                "default_model": "Phi-3-mini-4k-instruct-q4.gguf",
+            },
+            {
+                "name": "llamacpp-optimized",
+                "provider_class": "LlamaCppProviderOptimized",
+                "description": "Optimized local llama-cpp-python with better async support and performance",
+                "supports_streaming": True,
+                "supports_embeddings": True,
+                "requires_api_key": False,
+                "default_model": "Phi-3-mini-4k-instruct-q4.gguf",
+            },
+        ]
+
+        # Thread-safe registration of missing built-in providers
+        with _registry_lock:
+            for provider_config in builtin_providers:
+                provider_name = provider_config["name"]
+                if provider_name not in self._registrations:
+                    try:
+                        # Import provider classes dynamically
+                        if provider_name == "llamacpp":
+                            from .providers.llamacpp_provider import LlamaCppProvider
+
+                            provider_class = LlamaCppProvider
+                        elif provider_name == "llamacpp-optimized":
+                            from .providers.llamacpp_provider_optimized import (
+                                OptimizedLlamaCppProvider,
+                            )
+
+                            provider_class = OptimizedLlamaCppProvider
+                        else:
+                            continue
+
+                        # Register the provider (already thread-safe)
+                        self.register_provider(
+                            provider_name,
+                            provider_class,
+                            description=provider_config["description"],
+                            supports_streaming=provider_config["supports_streaming"],
+                            supports_embeddings=provider_config["supports_embeddings"],
+                            requires_api_key=provider_config["requires_api_key"],
+                            default_model=provider_config["default_model"],
+                        )
+                        logger.info(
+                            f"Ensured built-in provider is registered: {provider_name}"
+                        )
+                    except Exception as e:
+                        logger.error(
+                            f"Failed to ensure built-in provider {provider_name} is registered: {e}"
+                        )
+
+        # Log final state for debugging
+        logger.info(
+            f"Registry state after ensuring built-in providers: {list(self._registrations.keys())}"
+        )
+
+    def ensure_registry_consistency(self) -> None:
+        """Ensure registry consistency and fix any missing providers."""
+        logger.info("Ensuring registry consistency...")
+
+        # Ensure built-in providers are registered
+        self.ensure_builtin_providers_registered()
+
+        # Verify critical providers are available
+        critical_providers = ["llamacpp", "llamacpp-optimized", "fallback"]
+        for provider_name in critical_providers:
+            if provider_name not in self._registrations:
+                logger.warning(
+                    f"Critical provider {provider_name} not found in registry"
+                )
+            else:
+                logger.info(f"Critical provider {provider_name} is available")
+
+        logger.info("Registry consistency check completed")
 
     def default_chain(self, healthy_only: bool = False) -> List[str]:
         """Return providers ordered by built-in priority.
@@ -1061,14 +1273,20 @@ class LLMRegistry:
         for name in self._priorities:
             if name not in self._registrations:
                 continue
-            if healthy_only and self._registrations[name].health_status not in ("healthy", "unknown"):
+            if healthy_only and self._registrations[name].health_status not in (
+                "healthy",
+                "unknown",
+            ):
                 continue
             ordered.append(name)
 
         for name in self._registrations:
             if name in ordered:
                 continue
-            if healthy_only and self._registrations[name].health_status not in ("healthy", "unknown"):
+            if healthy_only and self._registrations[name].health_status not in (
+                "healthy",
+                "unknown",
+            ):
                 continue
             ordered.append(name)
 
@@ -1111,8 +1329,12 @@ class LLMRegistry:
 
         if provider:
             try:
-                provider_info = provider.get_provider_info()
-                info.update(provider_info)
+                provider_info_fn = getattr(provider, "get_provider_info", None)
+                provider_info = (
+                    provider_info_fn() if callable(provider_info_fn) else {}
+                )
+                if isinstance(provider_info, dict):
+                    info.update(provider_info)
             except Exception as ex:
                 logger.warning(f"Could not get provider info for {name}: {ex}")
 
@@ -1136,62 +1358,82 @@ class LLMRegistry:
                 }
 
             # Perform health check if provider supports it
-            if hasattr(provider, "health_check"):
-                result = provider.health_check()
+            health_check_fn = getattr(provider, "health_check", None)
+            if callable(health_check_fn):
+                result = cast(Dict[str, Any], health_check_fn())
             else:
                 # Basic health check - try to get provider info
-                provider.get_provider_info()
+                provider_info_fn = getattr(provider, "get_provider_info", None)
+                if callable(provider_info_fn):
+                    provider_info_fn()
                 result = {"status": "healthy", "message": "Basic health check passed"}
+            result = cast(Dict[str, Any], result)
 
             # Add model validation for providers with installed models (requirement 2.5)
-            provider_models = self.get_models_by_library(
-                self._get_library_for_provider(resolved_name)
+            provider_library = self._get_library_for_provider(resolved_name)
+            provider_models: Dict[str, ModelEntry] = (
+                self.get_models_by_library(provider_library)
+                if provider_library
+                else {}
             )
-            
+
             if provider_models:
                 result["models"] = {
                     "total_count": len(provider_models),
-                    "installed_models": list(provider_models.keys())
+                    "installed_models": list(provider_models.keys()),
                 }
-                
+
                 # Perform basic model accessibility check
                 accessible_models = 0
                 model_errors = []
-                
-                for model_key, entry in list(provider_models.items())[:3]:  # Check first 3 models
+
+                for model_key, entry in list(provider_models.items())[
+                    :3
+                ]:  # Check first 3 models
                     try:
                         # Check if model files exist
                         install_path = Path(entry.install_path)
                         if not install_path.exists():
                             model_errors.append(f"{model_key}: install path missing")
                             continue
-                        
+
                         # Check if required files exist
                         missing_files = []
                         for file_info in entry.files[:5]:  # Check first 5 files
-                            file_path = install_path / file_info["path"]
+                            file_rel_path = str(file_info.get("path", ""))
+                            file_path = install_path / file_rel_path
                             if not file_path.exists():
-                                missing_files.append(file_info["path"])
-                        
+                                missing_files.append(file_rel_path)
+
                         if missing_files:
-                            model_errors.append(f"{model_key}: missing files {missing_files}")
+                            model_errors.append(
+                                f"{model_key}: missing files {missing_files}"
+                            )
                         else:
                             accessible_models += 1
-                            
+
                     except Exception as ex:
                         model_errors.append(f"{model_key}: {ex}")
-                
+
                 result["models"]["accessible_count"] = accessible_models
-                result["models"]["accessibility_rate"] = accessible_models / len(provider_models)
-                
+                result["models"]["accessibility_rate"] = accessible_models / len(
+                    provider_models
+                )
+
                 if model_errors:
                     result["models"]["errors"] = model_errors[:5]  # Limit to 5 errors
-                    
+
                 # Mark as degraded if less than 50% of models are accessible
                 if result["models"]["accessibility_rate"] < 0.5:
                     result["status"] = "degraded"
-                    result["warnings"] = result.get("warnings", [])
-                    result["warnings"].append("Less than 50% of models are accessible")
+                    existing_warnings = result.get("warnings", [])
+                    warnings_list = (
+                        list(existing_warnings)
+                        if isinstance(existing_warnings, list)
+                        else []
+                    )
+                    warnings_list.append("Less than 50% of models are accessible")
+                    result["warnings"] = warnings_list
 
             # Update registration
             registration = self._registrations[name]
@@ -1288,92 +1530,97 @@ class LLMRegistry:
         return suitable[0] if suitable else None
 
     # Model entry management methods
-    
+
     def get_model_entry(self, model_key: str) -> Optional[ModelEntry]:
         """Get model entry by key."""
         return self._model_entries.get(model_key)
-        
+
     def list_model_entries(self) -> Dict[str, ModelEntry]:
         """Get all model entries."""
         return self._model_entries.copy()
-        
+
     def update_model_access_time(self, model_key: str) -> None:
         """Update last access time for a model."""
         if model_key in self._model_entries:
             entry = self._model_entries[model_key]
             entry.last_accessed = datetime.now(timezone.utc).isoformat()
             self.add_model_entry(model_key, entry)
-            
+
     def pin_model(self, model_key: str, pinned: bool = True) -> None:
         """Pin or unpin a model to protect from garbage collection."""
         if model_key in self._model_entries:
             entry = self._model_entries[model_key]
             entry.pinned = pinned
             self.add_model_entry(model_key, entry)
-            
+
     def get_models_by_library(self, library: str) -> Dict[str, ModelEntry]:
         """Get all models for a specific library."""
         return {
-            key: entry for key, entry in self._model_entries.items()
+            key: entry
+            for key, entry in self._model_entries.items()
             if entry.library == library
         }
-        
+
     def get_storage_usage(self) -> Dict[str, Any]:
         """Get storage usage statistics."""
         total_size = 0
         library_sizes = {}
         model_count = len(self._model_entries)
         pinned_count = 0
-        
+
         for entry in self._model_entries.values():
             total_size += entry.total_size
-            
+
             if entry.library not in library_sizes:
                 library_sizes[entry.library] = 0
             library_sizes[entry.library] += entry.total_size
-            
+
             if entry.pinned:
                 pinned_count += 1
-                
+
         return {
             "total_size_bytes": total_size,
             "total_models": model_count,
             "pinned_models": pinned_count,
-            "library_breakdown": library_sizes
+            "library_breakdown": library_sizes,
         }
 
     # Model orchestrator integration methods (requirements 2.1-2.7)
-    
+
     async def update_llm_settings(self) -> None:
         """
         Update llm_settings.json automatically when models are installed.
-        
+
         This method is called when the registry changes to ensure new models
         are immediately accessible through existing LLM services.
         """
         try:
             # Load current LLM settings
             current_settings = self._load_llm_settings()
-            
+
             # Update provider configurations based on installed models
             updated_settings = await self._update_provider_configs(current_settings)
-            
+
             # Validate updated settings against schema
             if self._llm_settings_schema:
                 try:
-                    validate(instance=updated_settings, schema=self._llm_settings_schema)
+                    if validate is None:
+                        return
+                    validate(
+                        instance=updated_settings, schema=self._llm_settings_schema
+                    )
                 except ValidationError as ex:
-                    logger.error(f"LLM settings validation failed: {ex.message}")
+                    logger.error(f"LLM settings validation failed: {ex}")
                     return
-            
+
             # Save updated settings atomically
             await self._save_llm_settings(updated_settings)
-            
+
             # Trigger service discovery for new models (requirement 2.4)
             await self._trigger_service_discovery()
-            
+
             logger.info("LLM settings updated successfully")
-            
+
         except Exception as ex:
             logger.error(f"Failed to update LLM settings: {ex}")
 
@@ -1391,78 +1638,84 @@ class LLMRegistry:
                 "timeout": 30,
                 "max_retries": 3,
                 "fallback_providers": ["openai", "gemini", "deepseek"],
-                "provider_configs": {}
+                "provider_configs": {},
             }
-        
+
         try:
-            with open(self.llm_settings_path, 'r') as f:
+            with open(self.llm_settings_path, "r") as f:
                 return json.load(f)
         except Exception as ex:
             logger.error(f"Failed to load LLM settings: {ex}")
             return {}
 
-    async def _update_provider_configs(self, settings: Dict[str, Any]) -> Dict[str, Any]:
+    async def _update_provider_configs(
+        self, settings: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Update provider configurations based on installed models."""
         provider_configs = settings.get("provider_configs", {})
-        
+
         # Update llamacpp provider with GGUF models (requirement 2.2)
         llamacpp_models = []
         llamacpp_model_path = None
-        
+
         for model_key, entry in self._model_entries.items():
             if entry.library == "llama-cpp":
                 llamacpp_models.append(entry.model_id)
                 if llamacpp_model_path is None:
                     llamacpp_model_path = str(Path(entry.install_path).parent)
-        
+
         if llamacpp_models:
             if "llamacpp" not in provider_configs:
                 provider_configs["llamacpp"] = {}
-            
+
             # In-process llama-cpp is the default; don't imply an external server
-            provider_configs["llamacpp"].update({
-                "models": llamacpp_models,
-                "model_path": llamacpp_model_path,
-                "context_length": 4096
-            })
-            
+            provider_configs["llamacpp"].update(
+                {
+                    "models": llamacpp_models,
+                    "model_path": llamacpp_model_path,
+                    "context_length": 4096,
+                }
+            )
+
             # Update default model if not set or if current model is not available
             if settings.get("provider") == "llamacpp":
                 current_model = settings.get("model")
                 if not current_model or current_model not in llamacpp_models:
                     settings["model"] = llamacpp_models[0]
-        
+
         # Update HuggingFace provider with Transformers models (requirement 2.3)
         hf_models = []
-        
+
         for model_key, entry in self._model_entries.items():
             if entry.library == "transformers":
                 hf_models.append(entry.model_id)
-        
+
         if hf_models:
             if "huggingface" not in provider_configs:
                 provider_configs["huggingface"] = {}
-            
-            provider_configs["huggingface"].update({
-                "models": hf_models,
-                "base_url": "https://api-inference.huggingface.co"
-            })
-        
+
+            provider_configs["huggingface"].update(
+                {
+                    "models": hf_models,
+                    "base_url": "https://api-inference.huggingface.co",
+                }
+            )
+
         settings["provider_configs"] = provider_configs
         return settings
 
     async def _save_llm_settings(self, settings: Dict[str, Any]) -> None:
         """Save LLM settings atomically."""
         # Write to temporary file first
-        temp_path = self.llm_settings_path.with_suffix('.tmp')
-        
+        temp_path = self.llm_settings_path.with_suffix(".tmp")
+
         try:
-            with open(temp_path, 'w') as f:
+            with open(temp_path, "w") as f:
                 json.dump(settings, f, indent=2)
-            
+
             # Atomic move
             temp_path.replace(self.llm_settings_path)
-            
+
         except Exception as ex:
             # Clean up temp file on failure
             if temp_path.exists():
@@ -1477,56 +1730,53 @@ class LLMRegistry:
                 if provider_name in self._providers:
                     # Clear cached provider to force reload
                     del self._providers[provider_name]
-            
+
             logger.info("Triggered service discovery for updated models")
-            
+
         except Exception as ex:
             logger.error(f"Failed to trigger service discovery: {ex}")
 
     async def validate_model_accessibility(self, model_key: str) -> Dict[str, Any]:
         """
         Validate that a model is accessible through the appropriate client.
-        
+
         Args:
             model_key: Model registry key
-            
+
         Returns:
             Validation result with status and details
         """
         if model_key not in self._model_entries:
             return {
                 "status": "not_found",
-                "error": f"Model {model_key} not in registry"
+                "error": f"Model {model_key} not in registry",
             }
-        
+
         entry = self._model_entries[model_key]
-        
+
         try:
             # Get appropriate provider for the model's library
             provider_name = self._get_provider_for_library(entry.library)
             if not provider_name:
                 return {
                     "status": "no_provider",
-                    "error": f"No provider available for library {entry.library}"
+                    "error": f"No provider available for library {entry.library}",
                 }
-            
+
             # Get provider instance
             provider = self.get_provider(provider_name, model=entry.model_id)
             if not provider:
                 return {
                     "status": "provider_failed",
-                    "error": f"Failed to create provider instance for {provider_name}"
+                    "error": f"Failed to create provider instance for {provider_name}",
                 }
-            
+
             # Perform smoke test (requirement 2.5, 2.6)
             result = await self._perform_smoke_test(provider, entry)
             return result
-            
+
         except Exception as ex:
-            return {
-                "status": "validation_error",
-                "error": str(ex)
-            }
+            return {"status": "validation_error", "error": str(ex)}
 
     def _get_provider_for_library(self, library: str) -> Optional[str]:
         """Get the appropriate provider name for a library."""
@@ -1534,66 +1784,68 @@ class LLMRegistry:
             "llama-cpp": "llamacpp",
             "transformers": "huggingface",
             "spacy": "huggingface",  # spaCy models can be used through HF
-            "sklearn": None  # sklearn models don't use LLM providers
+            "sklearn": None,  # sklearn models don't use LLM providers
         }
         return library_provider_map.get(library)
 
-    async def _perform_smoke_test(self, provider: LLMProviderBase, entry: ModelEntry) -> Dict[str, Any]:
+    async def _perform_smoke_test(
+        self, provider: LLMProviderBase, entry: ModelEntry
+    ) -> Dict[str, Any]:
         """
         Perform smoke test on a model by attempting 1-token generation.
-        
+
         Args:
             provider: LLM provider instance
             entry: Model entry
-            
+
         Returns:
             Test result
         """
         try:
             # Load the specific model if provider supports it
-            if hasattr(provider, 'load_model') and entry.install_path:
+            load_model_fn = getattr(provider, "load_model", None)
+            if callable(load_model_fn) and entry.install_path:
                 model_path = Path(entry.install_path)
                 if entry.library == "llama-cpp":
                     # For GGUF models, load the .gguf file
                     gguf_files = list(model_path.glob("*.gguf"))
                     if gguf_files:
-                        success = provider.load_model(str(gguf_files[0]))
+                        success = bool(load_model_fn(str(gguf_files[0])))
                         if not success:
                             return {
                                 "status": "unhealthy",
-                                "error": f"Failed to load model from {gguf_files[0]}"
+                                "error": f"Failed to load model from {gguf_files[0]}",
                             }
                 elif entry.library == "transformers":
                     # For transformers models, load from directory
-                    if hasattr(provider, 'load_model_by_path'):
-                        success = provider.load_model_by_path(str(model_path))
+                    load_model_by_path_fn = getattr(provider, "load_model_by_path", None)
+                    if callable(load_model_by_path_fn):
+                        success = bool(load_model_by_path_fn(str(model_path)))
                         if not success:
                             return {
-                                "status": "unhealthy", 
-                                "error": f"Failed to load transformers model from {model_path}"
+                                "status": "unhealthy",
+                                "error": f"Failed to load transformers model from {model_path}",
                             }
-            
+
             # Attempt basic inference with minimal tokens (requirement 2.6)
-            if hasattr(provider, 'generate_text'):
+            if hasattr(provider, "generate_text"):
                 result = provider.generate_text(
-                    prompt="test",
-                    max_tokens=1,
-                    temperature=0.1
+                    prompt="test", max_tokens=1, temperature=0.1
                 )
-                
+
                 if result and len(result.strip()) > 0:
                     return {
                         "status": "healthy",
                         "message": "Smoke test passed - model can generate tokens",
                         "test_output": result[:50],  # First 50 chars
-                        "model_path": entry.install_path
+                        "model_path": entry.install_path,
                     }
                 else:
                     return {
                         "status": "unhealthy",
-                        "error": "Model generated empty response"
+                        "error": "Model generated empty response",
                     }
-            elif hasattr(provider, 'embed'):
+            elif hasattr(provider, "embed"):
                 # Test embedding capability for embedding models
                 result = provider.embed("test")
                 if result and len(result) > 0:
@@ -1601,111 +1853,117 @@ class LLMRegistry:
                         "status": "healthy",
                         "message": "Smoke test passed - model can generate embeddings",
                         "embedding_dim": len(result),
-                        "model_path": entry.install_path
+                        "model_path": entry.install_path,
                     }
                 else:
                     return {
                         "status": "unhealthy",
-                        "error": "Model generated empty embedding"
+                        "error": "Model generated empty embedding",
                     }
             else:
                 # Provider doesn't support generation - just check if it loads
-                provider_info = provider.get_provider_info()
+                provider_info_fn = getattr(provider, "get_provider_info", None)
+                provider_info = (
+                    provider_info_fn() if callable(provider_info_fn) else {}
+                )
                 return {
                     "status": "healthy",
                     "message": "Model loads successfully",
                     "provider_info": provider_info,
-                    "model_path": entry.install_path
+                    "model_path": entry.install_path,
                 }
-                
+
         except Exception as ex:
             return {
                 "status": "unhealthy",
                 "error": f"Smoke test failed: {ex}",
-                "model_path": entry.install_path
+                "model_path": entry.install_path,
             }
 
     async def validate_all_models(self) -> Dict[str, Dict[str, Any]]:
         """
         Validate all models in the registry.
-        
+
         Returns:
             Dict mapping model keys to validation results
         """
         results = {}
-        
+
         for model_key in self._model_entries.keys():
             try:
                 result = await self.validate_model_accessibility(model_key)
                 results[model_key] = result
             except Exception as ex:
-                results[model_key] = {
-                    "status": "validation_error",
-                    "error": str(ex)
-                }
-        
+                results[model_key] = {"status": "validation_error", "error": str(ex)}
+
         return results
 
     def get_provider_health_status(self, provider_name: str) -> Dict[str, Any]:
         """
         Get comprehensive health status for a provider including model validation.
-        
+
         Args:
             provider_name: Name of the provider
-            
+
         Returns:
             Health status with model validation details
         """
         try:
             # Get basic provider health
             basic_health = self.health_check(provider_name)
-            
+
             # Get models for this provider
             provider_models = {}
             for model_key, entry in self._model_entries.items():
                 if self._get_provider_for_library(entry.library) == provider_name:
                     provider_models[model_key] = entry
-            
+
             # Add model count and validation summary
             basic_health["models"] = {
                 "total_count": len(provider_models),
-                "model_keys": list(provider_models.keys())
+                "model_keys": list(provider_models.keys()),
             }
-            
+
             # Add provider-specific validation info
             if provider_name == "llamacpp":
                 # Check for GGUF models
-                gguf_models = [k for k, e in provider_models.items() if e.library == "llama-cpp"]
+                gguf_models = [
+                    k for k, e in provider_models.items() if e.library == "llama-cpp"
+                ]
                 basic_health["models"]["gguf_models"] = len(gguf_models)
-                
+
                 # Check model directory
                 models_dir = Path("models/llama-cpp")
                 basic_health["models"]["models_directory_exists"] = models_dir.exists()
                 if models_dir.exists():
                     gguf_files = list(models_dir.glob("*.gguf"))
                     basic_health["models"]["gguf_files_on_disk"] = len(gguf_files)
-                
+
             elif provider_name == "huggingface":
                 # Check for transformers models
-                hf_models = [k for k, e in provider_models.items() if e.library == "transformers"]
+                hf_models = [
+                    k for k, e in provider_models.items() if e.library == "transformers"
+                ]
                 basic_health["models"]["transformers_models"] = len(hf_models)
-            
+
             return basic_health
-            
+
         except Exception as ex:
             return {
                 "status": "unhealthy",
                 "error": f"Failed to get provider health: {ex}",
-                "provider": provider_name
+                "provider": provider_name,
             }
 
-    async def validate_llm_settings_update(self, new_settings: Dict[str, Any]) -> Dict[str, Any]:
+    async def validate_llm_settings_update(
+        self, new_settings: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Validate that LLM settings update is valid and models are accessible.
-        
+
         Args:
             new_settings: New LLM settings to validate
-            
+
         Returns:
             Validation result
         """
@@ -1713,23 +1971,25 @@ class LLMRegistry:
             # Validate against schema (requirement 2.7)
             if self._llm_settings_schema:
                 try:
+                    if validate is None:
+                        return {"status": "error", "error": "JSON schema validator unavailable"}
                     validate(instance=new_settings, schema=self._llm_settings_schema)
                 except ValidationError as ex:
                     return {
                         "status": "invalid_schema",
-                        "error": f"Schema validation failed: {ex.message}",
-                        "path": list(ex.absolute_path) if hasattr(ex, 'absolute_path') else []
+                        "error": f"Schema validation failed: {ex}",
+                        "path": list(getattr(ex, "absolute_path", []) or []),
                     }
-            
+
             # Check if specified provider exists
             provider_name = new_settings.get("provider")
             if provider_name and provider_name not in self._registrations:
                 return {
                     "status": "invalid_provider",
                     "error": f"Provider '{provider_name}' is not registered",
-                    "available_providers": list(self._registrations.keys())
+                    "available_providers": list(self._registrations.keys()),
                 }
-            
+
             # Check if specified model is available for the provider
             model_name = new_settings.get("model")
             if provider_name and model_name:
@@ -1738,14 +1998,17 @@ class LLMRegistry:
                 for model_key, entry in self._model_entries.items():
                     if self._get_provider_for_library(entry.library) == provider_name:
                         provider_models.append(entry.model_id)
-                
-                if model_name not in provider_models and provider_name in ["llamacpp", "huggingface"]:
+
+                if model_name not in provider_models and provider_name in [
+                    "llamacpp",
+                    "huggingface",
+                ]:
                     return {
                         "status": "model_not_found",
                         "error": f"Model '{model_name}' not found for provider '{provider_name}'",
-                        "available_models": provider_models
+                        "available_models": provider_models,
                     }
-            
+
             # Validate provider configurations
             provider_configs = new_settings.get("provider_configs", {})
             for config_provider, config in provider_configs.items():
@@ -1753,9 +2016,9 @@ class LLMRegistry:
                     return {
                         "status": "invalid_provider_config",
                         "error": f"Provider config for unknown provider: {config_provider}",
-                        "available_providers": list(self._registrations.keys())
+                        "available_providers": list(self._registrations.keys()),
                     }
-                
+
                 # Validate provider-specific config
                 if config_provider == "llamacpp":
                     model_path = config.get("model_path")
@@ -1763,146 +2026,160 @@ class LLMRegistry:
                         return {
                             "status": "invalid_model_path",
                             "error": f"Model path does not exist: {model_path}",
-                            "provider": config_provider
+                            "provider": config_provider,
                         }
-                
+
                 elif config_provider == "huggingface":
                     models = config.get("models", [])
                     if not isinstance(models, list):
                         return {
                             "status": "invalid_models_config",
                             "error": "HuggingFace models config must be a list",
-                            "provider": config_provider
+                            "provider": config_provider,
                         }
-            
-            return {
-                "status": "valid",
-                "message": "LLM settings validation passed"
-            }
-            
+
+            return {"status": "valid", "message": "LLM settings validation passed"}
+
         except Exception as ex:
             return {
                 "status": "validation_error",
-                "error": f"Settings validation failed: {ex}"
+                "error": f"Settings validation failed: {ex}",
             }
 
     async def test_model_loading_workflow(self, model_key: str) -> Dict[str, Any]:
         """
         Test complete model loading workflow including provider instantiation and inference.
-        
+
         Args:
             model_key: Model registry key
-            
+
         Returns:
             Comprehensive test result
         """
         if model_key not in self._model_entries:
             return {
                 "status": "not_found",
-                "error": f"Model {model_key} not in registry"
+                "error": f"Model {model_key} not in registry",
             }
-        
+
         entry = self._model_entries[model_key]
         test_results = {
             "model_key": model_key,
             "model_id": entry.model_id,
             "library": entry.library,
             "install_path": entry.install_path,
-            "tests": {}
+            "tests": {},
         }
-        
+
         try:
             # Test 1: File integrity check
-            test_results["tests"]["file_integrity"] = self.verify_model_integrity(model_key)
-            
+            test_results["tests"]["file_integrity"] = self.verify_model_integrity(
+                model_key
+            )
+
             # Test 2: Provider availability
             provider_name = self._get_provider_for_library(entry.library)
             if not provider_name:
                 test_results["tests"]["provider_availability"] = {
                     "status": "no_provider",
-                    "error": f"No provider available for library {entry.library}"
+                    "error": f"No provider available for library {entry.library}",
                 }
                 test_results["status"] = "failed"
                 return test_results
-            
+
             test_results["tests"]["provider_availability"] = {
                 "status": "available",
-                "provider": provider_name
+                "provider": provider_name,
             }
-            
+
             # Test 3: Provider instantiation
             try:
                 provider = self.get_provider(provider_name)
                 if provider:
+                    provider_info_fn = getattr(provider, "get_provider_info", None)
+                    provider_info = (
+                        provider_info_fn() if callable(provider_info_fn) else {}
+                    )
                     test_results["tests"]["provider_instantiation"] = {
                         "status": "success",
-                        "provider_info": provider.get_provider_info()
+                        "provider_info": provider_info,
                     }
                 else:
                     test_results["tests"]["provider_instantiation"] = {
                         "status": "failed",
-                        "error": "Failed to create provider instance"
+                        "error": "Failed to create provider instance",
                     }
                     test_results["status"] = "failed"
                     return test_results
             except Exception as ex:
                 test_results["tests"]["provider_instantiation"] = {
                     "status": "failed",
-                    "error": str(ex)
+                    "error": str(ex),
                 }
                 test_results["status"] = "failed"
                 return test_results
-            
+
             # Test 4: Model loading (if supported)
-            if hasattr(provider, 'load_model') or hasattr(provider, 'load_model_by_path'):
+            if hasattr(provider, "load_model") or hasattr(
+                provider, "load_model_by_path"
+            ):
                 try:
                     model_path = Path(entry.install_path)
                     if entry.library == "llama-cpp":
                         # Find GGUF file
                         gguf_files = list(model_path.glob("*.gguf"))
-                        if gguf_files and hasattr(provider, 'load_model'):
-                            success = provider.load_model(str(gguf_files[0]))
+                        load_model_fn = getattr(provider, "load_model", None)
+                        if gguf_files and callable(load_model_fn):
+                            success = bool(load_model_fn(str(gguf_files[0])))
                             test_results["tests"]["model_loading"] = {
                                 "status": "success" if success else "failed",
                                 "model_file": str(gguf_files[0]),
-                                "loaded": success
+                                "loaded": success,
                             }
                         else:
                             test_results["tests"]["model_loading"] = {
                                 "status": "failed",
-                                "error": "No GGUF files found or provider doesn't support loading"
+                                "error": "No GGUF files found or provider doesn't support loading",
                             }
                     elif entry.library == "transformers":
-                        if hasattr(provider, 'load_model_by_path'):
-                            success = provider.load_model_by_path(str(model_path))
+                        load_model_by_path_fn = getattr(
+                            provider, "load_model_by_path", None
+                        )
+                        if callable(load_model_by_path_fn):
+                            success = bool(load_model_by_path_fn(str(model_path)))
                             test_results["tests"]["model_loading"] = {
                                 "status": "success" if success else "failed",
                                 "model_path": str(model_path),
-                                "loaded": success
+                                "loaded": success,
                             }
                         else:
                             test_results["tests"]["model_loading"] = {
                                 "status": "skipped",
-                                "reason": "Provider doesn't support explicit model loading"
+                                "reason": "Provider doesn't support explicit model loading",
                             }
                 except Exception as ex:
                     test_results["tests"]["model_loading"] = {
                         "status": "failed",
-                        "error": str(ex)
+                        "error": str(ex),
                     }
             else:
                 test_results["tests"]["model_loading"] = {
                     "status": "skipped",
-                    "reason": "Provider doesn't support model loading"
+                    "reason": "Provider doesn't support model loading",
                 }
-            
+
             # Test 5: Smoke test (1-token generation)
-            test_results["tests"]["smoke_test"] = await self._perform_smoke_test(provider, entry)
-            
+            test_results["tests"]["smoke_test"] = await self._perform_smoke_test(
+                provider, entry
+            )
+
             # Determine overall status
-            failed_tests = [name for name, result in test_results["tests"].items() 
-                          if result.get("status") in ["failed", "unhealthy"]]
-            
+            failed_tests = [
+                name
+                for name, result in test_results["tests"].items()
+                if result.get("status") in ["failed", "unhealthy"]
+            ]
+
             if not failed_tests:
                 test_results["status"] = "healthy"
                 test_results["message"] = "All tests passed"
@@ -1912,9 +2189,9 @@ class LLMRegistry:
             else:
                 test_results["status"] = "unhealthy"
                 test_results["message"] = f"Failed tests: {failed_tests}"
-            
+
             return test_results
-            
+
         except Exception as ex:
             test_results["status"] = "error"
             test_results["error"] = str(ex)
@@ -1923,20 +2200,20 @@ class LLMRegistry:
     async def ensure_model_compatibility(self, model_key: str) -> Dict[str, Any]:
         """
         Ensure a model is compatible with its provider and can be used for inference.
-        
+
         This method performs comprehensive validation including file integrity,
         provider compatibility, and basic inference testing.
-        
+
         Args:
             model_key: Model registry key
-            
+
         Returns:
             Compatibility check result
         """
         try:
             # Run comprehensive workflow test
             workflow_result = await self.test_model_loading_workflow(model_key)
-            
+
             # Extract compatibility information
             compatibility_result = {
                 "model_key": model_key,
@@ -1944,39 +2221,39 @@ class LLMRegistry:
                 "status": workflow_result["status"],
                 "tests_passed": [],
                 "tests_failed": [],
-                "recommendations": []
+                "recommendations": [],
             }
-            
+
             # Analyze test results
             for test_name, test_result in workflow_result.get("tests", {}).items():
                 if test_result.get("status") in ["success", "healthy"]:
                     compatibility_result["tests_passed"].append(test_name)
                 elif test_result.get("status") in ["failed", "unhealthy"]:
                     compatibility_result["tests_failed"].append(test_name)
-            
+
             # Generate recommendations
             if "file_integrity" in compatibility_result["tests_failed"]:
                 compatibility_result["recommendations"].append(
                     "Re-download the model to fix file integrity issues"
                 )
-            
+
             if "provider_instantiation" in compatibility_result["tests_failed"]:
                 compatibility_result["recommendations"].append(
                     "Check provider configuration and dependencies"
                 )
-            
+
             if "model_loading" in compatibility_result["tests_failed"]:
                 compatibility_result["recommendations"].append(
                     "Verify model format is compatible with provider"
                 )
-            
+
             if "smoke_test" in compatibility_result["tests_failed"]:
                 compatibility_result["recommendations"].append(
                     "Model may be corrupted or incompatible - consider re-downloading"
                 )
-            
+
             return compatibility_result
-            
+
         except Exception as ex:
             return {
                 "model_key": model_key,
@@ -1985,26 +2262,32 @@ class LLMRegistry:
                 "error": str(ex),
                 "tests_passed": [],
                 "tests_failed": ["compatibility_check"],
-                "recommendations": ["Contact support for assistance"]
+                "recommendations": ["Contact support for assistance"],
             }
 
     def cleanup(self):
         """Clean up resources including file watcher."""
-        if hasattr(self, '_observer') and self._observer:
+        if hasattr(self, "_observer") and self._observer:
             self._observer.stop()
             self._observer.join()
             logger.info("Registry watcher stopped")
 
 
-# Global registry instance
+# Global registry instance and lock
 _registry = None
+_registry_lock = threading.RLock()
 
 
 def get_registry() -> LLMRegistry:
     """Get global LLM registry instance."""
     global _registry
-    if _registry is None:
-        _registry = LLMRegistry()
+    with _registry_lock:
+        if _registry is None:
+            _registry = LLMRegistry()
+            # Ensure all built-in providers are registered
+            _registry.ensure_builtin_providers_registered()
+            # Ensure registry consistency
+            _registry.ensure_registry_consistency()
     return _registry
 
 

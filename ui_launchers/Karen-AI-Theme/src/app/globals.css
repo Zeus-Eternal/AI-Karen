@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Alternative Google Fonts loading for Turbopack compatibility */
+/* Uncomment these lines and comment out the Next.js font imports in layout.tsx if using Turbopack */
+
+/*
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500;600;700&display=swap');
+
+:root {
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  --font-mono: 'Roboto Mono', 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+}
+*/
+
 @layer base {
   :root {
     --background: 0 0% 100%;

@@ -27,49 +27,57 @@ from ai_karen_engine.tools.production_tools import (
     TextProcessingTool,
     DataAnalysisTool,
     get_production_tools,
-    register_production_tools
+    register_production_tools,
 )
 
 # Import tool implementations (for direct use if needed)
 from ai_karen_engine.tools.http_client_tool import (
     HTTPClientTool as HTTPClientImpl,
-    get_http_client_tool
+    get_http_client_tool,
 )
 from ai_karen_engine.tools.filesystem_tool import (
     FileSystemTool as FileSystemImpl,
-    get_filesystem_tool
+    get_filesystem_tool,
 )
 from ai_karen_engine.tools.text_processing_tool import (
     TextProcessingTool as TextProcessingImpl,
-    get_text_processing_tool
+    get_text_processing_tool,
 )
 from ai_karen_engine.tools.data_analysis_tool import (
     DataAnalysisTool as DataAnalysisImpl,
-    get_data_analysis_tool
+    get_data_analysis_tool,
 )
+
+# Import weather tool
+from ai_karen_engine.tools.weather_tool import WeatherTool, get_weather_tool_info
+from ai_karen_engine.tools import initialize_weather_tools
 
 __all__ = [
     # Tool categories
-    'interpreters',
-    'search',
-    'documents',
-    'server_tools',
+    "interpreters",
+    "search",
+    "documents",
+    "server_tools",
     # Production tool plugins (BaseTool implementations)
-    'HTTPClientTool',
-    'FileSystemTool',
-    'TextProcessingTool',
-    'DataAnalysisTool',
+    "HTTPClientTool",
+    "FileSystemTool",
+    "TextProcessingTool",
+    "DataAnalysisTool",
+    # Weather tools
+    "WeatherTool",
+    "get_weather_tool_info",
+    "initialize_weather_tools",
     # Tool registration
-    'get_production_tools',
-    'register_production_tools',
+    "get_production_tools",
+    "register_production_tools",
     # Tool implementations (for direct use)
-    'HTTPClientImpl',
-    'FileSystemImpl',
-    'TextProcessingImpl',
-    'DataAnalysisImpl',
+    "HTTPClientImpl",
+    "FileSystemImpl",
+    "TextProcessingImpl",
+    "DataAnalysisImpl",
     # Convenience getters
-    'get_http_client_tool',
-    'get_filesystem_tool',
-    'get_text_processing_tool',
-    'get_data_analysis_tool',
+    "get_http_client_tool",
+    "get_filesystem_tool",
+    "get_text_processing_tool",
+    "get_data_analysis_tool",
 ]
