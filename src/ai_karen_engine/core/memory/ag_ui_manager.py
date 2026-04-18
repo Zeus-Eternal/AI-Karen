@@ -18,7 +18,7 @@ from ai_karen_engine.core.neuro_vault import NeuroVault
 
 # Import NLP services - unified manager provides both spaCy and DistilBERT
 try:
-    from services.memory.nlp_service_manager import nlp_service_manager
+    from ai_karen_engine.memory.nlp_service_manager import nlp_service_manager
     # Access spaCy and DistilBERT services from unified manager
     spacy_service_manager = nlp_service_manager.spacy_service if hasattr(nlp_service_manager, 'spacy_service') else None
     distilbert_service_manager = nlp_service_manager.distilbert_service if hasattr(nlp_service_manager, 'distilbert_service') else None

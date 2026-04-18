@@ -197,7 +197,7 @@ class GPUComputeOffloader:
     def _bind_runtime_configuration(self) -> None:
         """Bind runtime GPU behavior to the shared optimization configuration manager."""
         try:
-            from services.memory.optimization_configuration_manager import (
+            from ai_karen_engine.memory.optimization_configuration_manager import (
                 get_optimization_config_manager,
             )
 
@@ -227,7 +227,7 @@ class GPUComputeOffloader:
     def _apply_runtime_configuration(self, config: Any) -> None:
         """Apply shared optimization/CUDA policy to the offloader."""
         try:
-            from services.memory.optimization_configuration_manager import build_gpu_runtime_policy
+            from ai_karen_engine.memory.optimization_configuration_manager import build_gpu_runtime_policy
 
             policy = build_gpu_runtime_policy(config)
         except Exception:

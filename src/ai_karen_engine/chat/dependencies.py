@@ -6,7 +6,7 @@ from typing import Any, Optional
 from ai_karen_engine.chat.code_execution_service import CodeExecutionService
 from ai_karen_engine.chat.tool_integration_service import ToolIntegrationService
 from ai_karen_engine.chat.memory_processor import MemoryProcessor
-from services.memory.memory_service import WebUIMemoryService
+from ai_karen_engine.memory.memory_service import WebUIMemoryService
 
 
 @lru_cache()

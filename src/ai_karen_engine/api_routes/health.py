@@ -13,12 +13,12 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List
 
 from ai_karen_engine.utils.dependency_checks import import_fastapi
-from services.memory.connection_health_manager import (
+from ai_karen_engine.memory.connection_health_manager import (
     ConnectionHealthManager,
     get_connection_health_manager,
 )
-from services.monitoring.correlation_service import get_request_id
-from services.memory.internal.structured_logging import get_structured_logging_service
+from ai_karen_engine.monitoring.correlation_service import get_request_id
+from ai_karen_engine.memory.internal.structured_logging import get_structured_logging_service
 import logging
 
 logger = logging.getLogger(__name__)
@@ -458,7 +458,7 @@ async def _build_degraded_mode_status() -> Dict[str, Any]:
     local_capabilities = {"llamacpp_models": 0, "transformers_models": 0, "spacy_available": 0}
 
     try:
-        from ai_karen_engine.services.provider_registry import get_provider_registry_service
+        from ai_karen_engine.memory.provider_registry import get_provider_registry_service
 
         provider_service = get_provider_registry_service()
         system_status = provider_service.get_system_status()
@@ -571,7 +571,7 @@ async def _build_degraded_mode_status() -> Dict[str, Any]:
 
         remote_providers_available = 0
         try:
-            from ai_karen_engine.services.provider_registry import get_provider_registry_service
+            from ai_karen_engine.memory.provider_registry import get_provider_registry_service
 
             provider_service = get_provider_registry_service()
             system_status = provider_service.get_system_status()

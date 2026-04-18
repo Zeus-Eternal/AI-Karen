@@ -740,7 +740,7 @@ def create_ai_orchestrator_factory():
 
 def create_memory_service_factory():
     def factory():
-        from services.memory.memory_service import WebUIMemoryService
+        from ai_karen_engine.memory.memory_service import WebUIMemoryService
 
         return WebUIMemoryService()
 
@@ -749,7 +749,7 @@ def create_memory_service_factory():
 
 def create_conversation_service_factory():
     async def factory():
-        from services.memory.conversation_service import ConversationService
+        from ai_karen_engine.memory.conversation_service import ConversationService
         from ai_karen_engine.chat.factory import get_chat_service_factory
 
         factory = get_chat_service_factory()

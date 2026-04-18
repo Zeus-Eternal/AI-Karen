@@ -5,8 +5,8 @@ import uuid
 from typing import Union
 
 try:
-    from services.memory.memory_service import WebUIMemoryService, WebUIMemoryQuery, UISource
-    from services.memory.unified_memory_service import (
+    from ai_karen_engine.memory.memory_service import WebUIMemoryService, WebUIMemoryQuery, UISource
+    from ai_karen_engine.memory.unified_memory_service import (
         UnifiedMemoryService,
         MemoryCommitRequest,
         MemoryQueryRequest,

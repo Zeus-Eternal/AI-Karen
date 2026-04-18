@@ -18,7 +18,8 @@
 .env.local
 config/secrets/*
 config/archive/auth/*
-
+.ruff_cache
+/models/llama-cpp
 # testing
 /coverage
 
@@ -38,6 +39,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+# crash dumps
+core.*
 # Ignore log files
 *.log
 

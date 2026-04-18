@@ -66,7 +66,7 @@ except Exception:
 
 # Use RedisConnectionManager for proper health monitoring and degraded mode
 try:
-    from services.memory.redis_connection_manager import (
+    from ai_karen_engine.memory.redis_connection_manager import (
         RedisConnectionManager,
         get_redis_manager,
         initialize_redis_manager

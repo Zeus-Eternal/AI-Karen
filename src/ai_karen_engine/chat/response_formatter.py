@@ -308,11 +308,24 @@ class PrettyOutputLayer:
             flags=re.IGNORECASE | re.MULTILINE,
         )
         content = re.sub(
-            r'\n?\s*[A-Z][^.:\n]*\bissue\b.*$',
+            r'^\s*Since the user has greeted again without a specific new request,.*$',
             '',
             content,
             flags=re.IGNORECASE | re.MULTILINE,
         )
+        content = re.sub(
+            r'^\s*I(?:\'|\u2019)ll acknowledge their greeting and be ready to assist.*$',
+            '',
+            content,
+            flags=re.IGNORECASE | re.MULTILINE,
+        )
+        content = re.sub(
+            r'^\s*This is NOT a complete meaningful response.*$',
+            '',
+            content,
+            flags=re.IGNORECASE | re.MULTILINE,
+        )
+        content = re.sub(r'^\s*=+\s*$', '', content, flags=re.MULTILINE)
         return content.strip()
 
     def _run_internal_detectors(self, content: str, context: ResponseContext) -> LayoutHint:

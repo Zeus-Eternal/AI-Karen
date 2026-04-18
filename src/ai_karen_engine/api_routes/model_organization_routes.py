@@ -14,20 +14,20 @@ import time
 from typing import Any, Dict, List, Optional, Union
 from pathlib import Path
 
-from services.memory.model_discovery_service import (
+from ai_karen_engine.memory.model_discovery_service import (
     get_model_discovery_service,
     ModelDiscoveryService,
     DiscoveryStatus,
 )
-from services.memory.intelligent_model_router import get_model_router, ModelRouter
-from services.memory.internal.model_recommendation_engine import (
+from ai_karen_engine.memory.intelligent_model_router import get_model_router, ModelRouter
+from ai_karen_engine.memory.internal.model_recommendation_engine import (
     get_recommendation_engine,
     RecommendationRequest,
     FilterRequest,
     RecommendationStrategy,
     FilterCriteria,
 )
-from services.memory.internal.model_discovery_engine import (
+from ai_karen_engine.memory.internal.model_discovery_engine import (
     ModelInfo,
     ModelType,
     ModalityType,

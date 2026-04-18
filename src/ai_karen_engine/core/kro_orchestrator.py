@@ -193,7 +193,7 @@ class HelperModels:
             self.default_model_provider = registry.get_provider("llamacpp")
 
             # Initialize DistilBERT for classification
-            from services.memory.nlp_service_manager import nlp_service_manager
+            from ai_karen_engine.memory.nlp_service_manager import nlp_service_manager
             self.distilbert = nlp_service_manager
 
             # Initialize spaCy for NLP

@@ -93,6 +93,11 @@ class ProductionChatMemory:
         """Store a chat turn in both Redis and vector DB"""
 
         try:
+            metadata_payload = dict(metadata or {})
+            persisted_response = str(
+                metadata_payload.get("formatted_content") or response or ""
+            )
+
             # Get or create chat memory configuration
             chat_config = await self._get_chat_config(user_id, chat_id)
 
@@ -102,9 +107,9 @@ class ProductionChatMemory:
 
             turn_data = {
                 "prompt": prompt,
-                "response": response,
+                "response": persisted_response,
                 "timestamp": datetime.utcnow().isoformat(),
-                "metadata": metadata or {},
+                "metadata": metadata_payload,
             }
 
             # Add to Redis list
@@ -114,13 +119,13 @@ class ProductionChatMemory:
             )
 
             # 2. Store in vector DB for semantic recall
-            vector_text = f"User: {prompt}\nAssistant: {response}"
+            vector_text = f"User: {prompt}\nAssistant: {persisted_response}"
             vector_metadata = {
                 "chat_id": chat_id,
                 "user_id": user_id,
                 "timestamp": datetime.utcnow().isoformat(),
                 "turn_type": "conversation",
-                **(metadata or {}),
+                **metadata_payload,
             }
 
             await store_vector(

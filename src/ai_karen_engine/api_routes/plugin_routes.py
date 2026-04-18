@@ -22,10 +22,10 @@ from ai_karen_engine.models.web_api_error_responses import (
     get_http_status_for_error_code,
 )
 from ai_karen_engine.auth.session import get_current_user
-from services.infra.plugin_service import PluginService
+from ai_karen_engine.infra.plugin_service import PluginService
 
 # REMOVED: RBAC access control - replaced with simple role checking
-from services.memory.internal.plugin_execution import ExecutionRequest
+from ai_karen_engine.memory.internal.plugin_execution import ExecutionRequest
 
 router = APIRouter(tags=["plugins"])
 # Public mirror (read-only) for unauthenticated UI health checks

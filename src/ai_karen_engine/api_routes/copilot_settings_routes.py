@@ -19,7 +19,7 @@ except ImportError:
 
 from ai_karen_engine.core.dependencies import bypass_user_context_func
 from ai_karen_engine.services.audit_logger import get_audit_logger
-from ai_karen_engine.services.secret_manager import get_secret_manager
+from ai_karen_engine.models.secret_manager import get_secret_manager
 from ai_karen_engine.services.settings_manager import get_settings_manager
 
 logger = logging.getLogger(__name__)

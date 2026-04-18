@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 import logging
 
 from ai_karen_engine.config.user_profiles import UserProfilesManager
-from ai_karen_engine.core.config_manager import get_config
+from ai_karen_engine.config.config_manager import get_config
 from ai_karen_engine.core.degraded_mode import get_degraded_mode_manager
 from ai_karen_engine.services.settings_manager import SettingsManager
 
@@ -87,7 +87,9 @@ def _choose_provider_and_model(
     return default_provider, default_model
 
 
-def _build_ui_preferences(settings: SettingsManager, base_ui: Dict[str, Any]) -> Dict[str, Any]:
+def _build_ui_preferences(
+    settings: SettingsManager, base_ui: Dict[str, Any]
+) -> Dict[str, Any]:
     """Merge persisted UI preferences with runtime defaults."""
 
     ui_preferences: Dict[str, Any] = {
@@ -124,9 +126,7 @@ def get_user_prefs() -> UserPrefs:
         preferred_provider = (
             settings_manager.get_setting("provider") or preferred_provider
         )
-        preferred_model = (
-            settings_manager.get_setting("model") or preferred_model
-        )
+        preferred_model = settings_manager.get_setting("model") or preferred_model
         logger.debug(
             "No active routing profile configured; falling back to settings.json defaults",
         )

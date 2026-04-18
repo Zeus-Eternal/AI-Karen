@@ -20,7 +20,7 @@ from ai_karen_engine.models.persona_models import (
     ToneEnum,
     VerbosityEnum,
 )
-from ai_karen_engine.services.persona_service import get_persona_service
+from ai_karen_engine.memory.persona_service import get_persona_service
 
 router = APIRouter(tags=["personas"])
 

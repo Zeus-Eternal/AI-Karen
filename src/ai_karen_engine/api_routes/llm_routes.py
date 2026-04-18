@@ -11,9 +11,10 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
-from ai_karen_engine.core.config_manager import ConfigManager
+from ai_karen_engine.config.config_manager import ConfigManager
 from ai_karen_engine.core.error_handler import handle_api_exception
 from ai_karen_engine.integrations.llm_registry import get_registry
+from ai_karen_engine.config import load_llm_profiles_config
 from ai_karen_engine.utils.dependency_checks import import_fastapi, import_pydantic
 
 APIRouter, Depends, HTTPException = import_fastapi(
@@ -166,10 +167,10 @@ async def list_profiles():
         Dict containing list of LLM profiles
     """
     try:
-        # Load profiles from config file
-        profiles_path = Path("config/llm_profiles.yml")
+        # Load profiles from config
+        profiles_config = load_llm_profiles_config()
 
-        if not profiles_path.exists():
+        if not profiles_config:
             # Return default profiles if config file doesn't exist
             default_profiles = [
                 LLMProfile(
@@ -195,11 +196,8 @@ async def list_profiles():
             ]
             return {"profiles": default_profiles}
 
-        with open(profiles_path, "r") as f:
-            config_data = yaml.safe_load(f)
-
         profiles = []
-        for profile_name, profile_config in config_data.get("profiles", {}).items():
+        for profile_name, profile_config in profiles_config.get("profiles", {}).items():
             profiles.append(
                 LLMProfile(
                     name=profile_name,

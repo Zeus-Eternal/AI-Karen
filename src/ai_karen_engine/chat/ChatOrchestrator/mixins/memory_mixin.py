@@ -48,7 +48,7 @@ class ChatMemoryMixin(Base):
         Memory writes only occur AFTER successful response generation.
         """
         from ai_karen_engine.chat.dependencies import get_memory_service
-        from services.memory.unified_memory_service import ContextHit
+        from ai_karen_engine.memory.unified_memory_service import ContextHit
         
         # Transactional guard: Only write back if response generation succeeded
         if not result.success or not result.response or not request.user_id:
@@ -69,7 +69,7 @@ class ChatMemoryMixin(Base):
                 return {"queued": False, "linked_shards": 0, "reason": "memory_service_unavailable"}
 
             # Step 1: Normalize context hits from retrieved memories (Attribution)
-            from services.memory.internal.memory_writeback import InteractionType
+            from ai_karen_engine.memory.internal.memory_writeback import InteractionType
             
             normalized_hits: List[ContextHit] = []
             raw_memories = result.context.get("memories", []) if isinstance(result.context, dict) else []

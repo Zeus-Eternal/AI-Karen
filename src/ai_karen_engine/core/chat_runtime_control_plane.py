@@ -367,7 +367,7 @@ class RedisProbe:
                 pass
 
             # Fall back to the legacy manager path where older health probes still report.
-            from services.memory.redis_connection_manager import get_redis_manager
+            from ai_karen_engine.memory.redis_connection_manager import get_redis_manager
 
             manager = get_redis_manager()
             health = await manager.health_check()
@@ -442,11 +442,11 @@ class ProviderRouterProbe:
     async def check(self) -> DependencyHealth:
         start = time.time()
         try:
-            from services.memory.llm_router import LLMRouter
+            from ai_karen_engine.memory.llm_router import LLMRouter
 
             router = LLMRouter()
             # Check if router can select a provider for a basic request
-            from services.memory.llm_router import ChatRequest
+            from ai_karen_engine.memory.llm_router import ChatRequest
 
             test_request = ChatRequest(message="test", stream=False)
             provider_selection = await router.select_provider(test_request)

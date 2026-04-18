@@ -328,12 +328,16 @@ services:
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
       - ./monitoring/alert_rules.yml:/etc/prometheus/alert_rules.yml
+      - prometheus_data:/prometheus
     ports:
       - "9090:9090"
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
       - "--storage.tsdb.retention.time=30d"
+      - "--storage.tsdb.retention.size=10GB"
+      - "--storage.tsdb.wal-compression"
+      - "--web.enable-lifecycle"
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
       interval: 30s
@@ -361,6 +365,8 @@ services:
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
       - GF_PROVISIONING_PATH=/etc/grafana/provisioning
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_ANONYMOUS_ENABLED=false
     ports:
       - "3001:3000"
     volumes:
@@ -369,9 +375,18 @@ services:
       - ./monitoring/dashboards/model-orchestrator:/etc/grafana/provisioning/dashboards/model-orchestrator
       - ./monitoring/dashboards/llamacpp-runtime:/etc/grafana/provisioning/dashboards/llamacpp-runtime
       - ./monitoring/grafana_provisioning.yml:/etc/grafana/provisioning/dashboards/provisioning.yml
+      - ./monitoring/grafana_datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
     depends_on:
-      - prometheus
-      - elasticsearch
+      prometheus:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
     deploy:
       resources:
         limits:
@@ -521,7 +536,7 @@ services:
     command:
       - sh
       - -c
-      - "python scripts/init_db_schema.py && uvicorn server.app:create_app --factory --host 0.0.0.0 --port 8000 --loop uvloop --http httptools"
+      - "uvicorn server.app:create_app --factory --host 0.0.0.0 --port 8000 --loop uvloop --http httptools"
     volumes:
       # Bind-mount project into the container so the runtime sees the source files
       # NOTE: must be writable so Docker can create mountpoints under /app (for example /app/backups)
@@ -602,7 +617,7 @@ services:
     ports:
       - "8010:8010"
     volumes:
-      - ./ui_launchers/Karen-AI-Theme:/app
+      - ./src/ui_launchers/Karen-AI-Theme:/app
       - ./.env.local:/app/.env.local:ro
       - web_node_modules:/app/node_modules
       - web_next_cache:/app/.next
@@ -659,6 +674,8 @@ volumes:
   web_npm_cache:
     driver: local
   grafana_data:
+    driver: local
+  prometheus_data:
     driver: local
   models_data:
     driver: local

@@ -25,7 +25,7 @@ from ai_karen_engine.services.optimization_configuration_manager import (
     get_optimization_config_manager,
     get_optimization_config
 )
-from services.memory.internal.cuda_acceleration_engine import get_cuda_acceleration_engine
+from ai_karen_engine.memory.internal.cuda_acceleration_engine import get_cuda_acceleration_engine
 
 logger = logging.getLogger("kari.optimization_integration_routes")
 

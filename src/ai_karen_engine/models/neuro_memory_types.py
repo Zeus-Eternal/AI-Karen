@@ -11,8 +11,8 @@ import math
 
 # Use TYPE_CHECKING to avoid circular imports
 if TYPE_CHECKING:
-    from services.memory.memory_service import MemoryType, WebUIMemoryEntry
-    from services.memory.unified_memory_service import UnifiedMemoryService
+    from ai_karen_engine.memory.memory_service import MemoryType, WebUIMemoryEntry
+    from ai_karen_engine.memory.unified_memory_service import UnifiedMemoryService
 else:
     # Define minimal types for runtime
     class MemoryType:

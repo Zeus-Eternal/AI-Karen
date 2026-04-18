@@ -53,6 +53,7 @@ class UserAccount:
 
     id: str
     email: str
+    username: str
     full_name: str
     password_hash: str
     roles: List[UserRole] = field(default_factory=list)
@@ -198,16 +199,14 @@ class AuthService(BaseService):
         if self._initialized:
             return
 
-        import logging
-
-        logging.warning("=== ABOUT TO EVALUATE current_task ===")
+        logger.debug("Evaluating auth service initialization task state")
         current_task = asyncio.current_task()
         if getattr(self, "_initializing_task", None) == current_task:
             return
 
-        logging.warning("=== ABOUT TO ACQUIRE self.lock ===")
+        logger.debug("Acquiring auth service initialization lock")
         async with self.lock:
-            logging.warning("=== ACQUIRED self.lock ===")
+            logger.debug("Acquired auth service initialization lock")
             if self._initialized:
                 return
 
@@ -338,7 +337,9 @@ class AuthService(BaseService):
         return UserAccount(
             id=user_id,
             email=email or "admin@karen.ai",
+            username=username or (email.split("@", 1)[0] if email else "admin"),
             full_name=full_name or "Developer Admin",
+            password_hash="",
             preferences=preferences or {},
             is_active=True,
             roles=["admin", "user"],
@@ -354,6 +355,7 @@ class AuthService(BaseService):
         return UserAccount(
             id=str(auth_user.user_id),
             email=auth_user.email,
+            username=auth_user.username or "",
             full_name=auth_user.full_name or "",
             password_hash=auth_user.password_hash,
             tenant_id=str(auth_user.tenant_id) if auth_user.tenant_id else "default",

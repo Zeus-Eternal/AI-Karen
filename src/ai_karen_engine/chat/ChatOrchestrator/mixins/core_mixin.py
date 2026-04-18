@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import time
 from datetime import datetime
 from contextlib import suppress
@@ -113,8 +114,14 @@ else:
         ProcessingContext,
     )
 
-from services.memory.nlp_service_manager import nlp_service_manager
+from ai_karen_engine.memory.nlp_service_manager import nlp_service_manager
 from ai_karen_engine.models.shared_types import MessageRole
+from ai_karen_engine.services.response_formatting_engine import (
+    FormattingContext,
+    DisplayContext,
+    AccessibilityLevel,
+)
+from ai_karen_engine.services.response_policy_enforcer import ResponsePolicyEnforcer
 
 if TYPE_CHECKING:
     from ai_karen_engine.chat.ChatOrchestrator.base import ChatOrchestratorProtocol
@@ -126,6 +133,145 @@ else:
 
 class ChatCoreMixin(Base):
     """Main message processing logic for ChatOrchestrator."""
+
+    _INTERNAL_ANALYSIS_PREFIX_MARKERS = (
+        "since the user has greeted again without a specific new request",
+        "this is not a complete meaningful response",
+    )
+
+    _INTERNAL_ANALYSIS_LINE_PATTERNS = (
+        r"^\s*in summary:\s*$",
+        r"^\s*let'?s see if we can make sure the chat response is complete.*$",
+        r"^\s*i(?:'|\u2019)ll acknowledge their greeting and be ready to assist.*$",
+    )
+
+    @staticmethod
+    def _is_low_information_response_text(content: str) -> bool:
+        text = str(content or "").strip()
+        if not text:
+            return True
+        if len(text) == 1 and not text.isalnum():
+            return True
+        punctuation_only_chars = set(".-_=`'\"!?,:;()[]{}|/\\ \n\t")
+        return all(ch in punctuation_only_chars for ch in text)
+
+    @staticmethod
+    def _serialize_format_model(value: Any) -> Dict[str, Any]:
+        if value is None:
+            return {}
+        if hasattr(value, "model_dump"):
+            try:
+                return dict(value.model_dump())
+            except Exception:
+                return {}
+        if hasattr(value, "dict"):
+            try:
+                return dict(value.dict())
+            except Exception:
+                return {}
+        return {}
+
+    @classmethod
+    def _strip_internal_analysis_leakage(cls, content: str) -> str:
+        """Remove known internal-analysis scaffold text from model-visible output."""
+        cleaned = str(content or "").replace("\r\n", "\n")
+        lowered = cleaned.lower()
+
+        for marker in cls._INTERNAL_ANALYSIS_PREFIX_MARKERS:
+            index = lowered.find(marker)
+            if index >= 0:
+                cleaned = cleaned[:index]
+                lowered = cleaned.lower()
+
+        for pattern in cls._INTERNAL_ANALYSIS_LINE_PATTERNS:
+            cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE | re.MULTILINE)
+
+        cleaned = re.sub(r"^\s*=+\s*$", "", cleaned, flags=re.MULTILINE)
+        cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+        return cleaned.strip()
+
+    async def _format_response_with_engine(
+        self,
+        content: str,
+        turn_context: Any,
+    ) -> tuple[str, Dict[str, Any]]:
+        """Format assistant content with the formatting engine."""
+        raw_content = str(content or "")
+        if not raw_content.strip():
+            return raw_content, {}
+
+        raw_content = self._strip_internal_analysis_leakage(raw_content)
+        if not raw_content.strip():
+            return "I'm here and ready to help. What would you like to work on?", {}
+
+        formatting_engine = getattr(self, "formatting_engine", None)
+        if formatting_engine is None:
+            return raw_content, {}
+
+        try:
+            policy_payload: Dict[str, Any] = {}
+            policy_enforcer = getattr(self, "response_policy_enforcer", None)
+            if policy_enforcer is None:
+                policy_enforcer = ResponsePolicyEnforcer()
+                setattr(self, "response_policy_enforcer", policy_enforcer)
+
+            user_prompt = str(getattr(turn_context, "message", "") or "").strip()
+            policy_result = await policy_enforcer.enforce(
+                user_prompt=user_prompt,
+                content=raw_content,
+                regenerate=None,
+            )
+            raw_content = self._strip_internal_analysis_leakage(policy_result.content)
+            if not raw_content.strip():
+                raw_content = "I'm here and ready to help. What would you like to work on?"
+            policy_payload = dict(policy_result.metadata or {})
+
+            if hasattr(self, "_build_formatting_context"):
+                formatting_context = self._build_formatting_context(  # type: ignore[attr-defined]
+                    turn_context,
+                    content_length=len(raw_content),
+                )
+            else:
+                formatting_context = FormattingContext(
+                    display_context=DisplayContext.DESKTOP,
+                    accessibility_level=AccessibilityLevel.BASIC,
+                    content_length=len(raw_content),
+                )
+
+            formatting_context.content_length = len(raw_content)
+            formatted = await formatting_engine.format_response(  # type: ignore[attr-defined]
+                content=raw_content,
+                context=formatting_context,
+            )
+
+            sections = [
+                self._serialize_format_model(section) for section in formatted.sections
+            ]
+            navigation_aids = [
+                self._serialize_format_model(nav) for nav in formatted.navigation_aids
+            ]
+            formatting_payload = {
+                "render_type": formatted.format_type.value,
+                "formatted": True,
+                "response_policy": policy_payload,
+                "formatting": {
+                    "format_type": formatted.format_type.value,
+                    "sections": sections,
+                    "navigation_aids": navigation_aids,
+                    "accessibility_features": dict(
+                        formatted.accessibility_features or {}
+                    ),
+                    "estimated_reading_time": formatted.estimated_reading_time,
+                    "formatter_metadata": dict(formatted.metadata or {}),
+                },
+            }
+            return formatted.content, formatting_payload
+        except Exception as exc:
+            logger.warning(
+                "formatting failed for response; falling back to raw content: %s",
+                exc,
+            )
+            return raw_content, {}
 
     async def handle_chat(self, request: ChatRequest) -> ChatResponse:
         """Canonical non-streaming chat lifecycle with durable persistence."""
@@ -233,6 +379,7 @@ class ChatCoreMixin(Base):
                 response=collected_response,
                 correlation_id=request.correlation_id,
                 conversation_id=request.conversation_id,
+                assistant_message_id=None,
                 processing_time=float(
                     final_chunk_metadata.get("processing_time") or 0.0
                 ),
@@ -245,6 +392,8 @@ class ChatCoreMixin(Base):
                     "retry_count": final_chunk_metadata.get("retry_count", 0),
                     "memory_writeback": final_chunk_metadata.get("memory_writeback"),
                 },
+                error=None,
+                error_type=None,
             )
             finalized = await self._finalize_response(
                 request=request,
@@ -260,6 +409,7 @@ class ChatCoreMixin(Base):
             completion_metadata = dict(final_chunk_metadata)
             completion_metadata.update(
                 {
+                    "formatted_content": persisted.response,
                     "request_id": persisted.request_id,
                     "conversation_id": persisted.conversation_id,
                     "assistant_message_id": persisted.assistant_message_id,
@@ -273,12 +423,15 @@ class ChatCoreMixin(Base):
                     "working_context": (persisted.metadata or {}).get(
                         "working_context", {}
                     ),
+                    "render_type": (persisted.metadata or {}).get("render_type"),
+                    "formatted": (persisted.metadata or {}).get("formatted", False),
+                    "formatting": (persisted.metadata or {}).get("formatting", {}),
                     "canonical_runtime": request.metadata.get("canonical_runtime", {}),
                 }
             )
             yield ChatStreamChunk(
                 type="complete",
-                content="",
+                content=persisted.response,
                 correlation_id=request.correlation_id,
                 metadata=completion_metadata,
             )
@@ -340,9 +493,10 @@ class ChatCoreMixin(Base):
 
         session_state: Dict[str, Any] = {}
         session_state_status = "unavailable"
-        if getattr(self, "session_state_manager", None) and session_scope_id:
+        session_state_manager = getattr(self, "session_state_manager", None)
+        if session_state_manager is not None and session_scope_id:
             try:
-                session_state = await self.session_state_manager.get_session_state(
+                session_state = await session_state_manager.get_session_state(
                     tenant_id=request.tenant_id or request.org_id or "default",
                     user_id=request.user_id,
                     session_id=session_scope_id,
@@ -496,6 +650,31 @@ class ChatCoreMixin(Base):
     ) -> ChatResponse:
         """Finalize response metadata before assistant persistence."""
         metadata = dict(generation_result.metadata or {})
+        formatting_payload: Dict[str, Any] = {}
+        llm_metadata = dict(metadata.get("llm") or {})
+        cached_output_formatting = llm_metadata.get("output_formatting")
+        if (
+            isinstance(cached_output_formatting, dict)
+            and cached_output_formatting.get("formatted") is True
+        ):
+            formatting_payload = dict(cached_output_formatting)
+            generation_result.response = str(
+                generation_result.response or ""
+            )
+        else:
+            formatted_content, formatting_payload = (
+                await self._format_response_with_engine(
+                    generation_result.response,
+                    request,
+                )
+            )
+            generation_result.response = formatted_content
+
+        if formatting_payload:
+            metadata.update(formatting_payload)
+            llm_block = dict(metadata.get("llm") or {})
+            llm_block["output_formatting"] = formatting_payload
+            metadata["llm"] = llm_block
         metadata["execution_path"] = execution_path
         metadata["canonical_runtime"] = dict(
             request.metadata.get("canonical_runtime") or {}
@@ -596,7 +775,8 @@ class ChatCoreMixin(Base):
         }
 
         session_scope_id = request.session_id or request.conversation_id
-        if getattr(self, "session_state_manager", None) and session_scope_id:
+        session_state_manager = getattr(self, "session_state_manager", None)
+        if session_state_manager is not None and session_scope_id:
             recent_messages = list(working_context.get("recent_messages") or [])
             prior_session_state = dict(working_context.get("session_state") or {})
             recent_turns = []
@@ -635,7 +815,7 @@ class ChatCoreMixin(Base):
                 "compact_summary": compact_summary,
             }
             try:
-                await self.session_state_manager.put_session_state(
+                await session_state_manager.put_session_state(
                     tenant_id=request.tenant_id or request.org_id or "default",
                     user_id=request.user_id,
                     session_id=session_scope_id,
@@ -1039,12 +1219,16 @@ class ChatCoreMixin(Base):
                 metadata["memory_writeback"] = memory_writeback
 
                 return ChatResponse(
+                    request_id=request.request_id,
                     response=result.response or "",
                     correlation_id=context.correlation_id,
+                    conversation_id=request.conversation_id,
+                    assistant_message_id=None,
                     processing_time=processing_time,
                     status=context.status,
                     used_fallback=result.used_fallback,
                     context_used=bool(result.context),
+                    execution_path=None,
                     structured_content=result.structured_content or {},
                     actions=result.actions or [],
                     metadata=metadata,
@@ -1126,12 +1310,16 @@ class ChatCoreMixin(Base):
                 },
             )
             return ChatResponse(
+                request_id=request.request_id,
                 response=f"I apologize, but I encountered an error processing your message: {error_message}",
                 correlation_id=context.correlation_id,
+                conversation_id=request.conversation_id,
+                assistant_message_id=None,
                 processing_time=processing_time,
                 status=context.status,
                 used_fallback=True,
                 context_used=False,
+                execution_path=None,
                 metadata=error_metadata,
                 error=error_message,
                 error_type=eff_res.error_type,
@@ -1147,12 +1335,16 @@ class ChatCoreMixin(Base):
             context.status = ProcessingStatus.FAILED
             logger.error(f"Unexpected error in chat processing: {e}", exc_info=True)
             return ChatResponse(
+                request_id=request.request_id,
                 response="I apologize, but I encountered an unexpected error. Please try again.",
                 correlation_id=context.correlation_id,
+                conversation_id=request.conversation_id,
+                assistant_message_id=None,
                 processing_time=processing_time,
                 status=ProcessingStatus.FAILED,
                 used_fallback=True,
                 context_used=False,
+                execution_path=None,
                 error=str(e),
                 error_type=ErrorType.UNKNOWN_ERROR,
                 metadata={"error": str(e)},
@@ -1278,6 +1470,14 @@ class ChatCoreMixin(Base):
                     llm_metadata={"streaming": True},
                     processing_time=time.time() - start_time,
                 )
+                if self._is_low_information_response_text(full_response):
+                    result = ProcessingResult(
+                        success=False,
+                        error="Provider returned low-information output",
+                        error_type=ErrorType.AI_MODEL_ERROR,
+                        correlation_id=context.correlation_id,
+                        processing_time=time.time() - start_time,
+                    )
             # Handle direct ProcessingResult (e.g. if streaming failed and returned a regular response)
             elif isinstance(result_or_gen, ProcessingResult):
                 result = result_or_gen
@@ -1610,24 +1810,12 @@ class ChatCoreMixin(Base):
                     True  # LLM generation succeeded regardless of fallback usage
                 )
 
-                try:
-                    from ai_karen_engine.chat.response_formatter import (
-                        ResponseContext as FormatterContext,
-                    )
-
-                    formatter_ctx = FormatterContext(
-                        user_query=request.message,
-                        response_content=ai_response,
-                        session_data={"correlation_id": context.correlation_id},
-                    )
-                    formatted_result = await self.output_layer.format_response(
-                        ai_response, formatter_ctx
-                    )
-                    ai_response = formatted_result.get("content", ai_response)
-                    if "metadata" in formatted_result:
-                        llm_metadata["output_formatting"] = formatted_result["metadata"]
-                except Exception:
-                    pass
+                ai_response, formatting_payload = await self._format_response_with_engine(
+                    ai_response,
+                    request,
+                )
+                if formatting_payload:
+                    llm_metadata["output_formatting"] = formatting_payload
 
                 structured_content: Dict[str, Any] = {}
                 if self.memory_processor and extracted_memories:

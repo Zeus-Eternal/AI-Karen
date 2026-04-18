@@ -20,9 +20,15 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.security import APIKeyHeader, APIKey
 from pydantic import BaseModel, Field
 
-from src.extensions.core.registry.database_models import ExtensionDBModel
-from src.extensions.core.registry.marketplace_discovery import MarketplaceDiscovery
-from src.extensions.core.host.lifecycle_manager import LifecycleManager
+from ai_karen_engine.extensions.platform.core.registry.database_models import (
+    ExtensionDBModel,
+)
+from ai_karen_engine.extensions.platform.core.registry.marketplace_discovery import (
+    MarketplaceDiscovery,
+)
+from ai_karen_engine.extensions.platform.core.host.lifecycle_manager import (
+    LifecycleManager,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -285,7 +291,9 @@ class PluginStore:
                         f"Plugin {request.plugin_id} has UI capabilities, installing UI..."
                     )
                     # Import UI installer service
-                    from extensions.core.registry.ui_installer import get_ui_service
+                    from ai_karen_engine.extensions.platform.core.registry.ui_installer import (
+                        get_ui_service,
+                    )
 
                     ui_service = get_ui_service()
                     ui_install_result = ui_service.install_ui(
@@ -643,8 +651,12 @@ async def search_plugins_endpoint(
     # Initialize plugin store
     # This would need proper dependency injection
     # For now, create with marketplace discovery
-    from src.extensions.core.registry.marketplace_discovery import MarketplaceDiscovery
-    from src.extensions.core.host.lifecycle_manager import LifecycleManager
+    from ai_karen_engine.extensions.platform.core.registry.marketplace_discovery import (
+        MarketplaceDiscovery,
+    )
+    from ai_karen_engine.extensions.platform.core.host.lifecycle_manager import (
+        LifecycleManager,
+    )
 
     marketplace = MarketplaceDiscovery(None, None)  # Placeholder
     lifecycle = LifecycleManager(None, None)  # Placeholder
@@ -660,8 +672,12 @@ async def get_plugin_details_endpoint(
 ) -> Dict[str, Any]:
     """Get plugin details."""
     # Initialize plugin store
-    from src.extensions.core.registry.marketplace_discovery import MarketplaceDiscovery
-    from src.extensions.core.host.lifecycle_manager import LifecycleManager
+    from ai_karen_engine.extensions.platform.core.registry.marketplace_discovery import (
+        MarketplaceDiscovery,
+    )
+    from ai_karen_engine.extensions.platform.core.host.lifecycle_manager import (
+        LifecycleManager,
+    )
 
     marketplace = MarketplaceDiscovery(None, None)
     lifecycle = LifecycleManager(None, None)
@@ -687,8 +703,12 @@ async def install_plugin_endpoint(
         )
 
     # Initialize plugin store
-    from src.extensions.core.registry.marketplace_discovery import MarketplaceDiscovery
-    from src.extensions.core.host.lifecycle_manager import LifecycleManager
+    from ai_karen_engine.extensions.platform.core.registry.marketplace_discovery import (
+        MarketplaceDiscovery,
+    )
+    from ai_karen_engine.extensions.platform.core.host.lifecycle_manager import (
+        LifecycleManager,
+    )
 
     marketplace = MarketplaceDiscovery(None, None)
     lifecycle = LifecycleManager(None, None)
@@ -706,8 +726,12 @@ async def rate_plugin_endpoint(
 ) -> Dict[str, Any]:
     """Rate a plugin."""
     # Initialize plugin store
-    from src.extensions.core.registry.marketplace_discovery import MarketplaceDiscovery
-    from src.extensions.core.host.lifecycle_manager import LifecycleManager
+    from ai_karen_engine.extensions.platform.core.registry.marketplace_discovery import (
+        MarketplaceDiscovery,
+    )
+    from ai_karen_engine.extensions.platform.core.host.lifecycle_manager import (
+        LifecycleManager,
+    )
 
     marketplace = MarketplaceDiscovery(None, None)
     lifecycle = LifecycleManager(None, None)
@@ -723,8 +747,12 @@ async def get_statistics_endpoint(
 ) -> PluginStoreStats:
     """Get store statistics."""
     # Initialize plugin store
-    from src.extensions.core.registry.marketplace_discovery import MarketplaceDiscovery
-    from src.extensions.core.host.lifecycle_manager import LifecycleManager
+    from ai_karen_engine.extensions.platform.core.registry.marketplace_discovery import (
+        MarketplaceDiscovery,
+    )
+    from ai_karen_engine.extensions.platform.core.host.lifecycle_manager import (
+        LifecycleManager,
+    )
 
     marketplace = MarketplaceDiscovery(None, None)
     lifecycle = LifecycleManager(None, None)
@@ -740,8 +768,12 @@ async def get_categories_endpoint(
 ) -> List[Dict[str, Any]]:
     """Get plugin categories."""
     # Initialize plugin store
-    from src.extensions.core.registry.marketplace_discovery import MarketplaceDiscovery
-    from src.extensions.core.host.lifecycle_manager import LifecycleManager
+    from ai_karen_engine.extensions.platform.core.registry.marketplace_discovery import (
+        MarketplaceDiscovery,
+    )
+    from ai_karen_engine.extensions.platform.core.host.lifecycle_manager import (
+        LifecycleManager,
+    )
 
     marketplace = MarketplaceDiscovery(None, None)
     lifecycle = LifecycleManager(None, None)
@@ -757,8 +789,12 @@ async def get_trending_endpoint(
 ) -> List[Dict[str, Any]]:
     """Get trending plugins."""
     # Initialize plugin store
-    from src.extensions.core.registry.marketplace_discovery import MarketplaceDiscovery
-    from src.extensions.core.host.lifecycle_manager import LifecycleManager
+    from ai_karen_engine.extensions.platform.core.registry.marketplace_discovery import (
+        MarketplaceDiscovery,
+    )
+    from ai_karen_engine.extensions.platform.core.host.lifecycle_manager import (
+        LifecycleManager,
+    )
 
     marketplace = MarketplaceDiscovery(None, None)
     lifecycle = LifecycleManager(None, None)
@@ -774,8 +810,12 @@ async def get_updates_endpoint(
 ) -> List[Dict[str, Any]]:
     """Get available updates for installed plugins."""
     # Initialize plugin store
-    from src.extensions.core.registry.marketplace_discovery import MarketplaceDiscovery
-    from src.extensions.core.host.lifecycle_manager import LifecycleManager
+    from ai_karen_engine.extensions.platform.core.registry.marketplace_discovery import (
+        MarketplaceDiscovery,
+    )
+    from ai_karen_engine.extensions.platform.core.host.lifecycle_manager import (
+        LifecycleManager,
+    )
 
     marketplace = MarketplaceDiscovery(None, None)
     lifecycle = LifecycleManager(None, None)

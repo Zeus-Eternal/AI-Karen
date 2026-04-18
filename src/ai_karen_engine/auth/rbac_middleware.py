@@ -21,12 +21,14 @@ from ai_karen_engine.services.audit_logging import (  # type: ignore
     AuditEventType,
     AuditSeverity,
 )
+from ai_karen_engine.config import load_permissions_config
 
 
 def get_audit_logger():
     """Wrapper used for dependency injection and testing."""
 
     return resolve_audit_logger()
+
 
 logger = logging.getLogger(__name__)
 
@@ -301,32 +303,23 @@ def _normalize_role_config(config: Dict[str, Any]) -> Dict[str, Any]:
 def _load_permissions_config() -> Dict[str, Any]:
     """Load the canonical permission map shared with the frontend."""
 
-    env_override = os.getenv("KARI_PERMISSIONS_CONFIG") or os.getenv("PERMISSIONS_CONFIG_PATH")
-    candidates: list[Path] = []
-
-    if env_override:
-        candidates.append(Path(env_override))
-
-    resolved = Path(__file__).resolve()
-    for depth in range(3, 7):
-        try:
-            root_dir = resolved.parents[depth]
-        except IndexError:
-            continue
-        candidates.append(root_dir / "config" / "permissions.json")
-
-    candidates.append(Path.cwd() / "config" / "permissions.json")
-
-    for config_path in candidates:
-        if config_path and config_path.exists():
-            with config_path.open("r", encoding="utf-8") as handle:
-                return json.load(handle)
-
-    tried = ", ".join(str(path) for path in candidates if path)
-    logger.warning(
-        "Missing permissions configuration; using built-in RBAC defaults. Tried: %s",
-        tried,
+    # First try environment override
+    env_override = os.getenv("KARI_PERMISSIONS_CONFIG") or os.getenv(
+        "PERMISSIONS_CONFIG_PATH"
     )
+    if env_override and Path(env_override).exists():
+        try:
+            with open(env_override, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            logger.warning(f"Failed to load permissions from {env_override}: {e}")
+
+    # Use canonical loader
+    config = load_permissions_config()
+    if config:
+        return config
+
+    logger.warning("Missing permissions configuration; using built-in RBAC defaults.")
     return {}
 
 
@@ -391,7 +384,9 @@ def _build_role_permissions() -> Dict[Role, RolePermissions]:
         role_permissions[role] = RolePermissions(
             role=role,
             permissions=permissions,
-            description=str(entry.get("description", default_entry.get("description", role.value))),
+            description=str(
+                entry.get("description", default_entry.get("description", role.value))
+            ),
             inherits_from=inherited_role,
         )
 
@@ -423,12 +418,18 @@ class RBACManager:
             try:
                 role = Role(role_name.lower())
             except ValueError:
-                logger.debug("Unknown role '%s' for user %s", role_name, user.get("user_id"))
+                logger.debug(
+                    "Unknown role '%s' for user %s", role_name, user.get("user_id")
+                )
                 continue
             self._collect_permissions(role, permissions)
         return permissions
 
-    def has_permission(self, user: Union[UserData, Dict[str, object]], permission: Union[Permission, str]) -> bool:
+    def has_permission(
+        self,
+        user: Union[UserData, Dict[str, object]],
+        permission: Union[Permission, str],
+    ) -> bool:
         user_data = UserData.ensure(user)
         target = _ensure_permission(permission)
         user_permissions = self.get_user_permissions(user_data)
@@ -436,13 +437,23 @@ class RBACManager:
             return target in user_permissions
         return any(str(p) == str(target) for p in user_permissions)
 
-    def has_any_permission(self, user: Union[UserData, Dict[str, object]], permissions: Iterable[Union[Permission, str]]) -> bool:
+    def has_any_permission(
+        self,
+        user: Union[UserData, Dict[str, object]],
+        permissions: Iterable[Union[Permission, str]],
+    ) -> bool:
         return any(self.has_permission(user, permission) for permission in permissions)
 
-    def has_all_permissions(self, user: Union[UserData, Dict[str, object]], permissions: Iterable[Union[Permission, str]]) -> bool:
+    def has_all_permissions(
+        self,
+        user: Union[UserData, Dict[str, object]],
+        permissions: Iterable[Union[Permission, str]],
+    ) -> bool:
         return all(self.has_permission(user, permission) for permission in permissions)
 
-    def has_role(self, user: Union[UserData, Dict[str, object]], role: Union[Role, str]) -> bool:
+    def has_role(
+        self, user: Union[UserData, Dict[str, object]], role: Union[Role, str]
+    ) -> bool:
         user_data = UserData.ensure(user)
         target = role.value if isinstance(role, Role) else str(role).lower()
         user_roles = {r.lower() for r in user_data.get("roles", [])}
@@ -503,7 +514,9 @@ class RBACManager:
                 audit_logger.log_audit_event(payload)
             except TypeError:
                 event = AuditEvent(
-                    event_type=AuditEventType.LOGIN_SUCCESS if granted else AuditEventType.LOGIN_FAILURE,
+                    event_type=AuditEventType.LOGIN_SUCCESS
+                    if granted
+                    else AuditEventType.LOGIN_FAILURE,
                     severity=AuditSeverity.INFO if granted else AuditSeverity.WARNING,
                     message=payload["message"],
                     user_id=payload["user_id"],
@@ -539,11 +552,17 @@ def _ensure_permission(permission: Union[Permission, str]) -> Union[Permission, 
         return permission
 
 
-def check_training_access(user: Union[UserData, Dict[str, object]], level: str = "read") -> bool:
+def check_training_access(
+    user: Union[UserData, Dict[str, object]], level: str = "read"
+) -> bool:
     level = level.lower()
     requirements = {
         "read": {Permission.TRAINING_READ, Permission.TRAINING_DATA_READ},
-        "write": {Permission.TRAINING_WRITE, Permission.TRAINING_EXECUTE, Permission.TRAINING_DATA_WRITE},
+        "write": {
+            Permission.TRAINING_WRITE,
+            Permission.TRAINING_EXECUTE,
+            Permission.TRAINING_DATA_WRITE,
+        },
         "delete": {Permission.TRAINING_DELETE, Permission.TRAINING_DATA_DELETE},
         "execute": {Permission.TRAINING_EXECUTE},
     }
@@ -551,12 +570,29 @@ def check_training_access(user: Union[UserData, Dict[str, object]], level: str =
     return get_rbac_manager().has_any_permission(user, required)
 
 
-def check_model_access(user: Union[UserData, Dict[str, object]], action: str = "read") -> bool:
+def check_model_access(
+    user: Union[UserData, Dict[str, object]], action: str = "read"
+) -> bool:
     action = action.lower()
     requirements = {
-        "read": {Permission.MODEL_READ, Permission.MODEL_INFO, Permission.MODEL_LIST, Permission.MODEL_HEALTH_CHECK},
-        "write": {Permission.MODEL_WRITE, Permission.MODEL_DOWNLOAD, Permission.MODEL_ENSURE, Permission.MODEL_PIN, Permission.MODEL_UNPIN},
-        "delete": {Permission.MODEL_DELETE, Permission.MODEL_REMOVE, Permission.MODEL_GC},
+        "read": {
+            Permission.MODEL_READ,
+            Permission.MODEL_INFO,
+            Permission.MODEL_LIST,
+            Permission.MODEL_HEALTH_CHECK,
+        },
+        "write": {
+            Permission.MODEL_WRITE,
+            Permission.MODEL_DOWNLOAD,
+            Permission.MODEL_ENSURE,
+            Permission.MODEL_PIN,
+            Permission.MODEL_UNPIN,
+        },
+        "delete": {
+            Permission.MODEL_DELETE,
+            Permission.MODEL_REMOVE,
+            Permission.MODEL_GC,
+        },
         "deploy": {Permission.MODEL_DEPLOY},
         "registry": {Permission.MODEL_REGISTRY_READ, Permission.MODEL_REGISTRY_WRITE},
     }
@@ -564,7 +600,9 @@ def check_model_access(user: Union[UserData, Dict[str, object]], action: str = "
     return get_rbac_manager().has_any_permission(user, required)
 
 
-def check_data_access(user: Union[UserData, Dict[str, object]], level: str = "read") -> bool:
+def check_data_access(
+    user: Union[UserData, Dict[str, object]], level: str = "read"
+) -> bool:
     level = level.lower()
     requirements = {
         "read": {Permission.DATA_READ, Permission.TRAINING_DATA_READ},
@@ -576,7 +614,9 @@ def check_data_access(user: Union[UserData, Dict[str, object]], level: str = "re
     return get_rbac_manager().has_any_permission(user, required)
 
 
-def check_scheduler_access(user: Union[UserData, Dict[str, object]], level: str = "read") -> bool:
+def check_scheduler_access(
+    user: Union[UserData, Dict[str, object]], level: str = "read"
+) -> bool:
     level = level.lower()
     requirements = {
         "read": {Permission.SCHEDULER_READ},
@@ -587,7 +627,9 @@ def check_scheduler_access(user: Union[UserData, Dict[str, object]], level: str 
     return get_rbac_manager().has_any_permission(user, required)
 
 
-def check_admin_access(user: Union[UserData, Dict[str, object]], level: str = "read") -> bool:
+def check_admin_access(
+    user: Union[UserData, Dict[str, object]], level: str = "read"
+) -> bool:
     level = level.lower()
     requirements = {
         "read": {Permission.ADMIN_READ},
@@ -601,9 +643,13 @@ def check_admin_access(user: Union[UserData, Dict[str, object]], level: str = "r
 def require_permission(permission: Union[Permission, str]) -> Callable:
     target = _ensure_permission(permission)
 
-    async def dependency(current_user: UserData = Depends(resolve_current_user)) -> UserData:
+    async def dependency(
+        current_user: UserData = Depends(resolve_current_user),
+    ) -> UserData:
         if not get_rbac_manager().has_permission(current_user, target):
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied"
+            )
         return current_user
 
     return dependency
@@ -612,9 +658,13 @@ def require_permission(permission: Union[Permission, str]) -> Callable:
 def require_scopes(*permissions: Union[Permission, str]) -> Callable:
     targets = [_ensure_permission(permission) for permission in permissions]
 
-    async def dependency(current_user: UserData = Depends(resolve_current_user)) -> UserData:
+    async def dependency(
+        current_user: UserData = Depends(resolve_current_user),
+    ) -> UserData:
         if not get_rbac_manager().has_all_permissions(current_user, targets):
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions"
+            )
         return current_user
 
     return dependency
@@ -622,7 +672,9 @@ def require_scopes(*permissions: Union[Permission, str]) -> Callable:
 
 async def check_scope(request: Request, permission: Union[Permission, str]) -> bool:
     current_user = await resolve_current_user(request)
-    return get_rbac_manager().has_permission(current_user, _ensure_permission(permission))
+    return get_rbac_manager().has_permission(
+        current_user, _ensure_permission(permission)
+    )
 
 
 get_current_user = resolve_current_user

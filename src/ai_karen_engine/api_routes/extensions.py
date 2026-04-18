@@ -203,7 +203,7 @@ async def list_extensions():
     """List all extensions and their status."""
     try:
         from ai_karen_engine.core.dependencies import get_plugin_service
-        from services.memory.plugin_registry import PluginStatus
+        from ai_karen_engine.memory.plugin_registry import PluginStatus
 
         plugin_service = await get_plugin_service()
 

@@ -6,7 +6,7 @@ import asyncio
 from dataclasses import asdict
 from typing import Any, Dict, Optional
 
-from src.services.auth_service import AuthService as CoreAuthService, UserAccount
+from ai_karen_engine.services.auth_service import AuthService as CoreAuthService, UserAccount
 
 __all__ = [
     "AuthService",

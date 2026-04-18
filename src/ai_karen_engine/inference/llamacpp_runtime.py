@@ -14,6 +14,8 @@ from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, Union, TYPE_CHECKING
 import jinja2
 
+from ai_karen_engine.config import load_llamacpp_config
+
 logger = logging.getLogger(__name__)
 
 
@@ -202,41 +204,30 @@ class LlamaCppRuntime:
     @staticmethod
     def _load_runtime_defaults() -> Dict[str, Any]:
         """Load llama.cpp runtime defaults from config when available."""
-        config_path = Path("config/llamacpp/config.json")
+        raw = load_llamacpp_config()
         defaults: Dict[str, Any] = {}
-        if config_path.exists():
-            try:
-                with open(config_path, "r", encoding="utf-8") as handle:
-                    raw = json.load(handle)
-            except Exception as exc:
-                logger.warning(
-                    "Failed to load llama.cpp runtime config from %s: %s",
-                    config_path,
-                    exc,
-                )
-                raw = {}
 
-            for key in (
-                "model_path",
-                "n_ctx",
-                "n_batch",
-                "n_gpu_layers",
-                "n_threads",
-                "use_mmap",
-                "use_mlock",
-                "verbose",
-                "main_gpu",
-                "tensor_split",
-                "offload_kqv",
-                "flash_attn",
-            ):
-                value = raw.get(key)
-                if value is not None:
-                    defaults[key] = value
+        for key in (
+            "model_path",
+            "n_ctx",
+            "n_batch",
+            "n_gpu_layers",
+            "n_threads",
+            "use_mmap",
+            "use_mlock",
+            "verbose",
+            "main_gpu",
+            "tensor_split",
+            "offload_kqv",
+            "flash_attn",
+        ):
+            value = raw.get(key)
+            if value is not None:
+                defaults[key] = value
 
         # Runtime optimization settings are the system source of truth for CUDA behavior.
         try:
-            from services.memory.optimization_configuration_manager import (
+            from ai_karen_engine.memory.optimization_configuration_manager import (
                 get_optimization_config_manager,
             )
 

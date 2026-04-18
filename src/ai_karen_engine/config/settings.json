@@ -1,11 +1,11 @@
 {
-  "provider": "ollama",
-  "model": "qwen3:4b",
+  "provider": "gemini",
+  "model": "gemini-2.5-flash",
   "use_memory": true,
   "context_length": 512,
   "decay": 0.1,
   "features": {
-    "copilot_cloud_enabled": false,
+    "copilot_cloud_enabled": true,
     "copilot_advanced_ui": true,
     "copilot_batch_operations": true
   },
@@ -36,7 +36,7 @@
       "backup_registry": true
     }
   },
-  "last_selected_model": "qwen3:4b",
+  "last_selected_model": "gemini-2.5-flash",
   "model_providers": {
     "zai": {
       "last_model": "glm-4.7",
@@ -62,7 +62,7 @@
       "last_model": "gemini-2.5-flash"
     },
     "ollama": {
-      "last_model": "qwen3:4b",
+      "last_model": "starcoder:128k",
       "base_url": "http://host.docker.internal:11434/api",
       "runtime_source": "host"
     }

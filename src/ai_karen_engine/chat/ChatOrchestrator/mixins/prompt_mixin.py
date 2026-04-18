@@ -1,13 +1,14 @@
 from __future__ import annotations
 import logging
+import re
 from typing import Optional, List, Dict, Any, Union, TYPE_CHECKING
 
 from ai_karen_engine.chat.ChatOrchestrator.utils import resolve_display_name, build_user_identity_line
-from ai_karen_engine.services.persona_service import get_persona_service
+from ai_karen_engine.memory.persona_service import get_persona_service
 from ai_karen_engine.models.shared_types import ChatMessage, MessageRole
 
 if TYPE_CHECKING:
-    from ai_karen_engine.services.memory.spacy_service import ParsedMessage
+    from ai_karen_engine.memory.spacy_service import ParsedMessage
     from ai_karen_engine.chat.ChatOrchestrator.models import ProcessingContext
     from ai_karen_engine.chat.ChatOrchestrator.base import ChatOrchestratorProtocol
     Base = ChatOrchestratorProtocol
@@ -124,6 +125,47 @@ def _build_structured_context_sections(
 
     return sections
 
+
+def _wants_long_form_markdown_article(
+    current_user_message: str,
+    recent_messages: Any,
+) -> bool:
+    text_parts: List[str] = [str(current_user_message or "").lower()]
+    if isinstance(recent_messages, list):
+        for item in recent_messages[-6:]:
+            if not isinstance(item, dict):
+                continue
+            role = str(item.get("role", "")).strip().lower()
+            content = str(item.get("content", "")).strip().lower()
+            if role == "user" and content:
+                text_parts.append(content)
+
+    combined = "\n".join(text_parts)
+    long_form_markers = (
+        "full article",
+        "write an article",
+        "blog article",
+        "blog post",
+        "full post",
+        "in-depth article",
+        "detailed article",
+        "long-form",
+        "long form",
+        "full write-up",
+    )
+    return any(marker in combined for marker in long_form_markers)
+
+
+def _extract_about_topic(text: str) -> str:
+    raw = str(text or "").strip()
+    if not raw:
+        return ""
+    match = re.search(r"\babout\s+(.+)$", raw, flags=re.IGNORECASE)
+    if not match:
+        return ""
+    topic = match.group(1).strip().rstrip(".!?")
+    return topic[:200]
+
 class ChatPromptMixin(Base):
     """Methods for building prompts and structured messages."""
 
@@ -161,6 +203,10 @@ class ChatPromptMixin(Base):
         )
         if display_name:
             system_prompt += "\n\n" + build_user_identity_line(display_name)
+        system_prompt += (
+            "\n\nAlways prioritize the latest user message as the primary intent. "
+            "If the latest request changes topic, do not continue earlier topics unless explicitly asked."
+        )
 
         request_context = context.metadata.get("request_context", {})
         integrated_context = context.metadata.get("integrated_context", {})
@@ -207,6 +253,19 @@ class ChatPromptMixin(Base):
 
         # 4. User Message
         user_message = context.request.message if context.request else ""
+        if _wants_long_form_markdown_article(user_message, recent_messages):
+            requested_topic = _extract_about_topic(user_message)
+            system_prompt += (
+                "\n\nFor this request, produce a full-length markdown article. "
+                "Use one H1 title at the top, then multiple H2 section headings with clear paragraphs. "
+                "Do not return a short summary unless the user explicitly asks for brevity."
+            )
+            if requested_topic:
+                system_prompt += (
+                    f"\nFocus specifically on this topic: {requested_topic}. "
+                    "Ignore unrelated earlier subjects in the conversation."
+                )
+            messages[0] = ChatMessage(role=MessageRole.SYSTEM, content=system_prompt)
         messages.append(ChatMessage(role=MessageRole.USER, content=user_message))
         
         return messages
@@ -226,6 +285,10 @@ class ChatPromptMixin(Base):
         )
         if display_name:
             system_prompt += "\n\n" + build_user_identity_line(display_name)
+        system_prompt += (
+            "\n\nAlways prioritize the latest user message as the primary intent. "
+            "If the latest request changes topic, do not continue earlier topics unless explicitly asked."
+        )
 
         request_context = context.metadata.get("request_context", {})
         integrated_context = context.metadata.get("integrated_context", {})
@@ -256,6 +319,18 @@ class ChatPromptMixin(Base):
             system_prompt += "\n\n" + "\n\n".join(structured_sections)
         
         user_message = context.request.message if context.request else ""
+        if _wants_long_form_markdown_article(user_message, recent_messages):
+            requested_topic = _extract_about_topic(user_message)
+            system_prompt += (
+                "\n\nFor this request, produce a full-length markdown article. "
+                "Use one H1 title at the top, then multiple H2 section headings with clear paragraphs. "
+                "Do not return a short summary unless the user explicitly asks for brevity."
+            )
+            if requested_topic:
+                system_prompt += (
+                    f"\nFocus specifically on this topic: {requested_topic}. "
+                    "Ignore unrelated earlier subjects in the conversation."
+                )
         prompt = f"System: {system_prompt}\n\n"
         prompt += f"User: {user_message}\n\nAssistant: "
         return prompt

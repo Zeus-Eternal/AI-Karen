@@ -22,7 +22,7 @@ from ai_karen_engine.database.client import MultiTenantPostgresClient
 from ai_karen_engine.database.conversation_manager import ConversationManager
 from ai_karen_engine.core.memory.session_state_manager import SessionStateManager
 from ai_karen_engine.clients.factory import get_redis_client
-from services.memory.memory_service import WebUIMemoryService
+from ai_karen_engine.memory.memory_service import WebUIMemoryService
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +75,7 @@ class ChatServiceFactory:
             return None
 
         try:
-            from services.memory.nlp_service_manager import nlp_service_manager
+            from ai_karen_engine.memory.nlp_service_manager import nlp_service_manager
 
             memory_service = (
                 self.get_service("memory_service") or self.create_memory_service()

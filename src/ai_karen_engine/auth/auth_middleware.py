@@ -29,7 +29,7 @@ from fastapi import HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from ai_karen_engine.auth.auth_service import get_auth_service, user_account_to_dict
-from ai_karen_engine.core.config_manager import get_config_manager
+from ai_karen_engine.config.config_manager import get_config_manager
 from ai_karen_engine.core.logging.logger import get_structured_logger
 from ai_karen_engine.core.metrics_manager import get_metrics_manager
 

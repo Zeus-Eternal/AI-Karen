@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 from ai_karen_engine.core.health_checker import HealthChecker
-from ai_karen_engine.services.provider_registry import ProviderRegistryService
+from ai_karen_engine.memory.provider_registry import ProviderRegistryService
 
 logger = logging.getLogger(__name__)
 

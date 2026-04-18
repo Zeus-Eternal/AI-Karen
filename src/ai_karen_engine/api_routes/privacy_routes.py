@@ -26,7 +26,7 @@ try:
 except ImportError:
     from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict, Field
 
-from services.memory.internal.privacy_compliance import (
+from ai_karen_engine.memory.internal.privacy_compliance import (
     PrivacyComplianceService,
     DataExportFormat,
     ErasureType,

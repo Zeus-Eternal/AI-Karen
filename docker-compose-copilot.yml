@@ -306,7 +306,7 @@ services:
     command:
       - sh
       - -c
-      - python scripts/init_db_schema.py && uvicorn server.app:create_app --factory --host 0.0.0.0 --port 8000 --loop uvloop --http httptools --workers 4
+      - uvicorn server.app:create_app --factory --host 0.0.0.0 --port 8000 --loop uvloop --http httptools --workers 4
     volumes:
       - "./:/app:rw"
       - "./models:/app/models:rw"

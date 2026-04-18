@@ -33,7 +33,7 @@ from ..core.langgraph_orchestrator import (
     get_default_orchestrator,
     LangGraphOrchestrator,
 )
-from ..services.auth_utils import get_current_user
+from ai_karen_engine.services.auth_utils import get_current_user
 from ai_karen_engine.chat.ChatOrchestrator import (
     ChatRequest as CanonicalChatRequest,
     ChatResponse as CanonicalChatResponse,

@@ -20,7 +20,7 @@ from ..chat.memory_processor import MemoryProcessor
 from ..database.client import MultiTenantPostgresClient
 from ..database.memory_manager import MemoryManager
 from ..core.milvus_client import MilvusClient
-from ..services.nlp_service_manager import nlp_service_manager
+from ai_karen_engine.services.nlp_service_manager import nlp_service_manager
 
 logger = logging.getLogger(__name__)
 

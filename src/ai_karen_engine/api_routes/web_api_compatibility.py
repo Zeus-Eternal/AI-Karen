@@ -42,10 +42,10 @@ from ai_karen_engine.models.web_api_error_responses import (
     get_http_status_for_error_code,
 )
 from ai_karen_engine.database.schema_validator import validate_and_migrate_schema
-from services.memory.internal.web_ui_api import WebUITransformationService
-from services.ai_orchestrator.ai_orchestrator import AIOrchestrator
-from services.memory.memory_service import WebUIMemoryService, UISource, MemoryType
-from services.memory.unified_memory_service import MemoryCommitRequest, MemoryQueryRequest
+from ai_karen_engine.memory.internal.web_ui_api import WebUITransformationService
+from ai_karen_engine.ai_orchestrator.ai_orchestrator import AIOrchestrator
+from ai_karen_engine.memory.memory_service import WebUIMemoryService, UISource, MemoryType
+from ai_karen_engine.memory.unified_memory_service import MemoryCommitRequest, MemoryQueryRequest
 from ai_karen_engine.core.dependencies import (
     get_ai_orchestrator_service,
     get_memory_service,
@@ -53,7 +53,7 @@ from ai_karen_engine.core.dependencies import (
     get_analytics_service,
 )
 from ai_karen_engine.models.shared_types import ToolType
-from services.memory.analytics_service import AnalyticsService
+from ai_karen_engine.memory.analytics_service import AnalyticsService
 
 # Ensure both `ai_karen_engine` and `src.ai_karen_engine` module paths reference the same module
 sys.modules.setdefault(

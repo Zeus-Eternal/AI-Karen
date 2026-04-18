@@ -1,0 +1,14 @@
+{
+  "plugin_id": "weather",
+  "display_name": "Weather Plugin",
+  "menus": [
+    {
+      "placement": "sidebar",
+      "title": "Weather",
+      "icon": "cloud",
+      "order": 10
+    }
+  ],
+  "icons": [],
+  "generated_at": "2026-04-05T13:43:55.378441"
+}

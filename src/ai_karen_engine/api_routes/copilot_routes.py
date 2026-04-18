@@ -1,9 +1,11 @@
 import json
+import asyncio
 import os
 import inspect
 import logging
 import time
 import uuid
+import re
 from typing import Any, Dict, List, Optional
 from typing import TYPE_CHECKING
 from datetime import datetime, timezone
@@ -51,20 +53,74 @@ else:
 
 def _is_placeholder_response(response_text: str) -> bool:
     """Detect if orchestrator response contains static placeholder text that should trigger fallback."""
-    if not response_text or not response_text.strip():
+    text = str(response_text or "").strip()
+    if not text:
         return True
 
-    # Check for known placeholder patterns from centralized constants
-    response_lower = response_text.lower()
-    for pattern in RuntimeConstants.PLACEHOLDER_PATTERNS:
-        if pattern.lower() in response_lower:
-            return True
+    lowered = text.lower()
 
-    # Check for very short responses that might be placeholders
-    if len(response_text.strip()) < 10:
+    # Punctuation-only payloads are placeholders/noise.
+    if all(ch in set(".-_=`'\"!?,:;()[]{}|/\\ \n\t") for ch in lowered):
+        return True
+
+    # IMPORTANT: do not treat all short responses as placeholders.
+    # Legitimate replies like "Hi!" or "Yes." must pass through.
+    known_prefixes = (
+        RuntimeConstants.DEGRADED_BRAIN_ERROR.lower(),
+        RuntimeConstants.EMERGENCY_UNAVAILABLE.lower(),
+        "service is temporarily operating with limited capabilities",
+        "i understand you're asking about:",
+        "i'm currently operating with limited capabilities",
+        "limited assistant with:",
+        "error: generation failed",
+    )
+    if any(lowered.startswith(prefix) for prefix in known_prefixes):
         return True
 
     return False
+
+
+_INTERNAL_ANALYSIS_PREFIX_MARKERS = (
+    "since the user has greeted again without a specific new request",
+    "this is not a complete meaningful response",
+)
+
+_INTERNAL_ANALYSIS_LINE_PATTERNS = (
+    r"^\s*in summary:\s*$",
+    r"^\s*let'?s see if we can make sure the chat response is complete.*$",
+    r"^\s*i(?:'|\u2019)ll acknowledge their greeting and be ready to assist.*$",
+)
+
+
+def _strip_internal_analysis_leakage(response_text: str) -> str:
+    """Remove known internal-analysis scaffold text from model-visible output."""
+    cleaned = str(response_text or "").replace("\r\n", "\n")
+    lowered = cleaned.lower()
+
+    for marker in _INTERNAL_ANALYSIS_PREFIX_MARKERS:
+        index = lowered.find(marker)
+        if index >= 0:
+            cleaned = cleaned[:index]
+            lowered = cleaned.lower()
+
+    for pattern in _INTERNAL_ANALYSIS_LINE_PATTERNS:
+        cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE | re.MULTILINE)
+
+    cleaned = re.sub(r"^\s*=+\s*$", "", cleaned, flags=re.MULTILINE)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    return cleaned.strip()
+
+
+def _sanitize_user_visible_text(response_text: str) -> str:
+    """Avoid returning low-information punctuation-only payloads to clients."""
+    text = _strip_internal_analysis_leakage(str(response_text or "")).strip()
+    if not text:
+        return ""
+    if len(text) == 1 and not text.isalnum():
+        return ""
+    if all(ch in set(".-_=`'\"!?,:;()[]{}|/\\ \n\t") for ch in text):
+        return ""
+    return text
 
 
 def _extract_stream_text(payload: Dict[str, Any]) -> str:
@@ -658,9 +714,10 @@ async def copilot_assist(
                 )
             raise
         if isinstance(orchestrator_response, ChatResponse):
-            response_text = str(
-                orchestrator_response.response or ""
-            ).strip()  # Check if response contains placeholder text that should trigger NLP fallback
+            response_text = _sanitize_user_visible_text(
+                str(orchestrator_response.response or "").strip()
+            )
+            # Check if response contains placeholder text that should trigger NLP fallback
             if _is_placeholder_response(response_text):
                 logger.info(
                     "Copilot detected placeholder response, attempting NLP fallback",
@@ -671,7 +728,7 @@ async def copilot_assist(
                 nlp_manager = None
                 nlp_result = None
                 try:
-                    from services.memory.nlp_service_manager import (
+                    from ai_karen_engine.memory.nlp_service_manager import (
                         NLPServiceManager,
                     )
 
@@ -1006,15 +1063,22 @@ async def copilot_assist_stream(
     )
 
     degraded_continuation_response: Optional[DegradedResponse] = None
+    preflight_timeout_seconds = 12.0
 
     try:
-        runtime_plane = await get_chat_runtime_control_plane()
+        runtime_plane = await asyncio.wait_for(
+            get_chat_runtime_control_plane(),
+            timeout=preflight_timeout_seconds,
+        )
 
-        response = await runtime_plane.get_runtime_response(
-            user_id=request.user_id,
-            message=request.message,
-            session_id=request.session_id,
-            correlation_id=correlation_id,
+        response = await asyncio.wait_for(
+            runtime_plane.get_runtime_response(
+                user_id=request.user_id,
+                message=request.message,
+                session_id=request.session_id,
+                correlation_id=correlation_id,
+            ),
+            timeout=preflight_timeout_seconds,
         )
 
         if response is not None:
@@ -1080,7 +1144,10 @@ async def copilot_assist_stream(
         )
 
     try:
-        orchestrator = await _get_chat_orchestrator()
+        orchestrator = await asyncio.wait_for(
+            _get_chat_orchestrator(),
+            timeout=preflight_timeout_seconds,
+        )
     except Exception as exc:
         logger.error(
             "Stream setup: orchestrator unavailable: %s",
@@ -1222,12 +1289,10 @@ async def copilot_assist_stream(
                             "Using system fallback response"
                         )
 
-                    if (
-                        _is_placeholder_response(collected_content)
-                        and degraded_continuation_response
-                    ):
+                    if _is_placeholder_response(collected_content):
                         shim = generate_degraded_mode_response(request.message)
-                        response_text = str(
+                        response_text = _sanitize_user_visible_text(
+                            str(
                             (
                                 shim.get("final")
                                 or shim.get("message")
@@ -1236,20 +1301,45 @@ async def copilot_assist_stream(
                                 or ""
                             )
                         ).strip()
+                        )
+                        if not response_text:
+                            response_text = (
+                                "I’m having trouble generating a full response right now. "
+                                "Please try again in a moment."
+                            )
+                        degraded_metadata = {
+                            "status": "degraded",
+                            "mode": "degraded",
+                            "used_fallback": True,
+                            "degraded_mode": True,
+                            "runtime": {
+                                "mode": "degraded",
+                            },
+                            "llm": {
+                                "provider": "system",
+                                "model_name": "Degraded Mode",
+                                "source": "runtime_control_plane",
+                                "is_degraded": True,
+                                "fallback_level": "system",
+                                "failure_reason": "Using system fallback response",
+                            },
+                        }
+                        status_payload = {
+                            "type": "status",
+                            "content": _PROCESSING_STATUS_MESSAGES.get(
+                                "degraded",
+                                "Karen is running in degraded mode...",
+                            ),
+                            "correlation_id": correlation_id,
+                            "metadata": degraded_metadata,
+                        }
+                        yield f"data: {json.dumps(status_payload)}\n\n"
+
                         payload = {
-                            "type": "content",
+                            "type": "complete",
                             "content": response_text,
                             "correlation_id": correlation_id,
-                            "metadata": {
-                                "status": "degraded",
-                                "used_fallback": True,
-                                "degraded_mode": True,
-                                "llm": {
-                                    "is_degraded": True,
-                                    "fallback_level": "system",
-                                    "failure_reason": "Using system fallback response",
-                                },
-                            },
+                            "metadata": degraded_metadata,
                         }
                         yield f"data: {json.dumps(payload)}\n\n"
                         yield "data: [DONE]\n\n"
@@ -1259,10 +1349,22 @@ async def copilot_assist_stream(
                     final_message = _PROCESSING_STATUS_MESSAGES.get(
                         final_status, "Complete"
                     )
+                    final_content = _sanitize_user_visible_text(
+                        str(
+                        chunk.content
+                        or completion_metadata.get("formatted_content")
+                        or ""
+                    )
+                    )
+                    if not final_content and _is_placeholder_response(collected_content):
+                        final_content = (
+                            "I’m having trouble generating a full response right now. "
+                            "Please try again in a moment."
+                        )
 
                     payload = {
                         "type": "complete",
-                        "content": "",
+                        "content": final_content,
                         "correlation_id": chunk.correlation_id,
                         "metadata": {
                             **completion_metadata,

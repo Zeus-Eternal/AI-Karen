@@ -30,7 +30,7 @@ from ai_karen_engine.core.response.factory import get_global_scheduler_manager
 
 # Simple auth imports
 from ai_karen_engine.core.dependencies import bypass_user_context_func
-from services.memory.internal.training_audit_logger import get_training_audit_logger
+from ai_karen_engine.memory.internal.training_audit_logger import get_training_audit_logger
 
 logger = logging.getLogger(__name__)
 

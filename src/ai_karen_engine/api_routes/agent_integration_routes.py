@@ -17,7 +17,7 @@ try:
 except ImportError:
     from ai_karen_engine.pydantic_stub import BaseModel, Field
 
-from ..services.auth_utils import get_current_user
+from ai_karen_engine.services.auth_utils import get_current_user
 from ..agents import (
     get_agent_integration_service,
     AgentExecutionMode,

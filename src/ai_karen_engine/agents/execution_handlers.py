@@ -394,7 +394,7 @@ class DeepAgentsExecutionHandler(BaseExecutionHandler):
             self.logger.info(f"Executing DeepAgents request: {request.request_id}")
             
             # Import here to avoid circular imports
-            from ..services.orchestration_agent import get_orchestration_agent, OrchestrationInput
+            from ai_karen_engine.services.orchestration_agent import get_orchestration_agent, OrchestrationInput
             
             # Get orchestration agent
             agent = get_orchestration_agent()

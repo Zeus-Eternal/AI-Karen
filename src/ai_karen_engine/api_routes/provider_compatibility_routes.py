@@ -13,7 +13,7 @@ except ImportError:
     from ai_karen_engine.pydantic_stub import BaseModel
 from typing import Dict, Any, Optional
 
-from services.memory.internal.provider_model_compatibility import ProviderModelCompatibilityService
+from ai_karen_engine.memory.internal.provider_model_compatibility import ProviderModelCompatibilityService
 
 logger = logging.getLogger("kari.provider_compatibility_routes")
 

@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Karen AI Plugin Manifest",
+  "description": "Schema for AI Karen plugin manifests according to the Prompt-First modular platform.",
+  "type": "object",
+  "required": ["name", "version", "intent", "parameters"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9_-]+$",
+      "description": "Unique identifier for the plugin (kebab-case or snake_case)."
+    },
+    "display_name": {
+      "type": "string",
+      "description": "Human-readable name for the UI."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic versioning (e.g., 1.0.0)."
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed multi-line description of the plugin's purpose."
+    },
+    "author": {
+      "type": "string",
+      "description": "Author or Organization name."
+    },
+    "category": {
+      "type": "string",
+      "enum": ["utility", "communication", "analytics", "automation", "integration", "security", "productivity", "experimental", "uncategorized"],
+      "default": "uncategorized"
+    },
+    "intent": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+$",
+      "description": "The unique intent key used by the AI to trigger this plugin."
+    },
+    "parameters": {
+      "type": "object",
+      "description": "OpenAPI-style parameters schema for the plugin's input.",
+      "required": ["type", "properties"],
+      "properties": {
+        "type": { "const": "object" },
+        "properties": { "type": "object" },
+        "required": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "properties": {
+        "provides_ui": { "type": "boolean", "default": false },
+        "provides_api": { "type": "boolean", "default": false },
+        "provides_mcp": { "type": "boolean", "default": false },
+        "provides_background_tasks": { "type": "boolean", "default": false },
+        "provides_webhooks": { "type": "boolean", "default": false }
+      }
+    },
+    "ui": {
+      "type": "object",
+      "properties": {
+        "entry_point": { "type": "string", "description": "Path to the main UI file (e.g., ui/index.html)." },
+        "icon": { "type": "string", "description": "Icon identifier (Material or FontAwesome)." }
+      }
+    }
+  }
+}

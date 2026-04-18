@@ -16,12 +16,15 @@ from dataclasses import dataclass, field
 from dotenv import load_dotenv
 import logging
 
-CONFIG_PATH = Path(os.getenv("KARI_CONFIG_FILE", "config.json")).absolute()
+CONFIG_PATH = Path(
+    os.getenv("KARI_CONFIG_FILE", "config_assets/config.json")
+).absolute()
 BACKUP_PATH = CONFIG_PATH.with_suffix(".bak")
 LOCK = threading.RLock()
 
 
 # --- Dataclass Definitions (Consolidated from core.config_manager) ---
+
 
 class Environment(str, Enum):
     """Environment enumeration."""
@@ -88,7 +91,13 @@ class LLMConfig:
     models_dir: str = "models"
     transformers_dir: str = "models/transformers"
     fallback_chain: List[str] = field(
-        default_factory=lambda: ["llamacpp", "openai", "gemini", "deepseek", "huggingface"]
+        default_factory=lambda: [
+            "llamacpp",
+            "openai",
+            "gemini",
+            "deepseek",
+            "huggingface",
+        ]
     )
     provider_defaults: Dict[str, str] = field(
         default_factory=lambda: {
@@ -104,7 +113,10 @@ class LLMConfig:
             "chat": {"provider": "openai", "model": "gpt-4o-mini"},
             "code": {"provider": "deepseek", "model": "deepseek-coder"},
             "reasoning": {"provider": "openai", "model": "gpt-4o"},
-            "summarization": {"provider": "llamacpp", "model": "Phi-3-mini-4k-instruct-q4.gguf"},
+            "summarization": {
+                "provider": "llamacpp",
+                "model": "Phi-3-mini-4k-instruct-q4.gguf",
+            },
         }
     )
     temperature: float = 0.7
@@ -172,9 +184,7 @@ class WebUIConfig:
     max_conversation_history: int = 1000
     enable_proactive_suggestions: bool = True
     enable_memory_integration: bool = True
-    ui_sources: List[str] = field(
-        default_factory=lambda: ["web", "desktop", "api"]
-    )
+    ui_sources: List[str] = field(default_factory=lambda: ["web", "desktop", "api"])
 
 
 @dataclass
@@ -224,7 +234,10 @@ DEFAULT_CONFIG = {
             "chat": {"provider": "openai", "model": "gpt-4o-mini"},
             "code": {"provider": "deepseek", "model": "deepseek-coder"},
             "reasoning": {"provider": "openai", "model": "gpt-4o"},
-            "summarization": {"provider": "llamacpp", "model": "Phi-3-mini-4k-instruct-q4.gguf"},
+            "summarization": {
+                "provider": "llamacpp",
+                "model": "Phi-3-mini-4k-instruct-q4.gguf",
+            },
         },
         "temperature": 0.7,
         "max_tokens": 2048,
@@ -249,9 +262,11 @@ _OBSERVERS: List[Callable[[Dict[str, Any]], None]] = []
 logger = logging.getLogger("kari.config.manager")
 logger.setLevel(logging.INFO)
 
+
 def register_observer(cb: Callable[[Dict[str, Any]], None]):
     with LOCK:
         _OBSERVERS.append(cb)
+
 
 def notify_observers(cfg: Dict[str, Any]):
     for cb in _OBSERVERS:
@@ -259,6 +274,7 @@ def notify_observers(cfg: Dict[str, Any]):
             cb(cfg)
         except Exception as e:
             logger.warning(f"Config observer failed: {e}")
+
 
 def atomic_write(path: Path, data: dict):
     tmp_path = path.with_suffix(".tmp")
@@ -268,17 +284,20 @@ def atomic_write(path: Path, data: dict):
         os.fsync(f.fileno())
     os.replace(tmp_path, path)
 
+
 def backup_config():
     with LOCK:
         if CONFIG_PATH.exists():
             shutil.copy2(CONFIG_PATH, BACKUP_PATH)
             logger.info(f"Config backup created at {BACKUP_PATH}")
 
+
 def restore_config():
     with LOCK:
         if BACKUP_PATH.exists():
             shutil.copy2(BACKUP_PATH, CONFIG_PATH)
             logger.info(f"Config restored from backup {BACKUP_PATH}")
+
 
 def load_env_override(cfg: Dict[str, Any]):
     """Apply .env overrides if present."""
@@ -291,13 +310,13 @@ def load_env_override(cfg: Dict[str, Any]):
             except Exception:
                 val = os.getenv(env_key)
             cfg[k] = val
-    
+
     # Specific overrides for authentication and security
     security = cfg.get("security", {})
     if not isinstance(security, dict):
         security = {}
         cfg["security"] = security
-        
+
     auth_secret = (
         os.getenv("AUTH_JWT_SECRET_KEY")
         or os.getenv("AUTH_SECRET_KEY")
@@ -310,6 +329,7 @@ def load_env_override(cfg: Dict[str, Any]):
         security["jwt_secret"] = auth_secret
         security["secret_key"] = auth_secret
 
+
 def validate_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
     # You can add Pydantic or marshmallow for full schema; basic fallback:
     for k, v in DEFAULT_CONFIG.items():
@@ -320,6 +340,7 @@ def validate_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
                 if subk not in cfg[k]:
                     cfg[k][subk] = subv
     return cfg
+
 
 def load_config() -> Dict[str, Any]:
     with LOCK:
@@ -339,7 +360,7 @@ def load_config() -> Dict[str, Any]:
 def _create_config_object(config_dict: Dict[str, Any]) -> AIKarenConfig:
     """Create a typed configuration object from a dictionary."""
     from dataclasses import fields
-    
+
     def _filter_kwargs(cls, kwargs):
         if not isinstance(kwargs, dict):
             return {}
@@ -349,22 +370,32 @@ def _create_config_object(config_dict: Dict[str, Any]) -> AIKarenConfig:
     data = config_dict.copy()
 
     if "database" in data:
-        data["database"] = DatabaseConfig(**_filter_kwargs(DatabaseConfig, data["database"]))
+        data["database"] = DatabaseConfig(
+            **_filter_kwargs(DatabaseConfig, data["database"])
+        )
     if "redis" in data:
         data["redis"] = RedisConfig(**_filter_kwargs(RedisConfig, data["redis"]))
     if "vector_db" in data:
-        data["vector_db"] = VectorDBConfig(**_filter_kwargs(VectorDBConfig, data["vector_db"]))
-    
+        data["vector_db"] = VectorDBConfig(
+            **_filter_kwargs(VectorDBConfig, data["vector_db"])
+        )
+
     if "llm" in data:
         llm_data = data["llm"].copy()
         data["llm"] = LLMConfig(**_filter_kwargs(LLMConfig, llm_data))
 
     if "services" in data:
-        data["services"] = ServiceConfig(**_filter_kwargs(ServiceConfig, data["services"]))
+        data["services"] = ServiceConfig(
+            **_filter_kwargs(ServiceConfig, data["services"])
+        )
     if "security" in data:
-        data["security"] = SecurityConfig(**_filter_kwargs(SecurityConfig, data["security"]))
+        data["security"] = SecurityConfig(
+            **_filter_kwargs(SecurityConfig, data["security"])
+        )
     if "monitoring" in data:
-        data["monitoring"] = MonitoringConfig(**_filter_kwargs(MonitoringConfig, data["monitoring"]))
+        data["monitoring"] = MonitoringConfig(
+            **_filter_kwargs(MonitoringConfig, data["monitoring"])
+        )
     if "web_ui" in data:
         data["web_ui"] = WebUIConfig(**_filter_kwargs(WebUIConfig, data["web_ui"]))
 
@@ -379,6 +410,7 @@ def _create_config_object(config_dict: Dict[str, Any]) -> AIKarenConfig:
 
 
 _cached_config_obj: Optional[AIKarenConfig] = None
+
 
 def get_config() -> AIKarenConfig:
     """Get the current configuration as a typed object."""
@@ -405,6 +437,7 @@ def save_config(cfg: Dict[str, Any]):
         notify_observers(cfg)
         logger.info(f"Config saved: {CONFIG_PATH}")
 
+
 def update_config(update: Dict[str, Any]) -> Dict[str, Any]:
     with LOCK:
         cfg = load_config()
@@ -412,15 +445,18 @@ def update_config(update: Dict[str, Any]) -> Dict[str, Any]:
         save_config(cfg)
         return cfg
 
+
 def get_config_value(key: str, default=None) -> Any:
     cfg = load_config()
     return cfg.get(key, default)
+
 
 def set_config_value(key: str, value: Any):
     with LOCK:
         cfg = load_config()
         cfg[key] = value
         save_config(cfg)
+
 
 def reset_config():
     with LOCK:
@@ -429,19 +465,46 @@ def reset_config():
         notify_observers(DEFAULT_CONFIG.copy())
         logger.info("Config reset to default.")
 
+
 # --- Aliases for external use ---
-def get(key: str, default=None): return get_config_value(key, default)
-def set(key: str, value: Any): set_config_value(key, value)
-def load(): return load_config()
-def save(cfg: Dict[str, Any]): save_config(cfg)
-def update(update: Dict[str, Any]): return update_config(update)
-def reset(): reset_config()
-def backup(): backup_config()
-def restore(): restore_config()
-def register(cb: Callable[[Dict[str, Any]], None]): register_observer(cb)
+def get(key: str, default=None):
+    return get_config_value(key, default)
+
+
+def set(key: str, value: Any):
+    set_config_value(key, value)
+
+
+def load():
+    return load_config()
+
+
+def save(cfg: Dict[str, Any]):
+    save_config(cfg)
+
+
+def update(update: Dict[str, Any]):
+    return update_config(update)
+
+
+def reset():
+    reset_config()
+
+
+def backup():
+    backup_config()
+
+
+def restore():
+    restore_config()
+
+
+def register(cb: Callable[[Dict[str, Any]], None]):
+    register_observer(cb)
 
 
 # ---- Centralized LLM Config Helpers ----
+
 
 def get_llm_config() -> Dict[str, Any]:
     """Get the full LLM configuration section."""
@@ -458,7 +521,9 @@ def get_default_model(provider: str = "") -> str:
     """
     llm = get_llm_config()
     if provider:
-        return llm.get("provider_defaults", {}).get(provider, llm.get("default_model", "Phi-3-mini-4k-instruct-q4.gguf"))
+        return llm.get("provider_defaults", {}).get(
+            provider, llm.get("default_model", "Phi-3-mini-4k-instruct-q4.gguf")
+        )
     return llm.get("default_model", "Phi-3-mini-4k-instruct-q4.gguf")
 
 
@@ -474,7 +539,9 @@ def get_provider_defaults() -> Dict[str, str]:
 
 def get_fallback_chain() -> list:
     """Get the ordered fallback chain of providers."""
-    return get_llm_config().get("fallback_chain", ["llamacpp", "openai", "gemini", "deepseek", "huggingface"])
+    return get_llm_config().get(
+        "fallback_chain", ["llamacpp", "openai", "gemini", "deepseek", "huggingface"]
+    )
 
 
 def get_task_assignment(task_type: str) -> Dict[str, str]:
@@ -487,30 +554,65 @@ def get_task_assignment(task_type: str) -> Dict[str, str]:
     if task_type in assignments:
         return assignments[task_type]
     # Fallback to system defaults
-    return {"provider": llm.get("default_provider", "llamacpp"), "model": llm.get("default_model", "Phi-3-mini-4k-instruct-q4.gguf")}
+    return {
+        "provider": llm.get("default_provider", "llamacpp"),
+        "model": llm.get("default_model", "Phi-3-mini-4k-instruct-q4.gguf"),
+    }
 
 
 __all__ = [
-    "load_config", "save_config", "update_config", "get_config_value", "set_config_value",
-    "reset_config", "backup_config", "restore_config", "register_observer",
-    "get", "set", "load", "save", "update", "reset", "backup", "restore", "register",
-    "get_llm_config", "get_default_model", "get_default_provider",
-    "get_provider_defaults", "get_fallback_chain", "get_task_assignment",
-    "config_manager", "get_config", "reload", "AIKarenConfig", "LLMConfig",
-    "DatabaseConfig", "RedisConfig", "VectorDBConfig", "ServiceConfig",
-    "SecurityConfig", "MonitoringConfig", "WebUIConfig", "Environment"
+    "load_config",
+    "save_config",
+    "update_config",
+    "get_config_value",
+    "set_config_value",
+    "reset_config",
+    "backup_config",
+    "restore_config",
+    "register_observer",
+    "get",
+    "set",
+    "load",
+    "save",
+    "update",
+    "reset",
+    "backup",
+    "restore",
+    "register",
+    "get_llm_config",
+    "get_default_model",
+    "get_default_provider",
+    "get_provider_defaults",
+    "get_fallback_chain",
+    "get_task_assignment",
+    "config_manager",
+    "get_config",
+    "reload",
+    "AIKarenConfig",
+    "LLMConfig",
+    "DatabaseConfig",
+    "RedisConfig",
+    "VectorDBConfig",
+    "ServiceConfig",
+    "SecurityConfig",
+    "MonitoringConfig",
+    "WebUIConfig",
+    "Environment",
+    "get_config_manager",
+    "ConfigManager",
 ]
+
 
 # Create a simple config manager instance for backward compatibility
 class ConfigManager:
     """Simple config manager wrapper for backward compatibility"""
-    
+
     def __init__(self):
         self.config = load_config()
-    
+
     def get_config(self):
         return load_config()
-    
+
     def get_config_value(self, section: str, key: str = None, default=None):
         """Get a config value from a section, with optional key and default"""
         config = load_config()
@@ -520,53 +622,62 @@ class ConfigManager:
         if isinstance(section_data, dict):
             return section_data.get(key, default)
         return default
-    
+
     def get_app_config(self):
         return load_config()
-    
+
     def get_api_config(self):
         return load_config()
-    
+
     def get_database_config(self):
         return load_config()
-    
+
     def get_redis_config(self):
         return load_config()
-    
+
     def get_logging_config(self):
         return load_config()
-    
+
     def get_security_config(self):
         return load_config()
-    
+
     def get_llm_config(self):
         return load_config()
-    
+
     def get_llm_provider_config(self, provider_name: str = None):
         """Get LLM provider configuration"""
         config = load_config()
         llm_config = config.get("llm_providers", {})
-        
+
         if provider_name:
             # Return specific provider config
-            from ai_karen_engine.config.llm_provider_config import get_provider_config_manager
+            from ai_karen_engine.config.llm_provider_config import (
+                get_provider_config_manager,
+            )
+
             manager = get_provider_config_manager()
             return manager.get_provider(provider_name)
-        
+
         return llm_config
-    
+
     def update_llm_provider_config(self, provider_name: str, updates: Dict[str, Any]):
         """Update LLM provider configuration"""
-        from ai_karen_engine.config.llm_provider_config import get_provider_config_manager
+        from ai_karen_engine.config.llm_provider_config import (
+            get_provider_config_manager,
+        )
+
         manager = get_provider_config_manager()
         return manager.update_provider(provider_name, updates)
-    
+
     def get_enabled_llm_providers(self):
         """Get list of enabled LLM providers"""
-        from ai_karen_engine.config.llm_provider_config import get_provider_config_manager
+        from ai_karen_engine.config.llm_provider_config import (
+            get_provider_config_manager,
+        )
+
         manager = get_provider_config_manager()
         return manager.get_provider_names(enabled_only=True)
-    
+
     def get_llm_fallback_hierarchy(self):
         """Get LLM provider fallback hierarchy"""
         config = load_config()
@@ -575,9 +686,14 @@ class ConfigManager:
             "fallback_hierarchy",
             ["llamacpp", "openai", "gemini", "deepseek", "huggingface"],
         )
-    
+
     def get_plugins_config(self):
         return load_config()
 
+
 # Create a singleton instance of ConfigManager
 config_manager = ConfigManager()
+
+# Backward compatibility aliases
+get_config_manager = lambda: config_manager
+ConfigManager = config_manager.__class__

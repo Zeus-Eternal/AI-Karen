@@ -24,7 +24,7 @@ import hashlib
 import uuid
 
 from ..core.dependencies import bypass_user_context_func
-from ..core.config_manager import get_config_manager
+from ..config.config_manager import get_config_manager
 from ..core.logging.logger import get_structured_logger
 from ..core.chat_runtime_control_plane import (
     get_chat_runtime_control_plane,
@@ -283,11 +283,15 @@ async def create_chat_response(
                 if runtime_response.is_minimal:
                     # Minimal degraded — can't reach orchestrator, return message
                     from fastapi.responses import JSONResponse
+
                     payload = serialize_runtime_response(runtime_response) or {}
                     return JSONResponse(
-                        status_code=runtime_response_http_status(runtime_response) or 200,
+                        status_code=runtime_response_http_status(runtime_response)
+                        or 200,
                         content=payload,
-                        headers={"Retry-After": str(runtime_response.retry_after_seconds)},
+                        headers={
+                            "Retry-After": str(runtime_response.retry_after_seconds)
+                        },
                     )
                 # Non-minimal degraded: proceed to orchestrator with available capabilities
             elif isinstance(
@@ -309,7 +313,7 @@ async def create_chat_response(
         session_id = SecurityValidator.sanitize_session_id(request.session_id)
 
         # Validate model selection
-        from ..core.config_manager import get_config_value
+        from ..config.config_manager import get_config_value
 
         available_models = get_config_value("available_models", [])
         if request.model and request.model not in available_models:
@@ -617,7 +621,7 @@ async def get_available_models(
 
     try:
         # Get configuration
-        from ..core.config_manager import get_config_value
+        from ..config.config_manager import get_config_value
 
         all_models = get_config_value("available_models", [])
 

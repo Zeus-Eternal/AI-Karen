@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends
 from ai_karen_engine.core.dependencies import bypass_user_context_func
 from ai_karen_engine.core.service_registry import get_service_registry
 from ai_karen_engine.services.audit_logging import get_audit_logger
-from services.memory.internal.training_audit_logger import get_training_audit_logger
+from ai_karen_engine.memory.internal.training_audit_logger import get_training_audit_logger
 
 router = APIRouter(tags=["communications-center"])
 

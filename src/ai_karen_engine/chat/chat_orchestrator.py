@@ -38,6 +38,13 @@ from ai_karen_engine.chat.tool_integration_service import ToolIntegrationService
 from ai_karen_engine.chat.instruction_processor import InstructionProcessor
 from ai_karen_engine.chat.context_integrator import ContextIntegrator
 from ai_karen_engine.chat.response_formatter import PrettyOutputLayer
+from ai_karen_engine.services.response_formatting_engine import (
+    ResponseFormattingEngine,
+    FormattingContext,
+    DisplayContext,
+    AccessibilityLevel,
+)
+from ai_karen_engine.services.response_policy_enforcer import ResponsePolicyEnforcer
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +97,8 @@ class ChatOrchestrator(
         self.session_state_manager = session_state_manager
         self.auth_service = auth_service
         self.output_layer = PrettyOutputLayer()
+        self.formatting_engine = ResponseFormattingEngine()
+        self.response_policy_enforcer = ResponsePolicyEnforcer()
         
         # Configuration
         self.retry_config = retry_config or RetryConfig()
@@ -114,6 +123,63 @@ class ChatOrchestrator(
         self.fallback_router = FallbackRouter()
         
         logger.info("ChatOrchestrator initialized with modular Mixin architecture.")
+
+    def _build_formatting_context(
+        self,
+        turn_context: Any,
+        *,
+        content_length: int = 0,
+    ) -> FormattingContext:
+        """Build formatting context from request/session preferences."""
+        user_prefs: Dict[str, Any] = {}
+        metadata: Dict[str, Any] = {}
+
+        if turn_context is not None:
+            metadata = getattr(turn_context, "metadata", {}) or {}
+            user_ctx = getattr(turn_context, "user_ctx", None)
+            if isinstance(user_ctx, dict):
+                user_prefs = dict(user_ctx.get("formatting_preferences", {}) or {})
+
+        if not user_prefs and isinstance(metadata.get("formatting_preferences"), dict):
+            user_prefs = dict(metadata.get("formatting_preferences") or {})
+
+        display_context_value = str(
+            user_prefs.get("display_context")
+            or metadata.get("display_context")
+            or "desktop"
+        ).strip()
+        accessibility_value = str(
+            user_prefs.get("accessibility_level")
+            or metadata.get("accessibility_level")
+            or "basic"
+        ).strip()
+        technical_level = str(
+            user_prefs.get("technical_level")
+            or metadata.get("technical_level")
+            or "intermediate"
+        ).strip()
+        language = str(
+            user_prefs.get("language") or metadata.get("language") or "en"
+        ).strip()
+
+        try:
+            display_context = DisplayContext(display_context_value)
+        except ValueError:
+            display_context = DisplayContext.DESKTOP
+
+        try:
+            accessibility_level = AccessibilityLevel(accessibility_value)
+        except ValueError:
+            accessibility_level = AccessibilityLevel.BASIC
+
+        return FormattingContext(
+            display_context=display_context,
+            accessibility_level=accessibility_level,
+            user_preferences=user_prefs,
+            content_length=content_length,
+            technical_level=technical_level or "intermediate",
+            language=language or "en",
+        )
 
 # Export aliases for backward compatibility if needed
 __all__ = ["ChatOrchestrator", "ChatRequest", "ChatResponse", "ChatStreamChunk"]

@@ -5,6 +5,7 @@ Extends config.json with a `user_profiles` section and provides CRUD,
 validation, and active profile switching. Designed to interoperate with
 LLMRegistry for validation but degrades gracefully if registry is unavailable.
 """
+
 from __future__ import annotations
 
 import json
@@ -14,7 +15,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from ai_karen_engine.core.config_manager import get_config_manager, ConfigManager
+from ai_karen_engine.config.config_manager import get_config_manager, ConfigManager
 
 
 @dataclass
@@ -30,7 +31,15 @@ class UserProfile:
     id: str
     name: str
     assignments: Dict[str, ModelAssignment] = field(default_factory=dict)
-    fallback_chain: List[str] = field(default_factory=lambda: ["openai", "deepseek", "llamacpp", "huggingface", "gemini"])
+    fallback_chain: List[str] = field(
+        default_factory=lambda: [
+            "openai",
+            "deepseek",
+            "llamacpp",
+            "huggingface",
+            "gemini",
+        ]
+    )
     is_active: bool = False
     updated_at: Optional[str] = None
 
@@ -54,7 +63,12 @@ class UserProfile:
     @staticmethod
     def from_json(data: Dict[str, Any]) -> UserProfile:
         assignments = {
-            tt: ModelAssignment(task_type=tt, provider=spec.get("provider", ""), model=spec.get("model", ""), parameters=spec.get("parameters", {}))
+            tt: ModelAssignment(
+                task_type=tt,
+                provider=spec.get("provider", ""),
+                model=spec.get("model", ""),
+                parameters=spec.get("parameters", {}),
+            )
             for tt, spec in (data.get("assignments") or {}).items()
         }
         return UserProfile(
@@ -81,9 +95,13 @@ class UserProfilesManager:
             up["profiles"] = []
         if "active_profile" not in up:
             # Keep backwards compat with ConfigManager.active_profile if set
-            up["active_profile"] = cfg.active_profile or (up["profiles"][0]["id"] if up["profiles"] else None)
+            up["active_profile"] = cfg.active_profile or (
+                up["profiles"][0]["id"] if up["profiles"] else None
+            )
         # persist back to in-memory config object
-        self.cm.update_config({"user_profiles": up, "active_profile": up.get("active_profile")})
+        self.cm.update_config(
+            {"user_profiles": up, "active_profile": up.get("active_profile")}
+        )
         return up
 
     def _save(self) -> None:
@@ -117,7 +135,9 @@ class UserProfilesManager:
                 return UserProfile.from_json(p)
         return None
 
-    def create_profile(self, profile: UserProfile, make_active: bool = False) -> UserProfile:
+    def create_profile(
+        self, profile: UserProfile, make_active: bool = False
+    ) -> UserProfile:
         up = self._ensure_section()
         if any(p.get("id") == profile.id for p in up.get("profiles", [])):
             raise ValueError(f"Profile already exists: {profile.id}")
@@ -127,7 +147,9 @@ class UserProfilesManager:
             up["active_profile"] = profile.id
             profile.is_active = True
         up["profiles"].append(profile.to_json())
-        self.cm.update_config({"user_profiles": up, "active_profile": up.get("active_profile")})
+        self.cm.update_config(
+            {"user_profiles": up, "active_profile": up.get("active_profile")}
+        )
         self._save()
         return profile
 
@@ -145,18 +167,24 @@ class UserProfilesManager:
         if profile.is_active:
             up["active_profile"] = profile.id
             for i, p in enumerate(up["profiles"]):
-                up["profiles"][i]["is_active"] = (p["id"] == profile.id)
-        self.cm.update_config({"user_profiles": up, "active_profile": up.get("active_profile")})
+                up["profiles"][i]["is_active"] = p["id"] == profile.id
+        self.cm.update_config(
+            {"user_profiles": up, "active_profile": up.get("active_profile")}
+        )
         self._save()
         return profile
 
     def delete_profile(self, profile_id: str) -> bool:
         up = self._ensure_section()
         before = len(up.get("profiles", []))
-        up["profiles"] = [p for p in up.get("profiles", []) if p.get("id") != profile_id]
+        up["profiles"] = [
+            p for p in up.get("profiles", []) if p.get("id") != profile_id
+        ]
         if up.get("active_profile") == profile_id:
             up["active_profile"] = up["profiles"][0]["id"] if up["profiles"] else None
-        self.cm.update_config({"user_profiles": up, "active_profile": up.get("active_profile")})
+        self.cm.update_config(
+            {"user_profiles": up, "active_profile": up.get("active_profile")}
+        )
         self._save()
         return len(up.get("profiles", [])) < before
 
@@ -190,18 +218,23 @@ class UserProfilesManager:
         # Optional registry-based validation
         try:
             from ai_karen_engine.integrations.llm_registry import LLMRegistry
+
             reg = LLMRegistry()
             providers = set(reg.list_providers())
             for tt, ma in profile.assignments.items():
                 if ma.provider and ma.provider not in providers:
-                    errors.append(f"Assignment '{tt}': provider '{ma.provider}' not registered")
+                    errors.append(
+                        f"Assignment '{tt}': provider '{ma.provider}' not registered"
+                    )
         except Exception:
             # Skip registry validation if not available
             pass
         return errors
 
     # ------------ Utilities ------------
-    def get_model_assignment(self, profile: UserProfile, task_type: str) -> Optional[ModelAssignment]:
+    def get_model_assignment(
+        self, profile: UserProfile, task_type: str
+    ) -> Optional[ModelAssignment]:
         return profile.assignments.get(task_type)
 
     def ensure_default_profile(self) -> UserProfile:
@@ -232,4 +265,3 @@ def get_user_profiles_manager() -> UserProfilesManager:
     if _global_upm is None:
         _global_upm = UserProfilesManager()
     return _global_upm
-

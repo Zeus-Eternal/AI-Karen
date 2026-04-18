@@ -58,8 +58,66 @@ def _normalize_model_name(model_id: Optional[str]) -> str:
     return value.replace("_", "-")
 
 
+def _is_low_information_content(content: str) -> bool:
+    text = str(content or "").strip()
+    if not text:
+        return True
+    if len(text) == 1 and not text.isalnum():
+        return True
+    if all(ch in set(".-_=`'\"!?,:;()[]{}|/\\ \n\t") for ch in text):
+        return True
+    return False
+
+
 class ChatLLMMixin(Base):
     """Methods for LLM routing, trials, and fallback logic with enhanced metrics."""
+
+    def _resolve_generation_max_tokens(
+        self,
+        prompt: str,
+        context: ProcessingContext,
+    ) -> int:
+        """Choose a sensible max token budget for the current request."""
+        metadata = dict((getattr(context, "metadata", {}) or {}))
+
+        for key in ("max_tokens", "max_output_tokens"):
+            raw_value = metadata.get(key)
+            if isinstance(raw_value, int) and raw_value > 0:
+                return raw_value
+            if isinstance(raw_value, str) and raw_value.isdigit():
+                parsed = int(raw_value)
+                if parsed > 0:
+                    return parsed
+
+        prompt_text = str(prompt or "").lower()
+        request_context = metadata.get("request_context")
+        if isinstance(request_context, dict):
+            recent_messages = request_context.get("recent_messages")
+            if isinstance(recent_messages, list):
+                for item in recent_messages[-6:]:
+                    if not isinstance(item, dict):
+                        continue
+                    if str(item.get("role", "")).strip().lower() != "user":
+                        continue
+                    content = str(item.get("content", "")).strip().lower()
+                    if content:
+                        prompt_text += "\n" + content
+
+        longform_markers = (
+            "full article",
+            "write an article",
+            "blog article",
+            "blog post",
+            "long-form",
+            "in-depth",
+            "comprehensive",
+            "detailed guide",
+            "essay",
+        )
+        if any(marker in prompt_text for marker in longform_markers):
+            return 2200
+
+        return 800
 
     async def _generate_ai_response_enhanced(
         self,
@@ -176,6 +234,10 @@ class ChatLLMMixin(Base):
                 return cast(AsyncIterator[str], result), None
 
             if isinstance(result, dict):
+                if result.get("success") is False:
+                    raise RuntimeError(
+                        str(result.get("error") or result.get("content") or "Provider generation failed")
+                    )
                 self._verify_model_output(result, model_id)
                 metadata = self._build_llm_metadata(
                     result,
@@ -215,7 +277,7 @@ class ChatLLMMixin(Base):
     ) -> Union[ProcessingResult, AsyncIterator[str]]:
         """Execute the fallback chain through system defaults and local models."""
         # Use the centralized LLM router instead of old fallback router
-        from services.memory.llm_router import (
+        from ai_karen_engine.memory.llm_router import (
             LLMRouter,
             ChatRequest as RouterChatRequest,
         )
@@ -281,6 +343,10 @@ class ChatLLMMixin(Base):
                     return cast(AsyncIterator[str], result)
 
                 if isinstance(result, dict):
+                    if result.get("success") is False:
+                        raise RuntimeError(
+                            str(result.get("error") or result.get("content") or "Provider generation failed")
+                        )
                     # Verify non-empty output
                     self._verify_model_output(result, model_id)
 
@@ -419,7 +485,7 @@ class ChatLLMMixin(Base):
     ) -> Union[Dict[str, Any], AsyncIterator[str]]:
         """Low-level call to the NLP service manager for generation."""
         # Use absolute import for service manager
-        from services.memory.nlp_service_manager import nlp_service_manager
+        from ai_karen_engine.memory.nlp_service_manager import nlp_service_manager
 
         # `history` already contains the prompt sequence assembled by the prompt
         # mixin, including the active system prompt and current user turn.
@@ -455,19 +521,23 @@ class ChatLLMMixin(Base):
             ]
 
         if stream:
+            max_tokens = self._resolve_generation_max_tokens(prompt, context)
             return nlp_service_manager.generate_response_stream(
                 model_id=model_id or "default",
                 provider=provider,
                 messages=messages,
                 correlation_id=context.correlation_id,
+                max_tokens=max_tokens,
             )
 
+        max_tokens = self._resolve_generation_max_tokens(prompt, context)
         response = await nlp_service_manager.generate_response(
             model_id=model_id or "default",
             provider=provider,
             messages=messages,
             correlation_id=context.correlation_id,
             stream=False,
+            max_tokens=max_tokens,
         )
 
         if isinstance(response, dict):
@@ -530,6 +600,15 @@ class ChatLLMMixin(Base):
                     "result_keys": list(result.keys())
                     if isinstance(result, dict)
                     else [],
+                },
+            )
+        if _is_low_information_content(content):
+            logger.error(f"Model {model_id} returned low-information content.")
+            raise LLMResponseVerificationError(
+                f"Model {model_id} returned low-information response.",
+                metadata={
+                    "model_id": model_id,
+                    "content_preview": content[:20],
                 },
             )
 

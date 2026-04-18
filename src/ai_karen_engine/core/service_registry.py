@@ -36,11 +36,12 @@ def _get_service_classes():
     """Get service classes dynamically to avoid type conflicts."""
     classes = {}
     try:
-        # Try to import from src/services first
+        # Import from canonical ai_karen_engine package locations
         logger.info("🔍 DEBUG: Attempting to import service classes...")
         try:
             classes["AIOrchestrator"] = __import__(
-                "services.ai_orchestrator.ai_orchestrator", fromlist=["AIOrchestrator"]
+                "ai_karen_engine.ai_orchestrator.ai_orchestrator",
+                fromlist=["AIOrchestrator"],
             ).AIOrchestrator
             logger.info("✅ AIOrchestrator imported successfully")
         except Exception as e:
@@ -49,7 +50,7 @@ def _get_service_classes():
 
         try:
             classes["WebUIMemoryService"] = __import__(
-                "services.memory.memory_service", fromlist=["WebUIMemoryService"]
+                "ai_karen_engine.memory.memory_service", fromlist=["WebUIMemoryService"]
             ).WebUIMemoryService
             logger.info("✅ WebUIMemoryService imported successfully")
         except Exception as e:
@@ -58,7 +59,7 @@ def _get_service_classes():
 
         try:
             classes["UnifiedMemoryService"] = __import__(
-                "services.memory.unified_memory_service",
+                "ai_karen_engine.memory.unified_memory_service",
                 fromlist=["UnifiedMemoryService"],
             ).UnifiedMemoryService
             logger.info("✅ UnifiedMemoryService imported successfully")
@@ -68,7 +69,7 @@ def _get_service_classes():
 
         try:
             classes["ConversationService"] = __import__(
-                "services.memory.conversation_service",
+                "ai_karen_engine.memory.conversation_service",
                 fromlist=["ConversationService"],
             ).ConversationService
             logger.info("✅ ConversationService imported successfully")
@@ -78,7 +79,7 @@ def _get_service_classes():
 
         try:
             classes["PluginService"] = __import__(
-                "services.infra.plugin_service", fromlist=["PluginService"]
+                "ai_karen_engine.infra.plugin_service", fromlist=["PluginService"]
             ).PluginService
             logger.info("✅ PluginService imported successfully")
         except Exception as e:
@@ -87,7 +88,7 @@ def _get_service_classes():
 
         try:
             classes["ToolService"] = __import__(
-                "services.memory.tool_service", fromlist=["ToolService"]
+                "ai_karen_engine.memory.tool_service", fromlist=["ToolService"]
             ).ToolService
             logger.info("✅ ToolService imported successfully")
         except Exception as e:
@@ -96,7 +97,8 @@ def _get_service_classes():
 
         try:
             classes["AnalyticsService"] = __import__(
-                "services.memory.analytics_service", fromlist=["AnalyticsService"]
+                "ai_karen_engine.memory.analytics_service",
+                fromlist=["AnalyticsService"],
             ).AnalyticsService
             logger.info("✅ AnalyticsService imported successfully")
         except Exception as e:
@@ -691,7 +693,7 @@ class ServiceRegistry:
 
                 if service_class_name == "ConfigManager":
                     # ConfigManager needs a path, not a ServiceConfig
-                    from ai_karen_engine.core.config_manager import ConfigManager
+                    from ai_karen_engine.config.config_manager import ConfigManager
 
                     instance = ConfigManager()
                 elif service_class_name == "AIOrchestrator":
@@ -1264,7 +1266,7 @@ async def initialize_services() -> None:
 
     # First register config manager service since other services depend on it
     try:
-        from ai_karen_engine.core.config_manager import ConfigManager
+        from ai_karen_engine.config.config_manager import ConfigManager
 
         registry.register_service("config_manager", ConfigManager)
         logger.info("Registered ConfigManager service")
@@ -1445,9 +1447,7 @@ async def initialize_services() -> None:
             )
             logger.info("✅ Registered ConversationService service")
     except Exception as e:
-        logger.error(
-            f"❌ Could not register ConversationService: {e}", exc_info=True
-        )
+        logger.error(f"❌ Could not register ConversationService: {e}", exc_info=True)
 
     try:
         registry.register_service("plugin_service", PluginService)

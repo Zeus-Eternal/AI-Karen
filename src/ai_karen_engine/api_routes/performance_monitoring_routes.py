@@ -16,26 +16,26 @@ try:
 except ImportError:
     from ai_karen_engine.pydantic_stub import BaseModel, Field
 
-from ..services.response_performance_metrics import (
+from ai_karen_engine.services.response_performance_metrics import (
     performance_collector, 
     ResponsePerformanceMetrics,
     AggregatedMetrics,
     OptimizationType
 )
-from ..services.ab_testing_system import (
+from ai_karen_engine.services.ab_testing_system import (
     ab_testing_system,
     ABTest,
     TestVariant,
     TestType,
     TestStatus
 )
-from ..services.user_satisfaction_tracker import (
+from ai_karen_engine.services.user_satisfaction_tracker import (
     satisfaction_tracker,
     FeedbackType,
     BehaviorSignal,
     SatisfactionMetrics
 )
-from ..services.optimization_recommendation_engine import (
+from ai_karen_engine.services.optimization_recommendation_engine import (
     recommendation_engine,
     RecommendationType,
     Priority,

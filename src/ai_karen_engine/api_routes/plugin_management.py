@@ -18,13 +18,15 @@ from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from extensions.core.plugin_lifecycle_manager import (
+from ai_karen_engine.extensions.platform.core.plugin_lifecycle_manager import (
     PluginLifecycleManager,
     PluginLifecycleState,
     PluginOperation,
     PluginOperationResult,
 )
-from extensions.core.registry.plugin_registry import PluginRegistry
+from ai_karen_engine.extensions.platform.core.registry.plugin_registry import (
+    PluginRegistry,
+)
 from ai_karen_engine.auth.auth_middleware import get_current_user
 
 logger = logging.getLogger("kari.plugin_api")
@@ -36,14 +38,18 @@ router = APIRouter(prefix="/plugins", tags=["plugin-management"])
 # Dependency to get plugin manager
 async def get_plugin_manager() -> PluginLifecycleManager:
     """Get the plugin lifecycle manager instance."""
-    from extensions.core.registry.plugin_registry import get_registry
+    from ai_karen_engine.extensions.platform.core.registry.plugin_registry import (
+        get_registry,
+    )
     from ai_karen_engine.database.client import get_db_session
 
     registry = get_registry()
     db_session = await get_db_session()
 
     # Import here to avoid circular imports
-    from extensions.core.plugin_lifecycle_manager import PluginLifecycleManager
+    from ai_karen_engine.extensions.platform.core.plugin_lifecycle_manager import (
+        PluginLifecycleManager,
+    )
 
     manager = PluginLifecycleManager(
         registry=registry,
@@ -404,7 +410,9 @@ async def get_marketplace_plugins(
     try:
         # This would connect to a marketplace service
         # For now, return local available plugins
-        from extensions.core.registry.plugin_registry import get_registry
+        from ai_karen_engine.extensions.platform.core.registry.plugin_registry import (
+            get_registry,
+        )
 
         registry = get_registry()
 

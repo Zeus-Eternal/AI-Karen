@@ -16,7 +16,7 @@ from typing import Any, Dict, Optional, Callable, Union, Literal, TYPE_CHECKING,
 
 from fastapi import Depends, HTTPException, Request
 
-from ai_karen_engine.core.config_manager import AIKarenConfig, get_config
+from ai_karen_engine.config.config_manager import AIKarenConfig, get_config
 from ai_karen_engine.core.health_monitor import HealthMonitor, get_health_monitor
 from ai_karen_engine.core.service_registry import get_service_registry
 from ai_karen_engine.auth.auth_middleware import AuthenticationError
@@ -155,8 +155,8 @@ async def get_conversation_service() -> Any:
 
     async def factory():
         from ai_karen_engine.chat.factory import get_chat_service_factory
-        from services.memory.conversation_service import ConversationService
-        from services.memory.memory_service import WebUIMemoryService
+        from ai_karen_engine.memory.conversation_service import ConversationService
+        from ai_karen_engine.memory.memory_service import WebUIMemoryService
 
         factory_inst = get_chat_service_factory()
         base_manager = factory_inst.create_conversation_manager()
@@ -177,7 +177,7 @@ async def get_conversation_service() -> Any:
 async def get_plugin_service() -> Any:
     async def factory():
         from pathlib import Path
-        from services.infra.plugin_service import (
+        from ai_karen_engine.infra.plugin_service import (
             get_plugin_service as get_infra_plugin_service,
             initialize_plugin_service,
         )
@@ -203,7 +203,7 @@ async def get_plugin_service() -> Any:
 
 async def get_tool_service() -> Any:
     async def factory():
-        from services.memory.tool_service import ToolService
+        from ai_karen_engine.memory.tool_service import ToolService
 
         return ToolService()
 

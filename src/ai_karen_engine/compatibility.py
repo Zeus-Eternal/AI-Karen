@@ -94,15 +94,15 @@ class CompatibilityImportManager:
             
             # Plugin mappings organized by category
             "examples": {
-                "ai_karen_engine.plugins.hello_world": "src.services.tools.registry",
-                "ai_karen_engine.plugins.sandbox_fail": "src.services.tools.registry",
+                "ai_karen_engine.plugins.hello_world": "ai_karen_engine.plugins.router",
+                "ai_karen_engine.plugins.sandbox_fail": "ai_karen_engine.plugins.router",
             },
             "integrations": {
-                "ai_karen_engine.plugins.llm_manager": "src.services.models.llm_router",
-                "ai_karen_engine.plugins.weather_query": "src.services.infra.unified_infra_service",
+                "ai_karen_engine.plugins.llm_manager": "ai_karen_engine.services.llm_router",
+                "ai_karen_engine.plugins.weather_query": "ai_karen_engine.tools.weather_tool",
             },
             "ai": {
-                "ai_karen_engine.plugins.llm_services": "src.services.models.llm_router",
+                "ai_karen_engine.plugins.llm_services": "ai_karen_engine.services.llm_router",
             }
         }
     

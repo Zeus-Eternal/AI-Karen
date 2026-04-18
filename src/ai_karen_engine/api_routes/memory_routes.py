@@ -20,14 +20,14 @@ from ai_karen_engine.api_routes.unified_schemas import (
     FieldError,
     ValidationUtils,
 )
-from services.memory.unified_memory_service import (
+from ai_karen_engine.memory.unified_memory_service import (
     MemoryCommitRequest,
     MemoryQueryRequest,
     PIIRedactor,
 )
-from services.monitoring.metrics_service import MetricsService
-from services.monitoring.structured_logging_service import StructuredLoggingService
-from services.monitoring.correlation_service import (
+from ai_karen_engine.monitoring.metrics_service import MetricsService
+from ai_karen_engine.monitoring.structured_logging_service import StructuredLoggingService
+from ai_karen_engine.monitoring.correlation_service import (
     CorrelationService,
     create_correlation_logger,
 )
@@ -38,7 +38,7 @@ _metrics_service: Optional[MetricsService] = None
 
 # Graceful imports with fallback mechanisms
 try:
-    from services.memory.memory_service import WebUIMemoryService
+    from ai_karen_engine.memory.memory_service import WebUIMemoryService
 
     MEMORY_SERVICE_AVAILABLE = True
 except ImportError:

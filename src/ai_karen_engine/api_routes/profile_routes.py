@@ -8,7 +8,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from ai_karen_engine.core.error_handler import handle_api_exception
-from ai_karen_engine.services.profile_manager import get_profile_manager
+from ai_karen_engine.memory.profile_manager import get_profile_manager
 from ai_karen_engine.utils.dependency_checks import import_fastapi, import_pydantic
 
 APIRouter, Depends, HTTPException = import_fastapi(

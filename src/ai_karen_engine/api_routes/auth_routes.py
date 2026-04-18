@@ -148,7 +148,7 @@ class UpdateUserProfileRequest(BaseModel):
 
 # Initialize service with default configuration
 # Use model_construct to bypass Pydantic validation for required fields
-from services.auth_service import AuthService as CoreAuthService, UserRole
+from ai_karen_engine.auth_service import AuthService as CoreAuthService, UserRole
 from ai_karen_engine.database.dependencies import get_async_db_session_dependency
 from ai_karen_engine.core.auth_config import auth_config
 
@@ -650,14 +650,16 @@ async def logout(
 @router.get("/validate-session")
 async def validate_session(
     current_user=Depends(_get_authenticated_user_from_request),
+    auth_svc: CoreAuthService = Depends(get_auth_service),
 ) -> Dict[str, Any]:
     """Validate current session and return user information."""
-    # current_user is already a UserData instance from the dependency
-    user_payload = (
-        current_user.to_dict()
-        if hasattr(current_user, "to_dict")
-        else dict(current_user)
-    )
+    current_user_id = _resolve_current_user_id(current_user)
+    canonical_user = await auth_svc.get_user_by_id(current_user_id)
+    if canonical_user is not None:
+        user_payload = _serialize_user_response(canonical_user)
+    else:
+        # Fallback to middleware-provided context if canonical lookup fails.
+        user_payload = _ensure_authenticated_user_payload(current_user)
     permissions = _serialize_permissions(user_payload)
     user_payload["permissions"] = permissions
     return {
@@ -673,9 +675,16 @@ async def validate_session(
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(
     current_user=Depends(_get_authenticated_user_from_request),
+    auth_svc: CoreAuthService = Depends(get_auth_service),
 ) -> Dict[str, Any]:
     """Get current user information."""
-    response = _serialize_user_response(current_user)
+    current_user_id = _resolve_current_user_id(current_user)
+    canonical_user = await auth_svc.get_user_by_id(current_user_id)
+    response = (
+        _serialize_user_response(canonical_user)
+        if canonical_user is not None
+        else _serialize_user_response(current_user)
+    )
     response["authenticated"] = True
     response["last_active"] = datetime.now(timezone.utc).isoformat()
     return response

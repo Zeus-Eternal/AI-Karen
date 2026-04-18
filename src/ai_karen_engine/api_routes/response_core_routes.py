@@ -42,7 +42,7 @@ from ..chat.chat_orchestrator import (
     ChatResponse as LegacyChatResponse,
 )
 from ..chat.ChatOrchestrator import normalize_session_id as normalize_chat_session_id
-from services.memory.internal.auth_utils import get_current_user
+from ai_karen_engine.memory.internal.auth_utils import get_current_user
 from ..core.dependencies import bypass_user_context_func
 
 logger = logging.getLogger(__name__)

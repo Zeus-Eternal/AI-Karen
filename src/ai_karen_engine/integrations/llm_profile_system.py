@@ -780,7 +780,7 @@ class LLMProfileManager:
         
         try:
             # Also notify the existing profile manager for compatibility
-            from ai_karen_engine.services.profile_manager import get_profile_manager as get_legacy_profile_manager
+            from ai_karen_engine.memory.profile_manager import get_profile_manager as get_legacy_profile_manager
             legacy_manager = get_legacy_profile_manager()
             if hasattr(legacy_manager, 'set_active_profile'):
                 # Convert to legacy format if needed
