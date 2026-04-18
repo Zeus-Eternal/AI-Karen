@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import List
 
-from extensions.core.registry.plugin_registry import PluginRegistry, get_registry
-from extensions.core.manifest import HookPoint
+from ai_karen_engine.extensions.platform.core.registry.plugin_registry import PluginRegistry, get_registry
+from ai_karen_engine.extensions.platform.core.manifest import HookPoint
 
 
 class ExtensionRegistry(PluginRegistry):

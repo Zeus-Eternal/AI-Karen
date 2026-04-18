@@ -63,7 +63,7 @@
     },
     "ollama": {
       "last_model": "starcoder:128k",
-      "base_url": "http://host.docker.internal:11434/api",
+      "base_url": "http://host.docker.internal:11434",
       "runtime_source": "host"
     }
   }

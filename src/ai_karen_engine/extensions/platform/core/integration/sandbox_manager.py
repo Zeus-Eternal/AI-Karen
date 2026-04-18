@@ -26,7 +26,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Union
 
-from extensions.core.host.models import ExtensionManifest, ExtensionPermissions, ExtensionResources
+from ai_karen_engine.extensions.platform.core.host.models import ExtensionManifest, ExtensionPermissions, ExtensionResources
 
 
 class SandboxSecurityLevel(Enum):

@@ -23,7 +23,7 @@ from typing import Any, Dict, List, Optional, Set, Callable, Union
 from dataclasses import dataclass, field
 from uuid import uuid4
 
-from extensions.core.host.models import ExtensionManifest, ExtensionRecord, ExtensionStatus
+from ai_karen_engine.extensions.platform.core.host.models import ExtensionManifest, ExtensionRecord, ExtensionStatus
 
 
 class MessageType(Enum):

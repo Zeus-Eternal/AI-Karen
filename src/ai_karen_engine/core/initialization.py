@@ -454,7 +454,9 @@ class SystemInitializer:
     async def _discover_plugins(self) -> bool:
         """Discover and load plugin manifests into the registry."""
         try:
-            from extensions.core.manager import get_plugin_manager
+            from ai_karen_engine.extensions.platform.core.manager import (
+                get_plugin_manager,
+            )
 
             manager = get_plugin_manager()
             await manager.discover_extensions()

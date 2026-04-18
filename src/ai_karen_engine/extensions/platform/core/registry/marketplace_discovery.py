@@ -19,8 +19,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 import aiohttp
 
-from extensions.core.manifest import ExtensionManifest
-from extensions.core.registry.plugin_registry import get_registry
+from ai_karen_engine.extensions.platform.core.manifest import ExtensionManifest
+from ai_karen_engine.extensions.platform.core.registry.plugin_registry import get_registry
 
 logger = logging.getLogger("kari.marketplace_discovery")
 

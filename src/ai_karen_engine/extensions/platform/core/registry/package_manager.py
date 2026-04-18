@@ -16,8 +16,8 @@ from urllib.parse import urlparse
 import aiohttp
 from datetime import datetime
 
-from extensions.core.manifest import ExtensionManifest
-from extensions.core.registry.database_service import get_database_service
+from ai_karen_engine.extensions.platform.core.manifest import ExtensionManifest
+from ai_karen_engine.extensions.platform.core.registry.database_service import get_database_service
 
 logger = logging.getLogger("kari.plugin_package_manager")
 

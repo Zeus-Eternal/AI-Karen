@@ -4,16 +4,16 @@ from __future__ import annotations
 
 from importlib import import_module
 
-from extensions.core.host.base import (
+from ai_karen_engine.extensions.platform.core.host.base import (
     ExtensionBase,
     ExtensionContext,
     ExtensionManifest,
     HookContext,
     HookPoint,
 )
-from extensions.core.host.config import ExtensionConfigManager, ExtensionHostConfig
-from extensions.core.host.loader import ExtensionLoader
-from extensions.core.host.models import (
+from ai_karen_engine.extensions.platform.core.host.config import ExtensionConfigManager, ExtensionHostConfig
+from ai_karen_engine.extensions.platform.core.host.loader import ExtensionLoader
+from ai_karen_engine.extensions.platform.core.host.models import (
     ExtensionCapabilities,
     ExtensionPermissions,
     ExtensionRBAC,

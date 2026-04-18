@@ -6,9 +6,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from extensions.core.host.loader import ExtensionLoader
-from extensions.core.manifest import ExtensionRecord, ExtensionStatus
-from extensions.core.registry.plugin_registry import get_registry
+from ai_karen_engine.extensions.platform.core.host.loader import ExtensionLoader
+from ai_karen_engine.extensions.platform.core.manifest import ExtensionRecord, ExtensionStatus
+from ai_karen_engine.extensions.platform.core.registry.plugin_registry import get_registry
 
 
 class ExtensionManager:

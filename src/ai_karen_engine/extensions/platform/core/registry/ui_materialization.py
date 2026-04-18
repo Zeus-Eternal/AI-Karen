@@ -17,9 +17,9 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime
 import hashlib
 
-from extensions.core.manifest import ExtensionManifest
-from extensions.core.registry.plugin_registry import get_registry
-from extensions.core.registry.database_service import get_database_service
+from ai_karen_engine.extensions.platform.core.manifest import ExtensionManifest
+from ai_karen_engine.extensions.platform.core.registry.plugin_registry import get_registry
+from ai_karen_engine.extensions.platform.core.registry.database_service import get_database_service
 
 logger = logging.getLogger("kari.ui_materialization")
 

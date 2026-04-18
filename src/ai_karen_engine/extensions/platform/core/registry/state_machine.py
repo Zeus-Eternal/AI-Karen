@@ -9,8 +9,8 @@ from enum import Enum
 from dataclasses import dataclass
 from datetime import datetime
 
-from extensions.core.manifest import ExtensionStatus
-from extensions.core.registry.database_service import get_database_service
+from ai_karen_engine.extensions.platform.core.manifest import ExtensionStatus
+from ai_karen_engine.extensions.platform.core.registry.database_service import get_database_service
 
 logger = logging.getLogger("kari.extension_state_machine")
 

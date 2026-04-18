@@ -11,8 +11,8 @@ import smtplib
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
-from email.mime.text import MimeText
-from email.mime.multipart import MimeMultipart
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Union
 
@@ -134,13 +134,13 @@ class EmailNotificationChannel(NotificationChannelBase):
         
         try:
             # Create email message
-            email_msg = MimeMultipart()
+            email_msg = MIMEMultipart()
             email_msg['From'] = self.config["sender"]
             email_msg['To'] = message.recipient
             email_msg['Subject'] = message.subject
             
             # Add body
-            body = MimeText(message.message, 'plain')
+            body = MIMEText(message.message, 'plain')
             email_msg.attach(body)
             
             # Send email

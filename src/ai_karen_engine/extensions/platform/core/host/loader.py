@@ -12,8 +12,8 @@ from typing import Dict, List, Optional
 import json
 import logging
 
-from extensions.core.host.base import ExtensionBase, ExtensionContext
-from extensions.core.manifest import ExtensionManifest
+from ai_karen_engine.extensions.platform.core.host.base import ExtensionBase, ExtensionContext
+from ai_karen_engine.extensions.platform.core.manifest import ExtensionManifest
 from .config import ExtensionConfigManager
 from .dependency_resolver import DependencyResolver
 from .errors import (

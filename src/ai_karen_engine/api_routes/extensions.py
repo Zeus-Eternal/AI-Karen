@@ -31,7 +31,7 @@ except ImportError:  # pragma: no cover - fallback only
 def get_extension_manager():
     """Get extension manager, returns None if not available."""
     try:
-        from extensions.core.manager import (
+        from ai_karen_engine.extensions.platform.core.manager import (
             get_extension_core_manager as get_extension_manager,
         )
 
@@ -221,7 +221,11 @@ async def list_extensions():
             gui_manifest_path = gui_dir / "manifest.json"
             has_gui = gui_manifest_path.exists()
 
-            status = "active" if plugin.status == PluginStatus.REGISTERED else plugin.status.value
+            status = (
+                "active"
+                if plugin.status == PluginStatus.REGISTERED
+                else plugin.status.value
+            )
             if plugin.status == PluginStatus.DISABLED:
                 status = "disabled"
 
@@ -244,7 +248,9 @@ async def list_extensions():
                     "description": manifest.description,
                     "version": manifest.version,
                     "status": status,
-                    "loaded_at": plugin.last_updated.isoformat() if plugin.last_updated else None,
+                    "loaded_at": plugin.last_updated.isoformat()
+                    if plugin.last_updated
+                    else None,
                     "category": manifest.category,
                     "capabilities": {"provides_ui": has_gui},
                     "has_component": has_gui,

@@ -20,6 +20,11 @@ import { toast } from "@/hooks/use-toast";
 import { getStreamingStatus } from './const/getStreamingStatus';
 import { getDegradedResponseMessage } from './const/getDegradedResponseMessage';
 import { getAssistFailureMetadata } from './const/getAssistFailureMetadata';
+import {
+  DEFAULT_PROCESSING_MESSAGE,
+  normalizeProcessingStatusKey,
+  resolveProcessingStatusMessage,
+} from './const/constants';
 
 // Import interface components
 import { StatusIndicators, MessagesArea, ChatInput } from './interface';
@@ -136,6 +141,31 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
     }
   }, []);
 
+  const getRateLimitDelayMs = useCallback((err: unknown, fallbackMs: number = 1200): number => {
+    if (!(err instanceof ApiError)) return fallbackMs;
+
+    const details = (err.details && typeof err.details === 'object')
+      ? (err.details as Record<string, unknown>)
+      : undefined;
+
+    const numericRetry =
+      Number(details?.retry_after_seconds) ||
+      Number(details?.retry_after) ||
+      Number(details?.retryAfterSeconds) ||
+      Number(details?.retryAfter);
+
+    if (Number.isFinite(numericRetry) && numericRetry > 0) {
+      return Math.min(15000, Math.max(250, Math.floor(numericRetry * 1000)));
+    }
+
+    const retryMatch = /try again in\s+(\d+)\s+seconds?/i.exec(err.message || '');
+    if (retryMatch) {
+      return Math.min(15000, Math.max(250, parseInt(retryMatch[1], 10) * 1000));
+    }
+
+    return fallbackMs;
+  }, []);
+
   // Generate session title from first user message
   const generateSessionTitle = (messages: ChatMessage[]): string => {
     const firstUserMessage = messages.find(msg => msg.role === 'user');
@@ -221,7 +251,34 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
     setError(null);
     
     try {
-      const response = await apiClient.get<ConversationApiResponse>('/api/conversations');
+      const MAX_ATTEMPTS = 3;
+      let response: ConversationApiResponse | null = null;
+      let lastError: unknown = null;
+
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+        try {
+          response = await apiClient.get<ConversationApiResponse>('/api/conversations');
+          break;
+        } catch (err) {
+          lastError = err;
+          const isRetryableRateLimit =
+            err instanceof ApiError &&
+            err.status === 429 &&
+            attempt < MAX_ATTEMPTS;
+
+          if (!isRetryableRateLimit) {
+            throw err;
+          }
+
+          const delayMs = getRateLimitDelayMs(err, 1200);
+          await new Promise((resolve) => window.setTimeout(resolve, delayMs));
+        }
+      }
+
+      if (!response) {
+        throw (lastError ?? new Error('Failed to fetch sessions'));
+      }
+
       const sessionsData: Session[] = response.conversations?.map((session) => ({
         id: session.id,
         title: session.title || 'Untitled Chat',
@@ -237,11 +294,17 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
       setSessions(sessionsData);
     } catch (err) {
       console.error('Failed to load sessions:', err);
-      setError('Failed to load sessions list. Some features may be limited.');
+      if (err instanceof ApiError && err.status === 429) {
+        const retryMs = getRateLimitDelayMs(err, 2000);
+        const retrySeconds = Math.max(1, Math.ceil(retryMs / 1000));
+        setError(`Rate limited while refreshing sessions. Retrying shortly (about ${retrySeconds}s).`);
+      } else {
+        setError('Failed to load sessions list. Some features may be limited.');
+      }
     } finally {
       setIsLoadingSessions(false);
     }
-  }, []);
+  }, [getRateLimitDelayMs]);
 
   // Sync isActive state whenever currentSession ID changes
   useEffect(() => {
@@ -352,7 +415,7 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
     try {
       const deletedIds = new Set<string>();
       const failedIds: string[] = [];
-      const retryableStatuses = new Set([502, 504]);
+      const retryableStatuses = new Set([429, 502, 503, 504]);
 
       for (const sessionId of sessionIds) {
         let attempts = 0;
@@ -375,7 +438,11 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
               attempts < 2;
 
             if (shouldRetry) {
-              await new Promise((resolve) => window.setTimeout(resolve, 350));
+              const delayMs =
+                err instanceof ApiError && err.status === 429
+                  ? getRateLimitDelayMs(err, 900)
+                  : 350;
+              await new Promise((resolve) => window.setTimeout(resolve, delayMs));
               continue;
             }
 
@@ -408,7 +475,7 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
       setError('Failed to delete some sessions. Please try again.');
       return false;
     }
-  }, [currentSession, createNewSession, refreshSessions]);
+  }, [currentSession, createNewSession, getRateLimitDelayMs, refreshSessions]);
 
   // Update a session title
   const updateSessionTitle = useCallback(async (sessionId: string, newTitle: string) => {
@@ -501,10 +568,6 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
     </SessionContext.Provider>
   );
 }
-
-  const DEFAULT_PROCESSING_MESSAGE = 'Karen is working on your request...';
-  const STREAMING_ERROR_MESSAGE = 'Connection issue - please try again';
-  const STREAM_TIMEOUT_MESSAGE = 'Request timed out - please try again';
 
 interface SpeechRecognitionConstructor {
   new(): SpeechRecognition;
@@ -689,6 +752,7 @@ export default function ChatInterface() {
   const [streamedContent, setStreamedContent] = useState('');
   const [isEditingDuringProcessing, setIsEditingDuringProcessing] = useState(false);
   const activeRequestControllerRef = useRef<AbortController | null>(null);
+  const processingStatusVariantRef = useRef<Record<string, number>>({});
   const [isBackendOffline, setIsBackendOffline] = useState(false);
   const [streamingMetrics, setStreamingMetrics] = useState<{
     chunksReceived: number;
@@ -767,11 +831,6 @@ export default function ChatInterface() {
     metadata?: Record<string, unknown>;
     correlation_id?: string;
   };
-
-  // Error and Processing Message Constants
-  const DEFAULT_PROCESSING_MESSAGE = 'Karen is working on your request...';
-  const STREAMING_ERROR_MESSAGE = 'Connection issue - please try again';
-  const STREAM_TIMEOUT_MESSAGE = 'Request timed out - please try again';
 
   // Helper variables extracted for reuse
   const displayedInputValue = isLoading && !isEditingDuringProcessing
@@ -995,7 +1054,8 @@ export default function ChatInterface() {
     submitInFlightRef.current = true;
     setIsLoading(true);
     setIsEditingDuringProcessing(false);
-    setProcessingStatus(DEFAULT_PROCESSING_MESSAGE);
+    processingStatusVariantRef.current = {};
+    setProcessingStatus(resolveProcessingStatusMessage('initializing', DEFAULT_PROCESSING_MESSAGE, 0));
     setStreamedContent('');
 
     const preferredProvider = selectedProvider;
@@ -1117,8 +1177,16 @@ export default function ChatInterface() {
         '/api/copilot/assist/stream',
         streamRequestPayload,
         {
-          onStatus: (message) => {
-            setProcessingStatus(message || DEFAULT_PROCESSING_MESSAGE);
+          onStatus: (message, metadata) => {
+            const statusKey =
+              normalizeProcessingStatusKey(metadata?.status) ||
+              normalizeProcessingStatusKey(message) ||
+              'processing';
+            const variantIndex = processingStatusVariantRef.current[statusKey] || 0;
+            processingStatusVariantRef.current[statusKey] = variantIndex + 1;
+            setProcessingStatus(
+              resolveProcessingStatusMessage(statusKey, message, variantIndex),
+            );
           },
           onContent: (token) => {
             collectedContent += token;
@@ -1189,15 +1257,24 @@ export default function ChatInterface() {
         }
 
         // Retry on specific errors
-        const shouldRetry = attempt < MAX_RETRIES && (
-          error instanceof ApiError && (
+        const isApiRetryable =
+          error instanceof ApiError &&
+          (
             error.status >= 500 ||
             error.status === 502 ||
+            error.status === 503 ||
             error.status === 504 ||
             error.message.includes('timeout') ||
             error.message.includes('connection')
-          )
-        );
+          );
+        const isGenericTimeout =
+          error instanceof Error &&
+          !(error instanceof ApiError) &&
+          (
+            error.message.toLowerCase().includes('timeout') ||
+            error.message.toLowerCase().includes('stalled')
+          );
+        const shouldRetry = attempt < MAX_RETRIES && (isApiRetryable || isGenericTimeout);
 
         if (shouldRetry) {
           retryCount++;

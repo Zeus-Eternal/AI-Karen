@@ -59,7 +59,9 @@ def register_startup_tasks(app: FastAPI) -> None:
             return
 
         try:
-            from .extension_monitoring_startup import initialize_extension_monitoring
+            from ai_karen_engine.monitoring.extensions.extension_monitoring_startup import (
+                initialize_extension_monitoring,
+            )
 
             await initialize_extension_monitoring()
             logger.info("Extension monitoring system initialized")
@@ -384,7 +386,9 @@ def register_shutdown_tasks(app: FastAPI) -> None:
     async def _shutdown_extension_monitoring() -> None:
         """Shutdown extension monitoring and alerting system"""
         try:
-            from .extension_monitoring_startup import shutdown_extension_monitoring
+            from ai_karen_engine.monitoring.extensions.extension_monitoring_startup import (
+                shutdown_extension_monitoring,
+            )
 
             await shutdown_extension_monitoring()
             logger.info("Extension monitoring system shutdown completed")

@@ -16,10 +16,10 @@ from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 from enum import Enum
 
-from extensions.core.registry.plugin_registry import get_registry
-from extensions.core.host.lifecycle_manager import get_lifecycle_manager
-from extensions.core.registry.state_machine import get_state_machine, ExtensionState
-from extensions.core.registry.database_service import get_database_service
+from ai_karen_engine.extensions.platform.core.registry.plugin_registry import get_registry
+from ai_karen_engine.extensions.platform.core.host.lifecycle_manager import get_lifecycle_manager
+from ai_karen_engine.extensions.platform.core.registry.state_machine import get_state_machine, ExtensionState
+from ai_karen_engine.extensions.platform.core.registry.database_service import get_database_service
 
 logger = logging.getLogger("kari.health_dashboard")
 

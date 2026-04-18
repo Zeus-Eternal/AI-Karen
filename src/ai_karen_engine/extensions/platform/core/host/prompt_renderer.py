@@ -23,7 +23,7 @@ from jinja2 import (
     meta,
 )
 
-from extensions.core.manifest import PromptTemplateConfig, ExtensionManifest
+from ai_karen_engine.extensions.platform.core.manifest import PromptTemplateConfig, ExtensionManifest
 
 
 logger = logging.getLogger(__name__)

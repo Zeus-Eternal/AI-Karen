@@ -123,6 +123,198 @@ def _sanitize_user_visible_text(response_text: str) -> str:
     return text
 
 
+def _is_plain_heading_line(line: str) -> bool:
+    """Heuristic for plain (non-markdown) section headings."""
+    stripped = (line or "").strip()
+    if not stripped:
+        return False
+    if stripped.startswith(("#", "-", "*", ">", "`")):
+        return False
+    if len(stripped) > 80:
+        return False
+    if stripped.endswith((".", "!", "?", ":", ";", ",")):
+        return False
+    if re.search(r"\d{2,}", stripped):
+        return False
+    words = [w for w in stripped.split() if w]
+    known_single_word_headings = {
+        "introduction",
+        "conclusion",
+        "summary",
+        "overview",
+        "appendix",
+    }
+    if len(words) == 1 and stripped.lower() not in known_single_word_headings:
+        return False
+    if len(words) > 8:
+        return False
+    alpha_words = [w for w in words if re.search(r"[A-Za-z]", w)]
+    if not alpha_words:
+        return False
+    title_like = sum(1 for w in alpha_words if w[:1].isupper())
+    return title_like >= max(1, int(len(alpha_words) * 0.6))
+
+
+def _canonical_heading(line: str) -> str:
+    stripped = (line or "").strip()
+    if stripped.startswith("#"):
+        stripped = re.sub(r"^#+\s*", "", stripped)
+    return re.sub(r"\s+", " ", stripped).strip().lower()
+
+
+def _collapse_repeated_sentences(text: str) -> str:
+    """Collapse obvious consecutive repeated sentences in long-form text."""
+    raw = str(text or "").strip()
+    if not raw:
+        return raw
+
+    # Keep newline structure roughly stable by processing paragraph blocks.
+    blocks = [blk for blk in re.split(r"\n{2,}", raw) if blk.strip()]
+    collapsed_blocks: List[str] = []
+
+    for block in blocks:
+        sentence_parts = re.split(r"(?<=[.!?])\s+", block.strip())
+        normalized_prev = ""
+        kept: List[str] = []
+        repeat_run = 0
+
+        for sentence in sentence_parts:
+            stripped = sentence.strip()
+            if not stripped:
+                continue
+            normalized = re.sub(r"\s+", " ", stripped).lower()
+            if normalized == normalized_prev:
+                repeat_run += 1
+                # Keep at most one copy of consecutive duplicates.
+                if repeat_run >= 1:
+                    continue
+            else:
+                repeat_run = 0
+                normalized_prev = normalized
+            kept.append(stripped)
+
+        collapsed_blocks.append(" ".join(kept).strip())
+
+    return "\n\n".join(blk for blk in collapsed_blocks if blk).strip()
+
+
+def _dedupe_and_markdown_sections(text: str) -> str:
+    """Remove repeated section blocks and normalize plain headings into markdown."""
+    lines = str(text or "").replace("\r\n", "\n").split("\n")
+    if not lines:
+        return str(text or "")
+
+    has_markdown_heading = any(re.match(r"^\s*#{1,6}\s+\S", ln) for ln in lines)
+
+    sections: List[Dict[str, Any]] = []
+    current: Dict[str, Any] = {"heading": None, "is_heading": False, "body": []}
+
+    def push_current() -> None:
+        if current["heading"] is None and not current["body"]:
+            return
+        sections.append(
+            {
+                "heading": current["heading"],
+                "is_heading": current["is_heading"],
+                "body": list(current["body"]),
+            }
+        )
+
+    for line in lines:
+        is_md_heading = bool(re.match(r"^\s*#{1,6}\s+\S", line))
+        is_plain_heading = _is_plain_heading_line(line)
+        if is_md_heading or is_plain_heading:
+            push_current()
+            current = {
+                "heading": line.strip(),
+                "is_heading": True,
+                "body": [],
+            }
+            continue
+        current["body"].append(line)
+    push_current()
+
+    # Dedupe repeated sections with same heading + equivalent body
+    seen_sections: set[tuple[str, str]] = set()
+    deduped: List[Dict[str, Any]] = []
+    for idx, sec in enumerate(sections):
+        heading = sec.get("heading")
+        body_lines = sec.get("body", [])
+        body_text = _collapse_repeated_sentences("\n".join(body_lines).strip())
+        if heading:
+            key = (_canonical_heading(heading), re.sub(r"\s+", " ", body_text).strip())
+            if key in seen_sections:
+                continue
+            seen_sections.add(key)
+        deduped.append(sec)
+
+    # Render with markdown headings if plain headings were used
+    output: List[str] = []
+    heading_index = 0
+    for sec in deduped:
+        heading = sec.get("heading")
+        body_lines = sec.get("body", [])
+        if heading:
+            cleaned_heading = re.sub(r"^#+\s*", "", heading).strip()
+            if has_markdown_heading:
+                output.append(f"## {cleaned_heading}" if not heading.lstrip().startswith("#") else heading)
+            else:
+                output.append(f"# {cleaned_heading}" if heading_index == 0 else f"## {cleaned_heading}")
+            heading_index += 1
+        if body_lines:
+            body_text = _collapse_repeated_sentences("\n".join(body_lines).strip())
+            if body_text:
+                output.append(body_text)
+
+    rendered = "\n\n".join(chunk.strip() for chunk in output if str(chunk).strip())
+    rendered = re.sub(r"\n{3,}", "\n\n", rendered).strip()
+    return rendered or str(text or "").strip()
+
+
+def _should_enforce_article_format(user_message: str, response_text: str) -> bool:
+    user_lower = str(user_message or "").lower()
+    response = str(response_text or "")
+    article_triggers = (
+        "full article",
+        "write an article",
+        "article on",
+        "long-form",
+        "blog post",
+    )
+    if any(trigger in user_lower for trigger in article_triggers):
+        return True
+
+    # If response already appears section-heavy, apply cleanup.
+    plain_heading_count = sum(
+        1 for ln in response.splitlines() if _is_plain_heading_line(ln)
+    )
+    markdown_heading_count = len(re.findall(r"(?m)^\s*#{1,6}\s+\S", response))
+    return (plain_heading_count + markdown_heading_count) >= 4 and len(response) >= 500
+
+
+def _finalize_user_visible_text(response_text: str, user_message: str) -> str:
+    """Final pass for user-visible text quality and article structure cleanup."""
+    sanitized = _sanitize_user_visible_text(response_text)
+    if not sanitized:
+        return ""
+    if _should_enforce_article_format(user_message, sanitized):
+        return _dedupe_and_markdown_sections(sanitized)
+    return sanitized
+
+
+def _finalize_runtime_payload_text(
+    payload: Dict[str, Any], user_message: str
+) -> Dict[str, Any]:
+    """Apply final user-visible cleanup to runtime payload text fields."""
+    updated = dict(payload or {})
+    candidate_keys = ("answer", "message", "response", "final", "content")
+    for key in candidate_keys:
+        value = updated.get(key)
+        if isinstance(value, str) and value.strip():
+            updated[key] = _finalize_user_visible_text(value, user_message)
+    return updated
+
+
 def _extract_stream_text(payload: Dict[str, Any]) -> str:
     """Extract user-visible response text from a runtime payload."""
     for key in ("answer", "message", "response", "final", "content"):
@@ -132,25 +324,47 @@ def _extract_stream_text(payload: Dict[str, Any]) -> str:
     return ""
 
 
+def _normalize_processing_status(status: Any, default: str = "processing") -> str:
+    """Normalize processing status values to stable snake_case keys."""
+    if status is None:
+        return default
+
+    raw_status = getattr(status, "value", status)
+    status_text = str(raw_status or "").strip().lower()
+    if not status_text:
+        return default
+
+    return status_text.replace("-", "_").replace(" ", "_")
+
+
 def _build_degraded_sse_events(
     payload: Dict[str, Any], correlation_id: str
 ) -> List[Dict[str, Any]]:
     """Build client-compatible SSE events for degraded/fallback payloads."""
     text = _extract_stream_text(payload)
-    status = str(payload.get("mode") or payload.get("status") or "degraded")
+    status = _normalize_processing_status(
+        payload.get("mode") or payload.get("status"),
+        "degraded",
+    )
+    status_message = _PROCESSING_STATUS_MESSAGES.get(
+        status, f"Karen is {status.replace('_', ' ')}..."
+    )
     metadata = {
         **payload,
         "status": status,
+        "status_message": status_message,
         "degraded_mode": True,
     }
     events: List[Dict[str, Any]] = [
         {
             "type": "status",
-            "content": _PROCESSING_STATUS_MESSAGES.get(
-                status, "Karen is running in degraded mode..."
-            ),
+            "content": status_message,
             "correlation_id": correlation_id,
-            "metadata": {"status": status, "degraded_mode": True},
+            "metadata": {
+                "status": status,
+                "status_message": status_message,
+                "degraded_mode": True,
+            },
         }
     ]
     if text:
@@ -634,6 +848,7 @@ async def copilot_assist(
                 )
             else:
                 payload = serialize_runtime_response(response) or {}
+                payload = _finalize_runtime_payload_text(payload, request.message)
                 payload["correlation_id"] = correlation_id
                 status_code = runtime_response_http_status(response) or 503
                 return JSONResponse(
@@ -714,8 +929,10 @@ async def copilot_assist(
                 )
             raise
         if isinstance(orchestrator_response, ChatResponse):
-            response_text = _sanitize_user_visible_text(
+            response_text = _finalize_user_visible_text(
                 str(orchestrator_response.response or "").strip()
+                ,
+                request.message,
             )
             # Check if response contains placeholder text that should trigger NLP fallback
             if _is_placeholder_response(response_text):
@@ -786,7 +1003,10 @@ async def copilot_assist(
                         )
 
                         return _assist_response_json(
-                            answer=nlp_result["content"],
+                            answer=_finalize_user_visible_text(
+                                str(nlp_result["content"] or ""),
+                                request.message,
+                            ),
                             structured_content={},
                             actions=[],
                             metadata={
@@ -866,7 +1086,10 @@ async def copilot_assist(
                         )
 
                         return _assist_response_json(
-                            answer=nlp_result["content"],
+                            answer=_finalize_user_visible_text(
+                                str(nlp_result["content"] or ""),
+                                request.message,
+                            ),
                             structured_content={},
                             actions=[],
                             metadata={
@@ -1213,7 +1436,13 @@ async def copilot_assist_stream(
                     "Karen is initializing the request pipeline...",
                 ),
                 "correlation_id": correlation_id,
-                "metadata": {"status": "initializing"},
+                "metadata": {
+                    "status": "initializing",
+                    "status_message": _PROCESSING_STATUS_MESSAGES.get(
+                        "initializing",
+                        "Karen is initializing the request pipeline...",
+                    ),
+                },
             }
             yield f"data: {json.dumps(initial_payload)}\n\n"
 
@@ -1222,10 +1451,13 @@ async def copilot_assist_stream(
             collected_content = ""
             async for chunk in chunk_stream:
                 if chunk.type == "metadata":
-                    status = (chunk.metadata or {}).get("status", "processing")
+                    status = _normalize_processing_status(
+                        (chunk.metadata or {}).get("status"),
+                        "processing",
+                    )
                     status_message = _PROCESSING_STATUS_MESSAGES.get(
                         status,
-                        "Karen is working on your request...",
+                        f"Karen is {status.replace('_', ' ')}...",
                     )
 
                     payload = {
@@ -1233,8 +1465,9 @@ async def copilot_assist_stream(
                         "content": status_message,
                         "correlation_id": chunk.correlation_id,
                         "metadata": {
-                            "status": status,
                             **(chunk.metadata or {}),
+                            "status": status,
+                            "status_message": status_message,
                         },
                     }
                     yield f"data: {json.dumps(payload)}\n\n"
@@ -1291,7 +1524,7 @@ async def copilot_assist_stream(
 
                     if _is_placeholder_response(collected_content):
                         shim = generate_degraded_mode_response(request.message)
-                        response_text = _sanitize_user_visible_text(
+                        response_text = _finalize_user_visible_text(
                             str(
                             (
                                 shim.get("final")
@@ -1300,7 +1533,8 @@ async def copilot_assist_stream(
                                 or shim.get("answer")
                                 or ""
                             )
-                        ).strip()
+                        ).strip(),
+                            request.message,
                         )
                         if not response_text:
                             response_text = (
@@ -1345,16 +1579,21 @@ async def copilot_assist_stream(
                         yield "data: [DONE]\n\n"
                         return
 
-                    final_status = completion_metadata.get("status", "completed")
-                    final_message = _PROCESSING_STATUS_MESSAGES.get(
-                        final_status, "Complete"
+                    final_status = _normalize_processing_status(
+                        completion_metadata.get("status", "completed"),
+                        "completed",
                     )
-                    final_content = _sanitize_user_visible_text(
+                    final_message = _PROCESSING_STATUS_MESSAGES.get(
+                        final_status, f"Karen is {final_status.replace('_', ' ')}..."
+                    )
+                    final_content = _finalize_user_visible_text(
                         str(
                         chunk.content
                         or completion_metadata.get("formatted_content")
+                        or collected_content
                         or ""
-                    )
+                    ),
+                        request.message,
                     )
                     if not final_content and _is_placeholder_response(collected_content):
                         final_content = (
@@ -1368,6 +1607,7 @@ async def copilot_assist_stream(
                         "correlation_id": chunk.correlation_id,
                         "metadata": {
                             **completion_metadata,
+                            "status": final_status,
                             "status_message": final_message,
                         },
                     }

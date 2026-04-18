@@ -12,14 +12,14 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 
-from extensions.core.host.prompt_renderer import (
+from ai_karen_engine.extensions.platform.core.host.prompt_renderer import (
     get_prompt_renderer,
     PromptTemplateError,
     PromptRenderError,
     PromptVariableError,
 )
-from extensions.core.host.loader import ExtensionLoader
-from extensions.core.manifest import ExtensionManifest
+from ai_karen_engine.extensions.platform.core.host.loader import ExtensionLoader
+from ai_karen_engine.extensions.platform.core.manifest import ExtensionManifest
 
 
 router = APIRouter(prefix="/api/plugins", tags=["prompts"])

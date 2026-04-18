@@ -496,7 +496,7 @@ class ApiClient {
     // Streaming configuration
     // Local runtimes (ollama/llama.cpp) can take a while to emit first tokens.
     const STREAMING_TIMEOUT = 300000; // 5 minutes total
-    const FIRST_CONTENT_TIMEOUT = 240000; // 4 minutes for model warmup/status-only phases
+    const FIRST_CONTENT_TIMEOUT = 360000; // 6 minutes for model warmup/status-only phases
     const CHUNK_TIMEOUT = 120000; // 120 seconds between content chunks once content starts
     let timeoutId: NodeJS.Timeout;
     let heartbeatId: NodeJS.Timeout;
@@ -505,6 +505,8 @@ class ApiClient {
     let collectedContent = '';
     let chunksReceived = 0;
     let contentChunksReceived = 0;
+    let statusEventsReceived = 0;
+    let lastStatusEventTime = Date.now();
     let totalBytes = 0;
     let streamAbortReason: string | null = null;
     const streamController = new AbortController();
@@ -567,12 +569,22 @@ class ApiClient {
       heartbeatId = setInterval(() => {
         const now = Date.now();
 
-        // Warmup guard: allow status-only stream startup for local models,
-        // but fail if we never receive any content for too long.
-        if (contentChunksReceived === 0 && now - startTime > FIRST_CONTENT_TIMEOUT) {
-          cleanup();
-          abortStreamWithReason('Stream warmup timeout - no content received yet');
-          return;
+        // Warmup guard:
+        // 1) If there are no status or content events for too long, abort.
+        // 2) If status events are arriving, allow longer warmup and only abort on silence.
+        if (contentChunksReceived === 0) {
+          const warmupExceeded = now - startTime > FIRST_CONTENT_TIMEOUT;
+          if (warmupExceeded && statusEventsReceived === 0) {
+            cleanup();
+            abortStreamWithReason('Stream warmup timeout - no stream progress received');
+            return;
+          }
+
+          if (statusEventsReceived > 0 && now - lastStatusEventTime > CHUNK_TIMEOUT) {
+            cleanup();
+            abortStreamWithReason('Stream stalled during warmup - no status updates received');
+            return;
+          }
         }
 
         // Stall guard: once content starts, enforce no-content-chunk timeout.
@@ -683,6 +695,8 @@ class ApiClient {
 
           switch (parsed.type) {
             case 'status':
+              statusEventsReceived++;
+              lastStatusEventTime = Date.now();
               callbacks?.onStatus?.(parsed.content, parsed.metadata);
               break;
             case 'content':

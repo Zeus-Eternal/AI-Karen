@@ -647,8 +647,12 @@ async def rate_plugin_endpoint(
 ) -> Dict[str, Any]:
     """Rate a plugin."""
     # Initialize plugin store
-    from src.extensions.core.registry.marketplace_discovery import MarketplaceDiscovery
-    from src.extensions.core.host.lifecycle_manager import LifecycleManager
+    from ai_karen_engine.extensions.platform.core.registry.marketplace_discovery import (
+        MarketplaceDiscovery,
+    )
+    from ai_karen_engine.extensions.platform.core.host.lifecycle_manager import (
+        LifecycleManager,
+    )
 
     marketplace = MarketplaceDiscovery(None, None)
     lifecycle = LifecycleManager(None, None)
@@ -664,8 +668,12 @@ async def get_statistics_endpoint(
 ) -> PluginStoreStats:
     """Get store statistics."""
     # Initialize plugin store
-    from src.extensions.core.registry.marketplace_discovery import MarketplaceDiscovery
-    from src.extensions.core.host.lifecycle_manager import LifecycleManager
+    from ai_karen_engine.extensions.platform.core.registry.marketplace_discovery import (
+        MarketplaceDiscovery,
+    )
+    from ai_karen_engine.extensions.platform.core.host.lifecycle_manager import (
+        LifecycleManager,
+    )
 
     marketplace = MarketplaceDiscovery(None, None)
     lifecycle = LifecycleManager(None, None)
@@ -681,8 +689,12 @@ async def get_categories_endpoint(
 ) -> List[Dict[str, Any]]:
     """Get plugin categories."""
     # Initialize plugin store
-    from src.extensions.core.registry.marketplace_discovery import MarketplaceDiscovery
-    from src.extensions.core.host.lifecycle_manager import LifecycleManager
+    from ai_karen_engine.extensions.platform.core.registry.marketplace_discovery import (
+        MarketplaceDiscovery,
+    )
+    from ai_karen_engine.extensions.platform.core.host.lifecycle_manager import (
+        LifecycleManager,
+    )
 
     marketplace = MarketplaceDiscovery(None, None)
     lifecycle = LifecycleManager(None, None)
@@ -698,8 +710,12 @@ async def get_trending_endpoint(
 ) -> List[Dict[str, Any]]:
     """Get trending plugins."""
     # Initialize plugin store
-    from src.extensions.core.registry.marketplace_discovery import MarketplaceDiscovery
-    from src.extensions.core.host.lifecycle_manager import LifecycleManager
+    from ai_karen_engine.extensions.platform.core.registry.marketplace_discovery import (
+        MarketplaceDiscovery,
+    )
+    from ai_karen_engine.extensions.platform.core.host.lifecycle_manager import (
+        LifecycleManager,
+    )
 
     marketplace = MarketplaceDiscovery(None, None)
     lifecycle = LifecycleManager(None, None)
@@ -715,8 +731,12 @@ async def get_updates_endpoint(
 ) -> List[Dict[str, Any]]:
     """Get available updates for installed plugins."""
     # Initialize plugin store
-    from src.extensions.core.registry.marketplace_discovery import MarketplaceDiscovery
-    from src.extensions.core.host.lifecycle_manager import LifecycleManager
+    from ai_karen_engine.extensions.platform.core.registry.marketplace_discovery import (
+        MarketplaceDiscovery,
+    )
+    from ai_karen_engine.extensions.platform.core.host.lifecycle_manager import (
+        LifecycleManager,
+    )
 
     marketplace = MarketplaceDiscovery(None, None)
     lifecycle = LifecycleManager(None, None)

@@ -19,7 +19,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Callable, Union
 
-from extensions.core.host import (
+from ai_karen_engine.extensions.platform.core.host import (
     ExtensionManager, 
     ExtensionLoader, 
     ExtensionRegistry, 
@@ -33,8 +33,8 @@ from extensions.core.host import (
     ExtensionHostConfig,
     ExtensionConfigManager
 )
-from extensions.core.host.dependency_resolver import DependencyResolver
-from extensions.core.host.resource_monitor import ResourceMonitor, ExtensionHealthChecker
+from ai_karen_engine.extensions.platform.core.host.dependency_resolver import DependencyResolver
+from ai_karen_engine.extensions.platform.core.host.resource_monitor import ResourceMonitor, ExtensionHealthChecker
 from ai_karen_engine.hooks.hook_types import HookTypes
 from ai_karen_engine.database.client import get_db_session_context
 from ai_karen_engine.database.models import Extension, ExtensionUsage, ExtensionHealth, ExtensionDependency

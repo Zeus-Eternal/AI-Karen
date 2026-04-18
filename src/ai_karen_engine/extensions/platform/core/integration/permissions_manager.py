@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Union
 from dataclasses import dataclass, field
 
-from extensions.core.host.models import ExtensionManifest, ExtensionPermissions, ExtensionRBAC
+from ai_karen_engine.extensions.platform.core.host.models import ExtensionManifest, ExtensionPermissions, ExtensionRBAC
 
 
 class PermissionType(Enum):

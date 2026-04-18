@@ -5,11 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, List
 
-from extensions.core.host.manager import ExtensionManager
-from extensions.core.host.router import get_plugin_router
-from extensions.core.integration.manager import get_plugin_manager
-from extensions.core.integration.orchestrator import get_plugin_orchestrator
-from extensions.core.registry.plugin_registry import get_registry
+from ai_karen_engine.extensions.platform.core.host.manager import ExtensionManager
+from ai_karen_engine.extensions.platform.core.host.router import get_plugin_router
+from ai_karen_engine.extensions.platform.core.integration.manager import get_plugin_manager
+from ai_karen_engine.extensions.platform.core.integration.orchestrator import get_plugin_orchestrator
+from ai_karen_engine.extensions.platform.core.registry.plugin_registry import get_registry
 
 
 @dataclass

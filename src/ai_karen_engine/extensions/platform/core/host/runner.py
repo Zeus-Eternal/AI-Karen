@@ -11,8 +11,8 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
-from extensions.core.host.base import ExtensionBase
-from extensions.core.manifest import HookPoint, HookContext
+from ai_karen_engine.extensions.platform.core.host.base import ExtensionBase
+from ai_karen_engine.extensions.platform.core.manifest import HookPoint, HookContext
 from .errors import (
     ExtensionExecutionError,
     ExtensionTimeoutError,

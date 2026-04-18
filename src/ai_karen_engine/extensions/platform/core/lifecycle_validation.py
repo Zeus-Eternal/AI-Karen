@@ -16,7 +16,7 @@ from enum import Enum
 from datetime import datetime
 import asyncio
 
-from extensions.core.authority_chain import (
+from ai_karen_engine.extensions.platform.core.authority_chain import (
     AuthorityChainService,
     AuthorityLevel,
     LifecycleStage,

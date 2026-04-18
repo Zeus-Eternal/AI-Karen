@@ -69,6 +69,15 @@ from .extensions import (
     Alert,
 )
 
+from .startup_integration import (
+    platform_monitoring_lifespan,
+    setup_platform_monitoring_app,
+    create_platform_monitoring_app,
+    get_platform_monitoring_status,
+    monitor_platform_endpoint,
+    monitor_platform_operation,
+)
+
 __all__ = [
     # Metrics
     "get_model_orchestrator_metrics",
@@ -121,4 +130,11 @@ __all__ = [
     "MetricType",
     "AlertSeverity",
     "Alert",
+    # Platform Monitoring Startup
+    "platform_monitoring_lifespan",
+    "setup_platform_monitoring_app",
+    "create_platform_monitoring_app",
+    "get_platform_monitoring_status",
+    "monitor_platform_endpoint",
+    "monitor_platform_operation",
 ]

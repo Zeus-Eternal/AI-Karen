@@ -6,7 +6,9 @@ import logging
 from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 
-from extensions.core.registry.ui_materialization import get_ui_pipeline
+from ai_karen_engine.extensions.platform.core.registry.ui_materialization import (
+    get_ui_pipeline,
+)
 
 logger = logging.getLogger("kari.ui_materialization_routes")
 
@@ -122,7 +124,9 @@ async def materialize_plugin_artifacts(plugin_id: str):
             }
 
         # Try to install the UI
-        from extensions.core.registry.ui_installer import get_ui_service
+        from ai_karen_engine.extensions.platform.core.registry.ui_installer import (
+            get_ui_service,
+        )
 
         ui_service = get_ui_service()
         category = "plugins"  # Default category
@@ -165,7 +169,7 @@ async def install_plugin_ui(plugin_id: str):
         Installation result
     """
     try:
-        from extensions.core.registry.ui_installer import get_ui_service
+        from ai_karen_engine.extensions.platform.core.registry.ui_installer import get_ui_service
 
         ui_service = get_ui_service()
 
@@ -201,7 +205,7 @@ async def list_installed_ui_plugins():
         List of installed UI plugins
     """
     try:
-        from extensions.core.registry.ui_installer import get_ui_service
+        from ai_karen_engine.extensions.platform.core.registry.ui_installer import get_ui_service
 
         ui_service = get_ui_service()
         installed = ui_service.list_installed_ui()

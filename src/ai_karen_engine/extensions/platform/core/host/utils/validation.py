@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from extensions.core.host.errors import ExtensionValidationError
-from extensions.core.registry.validator import ExtensionValidator
+from ai_karen_engine.extensions.platform.core.host.errors import ExtensionValidationError
+from ai_karen_engine.extensions.platform.core.registry.validator import ExtensionValidator
 
 
 def validate_manifest(manifest_data: Dict[str, Any]) -> None:

@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Union
 
 # Import types from unified manifest
-from extensions.core.manifest import (
+from ai_karen_engine.extensions.platform.core.manifest import (
     ExtensionManifest,
     ExtensionContext,
     ExtensionConfigSchema,

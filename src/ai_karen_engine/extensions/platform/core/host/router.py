@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, Any, Callable
 from pathlib import Path
 from datetime import datetime
 
-from extensions.core.manifest import (
+from ai_karen_engine.extensions.platform.core.manifest import (
     ExtensionRecord,
     ExtensionStatus,
     ExtensionManifest,

@@ -19,14 +19,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Path, Body, Backgr
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, validator
 
-from extensions.core.integration.lifecycle_manager import ExtensionLifecycleManager, ExtensionState
-from extensions.core.integration.discovery_service import ExtensionDiscoveryService
-from extensions.core.integration.sandbox_manager import ExtensionSandboxManager
-from extensions.core.integration.communication_manager import ExtensionCommunicationManager
-from extensions.core.integration.version_manager import ExtensionVersionManager, UpdateChannel
-from extensions.core.integration.permissions_manager import ExtensionPermissionsManager, PermissionType, AccessLevel
-from extensions.core.integration.metrics_collector import ExtensionMetricsCollector
-from extensions.core.integration.models import (
+from ai_karen_engine.extensions.platform.core.integration.lifecycle_manager import ExtensionLifecycleManager, ExtensionState
+from ai_karen_engine.extensions.platform.core.integration.discovery_service import ExtensionDiscoveryService
+from ai_karen_engine.extensions.platform.core.integration.sandbox_manager import ExtensionSandboxManager
+from ai_karen_engine.extensions.platform.core.integration.communication_manager import ExtensionCommunicationManager
+from ai_karen_engine.extensions.platform.core.integration.version_manager import ExtensionVersionManager, UpdateChannel
+from ai_karen_engine.extensions.platform.core.integration.permissions_manager import ExtensionPermissionsManager, PermissionType, AccessLevel
+from ai_karen_engine.extensions.platform.core.integration.metrics_collector import ExtensionMetricsCollector
+from ai_karen_engine.extensions.platform.core.integration.models import (
     ExtensionModel, ExtensionVersionModel, ExtensionMetricModel, 
     ExtensionEventModel, ExtensionConfigModel
 )
@@ -263,49 +263,49 @@ router = APIRouter(prefix="/extensions", tags=["extensions"])
 def get_lifecycle_manager() -> ExtensionLifecycleManager:
     """Get extension lifecycle manager instance."""
     # This would be injected from the main application
-    from extensions.core.integration import get_lifecycle_manager
+    from ai_karen_engine.extensions.platform.core.integration import get_lifecycle_manager
     return get_lifecycle_manager()
 
 
 def get_discovery_service() -> ExtensionDiscoveryService:
     """Get extension discovery service instance."""
     # This would be injected from the main application
-    from extensions.core.integration import get_discovery_service
+    from ai_karen_engine.extensions.platform.core.integration import get_discovery_service
     return get_discovery_service()
 
 
 def get_sandbox_manager() -> ExtensionSandboxManager:
     """Get extension sandbox manager instance."""
     # This would be injected from the main application
-    from extensions.core.integration import get_sandbox_manager
+    from ai_karen_engine.extensions.platform.core.integration import get_sandbox_manager
     return get_sandbox_manager()
 
 
 def get_communication_manager() -> ExtensionCommunicationManager:
     """Get extension communication manager instance."""
     # This would be injected from the main application
-    from extensions.core.integration import get_communication_manager
+    from ai_karen_engine.extensions.platform.core.integration import get_communication_manager
     return get_communication_manager()
 
 
 def get_version_manager() -> ExtensionVersionManager:
     """Get extension version manager instance."""
     # This would be injected from the main application
-    from extensions.core.integration import get_version_manager
+    from ai_karen_engine.extensions.platform.core.integration import get_version_manager
     return get_version_manager()
 
 
 def get_permissions_manager() -> ExtensionPermissionsManager:
     """Get extension permissions manager instance."""
     # This would be injected from the main application
-    from extensions.core.integration import get_permissions_manager
+    from ai_karen_engine.extensions.platform.core.integration import get_permissions_manager
     return get_permissions_manager()
 
 
 def get_metrics_collector() -> ExtensionMetricsCollector:
     """Get extension metrics collector instance."""
     # This would be injected from the main application
-    from extensions.core.integration import get_metrics_collector
+    from ai_karen_engine.extensions.platform.core.integration import get_metrics_collector
     return get_metrics_collector()
 
 

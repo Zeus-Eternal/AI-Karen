@@ -1,6 +1,6 @@
 """Compatibility model exports for the unified extension host."""
 
-from extensions.core.host.base import (
+from ai_karen_engine.extensions.platform.core.host.base import (
     ExtensionBase,
     ExtensionConfigSchema,
     ExtensionContext,
@@ -13,7 +13,7 @@ from extensions.core.host.base import (
     HookPoint,
     Permission,
 )
-from extensions.core.registry.manifest import (
+from ai_karen_engine.extensions.platform.core.registry.manifest import (
     ExtensionCapabilities,
     ExtensionDependencies,
     ExtensionManifestAPI,

@@ -297,7 +297,7 @@ class ExtensionServiceFactory:
         logger.info("Creating extension manager with all services")
 
         try:
-            from extensions.core.host.manager import ExtensionManager
+            from ai_karen_engine.extensions.platform.core.host.manager import ExtensionManager
             from ai_karen_engine.plugins.router import PluginRouter
 
             # Ensure extension root exists

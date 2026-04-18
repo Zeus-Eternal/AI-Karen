@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from extensions.core.host.base import ExtensionManifest, ExtensionPermissions, ExtensionRBAC
+from ai_karen_engine.extensions.platform.core.host.base import ExtensionManifest, ExtensionPermissions, ExtensionRBAC
 from .errors import ExtensionConfigurationError
 
 

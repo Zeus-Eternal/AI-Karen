@@ -19,7 +19,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
-from extensions.core.integration import (
+from ai_karen_engine.extensions.platform.core.integration import (
     ExtensionIntegrationManager, set_integration_manager, get_integration_manager,
     extension_api_router
 )

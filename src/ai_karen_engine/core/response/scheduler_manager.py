@@ -21,13 +21,13 @@ import time
 
 # Email imports with error handling
 try:
-    from email.mime.text import MimeText
-    from email.mime.multipart import MimeMultipart
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
     EMAIL_AVAILABLE = True
 except ImportError:
     EMAIL_AVAILABLE = False
-    MimeText = None
-    MimeMultipart = None
+    MIMEText = None
+    MIMEMultipart = None
 
 try:
     from croniter import croniter
@@ -287,7 +287,7 @@ class NotificationManager:
             return
         
         try:
-            msg = MimeMultipart()
+            msg = MIMEMultipart()
             msg['From'] = config.email_username or "karen-ai@localhost"
             msg['To'] = ", ".join(config.email_recipients)
             msg['Subject'] = f"Karen AI Training Notification: {title}"
@@ -296,7 +296,7 @@ class NotificationManager:
             if data:
                 body += f"Additional Data:\n{json.dumps(data, indent=2, default=str)}"
             
-            msg.attach(MimeText(body, 'plain'))
+            msg.attach(MIMEText(body, 'plain'))
             
             server = smtplib.SMTP(config.email_smtp_host, config.email_smtp_port)
             if config.email_use_tls:

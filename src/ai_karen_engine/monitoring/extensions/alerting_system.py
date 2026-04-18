@@ -13,8 +13,8 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional, Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from email.mime.text import MimeText
-from email.mime.multipart import MimeMultipart
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 import aiohttp
 import os
 
@@ -417,11 +417,11 @@ Alert ID: {alert_data['alert_id']}
             body += f"  {key}: {value}\n"
         
         try:
-            msg = MimeMultipart()
+            msg = MIMEMultipart()
             msg['From'] = from_email
             msg['To'] = ', '.join(to_emails)
             msg['Subject'] = subject
-            msg.attach(MimeText(body, 'plain'))
+            msg.attach(MIMEText(body, 'plain'))
             
             server = smtplib.SMTP(smtp_server, smtp_port)
             if username and password:

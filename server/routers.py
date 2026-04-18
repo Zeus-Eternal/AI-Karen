@@ -153,7 +153,7 @@ except ImportError as e:
     logger.warning(f"🚫 Training data routes not available: {e}")
 from ai_karen_engine.api_routes.privacy_routes import router as privacy_router
 from ai_karen_engine.api_routes.runtime_admin_routes import router as maintenance_router
-from extensions.api_routes.ui_materialization_routes import (
+from ai_karen_engine.extensions.platform.api_routes.ui_materialization_routes import (
     router as ui_materialization_router,
 )
 

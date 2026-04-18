@@ -25,7 +25,7 @@ import json
 import psutil
 import statistics
 
-from extensions.core.host.models import ExtensionManifest
+from ai_karen_engine.extensions.platform.core.host.models import ExtensionManifest
 
 
 class MetricType(Enum):

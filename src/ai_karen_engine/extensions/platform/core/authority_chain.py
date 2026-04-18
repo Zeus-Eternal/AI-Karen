@@ -17,8 +17,8 @@ from pathlib import Path
 import asyncio
 from datetime import datetime
 
-from extensions.core.manifest import ExtensionManifest, ExtensionStatus
-from extensions.core.registry.database_service import get_database_service
+from ai_karen_engine.extensions.platform.core.manifest import ExtensionManifest, ExtensionStatus
+from ai_karen_engine.extensions.platform.core.registry.database_service import get_database_service
 
 logger = logging.getLogger("kari.authority_chain")
 

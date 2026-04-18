@@ -280,7 +280,7 @@ def discover_and_mount_plugin_routes(app: FastAPI) -> None:
     Discover and mount plugin routes.
     """
     try:
-        from extensions.core import get_plugin_router
+        from ai_karen_engine.extensions.platform.core import get_plugin_router
 
         router = get_plugin_router()
         # Get dynamic FastAPI router from the modular runtime
@@ -299,7 +299,7 @@ def discover_and_mount_plugin_ui(app: FastAPI) -> None:
     """
     try:
         from fastapi.staticfiles import StaticFiles
-        from extensions.core import get_plugin_manager
+        from ai_karen_engine.extensions.platform.core import get_plugin_manager
 
         manager = get_plugin_manager()
         registry = manager.registry

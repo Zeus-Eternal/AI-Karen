@@ -25,7 +25,7 @@ from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 from packaging import version
 
-from extensions.core.host.models import ExtensionManifest, ExtensionRecord, ExtensionStatus
+from ai_karen_engine.extensions.platform.core.host.models import ExtensionManifest, ExtensionRecord, ExtensionStatus
 
 
 class VersionComparison(Enum):

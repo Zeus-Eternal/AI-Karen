@@ -326,8 +326,8 @@ services:
     image: prom/prometheus:latest
     restart: unless-stopped
     volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
-      - ./monitoring/alert_rules.yml:/etc/prometheus/alert_rules.yml
+      - ./config/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./config/monitoring/alerts/alert_rules.yml:/etc/prometheus/alert_rules.yml
       - prometheus_data:/prometheus
     ports:
       - "9090:9090"
@@ -371,11 +371,9 @@ services:
       - "3001:3000"
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana_dashboard.json:/etc/grafana/provisioning/dashboards/health_dashboard.json
-      - ./monitoring/dashboards/model-orchestrator:/etc/grafana/provisioning/dashboards/model-orchestrator
-      - ./monitoring/dashboards/llamacpp-runtime:/etc/grafana/provisioning/dashboards/llamacpp-runtime
-      - ./monitoring/grafana_provisioning.yml:/etc/grafana/provisioning/dashboards/provisioning.yml
-      - ./monitoring/grafana_datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - ./config/monitoring/grafana/dashboards/grafana_dashboard.json:/etc/grafana/provisioning/dashboards/health_dashboard.json
+      - ./config/monitoring/grafana/provisioning/grafana_provisioning.yml:/etc/grafana/provisioning/dashboards/provisioning.yml
+      - ./config/monitoring/grafana/provisioning/grafana_datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
     depends_on:
       prometheus:
         condition: service_healthy

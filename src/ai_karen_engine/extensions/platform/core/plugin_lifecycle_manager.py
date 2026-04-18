@@ -26,8 +26,8 @@ from enum import Enum
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, and_, or_, func
 
-from extensions.core.registry.plugin_registry import PluginRegistry
-from extensions.core.registry.database_models import (
+from ai_karen_engine.extensions.platform.core.registry.plugin_registry import PluginRegistry
+from ai_karen_engine.extensions.platform.core.registry.database_models import (
     ExtensionDBModel,
     ExtensionInstallationHistory,
 )
