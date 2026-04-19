@@ -1,0 +1,25 @@
+{
+  "plugin_id": "time-query",
+  "display_name": "Date Time",
+  "menus": [
+    {
+      "placement": "sidebar.plugins",
+      "label": "Date Time",
+      "icon": "clock",
+      "order": 0
+    }
+  ],
+  "icons": [
+    {
+      "filename": "time-query---sidebar_00.svg",
+      "path": "src/ai_karen_engine/extensions/plugins/time_query/ui/time-query---sidebar_00.svg",
+      "plugin_id": "time-query",
+      "placement": "sidebar",
+      "subplacement": null,
+      "order": 0,
+      "extension": "svg",
+      "relative_path": "ui/time-query---sidebar_00.svg"
+    }
+  ],
+  "generated_at": "2026-04-19T11:00:13.026083"
+}

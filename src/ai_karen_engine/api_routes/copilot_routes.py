@@ -32,23 +32,7 @@ from ai_karen_engine.chat.ChatOrchestrator import (
     json_safe as _json_safe,
 )
 
-if TYPE_CHECKING:
-    from pydantic import BaseModel, ConfigDict, Field
-else:
-    from ai_karen_engine.pydantic_stub import (
-        BaseModel as BaseModel,
-        ConfigDict as ConfigDict,
-        Field as Field,
-    )
-
-    try:
-        from pydantic import (
-            BaseModel as BaseModel,
-            ConfigDict as ConfigDict,
-            Field as Field,
-        )
-    except ImportError:
-        pass
+from pydantic import BaseModel, ConfigDict, Field
 
 
 def _is_placeholder_response(response_text: str) -> bool:
@@ -78,7 +62,10 @@ def _is_placeholder_response(response_text: str) -> bool:
         return True
 
     # Detect known synthetic long-form scaffolds that should not be returned as final user content.
-    if "the requested topic" in lowered and lowered.count("a reliable approach to") >= 3:
+    if (
+        "the requested topic" in lowered
+        and lowered.count("a reliable approach to") >= 3
+    ):
         return True
 
     return False
@@ -271,9 +258,17 @@ def _dedupe_and_markdown_sections(text: str) -> str:
         if heading:
             cleaned_heading = re.sub(r"^#+\s*", "", heading).strip()
             if has_markdown_heading:
-                output.append(f"## {cleaned_heading}" if not heading.lstrip().startswith("#") else heading)
+                output.append(
+                    f"## {cleaned_heading}"
+                    if not heading.lstrip().startswith("#")
+                    else heading
+                )
             else:
-                output.append(f"# {cleaned_heading}" if heading_index == 0 else f"## {cleaned_heading}")
+                output.append(
+                    f"# {cleaned_heading}"
+                    if heading_index == 0
+                    else f"## {cleaned_heading}"
+                )
             heading_index += 1
         if body_lines:
             body_text = _collapse_repeated_sentences("\n".join(body_lines).strip())
@@ -944,8 +939,7 @@ async def copilot_assist(
             raise
         if isinstance(orchestrator_response, ChatResponse):
             response_text = _finalize_user_visible_text(
-                str(orchestrator_response.response or "").strip()
-                ,
+                str(orchestrator_response.response or "").strip(),
                 request.message,
             )
             # Check if response contains placeholder text that should trigger NLP fallback
@@ -1540,14 +1534,14 @@ async def copilot_assist_stream(
                         shim = generate_degraded_mode_response(request.message)
                         response_text = _finalize_user_visible_text(
                             str(
-                            (
-                                shim.get("final")
-                                or shim.get("message")
-                                or shim.get("response")
-                                or shim.get("answer")
-                                or ""
-                            )
-                        ).strip(),
+                                (
+                                    shim.get("final")
+                                    or shim.get("message")
+                                    or shim.get("response")
+                                    or shim.get("answer")
+                                    or ""
+                                )
+                            ).strip(),
                             request.message,
                         )
                         if not response_text:
@@ -1602,14 +1596,16 @@ async def copilot_assist_stream(
                     )
                     final_content = _finalize_user_visible_text(
                         str(
-                        chunk.content
-                        or completion_metadata.get("formatted_content")
-                        or collected_content
-                        or ""
-                    ),
+                            chunk.content
+                            or completion_metadata.get("formatted_content")
+                            or collected_content
+                            or ""
+                        ),
                         request.message,
                     )
-                    if not final_content and _is_placeholder_response(collected_content):
+                    if not final_content and _is_placeholder_response(
+                        collected_content
+                    ):
                         final_content = (
                             "I’m having trouble generating a full response right now. "
                             "Please try again in a moment."

@@ -4,8 +4,9 @@ Handles all include_router() wiring without changing route definitions.
 """
 
 import os
+import importlib
 import logging
-from typing import Optional, Any
+from typing import Optional, Any, Callable, Type, cast
 from fastapi import FastAPI, HTTPException, APIRouter
 from fastapi.responses import JSONResponse, Response as FastAPIResponse
 
@@ -44,6 +45,20 @@ from ai_karen_engine.api_routes.audit import router as audit_router
 # from ai_karen_engine.api_routes.auth_session_routes import router as auth_session_router
 
 # NEW: Simple auth system
+auth_router: Optional[APIRouter] = None
+get_auth_middleware: Optional[Callable[[], Any]] = None
+AuthMiddlewareAuthenticationError: Type[Exception] = Exception
+
+
+class _FallbackAuthenticationError(Exception):
+    """Fallback auth error used when auth middleware module is unavailable."""
+
+    def __init__(self, message: str = "Authentication failed", status_code: int = 401):
+        super().__init__(message)
+        self.message = message
+        self.status_code = status_code
+
+
 try:
     from ai_karen_engine.api_routes.auth_routes import router as auth_router
     from ai_karen_engine.auth.auth_middleware import (
@@ -51,10 +66,14 @@ try:
         get_auth_middleware,
     )
 
+    AuthMiddlewareAuthenticationError = AuthenticationError
+
     logger.info("✅ Auth router imported successfully")
 except ImportError as e:
     # Fallback - disable auth routes if auth not available
     auth_router = None
+    get_auth_middleware = None
+    AuthMiddlewareAuthenticationError = _FallbackAuthenticationError
     logger.warning(f"🚫 Auth system not available - auth routes disabled: {e}")
 from ai_karen_engine.api_routes.code_execution_routes import (
     router as code_execution_router,
@@ -141,6 +160,7 @@ from ai_karen_engine.api_routes.user_preferences_routes import (
 from ai_karen_engine.api_routes.user_data_routes import router as user_data_router
 from ai_karen_engine.api_routes.users import router as users_router
 
+training_data_router: Optional[APIRouter] = None
 try:
     from ai_karen_engine.api_routes.training_data_routes import (
         router as training_data_router,
@@ -174,15 +194,46 @@ except ImportError as e:
     logger.warning(f"🚫 Multi-modal routes not available: {e}")
 
 # Extension monitoring system
+monitoring_router: Optional[Any] = None
 try:
-    from .extension_monitoring_api import monitoring_router
-
-    EXTENSION_MONITORING_AVAILABLE = True
-    logger.info("✅ Extension monitoring router imported successfully")
-except ImportError as e:
-    monitoring_router = None
-    EXTENSION_MONITORING_AVAILABLE = False
-    logger.warning(f"🚫 Extension monitoring not available: {e}")
+    monitoring_module = importlib.import_module(
+        "ai_karen_engine.monitoring.extensions.extension_monitoring_api"
+    )
+    candidate_router = getattr(monitoring_module, "monitoring_router", None)
+    if isinstance(candidate_router, APIRouter):
+        monitoring_router = candidate_router
+        EXTENSION_MONITORING_AVAILABLE = True
+        logger.info("✅ Extension monitoring router imported successfully")
+    else:
+        EXTENSION_MONITORING_AVAILABLE = False
+        logger.warning("🚫 Extension monitoring module found but router is invalid")
+except Exception as e:
+    # Temporary fallback for in-flight migration paths.
+    try:
+        monitoring_module = importlib.import_module(
+            "ai_karen_engine.server.extension_monitoring_api"
+        )
+        candidate_router = getattr(monitoring_module, "monitoring_router", None)
+        if isinstance(candidate_router, APIRouter):
+            monitoring_router = candidate_router
+            EXTENSION_MONITORING_AVAILABLE = True
+            logger.info(
+                "✅ Extension monitoring router imported via legacy fallback path"
+            )
+        else:
+            monitoring_router = None
+            EXTENSION_MONITORING_AVAILABLE = False
+            logger.warning(
+                "🚫 Extension monitoring module found via fallback but router is invalid"
+            )
+    except Exception as legacy_error:
+        monitoring_router = None
+        EXTENSION_MONITORING_AVAILABLE = False
+        logger.warning(
+            "🚫 Extension monitoring not available: canonical import error=%s; fallback import error=%s",
+            e,
+            legacy_error,
+        )
 
 
 def wire_routers(app: FastAPI, settings: Settings) -> None:
@@ -211,6 +262,9 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
 
     # Add auth middleware globally (if available)
     try:
+        if get_auth_middleware is None:
+            raise ImportError("auth middleware factory not available")
+
         auth_middleware = get_auth_middleware()
 
         # Use FastAPI middleware for global auth
@@ -262,7 +316,7 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
                     if callable(authenticate_request):
                         user_data = await authenticate_request(request)
                     else:
-                        user_data = auth_middleware.get_current_user(request)
+                        user_data = await auth_middleware.get_current_user(request)
                     request.state.user = user_data
                 except HTTPException as exc:
                     logger.warning(
@@ -272,32 +326,56 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
                         exc.detail,
                     )
                     return _http_exception_response(exc)
-                except AuthenticationError as exc:
-                    # Handle specific authentication errors
-                    logger.warning(
-                        "🚫 Authentication error for %s %s: %s",
-                        request.method,
-                        request.url.path,
-                        exc.message,
-                    )
-                    return _http_exception_response(
-                        HTTPException(status_code=exc.status_code, detail=exc.message)
-                    )
-                except Exception as exc:
-                    # Log unexpected authentication errors with full context
-                    logger.exception(
-                        "⚠️ Unexpected error during authentication for %s %s: %s",
-                        request.method,
-                        request.url.path,
-                        str(exc),
-                    )
-                    # Return a generic authentication error without exposing internal details
-                    return _http_exception_response(
-                        HTTPException(
-                            status_code=500,
-                            detail="Authentication service temporarily unavailable",
+                except AuthMiddlewareAuthenticationError as exc:
+                    # If it's an extension endpoint, we might want to allow guest access
+                    if request.url.path.startswith("/api/extensions"):
+                        request.state.user = {
+                            "user_id": "guest",
+                            "email": "guest@karen.ai",
+                            "user_type": "user",
+                            "permissions": ["extension:read"],
+                            "tenant_id": "default",
+                            "authenticated": False
+                        }
+                    else:
+                        # Handle specific authentication errors
+                        status_code = int(getattr(exc, "status_code", 401))
+                        message = str(getattr(exc, "message", str(exc)))
+                        logger.warning(
+                            "🚫 Authentication error for %s %s: %s",
+                            request.method,
+                            request.url.path,
+                            message,
                         )
-                    )
+                        return _http_exception_response(
+                            HTTPException(status_code=status_code, detail=message)
+                        )
+                except Exception as exc:
+                    # If it's an extension endpoint, we might want to allow guest access
+                    if request.url.path.startswith("/api/extensions"):
+                        request.state.user = {
+                            "user_id": "guest",
+                            "email": "guest@karen.ai",
+                            "user_type": "user",
+                            "permissions": ["extension:read"],
+                            "tenant_id": "default",
+                            "authenticated": False
+                        }
+                    else:
+                        # Log unexpected authentication errors with full context
+                        logger.exception(
+                            "⚠️ Unexpected error during authentication for %s %s: %s",
+                            request.method,
+                            request.url.path,
+                            str(exc),
+                        )
+                        # Return 401 instead of 500 if possible to avoid terminal UI errors
+                        return _http_exception_response(
+                            HTTPException(
+                                status_code=401,
+                                detail=f"Authentication service error: {str(exc)}",
+                            )
+                        )
 
             response = await call_next(request)
             return _ensure_asgi_response(response)
@@ -316,11 +394,16 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
         prefix="/api/communications-center",
         tags=["communications-center"],
     )
-    if TRAINING_DATA_AVAILABLE and training_data_router:
+    if TRAINING_DATA_AVAILABLE and isinstance(training_data_router, APIRouter):
         app.include_router(training_data_router, tags=["training-data"])
     else:
         logger.warning("🚫 Training data router not available")
-    app.include_router(privacy_router, prefix="/api", tags=["privacy"])
+    if privacy_router is not None:
+        app.include_router(
+            cast(APIRouter, privacy_router), prefix="/api", tags=["privacy"]
+        )
+    else:
+        logger.warning("🚫 Privacy router not available")
     try:
         app.include_router(ai_router, prefix="/api/ai", tags=["ai"])
         logger.info("🤖 AI router loaded successfully")
@@ -395,17 +478,17 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
 
     # Multi-modal and AI enhancement routes
     if MULTIMODAL_AVAILABLE:
-        if multimodal_router:
+        if isinstance(multimodal_router, APIRouter):
             app.include_router(multimodal_router, tags=["multimodal"])
             logger.info("🎨 Multi-modal router loaded successfully")
-        if ai_enhancement_router:
+        if isinstance(ai_enhancement_router, APIRouter):
             app.include_router(ai_enhancement_router, tags=["ai-enhancement"])
             logger.info("🧠 AI enhancement router loaded successfully")
     else:
         logger.warning("🚫 Multi-modal and AI enhancement routes not available")
 
     # Extension monitoring system
-    if EXTENSION_MONITORING_AVAILABLE and monitoring_router:
+    if EXTENSION_MONITORING_AVAILABLE and isinstance(monitoring_router, APIRouter):
         app.include_router(monitoring_router, tags=["extension-monitoring"])
         logger.info("📊 Extension monitoring router loaded successfully")
     else:

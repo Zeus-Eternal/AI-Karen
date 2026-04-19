@@ -29,6 +29,9 @@ from ai_karen_engine.services.response_formatting_engine import (
     DisplayContext,
     AccessibilityLevel,
 )
+from ai_karen_engine.services.ResponseFormattingClass.Specialized.Integration import (
+    get_specialized_integration,
+)
 from ai_karen_engine.services.response_policy_enforcer import ResponsePolicyEnforcer
 
 logger = logging.getLogger(__name__)
@@ -54,6 +57,7 @@ class StreamChunk:
     metadata: Dict[str, Any] = field(default_factory=dict)
     timestamp: datetime = field(default_factory=datetime.utcnow)
     finished: bool = False
+    event_type: str = "content"  # content, status, agent_step, error, complete
 
 
 @dataclass
@@ -107,6 +111,7 @@ class AsyncStreamProcessor:
         self.structured_logger = get_structured_logger()
         self.metrics_manager = get_metrics_manager()
         self.formatting_engine = ResponseFormattingEngine()
+        self.rich_formatting_engine = get_specialized_integration()
         self.response_policy_enforcer = ResponsePolicyEnforcer()
 
         # Background cleanup task
@@ -339,40 +344,85 @@ class AsyncStreamProcessor:
                     technical_level=technical_level or "intermediate",
                     language=language or "en",
                 )
-                formatted_response = await self.formatting_engine.format_response(
-                    content=full_response,
-                    context=formatting_context,
-                )
-                formatted_content = formatted_response.content
-                completion_metadata.update(
-                    {
-                        "render_type": formatted_response.format_type.value,
-                        "formatted": True,
-                        "formatting": {
-                            "format_type": formatted_response.format_type.value,
-                            "sections": [
-                                section.model_dump()
-                                if hasattr(section, "model_dump")
-                                else section.dict()
-                                for section in formatted_response.sections
-                            ],
-                            "navigation_aids": [
-                                nav.model_dump()
-                                if hasattr(nav, "model_dump")
-                                else nav.dict()
-                                for nav in formatted_response.navigation_aids
-                            ],
-                            "accessibility_features": dict(
-                                formatted_response.accessibility_features or {}
-                            ),
-                            "estimated_reading_time": formatted_response.estimated_reading_time,
-                            "formatter_metadata": dict(
-                                formatted_response.metadata or {}
-                            ),
-                        },
-                        "response_policy": dict(policy_result.metadata or {}),
-                    }
-                )
+
+                # Use rich engine first if available
+                rich_engine = getattr(self, "rich_formatting_engine", None)
+                rich_metadata = {}
+                formatted_intermediate = full_response
+                from .ResponseFormattingClass.Enums import FormatType
+
+                rich_specialized = False
+                if rich_engine:
+                    try:
+                        rich_formatted = await rich_engine.format_response(
+                            user_query=user_prompt, response_content=full_response
+                        )
+
+                        if rich_formatted.format_type != FormatType.STANDARD_MARKDOWN:
+                            formatted_content = rich_formatted.content
+                            completion_metadata.update(
+                                {
+                                    "render_type": rich_formatted.format_type.value,
+                                    "formatted": True,
+                                    "rich_metadata": rich_formatted.metadata,
+                                    "formatting": {
+                                        "format_type": rich_formatted.format_type.value,
+                                        "sections": [],
+                                        "navigation_aids": [],
+                                        "accessibility_features": {},
+                                        "estimated_reading_time": 0,
+                                        "formatter_metadata": dict(
+                                            rich_formatted.metadata or {}
+                                        ),
+                                    },
+                                    "response_policy": dict(
+                                        policy_result.metadata or {}
+                                    ),
+                                }
+                            )
+                            rich_specialized = True
+                        else:
+                            formatted_intermediate = rich_formatted.content
+                            rich_metadata = rich_formatted.metadata
+                    except Exception as e:
+                        logger.warning(f"Rich formatting engine failed in stream: {e}")
+
+                if not rich_specialized:
+                    formatted_response = await self.formatting_engine.format_response(
+                        content=formatted_intermediate,
+                        context=formatting_context,
+                    )
+                    formatted_content = formatted_response.content
+                    completion_metadata.update(
+                        {
+                            "render_type": formatted_response.format_type.value,
+                            "formatted": True,
+                            "rich_metadata": rich_metadata,
+                            "formatting": {
+                                "format_type": formatted_response.format_type.value,
+                                "sections": [
+                                    section.model_dump()
+                                    if hasattr(section, "model_dump")
+                                    else section.dict()
+                                    for section in formatted_response.sections
+                                ],
+                                "navigation_aids": [
+                                    nav.model_dump()
+                                    if hasattr(nav, "model_dump")
+                                    else nav.dict()
+                                    for nav in formatted_response.navigation_aids
+                                ],
+                                "accessibility_features": dict(
+                                    formatted_response.accessibility_features or {}
+                                ),
+                                "estimated_reading_time": formatted_response.estimated_reading_time,
+                                "formatter_metadata": dict(
+                                    formatted_response.metadata or {}
+                                ),
+                            },
+                            "response_policy": dict(policy_result.metadata or {}),
+                        }
+                    )
 
             yield StreamChunk(
                 chunk_id=chunk_id,
@@ -694,6 +744,52 @@ class AsyncStreamProcessor:
             "running": self._running,
             "connection_pool_healthy": bool(self._connection_pool),
         }
+
+    async def emit_agent_step_event(self, session_id: str, event_data: Dict[str, Any]):
+        """Emit agent step event to stream.
+
+        Args:
+            session_id: The stream session ID
+            event_data: Agent step event data containing type, step_id, metadata, etc.
+        """
+        try:
+            event_type = event_data.get("type", "agent_step_started")
+
+            agent_event_chunk = StreamChunk(
+                chunk_id=-1,
+                content="",
+                metadata={"event": "agent_step", "data": event_data},
+                event_type=event_type,
+            )
+
+            session = await self._get_session(session_id)
+            if session and session.status in [
+                StreamStatus.ACTIVE,
+                StreamStatus.INITIALIZING,
+            ]:
+                await self._send_agent_event_chunk(session_id, agent_event_chunk)
+
+                logger.info(
+                    f"Emitted agent step event {event_type} for session {session_id}"
+                )
+
+                self.metrics_manager.register_counter(
+                    "agent_step_events_total", ["event_type"]
+                ).labels(event_type=event_type).inc()
+
+        except Exception as e:
+            logger.error(f"Failed to emit agent step event: {e}", exc_info=True)
+
+    async def _send_agent_event_chunk(self, session_id: str, chunk: StreamChunk):
+        """Send agent event chunk using non-blocking I/O"""
+        try:
+            await asyncio.sleep(0.001)
+            return True
+        except Exception as e:
+            logger.error(
+                f"Error sending agent event chunk for session {session_id}: {e}"
+            )
+            raise
 
 
 # Global processor instance

@@ -26,8 +26,11 @@ def get_memory_processor() -> Optional[MemoryProcessor]:
     """Provide a singleton instance of MemoryProcessor."""
     try:
         from ai_karen_engine.chat.factory import get_chat_service_factory
+
         factory = get_chat_service_factory()
-        return factory.get_service('memory_processor') or factory.create_memory_processor()
+        return (
+            factory.get_service("memory_processor") or factory.create_memory_processor()
+        )
     except Exception:
         return None
 
@@ -50,9 +53,16 @@ def get_production_memory() -> Optional[Any]:
     return get_memory_service()
 
 
+_orchestrator_cache: Optional[Any] = None
+
+
 def get_chat_orchestrator_dependency():
-    """FastAPI dependency for ChatOrchestrator."""
-    from ai_karen_engine.chat.factory import get_chat_orchestrator
-    return get_chat_orchestrator()
+    """FastAPI dependency for ChatOrchestrator (cached)."""
+    global _orchestrator_cache
 
+    if _orchestrator_cache is None:
+        from ai_karen_engine.chat.factory import get_chat_orchestrator
 
+        _orchestrator_cache = get_chat_orchestrator()
+
+    return _orchestrator_cache

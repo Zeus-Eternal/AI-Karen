@@ -79,7 +79,7 @@ class UIMaterializationPipeline:
 
     def __init__(
         self,
-        extensions_dir: str = "src/extensions",
+        extensions_dir: str = "src/ai_karen_engine/extensions/plugins",
         artifacts_dir: Optional[str] = None,
         plugins_ui_dir: Optional[str] = None,
     ):
@@ -90,7 +90,7 @@ class UIMaterializationPipeline:
         self.plugins_ui_dir = (
             Path(plugins_ui_dir)
             if plugins_ui_dir
-            else Path("ui_launchers/Karen-AI-Theme/src/plugin_repo")
+            else Path("src/ui_launchers/Karen-AI-Theme/src/plugin_repo")
         )
         self.registry = None
         self.database_service = None
@@ -179,11 +179,20 @@ class UIMaterializationPipeline:
 
                 # Check for UI component
                 ui_component_dir = plugin_dir / "ui"
-                has_component = ui_component_dir.exists() and any(
-                    f.suffix == ".tsx" or f.suffix == ".jsx"
-                    for f in ui_component_dir.iterdir()
-                    if f.is_file()
-                )
+                if not ui_component_dir.exists():
+                    # Fallback to checking source_path from config
+                    source_path = ui_config.get("source_path")
+                    if source_path:
+                        ui_component_dir = plugin_dir / source_path
+
+                # Resolve entry file
+                entry_file_name = ui_config.get("entry_file", "PluginPage.tsx")
+                entry_file_path = plugin_dir / entry_file_name
+                if not entry_file_path.exists():
+                    # Try relative to ui_component_dir
+                    entry_file_path = ui_component_dir / Path(entry_file_name).name
+                
+                has_component = entry_file_path.exists()
 
                 # Check for icons
                 icons = self._discover_plugin_icons(plugin_dir, plugin.name)
@@ -195,7 +204,7 @@ class UIMaterializationPipeline:
                     "status": plugin.status.value,
                     "has_component": has_component
                     or ui_config.get("has_component", False),
-                    "component_path": str(ui_component_dir / "PluginPage.tsx")
+                    "component_path": str(entry_file_path)
                     if has_component
                     else None,
                     "menu_config": ui_config.get("menu", []),
@@ -466,6 +475,9 @@ class UIMaterializationPipeline:
 
         # Materialize component registration
         if plugin_ui.get("has_component") and plugin_ui.get("component_path"):
+            # First, ensure UI source files are copied to plugin_repo
+            await self._materialize_ui_source(plugin_ui)
+            
             component_result = await self._materialize_component(plugin_ui)
             if component_result:
                 if component_result["action"] == "generated":
@@ -597,6 +609,53 @@ class UIMaterializationPipeline:
 
         return None
 
+    async def _materialize_ui_source(self, plugin_ui: Dict[str, Any]) -> bool:
+        """Copy UI source files from plugin directory to plugin_repo."""
+        plugin_id = plugin_ui["plugin_id"]
+        ui_config = plugin_ui.get("ui_config", {})
+        
+        # Source directory for UI files
+        plugin_dir = self.extensions_dir / plugin_id
+        source_path_rel = ui_config.get("source_path", "ui")
+        source_dir = plugin_dir / source_path_rel
+        
+        if not source_dir.exists():
+            # If no 'ui' or configured subdir, use root as source for TSX files
+            source_dir = plugin_dir
+            
+        # Target directory in plugin_repo
+        target_dir = self.plugins_ui_dir / plugin_id.replace("_", "-")
+        target_dir.mkdir(parents=True, exist_ok=True)
+        
+        try:
+            # 1. Copy all UI related files
+            for file_path in source_dir.rglob("*"):
+                if file_path.suffix in [".tsx", ".jsx", ".css", ".svg"]:
+                    # Compute relative target path
+                    rel_path = file_path.relative_to(source_dir)
+                    dest_path = target_dir / rel_path
+                    dest_path.parent.mkdir(parents=True, exist_ok=True)
+                    
+                    # Copy if changed
+                    if not dest_path.exists() or self._calculate_file_hash(file_path) != self._calculate_file_hash(dest_path):
+                        shutil.copy2(file_path, dest_path)
+                        logger.debug(f"Materialized UI file: {dest_path}")
+            
+            # 2. Copy/Create GUI manifest in target
+            gui_manifest_source = plugin_dir / "manifest.json"
+            if not gui_manifest_source.exists():
+                gui_manifest_source = plugin_dir / plugin_id / "manifest.json"
+                
+            dest_manifest = target_dir / "manifest.json"
+            if gui_manifest_source.exists():
+                if not dest_manifest.exists() or self._calculate_file_hash(gui_manifest_source) != self._calculate_file_hash(dest_manifest):
+                    shutil.copy2(gui_manifest_source, dest_manifest)
+            
+            return True
+        except Exception as e:
+            logger.error(f"Failed to materialize UI source for {plugin_id}: {e}")
+            return False
+
     async def _materialize_menu_config(
         self, plugin_ui: Dict[str, Any]
     ) -> Optional[Dict[str, Any]]:
@@ -680,23 +739,33 @@ class UIMaterializationPipeline:
             normalized_id = plugin_id.lower().replace("_", "-")
 
             # Convert filesystem path to frontend import path
-            # Example: src/extensions/plugins/weather/ui/WeatherPluginPage.tsx
-            # becomes: @/plugins/weather/ui/WeatherPluginPage
+            # Example: src/ai_karen_engine/extensions/plugins/time_query/ui/DateTimePluginPage.tsx
+            # becomes: @/plugin_repo/time-query/DateTimePluginPage
             component_path_obj = Path(component_path)
-
-            # Extract plugin directory name and component
+            
+            # Find the index of the 'plugins' directory to extract the plugin folder name
             parts = component_path_obj.parts
             plugin_idx = None
             for idx, part in enumerate(parts):
-                if part in ["plugins", "extensions"]:
+                if part == "plugins":
                     plugin_idx = idx
                     break
-
+            
             if plugin_idx is not None and plugin_idx + 1 < len(parts):
-                plugin_dir_name = parts[plugin_idx + 1]
+                # The folder name in extensions/plugins/ (e.g., 'time_query')
+                plugin_folder_name = parts[plugin_idx + 1]
+                # Normalize folder name for frontend (hyphens)
+                normalized_plugin_id = plugin_folder_name.lower().replace("_", "-")
+                
+                # The filename without extension
                 component_name = component_path_obj.stem
-
-                import_path = f"@/plugins/{plugin_dir_name}/ui/{component_name}"
+                
+                # Check if it was in a 'ui' folder
+                if "ui" in parts:
+                    import_path = f"@/plugin_repo/{normalized_plugin_id}/ui/{component_name}"
+                else:
+                    import_path = f"@/plugin_repo/{normalized_plugin_id}/{component_name}"
+                    
                 import_map[normalized_id] = import_path
                 import_map[plugin_id] = import_path
 
@@ -799,7 +868,7 @@ _pipeline_instance: Optional[UIMaterializationPipeline] = None
 
 
 def get_ui_pipeline(
-    extensions_dir: str = "src/extensions",
+    extensions_dir: str = "src/ai_karen_engine/extensions/plugins",
     artifacts_dir: Optional[str] = None,
     plugins_ui_dir: Optional[str] = None,
 ) -> UIMaterializationPipeline:

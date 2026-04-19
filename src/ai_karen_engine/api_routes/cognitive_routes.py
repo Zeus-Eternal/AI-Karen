@@ -17,10 +17,7 @@ Production-ready with full RBAC, tenant isolation, and audit logging.
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query
 from fastapi.responses import StreamingResponse
 
-try:
-    from pydantic import BaseModel, Field
-except ImportError:
-    from ai_karen_engine.pydantic_stub import BaseModel, Field
+from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any, List, Literal
 from datetime import datetime
 from enum import Enum
@@ -29,16 +26,43 @@ import os
 
 # Dependency injection
 from ..core.dependencies import bypass_user_context_func
-from ..core.auth import UserContext
-from ..core.services.correlation_service import get_correlation_id
-from ..core.logging import get_structured_logger
+from ..monitoring.correlation_service import get_request_id
+from ..core.logging.logger import get_structured_logger
 
 # Cognitive modules (to be migrated to unified architecture)
-from ..core.cortex.dispatch import dispatch as cortex_dispatch
-from ..core.memory.manager import recall_context, update_memory
-from ..core.response.orchestrator import ResponseOrchestrator
-from ..core.reasoning.soft_reasoning_engine import SoftReasoningEngine
-from ..core.reasoning.ice_integration import PremiumICEWrapper
+# TODO: Implement these modules
+# from ..core.cortex.dispatch import dispatch as cortex_dispatch
+# from ..core.memory.manager import recall_context, update_memory
+# from ..core.response.orchestrator import ResponseOrchestrator
+# from ..core.reasoning.soft_reasoning_engine import SoftReasoningEngine
+# from ..core.reasoning.ice_integration import PremiumICEWrapper
+
+
+# Stub implementations for missing modules
+async def cortex_dispatch(*args, **kwargs):
+    return {"intent": "unknown", "confidence": 0.0}
+
+
+async def recall_context(*args, **kwargs):
+    return []
+
+
+async def update_memory(*args, **kwargs):
+    pass
+
+
+class ResponseOrchestrator:
+    def generate_response(self, *args, **kwargs):
+        return {"response": "Not implemented", "confidence": 0.0}
+
+
+class SoftReasoningEngine:
+    pass
+
+
+class PremiumICEWrapper:
+    pass
+
 
 router = APIRouter(prefix="/api/cognitive", tags=["Cognitive Architecture"])
 logger = get_structured_logger(__name__)
@@ -142,9 +166,9 @@ class HealthStatus(BaseModel):
 @router.post("/process", response_model=CognitiveResponse)
 async def process_cognitive_request(
     request: CognitiveRequest,
-    user_ctx: UserContext = Depends(bypass_user_context_func),
-    correlation_id: str = Depends(get_correlation_id),
-    background_tasks: BackgroundTasks = None,
+    user_ctx: Dict[str, Any] = Depends(bypass_user_context_func),
+    correlation_id: str = Depends(get_request_id),
+    background_tasks: Optional[BackgroundTasks] = None,
 ):
     """
     **Unified cognitive processing endpoint**
@@ -429,7 +453,7 @@ async def cognitive_health_check():
 
 
 async def _capture_learning_feedback(
-    user_ctx: UserContext,
+    user_ctx: Dict[str, Any],
     query: str,
     response: str,
     reasoning_trace: List[ReasoningStep],

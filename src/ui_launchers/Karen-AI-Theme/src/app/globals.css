@@ -132,3 +132,23 @@ main .container {
 .user-bubble {
     padding: 0.75rem 1.25rem;
 }
+/* Specialized Response Card Styles */
+.weather-card, .movie-card, .news-article, .product-card, .travel-card, .recipe-card {
+  margin: 1rem 0;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.weather-card:hover, .movie-card:hover, .news-article:hover, .product-card:hover, .travel-card:hover, .recipe-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.dark .weather-card:hover, .dark .movie-card:hover, .dark .news-article:hover, .dark .product-card:hover, .dark .travel-card:hover, .dark .recipe-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+@media (max-width: 640px) {
+  .weather-card, .movie-card, .news-article, .product-card, .travel-card, .recipe-card {
+    padding: 0.75rem !important;
+  }
+}

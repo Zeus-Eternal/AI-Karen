@@ -21,7 +21,9 @@ from ai_karen_engine.utils.dependency_checks import import_fastapi, import_pydan
 APIRouter, Body, Depends, HTTPException, Path, Query = import_fastapi(
     "APIRouter", "Body", "Depends", "HTTPException", "Path", "Query"
 )
-BaseModel, Field, field_validator = import_pydantic("BaseModel", "Field", "field_validator")
+BaseModel, Field, field_validator = import_pydantic(
+    "BaseModel", "Field", "field_validator"
+)
 
 logger = logging.getLogger(__name__)
 DEV_MODE = os.environ.get("DEV_MODE", "false").lower() == "true"
@@ -168,7 +170,9 @@ async def schema_status(
 ):
     """Check that all required tables and migrations have been applied."""
     try:
-        result = db_manager.db_client.check_schema()
+        if db_manager.db_client is None:
+            return {"success": False, "error": "Database client not initialized"}
+        result = await db_manager.db_client.async_comprehensive_health_check()
         return {"success": True, "schema_status": result}
     except Exception as e:
         logger.critical(f"Schema status check failed: {e}")

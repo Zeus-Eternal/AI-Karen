@@ -1,0 +1,32 @@
+{
+  "name": "web-search-general",
+  "display_name": "Web Search (General)",
+  "version": "1.0.0",
+  "description": "General purpose web search capability for Kari.",
+  "purpose": "Perform broad internet searches to answer general questions and provide up-to-date information.",
+  "author": "Kari Team",
+  "license": "MIT",
+  "entrypoint": "handler:MainExtension",
+  "category": "plugins",
+  "tags": ["search", "web", "retrieval", "prompt-first"],
+  "capabilities": {
+    "provides_ui": true,
+    "provides_api": true,
+    "web_search": true,
+    "prompt_first": true
+  },
+  "ui": {
+    "hook_zones": [
+      {
+        "zone": "sidebar.plugins",
+        "label": "Web Search",
+        "icon": "search",
+        "order": 50
+      }
+    ]
+  },
+  "rbac": {
+    "allowed_roles": ["user", "admin", "developer"],
+    "default_enabled": true
+  }
+}

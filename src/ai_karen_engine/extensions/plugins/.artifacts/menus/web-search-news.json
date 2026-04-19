@@ -1,0 +1,14 @@
+{
+  "plugin_id": "web-search-news",
+  "display_name": "Web Search (News)",
+  "menus": [
+    {
+      "placement": "sidebar.plugins",
+      "label": "News Search",
+      "icon": "newspaper",
+      "order": 60
+    }
+  ],
+  "icons": [],
+  "generated_at": "2026-04-19T11:00:13.144053"
+}

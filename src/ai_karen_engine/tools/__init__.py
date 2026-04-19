@@ -49,8 +49,7 @@ from ai_karen_engine.tools.data_analysis_tool import (
 )
 
 # Import weather tool
-from ai_karen_engine.tools.weather_tool import WeatherTool, get_weather_tool_info
-from ai_karen_engine.tools import initialize_weather_tools
+from ai_karen_engine.tools.weather_tool import WeatherTool, get_weather_tool_info, register_weather_tool as initialize_weather_tools
 
 __all__ = [
     # Tool categories

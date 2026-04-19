@@ -8,8 +8,10 @@ for local GGUF model execution using llama-cpp-python.
 import logging
 import os
 import time
+import asyncio
+import inspect
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional, Union
+from typing import Any, Dict, Iterator, List, Optional, Union, AsyncIterator
 
 from ai_karen_engine.integrations.llm_utils import (
     LLMProviderBase,
@@ -196,6 +198,38 @@ class LlamaCppProvider(LLMProviderBase):
     def last_usage(self) -> Dict[str, Any]:
         """Return the last generation usage from the runtime."""
         return getattr(self.runtime, "last_usage", {})
+
+    def generate_response(
+        self,
+        messages: List[Dict[str, str]],
+        stream: bool = False,
+        **kwargs
+    ) -> Union[str, Iterator[str]]:
+        """
+        OpenAI-compatible generation entry point.
+        Supports both full response and streaming tokens.
+        """
+        # Convert messages to a single prompt for llama-cpp
+        prompt = ""
+        for msg in messages:
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
+            if role == "system":
+                prompt += f"<|system|>\n{content}<|end|>\n"
+            elif role == "user":
+                prompt += f"<|user|>\n{content}<|end|>\n"
+            elif role == "assistant":
+                prompt += f"<|assistant|>\n{content}<|end|>\n"
+            else:
+                prompt += f"{role}: {content}\n"
+        
+        if not prompt.endswith("<|assistant|>\n"):
+            prompt += "<|assistant|>\n"
+
+        if stream:
+            return self.stream_generate(prompt, **kwargs)
+        else:
+            return self.generate_text(prompt, **kwargs)
 
     def generate_text(self, prompt: str, **kwargs) -> str:
         """Generate text using LlamaCppRuntime."""

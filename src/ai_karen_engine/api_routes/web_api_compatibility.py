@@ -11,10 +11,7 @@ import uuid
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, HTTPException, Depends, Request
-try:
-    from pydantic import ValidationError, ConfigDict
-except ImportError:
-    from ai_karen_engine.pydantic_stub import ValidationError, ConfigDict
+from pydantic import ValidationError, ConfigDict
 
 from ai_karen_engine.models.web_ui_types import (
     ChatProcessRequest,
@@ -44,8 +41,15 @@ from ai_karen_engine.models.web_api_error_responses import (
 from ai_karen_engine.database.schema_validator import validate_and_migrate_schema
 from ai_karen_engine.memory.internal.web_ui_api import WebUITransformationService
 from ai_karen_engine.ai_orchestrator.ai_orchestrator import AIOrchestrator
-from ai_karen_engine.memory.memory_service import WebUIMemoryService, UISource, MemoryType
-from ai_karen_engine.memory.unified_memory_service import MemoryCommitRequest, MemoryQueryRequest
+from ai_karen_engine.memory.memory_service import (
+    WebUIMemoryService,
+    UISource,
+    MemoryType,
+)
+from ai_karen_engine.memory.unified_memory_service import (
+    MemoryCommitRequest,
+    MemoryQueryRequest,
+)
 from ai_karen_engine.core.dependencies import (
     get_ai_orchestrator_service,
     get_memory_service,
@@ -75,7 +79,9 @@ async def _query_memory_records(
 
     if hasattr(memory_service, "query"):
         query_request = MemoryQueryRequest(
-            user_id=backend_request.user_id or backend_request.session_id or "anonymous",
+            user_id=backend_request.user_id
+            or backend_request.session_id
+            or "anonymous",
             org_id=None,
             query=backend_request.text,
             top_k=backend_request.top_k,
@@ -98,9 +104,14 @@ async def _commit_memory_record(
 
     if hasattr(memory_service, "commit"):
         commit_request = MemoryCommitRequest(
-            user_id=user_id or backend_request.user_id or backend_request.session_id or "anonymous",
+            user_id=user_id
+            or backend_request.user_id
+            or backend_request.session_id
+            or "anonymous",
             org_id=None,
-            text=backend_request.text if hasattr(backend_request, "text") else backend_request.content,
+            text=backend_request.text
+            if hasattr(backend_request, "text")
+            else backend_request.content,
             tags=list(getattr(backend_request, "tags", None) or []),
             importance=int(getattr(backend_request, "importance", 5) or 5),
             decay=getattr(backend_request, "decay", "short") or "short",
@@ -115,8 +126,13 @@ async def _commit_memory_record(
 
     return await memory_service.store_web_ui_memory(
         tenant_id=tenant_id,
-        content=backend_request.text if hasattr(backend_request, "text") else backend_request.content,
-        user_id=user_id or backend_request.user_id or backend_request.session_id or "anonymous",
+        content=backend_request.text
+        if hasattr(backend_request, "text")
+        else backend_request.content,
+        user_id=user_id
+        or backend_request.user_id
+        or backend_request.session_id
+        or "anonymous",
         ui_source=getattr(backend_request, "ui_source", UISource.WEB),
         session_id=getattr(backend_request, "session_id", None),
         memory_type=getattr(backend_request, "memory_type", MemoryType.GENERAL),
@@ -193,7 +209,9 @@ def handle_service_error(
     # Get appropriate HTTP status code
     status_code = get_http_status_for_error_code(error_code)
 
-    return HTTPException(status_code=status_code, detail=error_response.model_dump(mode="json"))
+    return HTTPException(
+        status_code=status_code, detail=error_response.model_dump(mode="json")
+    )
 
 
 def create_fallback_chat_response(
@@ -1191,8 +1209,12 @@ async def get_usage_analytics_compatibility(
             "user_activity": {
                 "active_users": usage_report["unique_users"],
                 "total_sessions": usage_report["total_sessions"],
-                "events_per_user": usage_report["user_activity"].get("events_per_user", {}),
-                "session_counts": usage_report["user_activity"].get("session_counts", {}),
+                "events_per_user": usage_report["user_activity"].get(
+                    "events_per_user", {}
+                ),
+                "session_counts": usage_report["user_activity"].get(
+                    "session_counts", {}
+                ),
                 "peak_hours": usage_report["peak_hours"],
                 "per_user": usage_report["user_activity"].get("per_user", {}),
             },
@@ -1219,18 +1241,21 @@ async def get_usage_analytics_compatibility(
 
 # Add the analytics route that the frontend expects at /api/analytics/usage
 # This is a workaround since the main analytics router isn't working
-try:
-    from pydantic import BaseModel, ConfigDict, Field
-except ImportError:
-    from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import List
+
 
 class FrontendUsageAnalytics(BaseModel):
     """Usage analytics format expected by frontend."""
+
     total_interactions: int = Field(..., description="Total number of interactions")
     unique_users: int = Field(..., description="Number of unique users")
-    popular_features: List[Dict[str, Any]] = Field(default_factory=list, description="Most popular features")
-    peak_hours: List[int] = Field(default_factory=list, description="Peak usage hours (0-23)")
+    popular_features: List[Dict[str, Any]] = Field(
+        default_factory=list, description="Most popular features"
+    )
+    peak_hours: List[int] = Field(
+        default_factory=list, description="Peak usage hours (0-23)"
+    )
     user_satisfaction: float = Field(..., description="User satisfaction score (0-100)")
     time_range: str = Field(..., description="Time range for the analytics")
     timestamp: str = Field(..., description="Timestamp when analytics were generated")

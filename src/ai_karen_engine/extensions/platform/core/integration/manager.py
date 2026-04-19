@@ -3,6 +3,7 @@ from typing import Any, Dict, Optional
 
 logger = logging.getLogger("kari.plugin_manager")
 
+
 class PluginManager:
     """
     Unified Application Integration Layer for Karen AI Extensions.
@@ -11,6 +12,7 @@ class PluginManager:
     - PermissionsManager: RBAC and Security
     - PluginRouter: AI Orchestration and Dispatch
     """
+
     def __init__(self, extensions_dir: str = "src/extensions"):
         from .permissions_manager import PermissionsManager
         from .sandbox_manager import SandboxManager
@@ -43,10 +45,7 @@ class PluginManager:
         logger.info("Modular Extension Backbone Ready.")
 
     async def run_plugin(
-        self,
-        name: str,
-        params: Dict[str, Any],
-        user_ctx: Dict[str, Any]
+        self, name: str, params: Dict[str, Any], user_ctx: Dict[str, Any]
     ) -> Any:
         """
         Main execution entry point from the Engine.
@@ -55,10 +54,84 @@ class PluginManager:
         # 1. Permission Check
         roles = user_ctx.get("roles", [])
         if not await self.permissions.check_permission(name, roles):
-            raise PermissionError(f"User roles {roles} not permitted for extension {name}")
+            raise PermissionError(
+                f"User roles {roles} not permitted for extension {name}"
+            )
 
         # 2. Dispatch
         return await self.router.dispatch(name, params, roles=roles)
+
+    async def dispatch_agent_action(self, agent_action: Any, context: Any):
+        """
+        Dispatch an agent action to the appropriate extension.
+
+        This method takes a standardized AgentAction and routes it to the
+        appropriate extension based on intent or explicit extension_id,
+        enforcing RBAC/permissions before execution.
+
+        Args:
+            agent_action: AgentAction instance with type, tool, extension_id, params
+            context: ProcessingContext with user information and metadata
+
+        Returns:
+            ExtensionExecutionResult with success status and data
+        """
+        from ai_karen_engine.chat.agent_action_models import ExtensionExecutionResult
+        import time
+
+        start_time = time.time()
+        extension_id = agent_action.extension_id or agent_action.tool
+
+        if not extension_id:
+            return ExtensionExecutionResult(
+                extension_id="unknown",
+                success=False,
+                error="No extension_id or tool specified in agent action",
+                execution_time_ms=0,
+            )
+
+        user_ctx = {
+            "roles": getattr(context, "user_roles", []),
+            "user_id": context.user_id,
+            "tenant_id": getattr(context, "tenant_id", "default"),
+            "correlation_id": context.correlation_id,
+        }
+
+        try:
+            result = await self.run_plugin(
+                name=extension_id, params=agent_action.params, user_ctx=user_ctx
+            )
+
+            execution_time = int((time.time() - start_time) * 1000)
+
+            return ExtensionExecutionResult(
+                extension_id=extension_id,
+                success=True,
+                data={"result": result} if not isinstance(result, dict) else result,
+                execution_time_ms=execution_time,
+            )
+
+        except PermissionError as e:
+            execution_time = int((time.time() - start_time) * 1000)
+            logger.warning(f"Permission denied for extension {extension_id}: {e}")
+            return ExtensionExecutionResult(
+                extension_id=extension_id,
+                success=False,
+                error=f"Permission denied: {str(e)}",
+                execution_time_ms=execution_time,
+            )
+
+        except Exception as e:
+            execution_time = int((time.time() - start_time) * 1000)
+            logger.error(
+                f"Extension execution failed for {extension_id}: {e}", exc_info=True
+            )
+            return ExtensionExecutionResult(
+                extension_id=extension_id,
+                success=False,
+                error=str(e),
+                execution_time_ms=execution_time,
+            )
 
     def get_health_summary(self) -> Dict[str, Any]:
         """Summarize health across all extensions via LifecycleManager."""
@@ -71,11 +144,15 @@ class PluginManager:
             "discovered_count": total,
             "lifecycle_states": {
                 name: state.value for name, state in lifecycle.extension_states.items()
-            } if lifecycle else {},
+            }
+            if lifecycle
+            else {},
         }
+
 
 # Singleton accessor
 _manager_instance: Optional[PluginManager] = None
+
 
 def get_plugin_manager() -> PluginManager:
     global _manager_instance

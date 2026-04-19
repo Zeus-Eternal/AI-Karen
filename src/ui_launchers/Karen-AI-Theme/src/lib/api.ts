@@ -16,7 +16,7 @@ export class ApiError extends Error {
 }
 
 export interface StreamEvent {
-  type: 'status' | 'content' | 'error' | 'complete';
+  type: 'status' | 'content' | 'error' | 'complete' | 'agent_step';
   content: string;
   correlation_id: string;
   metadata?: Record<string, unknown>;
@@ -30,6 +30,36 @@ export interface StreamingMetrics {
   connectionHealth: 'excellent' | 'good' | 'poor' | 'critical';
 }
 
+export type AgentStepEventType =
+  | 'agent_step_started'
+  | 'agent_step_completed'
+  | 'tool_execution_started'
+  | 'tool_execution_completed'
+  | 'web_search_started'
+  | 'web_search_sources_found'
+  | 'extension_execution_started'
+  | 'extension_execution_completed'
+  | 'citation_bundle_ready'
+  | 'degraded_mode_entered';
+
+export interface AgentStepEvent {
+  type: AgentStepEventType;
+  step_id: string;
+  action_type?: string;
+  correlation_id?: string;
+  timestamp?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface Citation {
+  id: string;
+  url: string;
+  title: string;
+  snippet: string;
+  index: number;
+  metadata?: Record<string, unknown>;
+}
+
 export interface AssistStreamCallbacks {
   onStatus?: (message: string, metadata?: Record<string, unknown>) => void;
   onContent?: (token: string) => void;
@@ -37,6 +67,8 @@ export interface AssistStreamCallbacks {
   onComplete?: (metadata?: Record<string, unknown>, content?: string) => void;
   onDone?: () => void;
   onMetrics?: (metrics: StreamingMetrics) => void;
+  onAgentStep?: (event: AgentStepEvent) => void;
+  onCitationBundle?: (citations: Citation[]) => void;
 }
 
 class ApiClient {

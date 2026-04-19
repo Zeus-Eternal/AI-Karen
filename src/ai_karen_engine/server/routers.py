@@ -49,6 +49,7 @@ auth_router: Optional[APIRouter] = None
 get_auth_middleware: Optional[Callable[[], Any]] = None
 AuthMiddlewareAuthenticationError: Type[Exception] = Exception
 
+
 class _FallbackAuthenticationError(Exception):
     """Fallback auth error used when auth middleware module is unavailable."""
 
@@ -64,6 +65,7 @@ try:
         AuthenticationError,
         get_auth_middleware,
     )
+
     AuthMiddlewareAuthenticationError = AuthenticationError
 
     logger.info("✅ Auth router imported successfully")
@@ -314,7 +316,7 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
                     if callable(authenticate_request):
                         user_data = await authenticate_request(request)
                     else:
-                        user_data = auth_middleware.get_current_user(request)
+                        user_data = await auth_middleware.get_current_user(request)
                     request.state.user = user_data
                 except HTTPException as exc:
                     logger.warning(
@@ -325,33 +327,55 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
                     )
                     return _http_exception_response(exc)
                 except AuthMiddlewareAuthenticationError as exc:
-                    # Handle specific authentication errors
-                    status_code = int(getattr(exc, "status_code", 401))
-                    message = str(getattr(exc, "message", str(exc)))
-                    logger.warning(
-                        "🚫 Authentication error for %s %s: %s",
-                        request.method,
-                        request.url.path,
-                        message,
-                    )
-                    return _http_exception_response(
-                        HTTPException(status_code=status_code, detail=message)
-                    )
-                except Exception as exc:
-                    # Log unexpected authentication errors with full context
-                    logger.exception(
-                        "⚠️ Unexpected error during authentication for %s %s: %s",
-                        request.method,
-                        request.url.path,
-                        str(exc),
-                    )
-                    # Return a generic authentication error without exposing internal details
-                    return _http_exception_response(
-                        HTTPException(
-                            status_code=500,
-                            detail="Authentication service temporarily unavailable",
+                    # If it's an extension endpoint, we might want to allow guest access
+                    if request.url.path.startswith("/api/extensions"):
+                        request.state.user = {
+                            "user_id": "guest",
+                            "email": "guest@karen.ai",
+                            "user_type": "user",
+                            "permissions": ["extension:read"],
+                            "tenant_id": "default",
+                            "authenticated": False
+                        }
+                    else:
+                        # Handle specific authentication errors
+                        status_code = int(getattr(exc, "status_code", 401))
+                        message = str(getattr(exc, "message", str(exc)))
+                        logger.warning(
+                            "🚫 Authentication error for %s %s: %s",
+                            request.method,
+                            request.url.path,
+                            message,
                         )
-                    )
+                        return _http_exception_response(
+                            HTTPException(status_code=status_code, detail=message)
+                        )
+                except Exception as exc:
+                    # If it's an extension endpoint, we might want to allow guest access
+                    if request.url.path.startswith("/api/extensions"):
+                        request.state.user = {
+                            "user_id": "guest",
+                            "email": "guest@karen.ai",
+                            "user_type": "user",
+                            "permissions": ["extension:read"],
+                            "tenant_id": "default",
+                            "authenticated": False
+                        }
+                    else:
+                        # Log unexpected authentication errors with full context
+                        logger.exception(
+                            "⚠️ Unexpected error during authentication for %s %s: %s",
+                            request.method,
+                            request.url.path,
+                            str(exc),
+                        )
+                        # Return 401 instead of 500 if possible to avoid terminal UI errors
+                        return _http_exception_response(
+                            HTTPException(
+                                status_code=401,
+                                detail=f"Authentication service error: {str(exc)}",
+                            )
+                        )
 
             response = await call_next(request)
             return _ensure_asgi_response(response)

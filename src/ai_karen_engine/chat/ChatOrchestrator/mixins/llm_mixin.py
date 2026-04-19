@@ -621,10 +621,16 @@ class ChatLLMMixin(Base):
         """Build a serializable metadata payload with enhanced metrics tracking."""
 
         provider = (
-            getattr(result, "provider", None)
+            getattr(result, "actual_provider", getattr(result, "provider", None))
             if not isinstance(result, dict)
-            else result.get("provider")
+            else result.get("actual_provider") or result.get("provider")
         )
+        requested_provider = (
+            getattr(result, "requested_provider", None)
+            if not isinstance(result, dict)
+            else result.get("requested_provider")
+        ) or (additional.get("requested_provider") if additional else None)
+
         model_id = (
             getattr(result, "model_id", None)
             if not isinstance(result, dict)
@@ -656,6 +662,10 @@ class ChatLLMMixin(Base):
             else bool(result.get("is_degraded", False))
         )
 
+        # If actual differs from requested, it's degraded/fallback
+        if not is_degraded and requested_provider and provider and requested_provider != provider:
+            is_degraded = True
+
         # Ensure degraded mode is set if fallback was used
         if not is_degraded and additional and additional.get("used_fallback"):
             is_degraded = True
@@ -663,6 +673,7 @@ class ChatLLMMixin(Base):
         metadata: Dict[str, Any] = {
             "source": source,
             "provider": provider,
+            "requested_provider": requested_provider,
             "model_id": model_id,
             "model_name": model_name,
             "tags": tags,
@@ -732,6 +743,9 @@ class ChatLLMMixin(Base):
             "preferred_failure_reason",
         ):
             value = extra.get(key)
+            if value is None and additional:
+                value = additional.get(key)
+                
             if value is not None:
                 metadata[key] = value
 

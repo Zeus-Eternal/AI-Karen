@@ -14,19 +14,18 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
-try:
-    from pydantic import BaseModel, ConfigDict, Field
-except ImportError:
-    from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field
 
-from ai_karen_engine.integrations.dynamic_provider_system import get_dynamic_provider_manager
+from ai_karen_engine.integrations.dynamic_provider_system import (
+    get_dynamic_provider_manager,
+)
 from ai_karen_engine.integrations.llm_profile_system import (
     get_profile_manager,
     RouterPolicy,
     GuardrailLevel,
     ProviderPreference,
     GuardrailConfig,
-    MemoryBudget
+    MemoryBudget,
 )
 
 logger = logging.getLogger(__name__)
@@ -40,8 +39,10 @@ router = APIRouter(prefix="/providers", tags=["Dynamic Providers"])
 # Request/Response Models
 # -----------------------------
 
+
 class ProviderInfo(BaseModel):
     """Provider information response model."""
+
     name: str
     description: str
     category: str
@@ -59,6 +60,7 @@ class ProviderInfo(BaseModel):
 
 class ModelInfo(BaseModel):
     """Model information response model."""
+
     id: str
     name: str
     family: str
@@ -76,12 +78,14 @@ class ModelInfo(BaseModel):
 
 class ApiKeyValidationRequest(BaseModel):
     """API key validation request model."""
+
     provider: str
     api_key: str
 
 
 class ApiKeyValidationResponse(BaseModel):
     """API key validation response model."""
+
     valid: bool
     message: str
     provider: str
@@ -89,12 +93,14 @@ class ApiKeyValidationResponse(BaseModel):
 
 class ModelDiscoveryRequest(BaseModel):
     """Model discovery request model."""
+
     provider: str
     force_refresh: bool = False
 
 
 class HealthCheckResponse(BaseModel):
     """Health check response model."""
+
     provider: str
     status: str
     message: str
@@ -103,6 +109,7 @@ class HealthCheckResponse(BaseModel):
 
 class LLMProfileResponse(BaseModel):
     """LLM profile response model."""
+
     id: str
     name: str
     description: str
@@ -118,6 +125,7 @@ class LLMProfileResponse(BaseModel):
 
 class CreateProfileRequest(BaseModel):
     """Create profile request model."""
+
     name: str
     description: str = ""
     router_policy: str = "balanced"
@@ -133,6 +141,7 @@ class CreateProfileRequest(BaseModel):
 
 class UpdateProfileRequest(BaseModel):
     """Update profile request model."""
+
     name: Optional[str] = None
     description: Optional[str] = None
     router_policy: Optional[str] = None
@@ -150,41 +159,45 @@ class UpdateProfileRequest(BaseModel):
 # Provider Management Endpoints
 # -----------------------------
 
+
 @router.get("/", response_model=List[ProviderInfo])
 async def list_providers(
-    llm_only: bool = True,
-    healthy_only: bool = False
+    llm_only: bool = True, healthy_only: bool = False
 ) -> List[ProviderInfo]:
     """
     List available providers.
-    
+
     Args:
         llm_only: Only return LLM providers (excludes CopilotKit, etc.)
         healthy_only: Only return healthy providers
     """
     try:
         provider_manager = get_dynamic_provider_manager()
-        
+
         # Try to get providers with error handling
         try:
             if llm_only:
                 # Use the registry's LLM-only method to exclude UI frameworks like CopilotKit
                 from ai_karen_engine.integrations.registry import get_registry
+
                 registry = get_registry()
                 provider_names = registry.list_llm_providers(healthy_only=healthy_only)
             else:
                 # Get all providers and filter by health if requested
                 from ai_karen_engine.integrations.registry import get_registry
+
                 registry = get_registry()
                 provider_names = registry.list_providers(healthy_only=healthy_only)
         except AttributeError as attr_error:
-            logger.warning(f"Registry method not available: {attr_error}. Using fallback.")
+            logger.warning(
+                f"Registry method not available: {attr_error}. Using fallback."
+            )
             # Fallback to basic provider list
             provider_names = ["openai", "gemini", "deepseek", "huggingface", "local"]
             if not llm_only:
                 # Only include CopilotKit when explicitly requesting all providers (not LLM-only)
                 provider_names.append("copilotkit")
-        
+
         providers = []
         for name in provider_names:
             try:
@@ -194,20 +207,22 @@ async def list_providers(
             except Exception as info_error:
                 logger.warning(f"Failed to get info for provider {name}: {info_error}")
                 # Add basic provider info as fallback
-                providers.append(ProviderInfo(
-                    name=name,
-                    description=f"{name.title()} provider",
-                    category="LLM",
-                    requires_api_key=True,
-                    capabilities=["streaming"],
-                    is_llm_provider=name != "copilotkit",
-                    provider_type="remote",
-                    health_status="unknown",
-                    cached_models_count=0
-                ))
-        
+                providers.append(
+                    ProviderInfo(
+                        name=name,
+                        description=f"{name.title()} provider",
+                        category="LLM",
+                        requires_api_key=True,
+                        capabilities=["streaming"],
+                        is_llm_provider=name != "copilotkit",
+                        provider_type="remote",
+                        health_status="unknown",
+                        cached_models_count=0,
+                    )
+                )
+
         return providers
-        
+
     except Exception as e:
         logger.error(f"Failed to list providers: {e}")
         # Return minimal fallback response instead of error
@@ -221,7 +236,7 @@ async def list_providers(
                 is_llm_provider=True,
                 provider_type="remote",
                 health_status="unknown",
-                cached_models_count=0
+                cached_models_count=0,
             ),
             ProviderInfo(
                 name="local",
@@ -232,8 +247,8 @@ async def list_providers(
                 is_llm_provider=True,
                 provider_type="local",
                 health_status="unknown",
-                cached_models_count=0
-            )
+                cached_models_count=0,
+            ),
         ]
         logger.info("Returning fallback provider list")
         return fallback_providers
@@ -245,12 +260,14 @@ async def get_provider(provider_name: str) -> ProviderInfo:
     try:
         provider_manager = get_dynamic_provider_manager()
         provider_info = provider_manager.get_provider_info(provider_name)
-        
+
         if not provider_info:
-            raise HTTPException(status_code=404, detail=f"Provider {provider_name} not found")
-        
+            raise HTTPException(
+                status_code=404, detail=f"Provider {provider_name} not found"
+            )
+
         return ProviderInfo(**provider_info)
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -259,26 +276,26 @@ async def get_provider(provider_name: str) -> ProviderInfo:
 
 
 @router.post("/validate-api-key", response_model=ApiKeyValidationResponse)
-async def validate_api_key(request: ApiKeyValidationRequest) -> ApiKeyValidationResponse:
+async def validate_api_key(
+    request: ApiKeyValidationRequest,
+) -> ApiKeyValidationResponse:
     """Validate an API key for a provider."""
     try:
         provider_manager = get_dynamic_provider_manager()
-        
+
         config = {"api_key": request.api_key}
         result = await provider_manager.validate_api_key(request.provider, config)
-        
+
         return ApiKeyValidationResponse(
-            valid=result["valid"],
-            message=result["message"],
-            provider=request.provider
+            valid=result["valid"], message=result["message"], provider=request.provider
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to validate API key for {request.provider}: {e}")
         return ApiKeyValidationResponse(
             valid=False,
             message=f"Validation failed: {str(e)}",
-            provider=request.provider
+            provider=request.provider,
         )
 
 
@@ -288,21 +305,21 @@ async def health_check_provider(provider_name: str) -> HealthCheckResponse:
     try:
         provider_manager = get_dynamic_provider_manager()
         result = provider_manager.health_check(provider_name)
-        
+
         return HealthCheckResponse(
             provider=provider_name,
             status=result["status"],
             message=result["message"],
-            response_time=result.get("response_time", 0.0)
+            response_time=result.get("response_time", 0.0),
         )
-        
+
     except Exception as e:
         logger.error(f"Health check failed for {provider_name}: {e}")
         return HealthCheckResponse(
             provider=provider_name,
             status="error",
             message=f"Health check failed: {str(e)}",
-            response_time=0.0
+            response_time=0.0,
         )
 
 
@@ -312,7 +329,7 @@ async def health_check_all_providers() -> Dict[str, HealthCheckResponse]:
     try:
         provider_manager = get_dynamic_provider_manager()
         provider_names = provider_manager.get_llm_providers()
-        
+
         results = {}
         for provider_name in provider_names:
             try:
@@ -321,18 +338,18 @@ async def health_check_all_providers() -> Dict[str, HealthCheckResponse]:
                     provider=provider_name,
                     status=result["status"],
                     message=result["message"],
-                    response_time=result.get("response_time", 0.0)
+                    response_time=result.get("response_time", 0.0),
                 )
             except Exception as e:
                 results[provider_name] = HealthCheckResponse(
                     provider=provider_name,
                     status="error",
                     message=f"Health check failed: {str(e)}",
-                    response_time=0.0
+                    response_time=0.0,
                 )
-        
+
         return results
-        
+
     except Exception as e:
         logger.error(f"Failed to perform health check on all providers: {e}")
         raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
@@ -342,22 +359,24 @@ async def health_check_all_providers() -> Dict[str, HealthCheckResponse]:
 # Model Discovery Endpoints
 # -----------------------------
 
+
 @router.get("/{provider_name}/models", response_model=List[ModelInfo])
 async def get_provider_models(
-    provider_name: str,
-    force_refresh: bool = False
+    provider_name: str, force_refresh: bool = False
 ) -> List[ModelInfo]:
     """Get available models from a provider."""
     try:
         provider_manager = get_dynamic_provider_manager()
-        models = await provider_manager.discover_models(provider_name, force_refresh=force_refresh)
-        
+        models = await provider_manager.discover_models(
+            provider_name, force_refresh=force_refresh
+        )
+
         model_infos = []
         for model in models:
             model_infos.append(ModelInfo(**model))
-        
+
         return model_infos
-        
+
     except Exception as e:
         logger.error(f"Failed to get models for {provider_name}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to get models: {str(e)}")
@@ -365,29 +384,28 @@ async def get_provider_models(
 
 @router.post("/discover-models", response_model=List[ModelInfo])
 async def discover_models(
-    request: ModelDiscoveryRequest,
-    background_tasks: BackgroundTasks
+    request: ModelDiscoveryRequest, background_tasks: BackgroundTasks
 ) -> List[ModelInfo]:
     """Discover models from a provider (with background refresh option)."""
     try:
         provider_manager = get_dynamic_provider_manager()
-        
+
         if request.force_refresh:
             # Run discovery in background for better UX
             background_tasks.add_task(
-                provider_manager.discover_models,
-                request.provider,
-                force_refresh=True
+                provider_manager.discover_models, request.provider, force_refresh=True
             )
-        
-        models = await provider_manager.discover_models(request.provider, force_refresh=False)
-        
+
+        models = await provider_manager.discover_models(
+            request.provider, force_refresh=False
+        )
+
         model_infos = []
         for model in models:
             model_infos.append(ModelInfo(**model))
-        
+
         return model_infos
-        
+
     except Exception as e:
         logger.error(f"Failed to discover models for {request.provider}: {e}")
         raise HTTPException(status_code=500, detail=f"Model discovery failed: {str(e)}")
@@ -397,13 +415,14 @@ async def discover_models(
 # LLM Profile Management Endpoints
 # -----------------------------
 
+
 @router.get("/profiles", response_model=List[LLMProfileResponse])
 async def list_profiles() -> List[LLMProfileResponse]:
     """List all LLM profiles."""
     try:
         profile_manager = get_profile_manager()
         profiles = profile_manager.list_profiles()
-        
+
         profile_responses = []
         for profile in profiles:
             # Convert providers to dict format for API response
@@ -415,28 +434,32 @@ async def list_profiles() -> List[LLMProfileResponse]:
                     "priority": pref.priority,
                     "max_cost_per_1k_tokens": pref.max_cost_per_1k_tokens,
                     "required_capabilities": list(pref.required_capabilities),
-                    "excluded_capabilities": list(pref.excluded_capabilities)
+                    "excluded_capabilities": list(pref.excluded_capabilities),
                 }
-            
-            profile_responses.append(LLMProfileResponse(
-                id=profile.id,
-                name=profile.name,
-                description=profile.description,
-                router_policy=profile.router_policy.value,
-                providers=providers_dict,
-                fallback_provider=profile.fallback_provider,
-                fallback_model=profile.fallback_model,
-                is_valid=profile.is_valid,
-                validation_errors=profile.validation_errors,
-                created_at=profile.created_at,
-                updated_at=profile.updated_at
-            ))
-        
+
+            profile_responses.append(
+                LLMProfileResponse(
+                    id=profile.id,
+                    name=profile.name,
+                    description=profile.description,
+                    router_policy=profile.router_policy.value,
+                    providers=providers_dict,
+                    fallback_provider=profile.fallback_provider,
+                    fallback_model=profile.fallback_model,
+                    is_valid=profile.is_valid,
+                    validation_errors=profile.validation_errors,
+                    created_at=profile.created_at,
+                    updated_at=profile.updated_at,
+                )
+            )
+
         return profile_responses
-        
+
     except Exception as e:
         logger.error(f"Failed to list profiles: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to list profiles: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to list profiles: {str(e)}"
+        )
 
 
 @router.get("/profiles/active", response_model=Optional[LLMProfileResponse])
@@ -445,10 +468,10 @@ async def get_active_profile() -> Optional[LLMProfileResponse]:
     try:
         profile_manager = get_profile_manager()
         profile = profile_manager.get_active_profile()
-        
+
         if not profile:
             return None
-        
+
         # Convert providers to dict format
         providers_dict = {}
         for use_case, pref in profile.providers.items():
@@ -458,9 +481,9 @@ async def get_active_profile() -> Optional[LLMProfileResponse]:
                 "priority": pref.priority,
                 "max_cost_per_1k_tokens": pref.max_cost_per_1k_tokens,
                 "required_capabilities": list(pref.required_capabilities),
-                "excluded_capabilities": list(pref.excluded_capabilities)
+                "excluded_capabilities": list(pref.excluded_capabilities),
             }
-        
+
         return LLMProfileResponse(
             id=profile.id,
             name=profile.name,
@@ -472,12 +495,14 @@ async def get_active_profile() -> Optional[LLMProfileResponse]:
             is_valid=profile.is_valid,
             validation_errors=profile.validation_errors,
             created_at=profile.created_at,
-            updated_at=profile.updated_at
+            updated_at=profile.updated_at,
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to get active profile: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get active profile: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get active profile: {str(e)}"
+        )
 
 
 @router.post("/profiles", response_model=LLMProfileResponse)
@@ -485,7 +510,7 @@ async def create_profile(request: CreateProfileRequest) -> LLMProfileResponse:
     """Create a new LLM profile."""
     try:
         profile_manager = get_profile_manager()
-        
+
         # Convert providers dict to ProviderPreference objects
         providers = {}
         for use_case, pref_data in request.providers.items():
@@ -495,9 +520,9 @@ async def create_profile(request: CreateProfileRequest) -> LLMProfileResponse:
                 priority=pref_data.get("priority", 50),
                 max_cost_per_1k_tokens=pref_data.get("max_cost_per_1k_tokens"),
                 required_capabilities=set(pref_data.get("required_capabilities", [])),
-                excluded_capabilities=set(pref_data.get("excluded_capabilities", []))
+                excluded_capabilities=set(pref_data.get("excluded_capabilities", [])),
             )
-        
+
         profile = profile_manager.create_profile(
             name=request.name,
             description=request.description,
@@ -509,9 +534,9 @@ async def create_profile(request: CreateProfileRequest) -> LLMProfileResponse:
             enable_function_calling=request.enable_function_calling,
             enable_vision=request.enable_vision,
             temperature=request.temperature,
-            max_tokens=request.max_tokens
+            max_tokens=request.max_tokens,
         )
-        
+
         # Convert back to response format
         providers_dict = {}
         for use_case, pref in profile.providers.items():
@@ -521,9 +546,9 @@ async def create_profile(request: CreateProfileRequest) -> LLMProfileResponse:
                 "priority": pref.priority,
                 "max_cost_per_1k_tokens": pref.max_cost_per_1k_tokens,
                 "required_capabilities": list(pref.required_capabilities),
-                "excluded_capabilities": list(pref.excluded_capabilities)
+                "excluded_capabilities": list(pref.excluded_capabilities),
             }
-        
+
         return LLMProfileResponse(
             id=profile.id,
             name=profile.name,
@@ -535,20 +560,24 @@ async def create_profile(request: CreateProfileRequest) -> LLMProfileResponse:
             is_valid=profile.is_valid,
             validation_errors=profile.validation_errors,
             created_at=profile.created_at,
-            updated_at=profile.updated_at
+            updated_at=profile.updated_at,
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to create profile: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to create profile: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to create profile: {str(e)}"
+        )
 
 
 @router.put("/profiles/{profile_id}", response_model=LLMProfileResponse)
-async def update_profile(profile_id: str, request: UpdateProfileRequest) -> LLMProfileResponse:
+async def update_profile(
+    profile_id: str, request: UpdateProfileRequest
+) -> LLMProfileResponse:
     """Update an existing LLM profile."""
     try:
         profile_manager = get_profile_manager()
-        
+
         # Prepare updates
         updates = {}
         if request.name is not None:
@@ -571,7 +600,7 @@ async def update_profile(profile_id: str, request: UpdateProfileRequest) -> LLMP
             updates["temperature"] = request.temperature
         if request.max_tokens is not None:
             updates["max_tokens"] = request.max_tokens
-        
+
         # Convert providers if provided
         if request.providers is not None:
             providers = {}
@@ -581,13 +610,17 @@ async def update_profile(profile_id: str, request: UpdateProfileRequest) -> LLMP
                     model=pref_data.get("model"),
                     priority=pref_data.get("priority", 50),
                     max_cost_per_1k_tokens=pref_data.get("max_cost_per_1k_tokens"),
-                    required_capabilities=set(pref_data.get("required_capabilities", [])),
-                    excluded_capabilities=set(pref_data.get("excluded_capabilities", []))
+                    required_capabilities=set(
+                        pref_data.get("required_capabilities", [])
+                    ),
+                    excluded_capabilities=set(
+                        pref_data.get("excluded_capabilities", [])
+                    ),
                 )
             updates["providers"] = providers
-        
+
         profile = profile_manager.update_profile(profile_id, **updates)
-        
+
         # Convert back to response format
         providers_dict = {}
         for use_case, pref in profile.providers.items():
@@ -597,9 +630,9 @@ async def update_profile(profile_id: str, request: UpdateProfileRequest) -> LLMP
                 "priority": pref.priority,
                 "max_cost_per_1k_tokens": pref.max_cost_per_1k_tokens,
                 "required_capabilities": list(pref.required_capabilities),
-                "excluded_capabilities": list(pref.excluded_capabilities)
+                "excluded_capabilities": list(pref.excluded_capabilities),
             }
-        
+
         return LLMProfileResponse(
             id=profile.id,
             name=profile.name,
@@ -611,14 +644,16 @@ async def update_profile(profile_id: str, request: UpdateProfileRequest) -> LLMP
             is_valid=profile.is_valid,
             validation_errors=profile.validation_errors,
             created_at=profile.created_at,
-            updated_at=profile.updated_at
+            updated_at=profile.updated_at,
         )
-        
+
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         logger.error(f"Failed to update profile {profile_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to update profile: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to update profile: {str(e)}"
+        )
 
 
 @router.delete("/profiles/{profile_id}")
@@ -627,19 +662,23 @@ async def delete_profile(profile_id: str) -> Dict[str, str]:
     try:
         profile_manager = get_profile_manager()
         success = profile_manager.delete_profile(profile_id)
-        
+
         if not success:
-            raise HTTPException(status_code=404, detail=f"Profile {profile_id} not found")
-        
+            raise HTTPException(
+                status_code=404, detail=f"Profile {profile_id} not found"
+            )
+
         return {"message": f"Profile {profile_id} deleted successfully"}
-        
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Failed to delete profile {profile_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to delete profile: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to delete profile: {str(e)}"
+        )
 
 
 @router.post("/profiles/{profile_id}/activate", response_model=LLMProfileResponse)
@@ -648,7 +687,7 @@ async def activate_profile(profile_id: str) -> LLMProfileResponse:
     try:
         profile_manager = get_profile_manager()
         profile = profile_manager.switch_profile(profile_id)
-        
+
         # Convert to response format
         providers_dict = {}
         for use_case, pref in profile.providers.items():
@@ -658,9 +697,9 @@ async def activate_profile(profile_id: str) -> LLMProfileResponse:
                 "priority": pref.priority,
                 "max_cost_per_1k_tokens": pref.max_cost_per_1k_tokens,
                 "required_capabilities": list(pref.required_capabilities),
-                "excluded_capabilities": list(pref.excluded_capabilities)
+                "excluded_capabilities": list(pref.excluded_capabilities),
             }
-        
+
         return LLMProfileResponse(
             id=profile.id,
             name=profile.name,
@@ -672,14 +711,16 @@ async def activate_profile(profile_id: str) -> LLMProfileResponse:
             is_valid=profile.is_valid,
             validation_errors=profile.validation_errors,
             created_at=profile.created_at,
-            updated_at=profile.updated_at
+            updated_at=profile.updated_at,
         )
-        
+
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         logger.error(f"Failed to activate profile {profile_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to activate profile: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to activate profile: {str(e)}"
+        )
 
 
 @router.get("/profiles/{profile_id}/validate")
@@ -688,18 +729,22 @@ async def validate_profile_compatibility(profile_id: str) -> Dict[str, Any]:
     try:
         profile_manager = get_profile_manager()
         profile = profile_manager.get_profile(profile_id)
-        
+
         if not profile:
-            raise HTTPException(status_code=404, detail=f"Profile {profile_id} not found")
-        
+            raise HTTPException(
+                status_code=404, detail=f"Profile {profile_id} not found"
+            )
+
         result = profile_manager.validate_profile_compatibility(profile)
         return result
-        
+
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Failed to validate profile {profile_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Profile validation failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Profile validation failed: {str(e)}"
+        )
 
 
 # Add the router to the main application

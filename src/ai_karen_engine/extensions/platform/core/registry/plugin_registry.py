@@ -33,7 +33,7 @@ class PluginRegistry:
 
     def __init__(
         self,
-        extensions_dir: str = "src/extensions",
+        extensions_dir: str = "src/ai_karen_engine/extensions/plugins",
         db_session: Optional[AsyncSession] = None,
     ):
         self.validator = ExtensionValidator()

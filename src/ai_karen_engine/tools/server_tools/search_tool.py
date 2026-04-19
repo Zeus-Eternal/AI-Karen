@@ -16,13 +16,27 @@ Dependencies
 from typing import Any, Dict, List, Optional
 
 import httpx
-from mcp.server.fastmcp import FastMCP
+try:
+    from mcp.server.fastmcp import FastMCP
+    mcp_available = True
+except ImportError:
+    # MCP not installed in this environment
+    mcp_available = False
+    class FastMCP:
+        def __init__(self, *args, **kwargs): pass
+        def tool(self, *args, **kwargs):
+            return lambda f: f
+        def run(self, *args, **kwargs): pass
 
 # --------------------------------------------------------------------------- #
 #  FastMCP server instance
 # --------------------------------------------------------------------------- #
 
 mcp = FastMCP("search")
+
+class SearchServerTool:
+    """Stub for SearchServerTool."""
+    pass
 
 # --------------------------------------------------------------------------- #
 #  Constants & simple validators

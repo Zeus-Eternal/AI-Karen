@@ -174,44 +174,26 @@ router = APIRouter(prefix="/auth", tags=["authentication"])
 
 async def _get_authenticated_user_from_request(request: Request):
     """Prefer the middleware-resolved user already attached to the request."""
-    from ai_karen_engine.core.auth_config import auth_config
-
-    # Check if auth bypass is enabled through centralized config
-    auth_bypass = auth_config.should_bypass_auth()
-
     # Check for direct marker in request state (set by middleware)
     request_user = getattr(request.state, "user", None)
     if request_user:
         logger.error(f"DEBUG_AUTH: Found request.state.user: {request_user}")
         return UserData.ensure(request_user)
 
-    # Standard authentication path (even if bypass is enabled, try to get real user first)
+    # Standard authentication path
     try:
         user = await get_authenticated_user(request)
         if user:
-            logger.debug(f"DEBUG_AUTH: Found real user even in bypass mode: {user}")
             return UserData.ensure(user)
-    except Exception as e:
-        if not auth_bypass:
-            logger.warning(f"Authentication failed: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Authentication failed or session expired",
-            )
-
-    if auth_bypass:
-        logger.error(
-            "DEBUG_AUTH: Authentication bypass fallback active, returning dev-user"
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication failed or session expired",
         )
-        return UserData.from_dict(
-            {
-                "user_id": "dev-user",
-                "email": "admin@karen.ai",
-                "roles": ["admin", "user"],
-                "full_name": "Developer Admin",
-                "tenant_id": "default",
-                "preferences": {},
-            }
+    except Exception as e:
+        logger.warning(f"Authentication failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication failed or session expired",
         )
 
 
@@ -706,24 +688,7 @@ async def update_current_user_info(
 
     try:
         current_user_id = _resolve_current_user_id(current_user)
-        logger.info(
-            f"DEBUG_AUTH: PUT /me called for user_id: {current_user_id}, type: {type(current_user_id)}"
-        )
-
-        # Check if auth bypass is enabled through centralized config
-        auth_bypass = auth_config.should_bypass_auth()
-        logger.info(
-            f"DEBUG_AUTH: auth_bypass={auth_bypass}, current_user_id in dev list: {current_user_id in ['dev-user', 'dev', 'admin']}"
-        )
-
-        if auth_bypass and current_user_id == "dev-user":
-            logger.info(
-                f"DEBUG_AUTH: Using developer bypass for user {current_user_id}"
-            )
-            # We used to return a mock user here, but now we proceed to allow
-            # testing of the actual update logic even in bypass mode.
-            # However, we must ensure 'dev-user' exists or handle its mapping.
-            pass
+        logger.info(f"DEBUG_AUTH: PUT /me called for user_id: {current_user_id}, type: {type(current_user_id)}")
 
         logger.info(f"DEBUG_AUTH: Using auth_service for user {current_user_id}")
         updated_user, error = await auth_svc.update_user_profile(
@@ -766,9 +731,6 @@ async def change_password(
     """Change the current user's password."""
 
     current_user_id = _resolve_current_user_id(current_user)
-
-    if current_user_id == "dev-user" or current_user_id == "dev":
-        return {"detail": "Password updated successfully (mocked for dev-user)"}
 
     auth_svc = await get_auth_service()
     error = await auth_svc.change_user_password(

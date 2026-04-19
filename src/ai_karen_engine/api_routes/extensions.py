@@ -4,44 +4,32 @@ import logging
 from datetime import datetime
 from pathlib import Path
 import sys
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from fastapi.responses import FileResponse
+from pydantic import BaseModel, Field
+
+from ai_karen_engine.utils.dependency_checks import import_fastapi
+
+APIRouter, Depends, HTTPException, Request = import_fastapi(
+    "APIRouter", "Depends", "HTTPException", "Request"
+)
 
 logger = logging.getLogger(__name__)
-
-
-def _ensure_src_on_path() -> None:
-    current = Path(__file__).resolve()
-    repo_root = current.parents[3]
-    src_root = repo_root / "src"
-    src_str = str(src_root)
-    if src_root.is_dir() and src_str not in sys.path:
-        sys.path.insert(0, src_str)
-
-
-_ensure_src_on_path()
-
-try:
-    from pydantic import BaseModel, Field
-except ImportError:  # pragma: no cover - fallback only
-    from ai_karen_engine.pydantic_stub import BaseModel, Field
-
 
 # Import extensions manager
 def get_extension_manager():
     """Get extension manager, returns None if not available."""
     try:
         from ai_karen_engine.extensions.platform.core.manager import (
-            get_extension_core_manager as get_extension_manager,
+            get_extension_core_manager as get_manager,
         )
-
-        return get_extension_manager()
+        return get_manager()
     except ImportError:
         return None
 
-
-# Define the API model
+# Define the API model for status
 class ExtensionStatusAPI(BaseModel):
+    id: str
     name: str
     display_name: str | None = Field(default=None)
     description: str | None = Field(default=None)
@@ -49,14 +37,16 @@ class ExtensionStatusAPI(BaseModel):
     status: str
     loaded_at: datetime | None = Field(default=None)
     error_message: str | None = Field(default=None)
+    capabilities: Dict[str, Any] = Field(default_factory=dict)
+    menu_contributions: List[Dict[str, Any]] = Field(default_factory=list)
+    tags: List[str] = Field(default_factory=list)
+    purpose: str | None = Field(default=None)
+    category: str = Field(default="plugins")
+    has_component: bool = Field(default=False)
 
-
-# Import FastAPI components
-from ai_karen_engine.utils.dependency_checks import import_fastapi
-
-APIRouter, Depends, HTTPException, Request = import_fastapi(
-    "APIRouter", "Depends", "HTTPException", "Request"
-)
+# Pydantic model for install request
+class InstallRequest(BaseModel):
+    plugin_id: str
 
 router = APIRouter()
 
@@ -69,409 +59,113 @@ try:
         get_current_user as _real_get_current_user,
     )
     from ai_karen_engine.core.auth_config import auth_config
-
     AUTH_AVAILABLE = True
 except ImportError:
     AUTH_AVAILABLE = False
-    AuthenticationError = Exception  # type: ignore[assignment]
-
+    AuthenticationError = Exception
 
 async def get_current_user(request: Request):
     """Get current user with auth bypass support."""
     if not AUTH_AVAILABLE:
-        return None
+        return {"user_id": "guest", "authenticated": False}
 
-    # Check for auth bypass
-    if (
-        auth_config
-        and hasattr(auth_config, "should_bypass_auth")
-        and auth_config.should_bypass_auth()
-    ):
-        # Return development user context when auth is bypassed
+    if auth_config and hasattr(auth_config, "should_bypass_auth") and auth_config.should_bypass_auth():
         return {
             "user_id": "dev-user",
             "email": "dev-user@karen.ai",
             "user_type": "developer",
-            "permissions": [
-                "extension:*",
-                "chat:write",
-                "chat:read",
-                "chat:admin",
-                "memory:read",
-                "memory:write",
-                "conversation:create",
-                "message:send",
-                "admin:*",
-            ],
+            "permissions": ["extension:*", "admin:*"],
             "tenant_id": "dev-tenant",
             "authenticated": True,
         }
 
     if _real_get_current_user:
-        return await _real_get_current_user(request)
-    return None
+        try:
+            return await _real_get_current_user(request)
+        except Exception:
+            return {"user_id": "guest", "authenticated": False}
+    return {"user_id": "guest", "authenticated": False}
 
-
-async def get_optional_current_user(request: Request):
-    """Best-effort auth dependency for routes that can be viewed anonymously."""
-    if not AUTH_AVAILABLE:
-        return None
-    try:
-        return await get_current_user(request)
-    except AuthenticationError:
-        return None
-
-
-async def get_optional_current_user_with_deps(
-    request: Request, current_user=Depends(get_optional_current_user)
-):
-    """Dependency wrapper that always works, even when AUTH_AVAILABLE is False."""
-    return current_user
-
-
-@router.get("/", response_model=Dict[str, Any])
+@router.get("/", response_model=List[ExtensionStatusAPI])
 async def list_extensions_root():
     """List all extensions and their status (root endpoint)."""
-    extension_manager = get_extension_manager()
-    if not extension_manager:
-        return {
-            "extensions": {},
-            "total": 0,
-            "message": "Extension manager not initialized",
-            "status": "unavailable",
-        }
-
+    manager = get_extension_manager()
+    if not manager:
+        return []
     try:
-        records = extension_manager.list_extension_statuses()
-        if not records:
-            records = await extension_manager.discover_extensions()
-
-        extensions = {}
-        for record in records:
-            ext_data = {
-                "id": record["id"],
-                "name": record["name"],
-                "display_name": record["display_name"],
-                "description": record["description"],
-                "version": record["version"],
-                "status": record["status"],
-                "loaded_at": record["loaded_at"].isoformat()
-                if record["loaded_at"]
-                else None,
-                "error_message": record["error_message"],
-                "capabilities": record["capabilities"],
-                "menu_contributions": record.get("menu_contributions", []),
-            }
-            extensions[record["name"]] = ext_data
+        return await manager.refresh_extensions()
     except Exception as e:
-        return {
-            "extensions": {},
-            "total": 0,
-            "message": f"Error loading extensions: {str(e)}",
-            "status": "error",
-        }
+        logger.error(f"Error in list_extensions_root: {e}")
+        return []
 
-    return {
-        "extensions": extensions,
-        "total": len(extensions),
-        "message": "Extensions available" if extensions else "No extensions found",
-        "status": "available" if extensions else "empty",
-    }
-
-
-# Pydantic model for install request
-class InstallRequest(BaseModel):
-    plugin_id: str
-
+@router.get("/list", response_model=List[ExtensionStatusAPI])
+async def list_extensions():
+    """List all extensions and their status."""
+    manager = get_extension_manager()
+    if not manager:
+        return []
+    try:
+        return await manager.refresh_extensions()
+    except Exception as e:
+        logger.error(f"Error in list_extensions: {e}")
+        return []
 
 @router.post("/install")
 async def install_extension(request: InstallRequest):
-    """Simple extension installation endpoint."""
-    plugin_id = request.plugin_id
-    # For now, just return success without actually installing
-    # The complex extension system may not be working properly
-    logger.info(f"Extension installation requested for {plugin_id}")
-    return {
-        "success": True,
-        "message": f"Installation request received for {plugin_id}",
-        "plugin_id": plugin_id,
-    }
-
-
-@router.get("/list")
-async def list_extensions():
-    """List all extensions and their status."""
+    """Extension installation endpoint."""
+    manager = get_extension_manager()
+    if not manager:
+        raise HTTPException(status_code=503, detail="Extension manager not initialized")
+    
     try:
-        from ai_karen_engine.core.dependencies import get_plugin_service
-        from ai_karen_engine.memory.plugin_registry import PluginStatus
-
-        plugin_service = await get_plugin_service()
-
-        registry = plugin_service.registry
-        if not registry:
-            logger.warning("Plugin registry not available, returning empty list")
-            return []
-
-        extensions: List[Dict[str, Any]] = []
-        for plugin in registry.plugins.values():
-            manifest = plugin.manifest
-            plugin_id = manifest.name
-            extension_dir = Path("src/extensions") / manifest.category / plugin_id
-            gui_dir = extension_dir / plugin_id
-            gui_manifest_path = gui_dir / "manifest.json"
-            has_gui = gui_manifest_path.exists()
-
-            status = (
-                "active"
-                if plugin.status == PluginStatus.REGISTERED
-                else plugin.status.value
-            )
-            if plugin.status == PluginStatus.DISABLED:
-                status = "disabled"
-
-            ui_entry_points: List[Dict[str, Any]] = []
-            if has_gui:
-                ui_entry_points.append(
-                    {
-                        "entry_id": f"{plugin_id}-main",
-                        "component": plugin_id,
-                        "zone": "sidebar.plugins",
-                        "label": manifest.name.replace("-", " ").title(),
-                    }
-                )
-
-            extensions.append(
-                {
-                    "id": plugin_id,
-                    "name": plugin_id,
-                    "display_name": manifest.name.replace("-", " ").title(),
-                    "description": manifest.description,
-                    "version": manifest.version,
-                    "status": status,
-                    "loaded_at": plugin.last_updated.isoformat()
-                    if plugin.last_updated
-                    else None,
-                    "category": manifest.category,
-                    "capabilities": {"provides_ui": has_gui},
-                    "has_component": has_gui,
-                    "ui_entry_points": ui_entry_points,
-                }
-            )
-
-        return extensions
-
+        from ai_karen_engine.extensions.platform.core.registry.ui_installer import install_ui
+        result = install_ui(request.plugin_id, "plugins")
+        return {
+            "success": result.status.value == "success",
+            "message": result.message,
+            "plugin_id": request.plugin_id
+        }
     except Exception as e:
-        logger.error(f"Error in list_extensions: {e}", exc_info=True)
-        return []
-    except Exception:
-        logger.error("Error in list_extensions", exc_info=True)
-        return []
-
-    return extensions
-
+        logger.error(f"Error during UI installation for {request.plugin_id}: {e}")
+        return {"success": False, "message": str(e), "plugin_id": request.plugin_id}
 
 @router.get("/{extension_name}")
 async def get_extension_status(extension_name: str):
     """Get detailed status of a specific extension."""
-    extension_manager = get_extension_manager()
-    if not extension_manager:
-        raise HTTPException(
-            status_code=503,
-            detail="Extension manager not initialized",
-        )
+    manager = get_extension_manager()
+    if not manager:
+        raise HTTPException(status_code=503, detail="Extension manager not initialized")
 
-    status = extension_manager.get_extension_status(extension_name)
+    status = manager.get_extension_status(extension_name)
     if not status:
-        await extension_manager.refresh_registry()
-        status = extension_manager.get_extension_status(extension_name)
+        await manager.refresh_extensions()
+        status = manager.get_extension_status(extension_name)
     if not status:
         raise HTTPException(status_code=404, detail="Extension not found")
-
     return status
 
-
-@router.get("/{extension_name}/assets/{asset_path:path}")
-async def get_extension_asset(
-    extension_name: str,
-    asset_path: str,
-    current_user=Depends(get_optional_current_user_with_deps),
-):
-    """Serve a static asset from a discovered extension directory."""
-    extension_manager = get_extension_manager()
-    if not extension_manager:
-        raise HTTPException(status_code=404, detail="Extension manager not initialized")
-
-    metadata = extension_manager.registry.get_metadata(extension_name)
-    if not metadata:
-        await extension_manager.refresh_registry()
-        metadata = extension_manager.registry.get_metadata(extension_name)
-    if not metadata:
-        raise HTTPException(status_code=404, detail="Extension not found")
-
-    base_dir = metadata.directory.resolve()
-    target = (base_dir / asset_path).resolve()
-    try:
-        target.relative_to(base_dir)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail="Invalid asset path") from exc
-
-    if not target.exists() or not target.is_file():
-        raise HTTPException(status_code=404, detail="Asset not found")
-
-    return FileResponse(Path(target))
-
-
 @router.post("/{extension_name}/load")
-async def load_extension(
-    extension_name: str,
-    current_user=Depends(get_current_user) if AUTH_AVAILABLE else None,
-):
+async def load_extension(extension_name: str, user=Depends(get_current_user)):
     """Load an extension."""
-    extension_manager = get_extension_manager()
-    if not extension_manager:
-        raise HTTPException(
-            status_code=503,
-            detail="Extension manager not initialized",
-        )
-
+    manager = get_extension_manager()
+    if not manager:
+        raise HTTPException(status_code=503, detail="Extension manager not initialized")
     try:
-        record = await extension_manager.load_extension(extension_name)
-        return {
-            "message": f"Extension {extension_name} loaded successfully",
-            "status": record.status.value,
-        }
-    except Exception as e:  # pragma: no cover - runtime errors
-        raise HTTPException(status_code=400, detail=str(e)) from e
-
+        record = await manager.load_extension(extension_name)
+        return {"message": f"Extension {extension_name} loaded", "status": record.status.value}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/{extension_name}/unload")
-async def unload_extension(
-    extension_name: str,
-    current_user=Depends(get_current_user) if AUTH_AVAILABLE else None,
-):
+async def unload_extension(extension_name: str, user=Depends(get_current_user)):
     """Unload an extension."""
-    extension_manager = get_extension_manager()
-    if not extension_manager:
-        raise HTTPException(
-            status_code=503,
-            detail="Extension manager not initialized",
-        )
-
+    manager = get_extension_manager()
+    if not manager:
+        raise HTTPException(status_code=503, detail="Extension manager not initialized")
     try:
-        await extension_manager.unload_extension(extension_name)
-        return {"message": f"Extension {extension_name} unloaded successfully"}
-    except Exception as e:  # pragma: no cover - runtime errors
-        raise HTTPException(status_code=400, detail=str(e)) from e
-
-
-@router.post("/{extension_name}/reload")
-async def reload_extension(
-    extension_name: str,
-    current_user=Depends(get_current_user) if AUTH_AVAILABLE else None,
-):
-    """Reload an extension (for development)."""
-    extension_manager = get_extension_manager()
-    if not extension_manager:
-        raise HTTPException(
-            status_code=503,
-            detail="Extension manager not initialized",
-        )
-
-    try:
-        record = await extension_manager.reload_extension(extension_name)
-        return {
-            "message": f"Extension {extension_name} reloaded successfully",
-            "status": record.status.value,
-        }
-    except Exception as e:  # pragma: no cover - runtime errors
-        raise HTTPException(status_code=400, detail=str(e)) from e
-
-
-@router.get("/discover")
-async def discover_extensions(
-    current_user=Depends(get_current_user) if AUTH_AVAILABLE else None,
-):
-    """Discover available extensions in the extensions directory."""
-    extension_manager = get_extension_manager()
-    if not extension_manager:
-        raise HTTPException(
-            status_code=503,
-            detail="Extension manager not initialized",
-        )
-
-    try:
-        items = await extension_manager.discover_extensions()
-        return {
-            "discovered": len(items),
-            "extensions": [
-                {
-                    "name": m["name"],
-                    "version": m["version"],
-                    "display_name": m["display_name"],
-                    "description": m["description"],
-                    "status": m["status"],
-                    "error_message": m["error_message"],
-                }
-                for m in items
-            ],
-        }
-    except Exception as e:  # pragma: no cover - runtime errors
-        raise HTTPException(status_code=500, detail=str(e)) from e
-
-
-@router.get("/registry/summary")
-async def get_registry_summary(
-    current_user=Depends(get_current_user) if AUTH_AVAILABLE else None,
-):
-    """Get extension registry summary."""
-    extension_manager = get_extension_manager()
-    if not extension_manager:
-        raise HTTPException(
-            status_code=503,
-            detail="Extension manager not initialized",
-        )
-
-    return extension_manager.registry.to_dict()
-
-
-@router.get("/health")
-async def get_extensions_health(
-    current_user=Depends(get_current_user) if AUTH_AVAILABLE else None,
-):
-    """Get overall health summary for extensions."""
-    extension_manager = get_extension_manager()
-    if not extension_manager:
-        raise HTTPException(
-            status_code=503,
-            detail="Extension manager not initialized",
-        )
-    return extension_manager.get_health_summary()
-
-
-@router.get("/system/health")
-async def get_system_health():
-    """Get system health for extensions (public endpoint)."""
-    extension_manager = get_extension_manager()
-    if not extension_manager:
-        return {
-            "status": "unavailable",
-            "message": "Extension manager not initialized",
-            "extensions": [],
-        }
-
-    try:
-        health_summary = extension_manager.get_health_summary()
-        return {
-            "status": "healthy",
-            "message": "Extension system operational",
-            "extensions": health_summary,
-        }
+        await manager.unload_extension(extension_name)
+        return {"message": f"Extension {extension_name} unloaded"}
     except Exception as e:
-        return {
-            "status": "error",
-            "message": f"Extension system error: {str(e)}",
-            "extensions": [],
-        }
-
+        raise HTTPException(status_code=400, detail=str(e))
 
 __all__ = ["router"]

@@ -1,0 +1,14 @@
+{
+  "plugin_id": "web-search-docs",
+  "display_name": "Web Search (Docs)",
+  "menus": [
+    {
+      "placement": "sidebar.plugins",
+      "label": "Docs Search",
+      "icon": "book",
+      "order": 60
+    }
+  ],
+  "icons": [],
+  "generated_at": "2026-04-19T11:00:13.077392"
+}

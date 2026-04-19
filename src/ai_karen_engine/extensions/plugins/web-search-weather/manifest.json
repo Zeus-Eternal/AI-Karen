@@ -1,0 +1,29 @@
+{
+  "id": "web-search-weather",
+  "plugin_id": "web-search-weather",
+  "category": "plugins",
+  "gui_manifest_version": "1.0",
+  "display_name": "Web Search (Weather)",
+  "description": "Weather and forecast lookup for Kari.",
+  "version": "1.0.0",
+  "capabilities": {
+    "provides_ui": true
+  },
+  "ui": {
+    "has_component": false,
+    "purpose": "Weather lookup status and configuration",
+    "menu": [
+      {
+        "placement": "sidebar.plugins",
+        "label": "Weather",
+        "icon": "cloud-sun",
+        "order": 65
+      }
+    ]
+  },
+  "rbac": {
+    "allowed_roles": ["user", "admin", "developer"]
+  },
+  "tags": ["weather", "forecast", "climate", "temperature", "alerts", "prompt-first"],
+  "purpose": "Locate and retrieve current weather, forecasts, and weather alerts for Kari."
+}

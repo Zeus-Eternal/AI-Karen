@@ -14,7 +14,7 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
-    "types": ["node", "react", "react-dom", "webpack-env"],
+    "types": ["node", "react", "react-dom"],
     "typeRoots": ["./node_modules/@types"],
     "plugins": [
       {

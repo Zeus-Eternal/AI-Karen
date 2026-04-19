@@ -12,10 +12,7 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-try:
-    from pydantic import BaseModel, ConfigDict, Field
-except ImportError:
-    from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from ai_karen_engine.core.dependencies import bypass_user_context_func
 from ai_karen_engine.services.audit_logger import get_audit_logger
@@ -155,18 +152,20 @@ async def get_api_key_status(
                 provider_compatible = validation.get("provider_compatible", [])
 
         # Log audit event
-        await audit_logger.log_event(
-            event_type="secret.accessed",
-            user_id=user["user_id"],
-            details={
-                "secret_name": "COPILOT_API_KEY",
-                "action": "status_check",
-                "present": status_info["exists"],
-            },
-            correlation_id=request_meta["correlation_id"],
-            ip_address=request_meta["ip_address"],
-            user_agent=request_meta["user_agent"],
-            surface="api",
+        audit_logger.log_audit_event(
+            {
+                "event_type": "secret.accessed",
+                "user_id": user["user_id"],
+                "details": {
+                    "secret_name": "COPILOT_API_KEY",
+                    "action": "status_check",
+                    "present": status_info["exists"],
+                },
+                "correlation_id": request_meta["correlation_id"],
+                "ip_address": request_meta["ip_address"],
+                "user_agent": request_meta["user_agent"],
+                "surface": "api",
+            }
         )
 
         return ApiKeyStatusResponse(
@@ -224,18 +223,22 @@ async def set_api_key(
                 )
 
             # Log audit event
-            await audit_logger.log_event(
-                event_type="copilot.api_key.set",
-                user_id=user["user_id"],
-                details={
-                    "action": "api_key_updated",
-                    "provider_compatible": validation.get("provider_compatible", []),
-                    "validation_warnings": validation.get("warnings", []),
-                },
-                correlation_id=request_meta["correlation_id"],
-                ip_address=request_meta["ip_address"],
-                user_agent=request_meta["user_agent"],
-                surface="api",
+            audit_logger.log_audit_event(
+                {
+                    "event_type": "copilot.api_key.set",
+                    "user_id": user["user_id"],
+                    "details": {
+                        "action": "api_key_updated",
+                        "provider_compatible": validation.get(
+                            "provider_compatible", []
+                        ),
+                        "validation_warnings": validation.get("warnings", []),
+                    },
+                    "correlation_id": request_meta["correlation_id"],
+                    "ip_address": request_meta["ip_address"],
+                    "user_agent": request_meta["user_agent"],
+                    "surface": "api",
+                }
             )
 
             return ApiKeyStatusResponse(
@@ -249,14 +252,16 @@ async def set_api_key(
             success = secret_manager.delete_secret("COPILOT_API_KEY")
 
             # Log audit event (always log, even if key didn't exist)
-            await audit_logger.log_event(
-                event_type="copilot.api_key.removed",
-                user_id=user["user_id"],
-                details={"action": "api_key_removed"},
-                correlation_id=request_meta["correlation_id"],
-                ip_address=request_meta["ip_address"],
-                user_agent=request_meta["user_agent"],
-                surface="api",
+            audit_logger.log_audit_event(
+                {
+                    "event_type": "copilot.api_key.removed",
+                    "user_id": user["user_id"],
+                    "details": {"action": "api_key_removed"},
+                    "correlation_id": request_meta["correlation_id"],
+                    "ip_address": request_meta["ip_address"],
+                    "user_agent": request_meta["user_agent"],
+                    "surface": "api",
+                }
             )
 
             return ApiKeyStatusResponse(
@@ -299,18 +304,20 @@ async def toggle_cloud_features(
         cloud_validation = settings_manager.validate_cloud_features()
 
         # Log audit event
-        await audit_logger.log_event(
-            event_type="copilot.cloud_toggle",
-            user_id=user["user_id"],
-            details={
-                "enabled": request.enabled,
-                "previous_state": current_state,
-                "requirements_met": cloud_validation["requirements_met"],
-            },
-            correlation_id=request_meta["correlation_id"],
-            ip_address=request_meta["ip_address"],
-            user_agent=request_meta["user_agent"],
-            surface="api",
+        audit_logger.log_audit_event(
+            {
+                "event_type": "copilot.cloud_toggle",
+                "user_id": user["user_id"],
+                "details": {
+                    "enabled": request.enabled,
+                    "previous_state": current_state,
+                    "requirements_met": cloud_validation["requirements_met"],
+                },
+                "correlation_id": request_meta["correlation_id"],
+                "ip_address": request_meta["ip_address"],
+                "user_agent": request_meta["user_agent"],
+                "surface": "api",
+            }
         )
 
         return CloudToggleResponse(
@@ -428,19 +435,21 @@ async def set_active_profile(
         profile = profile_info[request.profile_id]
 
         # Log audit event
-        await audit_logger.log_event(
-            event_type="copilot.profile.changed",
-            user_id=user["user_id"],
-            details={
-                "new_profile": request.profile_id,
-                "profile_name": profile["name"],
-                "previous_profile": current_profile,
-                "routing_strategy": profile["routing_strategy"],
-            },
-            correlation_id=request_meta["correlation_id"],
-            ip_address=request_meta["ip_address"],
-            user_agent=request_meta["user_agent"],
-            surface="api",
+        audit_logger.log_audit_event(
+            {
+                "event_type": "copilot.profile.changed",
+                "user_id": user["user_id"],
+                "details": {
+                    "new_profile": request.profile_id,
+                    "profile_name": profile["name"],
+                    "previous_profile": current_profile,
+                    "routing_strategy": profile["routing_strategy"],
+                },
+                "correlation_id": request_meta["correlation_id"],
+                "ip_address": request_meta["ip_address"],
+                "user_agent": request_meta["user_agent"],
+                "surface": "api",
+            }
         )
 
         return ProfileResponse(

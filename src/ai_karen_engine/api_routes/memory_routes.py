@@ -9,10 +9,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Request
-try:
-    from pydantic import Field
-except ImportError:
-    from ai_karen_engine.pydantic_stub import Field
+from pydantic import Field
 
 from ai_karen_engine.api_routes.unified_schemas import (
     ErrorHandler,
@@ -26,7 +23,9 @@ from ai_karen_engine.memory.unified_memory_service import (
     PIIRedactor,
 )
 from ai_karen_engine.monitoring.metrics_service import MetricsService
-from ai_karen_engine.monitoring.structured_logging_service import StructuredLoggingService
+from ai_karen_engine.monitoring.structured_logging_service import (
+    StructuredLoggingService,
+)
 from ai_karen_engine.monitoring.correlation_service import (
     CorrelationService,
     create_correlation_logger,
@@ -48,9 +47,12 @@ except ImportError:
 
 try:
     from ai_karen_engine.auth.rbac_middleware import get_current_user  # type: ignore
+
     RBAC_AVAILABLE = True
 except ImportError:  # pragma: no cover - defensive
-    logger.warning("RBAC middleware unavailable; memory routes will operate without role enforcement")
+    logger.warning(
+        "RBAC middleware unavailable; memory routes will operate without role enforcement"
+    )
     RBAC_AVAILABLE = False
 
 METRICS_AVAILABLE = True
@@ -182,6 +184,7 @@ async def check_rbac_scope(request: Request, scope: str) -> bool:
 
     # Fallback: allow in non-production to avoid blocking development
     import os
+
     env = (os.getenv("ENVIRONMENT") or os.getenv("KARI_ENV") or "development").lower()
     if env in ("development", "dev", "local", "test", "testing"):
         return True
@@ -318,7 +321,9 @@ async def memory_search(request: MemQuery, http_request: Request):
                     query=request.query,
                     top_k=request.top_k,
                 )
-                search_response = await memory_service.query(tenant_id, search_request, correlation_id)
+                search_response = await memory_service.query(
+                    tenant_id, search_request, correlation_id
+                )
                 hits = []
                 for mem in search_response.hits:
                     redacted_text = PIIRedactor.redact_pii(mem.text)
@@ -876,7 +881,9 @@ async def memory_update(
                             memory_type=MemoryType.GENERAL,
                             tags=request.tags,
                             importance_score=request.importance,
-                            metadata={"decay": request.decay} if request.decay else None,
+                            metadata={"decay": request.decay}
+                            if request.decay
+                            else None,
                             tenant_filters=tenant_filters,
                         )
                         success = new_id is not None

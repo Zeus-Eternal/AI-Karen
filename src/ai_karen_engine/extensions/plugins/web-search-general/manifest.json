@@ -1,0 +1,29 @@
+{
+  "id": "web-search-general",
+  "plugin_id": "web-search-general",
+  "category": "plugins",
+  "gui_manifest_version": "1.0",
+  "display_name": "Web Search (General)",
+  "description": "General purpose web search capability for Kari.",
+  "version": "1.0.0",
+  "capabilities": {
+    "provides_ui": true
+  },
+  "ui": {
+    "has_component": false,
+    "purpose": "Web search status and configuration",
+    "menu": [
+      {
+        "placement": "sidebar.plugins",
+        "label": "Web Search",
+        "icon": "search",
+        "order": 50
+      }
+    ]
+  },
+  "rbac": {
+    "allowed_roles": ["user", "admin", "developer"]
+  },
+  "tags": ["search", "web", "retrieval", "prompt-first"],
+  "purpose": "Perform broad internet searches to answer general questions and provide up-to-date information."
+}

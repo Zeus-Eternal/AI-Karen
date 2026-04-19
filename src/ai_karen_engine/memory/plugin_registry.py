@@ -81,8 +81,9 @@ class PluginManifest(BaseModel):
     # Plugin configuration
     plugin_api_version: str = "1.0"
     plugin_type: PluginType = PluginType.CUSTOM
-    module: str
+    module: Optional[str] = None
     entry_point: str = "run"
+    entrypoint: Optional[str] = None
     
     # Security and permissions
     required_roles: List[str] = Field(default_factory=lambda: ["user"])
@@ -131,9 +132,9 @@ class PluginRegistry:
     def __init__(self, marketplace_path: Optional[Path] = None, core_plugins_path: Optional[Path] = None):
         """Initialize plugin registry."""
         # Canonical extension/plugin layout.
-        self.marketplace_path = marketplace_path or Path("src/extensions/plugins")
-        self.core_plugins_path = core_plugins_path or Path("src/extensions/sys_extensions")
-        self.extensions_core_path = Path("src/extensions/core")
+        self.marketplace_path = marketplace_path or Path("src/ai_karen_engine/extensions/plugins")
+        self.core_plugins_path = core_plugins_path or Path("src/ai_karen_engine/extensions/plugins")
+        self.extensions_core_path = Path("src/ai_karen_engine/extensions/plugins")
 
         # Legacy discovery roots kept for in-repo compatibility during migration.
         self.legacy_marketplace_path = Path("plugin_marketplace")
@@ -190,11 +191,18 @@ class PluginRegistry:
         ]
         seen_roots = set()
         for root_path, plugin_type in discovery_roots:
-            normalized = str(root_path.resolve()) if root_path.exists() else str(root_path)
-            if normalized in seen_roots or not root_path.exists():
+            if not root_path.exists():
+                logger.debug(f"Discovery root does not exist: {root_path}")
                 continue
+            
+            normalized = str(root_path.resolve())
+            if normalized in seen_roots:
+                continue
+            
             seen_roots.add(normalized)
+            logger.info(f"Discovering plugins in: {normalized}")
             root_plugins = await self._discover_in_path(root_path, plugin_type=plugin_type)
+            logger.info(f"Found {len(root_plugins)} plugins in {normalized}")
             discovered_plugins.update(root_plugins)
         
         # Update registry
@@ -212,15 +220,21 @@ class PluginRegistry:
         """Discover plugins in a specific path."""
         discovered = {}
         
+        logger.debug(f"Scanning for plugin_manifest.json in: {base_path}")
         for manifest_path in base_path.rglob("plugin_manifest.json"):
+            logger.debug(f"Found manifest candidate: {manifest_path}")
             # Skip excluded paths
             if any(excluded in manifest_path.parts for excluded in self.excluded_paths):
+                logger.debug(f"Skipping excluded path: {manifest_path}")
                 continue
             
             try:
                 plugin_metadata = await self._load_plugin_metadata(manifest_path, plugin_type)
                 if plugin_metadata:
+                    logger.info(f"Successfully loaded plugin: {plugin_metadata.manifest.name}")
                     discovered[plugin_metadata.manifest.name] = plugin_metadata
+                else:
+                    logger.warning(f"Failed to load metadata for: {manifest_path}")
             except Exception as e:
                 logger.error(f"Failed to load plugin from {manifest_path}: {e}")
                 # Create error metadata
@@ -252,7 +266,13 @@ class PluginRegistry:
                 manifest_data['plugin_type'] = default_type.value
             
             # Validate manifest
-            manifest = PluginManifest(**manifest_data)
+            try:
+                manifest = PluginManifest(**manifest_data)
+            except Exception as ve:
+                logger.error(f"Manifest validation failed for {manifest_path}: {ve}")
+                # Log the data for debugging
+                logger.debug(f"Manifest data: {manifest_data}")
+                return None
             
             # Calculate checksum
             checksum = await self._calculate_plugin_checksum(manifest_path.parent)

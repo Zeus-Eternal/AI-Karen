@@ -2,6 +2,7 @@
 
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 
 export interface ChatRenderedContentProps {
   content: string;
@@ -62,6 +63,7 @@ export function ChatRenderedContent({
     <div className={getChatContentClassName(emphasize)}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeRaw]}
         components={chatMarkdownComponents}
       >
         {content}

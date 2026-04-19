@@ -1,6 +1,6 @@
 "use client";
 
-import type { ChatMessage, ConversationResponse } from '@/lib/types';
+import type { ChatMessage, ConversationResponse, AgentStepEvent, Citation } from '@/lib/types';
 import type { SuggestedAction } from '@/lib/agent-ui/service';
 import { useState, useRef, useEffect, FormEvent, useCallback, useMemo, createContext, useContext, ReactNode } from 'react';
 import { Loader2, SendHorizontal, Mic, MicOff, Sparkles, Bot, Square, PlusCircle, ServerCrash, History, Clock, RefreshCw, AlertCircle, CheckCircle, XCircle, Edit2, Check } from 'lucide-react';
@@ -28,6 +28,8 @@ import {
 
 // Import interface components
 import { StatusIndicators, MessagesArea, ChatInput } from './interface';
+import AgentActivityPanel from './AgentActivityPanel';
+import DegradedModeBanner from './DegradedModeBanner';
 
 // Session Management Types
 export interface Session {
@@ -115,7 +117,7 @@ interface SessionProviderProps {
 export function SessionProvider({ children, initialSessionId }: SessionProviderProps) {
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const persistActiveSessionId = useCallback((sessionId: string | null) => {
@@ -504,7 +506,8 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
 
     const cleanupSessions = async () => {
       try {
-        const cutoffDate = new Date(Date.now() - INACTIVE_THRESHOLD);
+        const now = typeof window !== 'undefined' ? Date.now() : 0;
+        const cutoffDate = new Date(now - INACTIVE_THRESHOLD);
         // Only consider the sessions that were in state at the time of cleanup start
         const inactiveSessions = sessions.filter(session =>
           session.createdAt < cutoffDate && !session.isActive
@@ -537,13 +540,18 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
   // Initialize sessions on mount
   useEffect(() => {
     const initializeSessions = async () => {
-      const preferredSessionId = initialSessionId || getPersistedActiveSessionId();
-      if (preferredSessionId) {
-        await loadSession(preferredSessionId);
-      } else {
-        await createNewSession();
+      setIsLoadingSessions(true);
+      try {
+        const preferredSessionId = initialSessionId || getPersistedActiveSessionId();
+        if (preferredSessionId) {
+          await loadSession(preferredSessionId);
+        } else {
+          await createNewSession();
+        }
+        await refreshSessions();
+      } finally {
+        setIsLoadingSessions(false);
       }
-      await refreshSessions();
     };
     
     initializeSessions();
@@ -760,6 +768,13 @@ export default function ChatInterface() {
     connectionHealth: 'excellent' | 'good' | 'poor' | 'critical';
     lastChunkTime: number;
   } | null>(null);
+  const [agentSteps, setAgentSteps] = useState<AgentStepEvent[]>([]);
+  const [citations, setCitations] = useState<Citation[]>([]);
+  const [degradedMode, setDegradedMode] = useState<{
+    active: boolean;
+    reason?: string;
+    fallbackPath?: string;
+  }>({ active: false });
 
   const normalizeProviderModels = useCallback((response: ModelSettingsResponse) => {
     const allowedProviders = response.providers
@@ -833,11 +848,11 @@ export default function ChatInterface() {
   };
 
   // Helper variables extracted for reuse
-  const displayedInputValue = isLoading && !isEditingDuringProcessing
+  const showStopButton = isLoading && submitInFlightRef.current;
+
+  const displayedInputValue = showStopButton && !isEditingDuringProcessing
     ? processingStatus || DEFAULT_PROCESSING_MESSAGE
     : input;
-
-  const showStopButton = isLoading && submitInFlightRef.current;
 
 
 
@@ -898,7 +913,10 @@ export default function ChatInterface() {
         setInput('');
         setStreamedContent('');
         setProcessingStatus('');
-        setIsLoading(false);
+        setIsLoading(false); // Start as false, only set to true if we have an in-flight request
+        setAgentSteps([]);
+        setCitations([]);
+        setDegradedMode({ active: false });
         submitInFlightRef.current = false;
       }
 
@@ -920,7 +938,7 @@ export default function ChatInterface() {
         setInput(persisted.input || '');
         setStreamedContent(persisted.streamedContent || '');
         setProcessingStatus(persisted.processingStatus || '');
-        setIsLoading(Boolean(persisted.isLoading || persisted.inFlight));
+        setIsLoading(Boolean(persisted.inFlight)); // Only set loading if there's an in-flight request
         submitInFlightRef.current = Boolean(persisted.inFlight);
       }
 
@@ -956,24 +974,39 @@ export default function ChatInterface() {
         }
 
         if (persisted?.inFlight && serverMessages.length <= persistedMessages.length) {
-          for (let attempt = 0; attempt < 10; attempt += 1) {
-            await new Promise((resolve) => window.setTimeout(resolve, 2000));
-            if (cancelled) return;
+          // Only try to restore in-flight requests if they're recent (within 5 minutes)
+          const now = Date.now();
+          const requestAge = now - (persisted.updatedAt || 0);
+          if (requestAge > 5 * 60 * 1000) { // 5 minutes
+            console.log('In-flight request too old, not restoring');
+            setIsLoading(false);
+            submitInFlightRef.current = false;
+            setProcessingStatus('');
+            setStreamedContent('');
+          } else {
+            for (let attempt = 0; attempt < 10; attempt += 1) {
+              await new Promise((resolve) => window.setTimeout(resolve, 2000));
+              if (cancelled) return;
 
-            const polledMessages = await fetchConversationMessages();
-            if (cancelled) return;
-            if (polledMessages.length > persistedMessages.length) {
-              setMessages(polledMessages);
-              setIsLoading(false);
-              submitInFlightRef.current = false;
-              setProcessingStatus('');
-              setStreamedContent('');
-              break;
+              const polledMessages = await fetchConversationMessages();
+              if (cancelled) return;
+              if (polledMessages.length > persistedMessages.length) {
+                setMessages(polledMessages);
+                setIsLoading(false);
+                submitInFlightRef.current = false;
+                setProcessingStatus('');
+                setStreamedContent('');
+                break;
+              }
             }
           }
         }
       } catch {
         // Keep locally restored state if server sync fails.
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
       }
     };
 
@@ -995,8 +1028,8 @@ export default function ChatInterface() {
       isLoading,
       processingStatus,
       streamedContent,
-      inFlight: submitInFlightRef.current || isLoading,
-      updatedAt: Date.now(),
+      inFlight: submitInFlightRef.current,
+      updatedAt: typeof window !== 'undefined' ? Date.now() : 0,
     });
   }, [currentSession?.id, messages, input, isLoading, processingStatus, streamedContent]);
 
@@ -1009,7 +1042,7 @@ export default function ChatInterface() {
   // Submit handler
   const handleSubmit = useCallback(async (manualInput?: string) => {
     const rawInput = manualInput || input;
-    if (!rawInput.trim() || isLoading || isAuthLoading || submitInFlightRef.current) return;
+    if (!rawInput.trim() || isAuthLoading || submitInFlightRef.current) return;
 
     const trimmedInput = rawInput.trim();
     const lastAssistantMessage = [...messages].reverse().find((message) => message.role === 'assistant');
@@ -1069,6 +1102,9 @@ export default function ChatInterface() {
     processingStatusVariantRef.current = {};
     setProcessingStatus(resolveProcessingStatusMessage('initializing', DEFAULT_PROCESSING_MESSAGE, 0));
     setStreamedContent('');
+    setAgentSteps([]);
+    setCitations([]);
+    setDegradedMode({ active: false });
 
     const preferredProvider = selectedProvider;
     const preferredModel = selectedModel;
@@ -1225,6 +1261,20 @@ export default function ChatInterface() {
               lastChunkTime: metrics.lastChunkTime,
             });
           },
+          onAgentStep: (event) => {
+            setAgentSteps((prevSteps) => [...prevSteps, event]);
+            // Handle degraded mode events
+            if (event.type === 'degraded_mode_entered') {
+              setDegradedMode({
+                active: true,
+                reason: event.metadata?.reason as string,
+                fallbackPath: event.metadata?.fallback_path as string,
+              });
+            }
+          },
+          onCitationBundle: (citations) => {
+            setCitations(citations);
+          },
         },
         controller.signal,
       );
@@ -1256,7 +1306,13 @@ export default function ChatInterface() {
           timestamp: new Date(),
           status: 'completed',
           actions: streamResponse.actions,
-          metadata: streamResponse.metadata,
+          metadata: {
+            ...streamResponse.metadata,
+            citations: citations,
+            agentSteps: agentSteps,
+            degradedMode: degradedMode.active
+          },
+          citations: citations,
         };
 
         setMessages((prev) => {
@@ -1440,12 +1496,8 @@ export default function ChatInterface() {
 
   const handleFormSubmit = useCallback((e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (isLoading && input.trim()) {
-      stopActiveRequest();
-      return;
-    }
     handleSubmit();
-  }, [isLoading, input, stopActiveRequest, handleSubmit]);
+  }, [handleSubmit]);
 
   const handleSuggestStarter = useCallback(() => {
     setIsSuggestingStarter(true);
@@ -1459,8 +1511,7 @@ export default function ChatInterface() {
   const handleNewChat = useCallback(async () => {
     if (isLoading) stopActiveRequest();
     await createNewSession();
-    setMessages([]);
-  }, [isLoading, stopActiveRequest, createNewSession, setMessages]);
+  }, [isLoading, stopActiveRequest, createNewSession]);
 
   const handleExportCurrentChat = useCallback(async () => {
     if (!currentSession) {
@@ -1502,9 +1553,11 @@ export default function ChatInterface() {
     const anchor = document.createElement('a');
     anchor.href = url;
     anchor.download = `${slug}.md`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
+    if (typeof document !== 'undefined') {
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+    }
     window.URL.revokeObjectURL(url);
 
     toast({
@@ -1543,6 +1596,8 @@ export default function ChatInterface() {
 
   // Speech recognition setup
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognitionAPI) {
       setSpeechRecognitionSupported(false);
@@ -1587,7 +1642,7 @@ export default function ChatInterface() {
 
   // Dynamic greeting system
   useEffect(() => {
-    if (isAuthLoading) return;
+    if (isAuthLoading || isLoading || isLoadingSessions || !currentSession?.id) return;
 
     const generateGreeting = () => {
       if (isAuthenticated && user) {
@@ -1639,7 +1694,7 @@ export default function ChatInterface() {
 
       return [
         {
-          id: 'karen-initial-' + Date.now(),
+          id: 'karen-initial-' + (typeof window !== 'undefined' ? Date.now() : 0),
           role: 'assistant',
           content: greeting,
           timestamp: new Date(),
@@ -1654,34 +1709,56 @@ export default function ChatInterface() {
         },
       ];
     });
-  }, [isAuthenticated, isAuthLoading, user]);
+  }, [isAuthenticated, isAuthLoading, user, isLoading, isLoadingSessions, currentSession?.id]);
+
+  // Force stick to bottom when loading starts
+  useEffect(() => {
+    if (isLoading) {
+      shouldStickToBottomRef.current = true;
+    }
+  }, [isLoading]);
 
   // Scroll stickiness
   useEffect(() => {
     const viewport = viewportRef.current;
     const container = messagesContainerRef.current;
-    if (!viewport) return;
+    if (!viewport || !container) return;
 
     const updateStickiness = () => {
       const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
-      shouldStickToBottomRef.current = distanceFromBottom < 120;
+      // Use a larger threshold (200px) to be more forgiving
+      shouldStickToBottomRef.current = distanceFromBottom < 200;
     };
 
+    // Use ResizeObserver to detect content height changes accurately
+    const resizeObserver = new ResizeObserver(() => {
+      if (shouldStickToBottomRef.current) {
+        requestAnimationFrame(() => {
+          const behavior = (isLoading && streamedContent) ? 'auto' : 'smooth';
+          scrollChatToBottom(behavior);
+        });
+      }
+    });
+
+    resizeObserver.observe(container);
     updateStickiness();
     viewport.addEventListener('scroll', updateStickiness, { passive: true });
 
     return () => {
       viewport.removeEventListener('scroll', updateStickiness);
+      resizeObserver.disconnect();
     };
-  }, []);
+  }, [isLoading, streamedContent, scrollChatToBottom]);
 
+  // Messages/Loading effect (kept as backup for state-driven changes)
   useEffect(() => {
     if (shouldStickToBottomRef.current) {
       requestAnimationFrame(() => {
-        scrollChatToBottom(messages.length <= 1 ? 'auto' : 'smooth');
+        const behavior = (isLoading && streamedContent) ? 'auto' : (messages.length <= 1 ? 'auto' : 'smooth');
+        scrollChatToBottom(behavior);
       });
     }
-  }, [messages, isLoading, scrollChatToBottom]);
+  }, [messages, isLoading, streamedContent, scrollChatToBottom]);
 
   // Selectable providers
   const selectableProviders = useMemo(() => {
@@ -1779,6 +1856,14 @@ export default function ChatInterface() {
         currentSession={currentSession}
       />
 
+      {degradedMode.active && (
+        <DegradedModeBanner
+          reason={degradedMode.reason || "System operating in degraded mode"}
+          fallbackPath={degradedMode.fallbackPath}
+          onDismiss={() => setDegradedMode({ active: false })}
+        />
+      )}
+
       <MessagesArea
         messages={messages}
         onActionClick={handleActionClick}
@@ -1786,13 +1871,19 @@ export default function ChatInterface() {
         messagesContainerRef={messagesContainerRef}
       />
 
+      {agentSteps.length > 0 && (
+        <div className="mx-4 mb-4">
+          <AgentActivityPanel steps={agentSteps} />
+        </div>
+      )}
+
       <ChatInput
         onSubmit={handleFormSubmit}
         displayedInputValue={displayedInputValue}
         onInputChange={setInput}
         onKeyDown={(e) => {
           if (
-            isLoading &&
+            showStopButton &&
             !isEditingDuringProcessing &&
             (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Delete')
           ) {
@@ -1801,7 +1892,7 @@ export default function ChatInterface() {
           }
         }}
         onPaste={(e) => {
-          if (isLoading && !isEditingDuringProcessing) {
+          if (showStopButton && !isEditingDuringProcessing) {
             e.preventDefault();
             const pastedText = e.clipboardData.getData('text');
             setIsEditingDuringProcessing(true);

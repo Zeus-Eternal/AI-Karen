@@ -1,0 +1,29 @@
+{
+  "id": "web-search-structured-extract",
+  "plugin_id": "web-search-structured-extract",
+  "category": "plugins",
+  "gui_manifest_version": "1.0",
+  "display_name": "Structured Search",
+  "description": "Structured data extraction from web sources for Kari.",
+  "version": "1.0.0",
+  "capabilities": {
+    "provides_ui": true
+  },
+  "ui": {
+    "has_component": false,
+    "purpose": "Structured data extraction status and configuration",
+    "menu": [
+      {
+        "placement": "sidebar.plugins",
+        "label": "Structured Search",
+        "icon": "table",
+        "order": 65
+      }
+    ]
+  },
+  "rbac": {
+    "allowed_roles": ["user", "admin", "developer"]
+  },
+  "tags": ["structured", "data", "extraction", "specs", "prompt-first"],
+  "purpose": "Extract specific, structured information like prices, specifications, and features from various web pages."
+}

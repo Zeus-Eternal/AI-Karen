@@ -1,0 +1,25 @@
+{
+  "plugin_id": "weather-query",
+  "display_name": "Weather",
+  "menus": [
+    {
+      "placement": "sidebar.plugins",
+      "label": "Weather",
+      "icon": "cloud-sun",
+      "order": 10
+    }
+  ],
+  "icons": [
+    {
+      "filename": "weather-query---sidebar--main_00.svg",
+      "path": "src/ai_karen_engine/extensions/plugins/weather-query/weather-query/assets/weather-query---sidebar--main_00.svg",
+      "plugin_id": "weather-query",
+      "placement": "sidebar",
+      "subplacement": "main",
+      "order": 0,
+      "extension": "svg",
+      "relative_path": "weather-query/assets/weather-query---sidebar--main_00.svg"
+    }
+  ],
+  "generated_at": "2026-04-19T11:00:13.027371"
+}

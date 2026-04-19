@@ -16,7 +16,7 @@ from ai_karen_engine.extensions.platform.core.registry.plugin_registry import ge
 class ExtensionCoreManager:
     """Coordinates registry, host runtime, and app integration concerns."""
 
-    extensions_dir: str = "src/extensions"
+    extensions_dir: str = "src/ai_karen_engine/extensions/plugins"
 
     def __post_init__(self) -> None:
         self.registry = get_registry()
@@ -120,6 +120,13 @@ class ExtensionCoreManager:
         await self.refresh_registry()
         return self.list_extension_statuses()
 
+    async def refresh_extensions(self) -> List[Dict[str, Any]]:
+        """Refresh the extension registry and return updated statuses."""
+        await self.registry.refresh()
+        # Also trigger host discovery if needed
+        await self.host.discover_extensions()
+        return self.list_extension_statuses()
+
     def health_summary(self) -> Dict[str, Any]:
         integration_health = self.integration.get_health_summary()
         return {
@@ -137,7 +144,7 @@ _core_manager: ExtensionCoreManager | None = None
 def get_extension_core_manager() -> ExtensionCoreManager:
     global _core_manager
     if _core_manager is None:
-        _core_manager = ExtensionCoreManager()
+        _core_manager = ExtensionCoreManager(extensions_dir="src/ai_karen_engine/extensions/plugins")
     return _core_manager
 
 

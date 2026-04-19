@@ -1,0 +1,32 @@
+{
+  "name": "web-search-docs",
+  "display_name": "Web Search (Docs)",
+  "version": "1.0.0",
+  "description": "Technical documentation and API guide search for Kari.",
+  "purpose": "Locate and retrieve technical documentation, API guides, and developer manuals from the web.",
+  "author": "Kari Team",
+  "license": "MIT",
+  "entrypoint": "handler:MainExtension",
+  "category": "plugins",
+  "tags": ["docs", "api", "technical", "documentation", "prompt-first"],
+  "capabilities": {
+    "provides_ui": true,
+    "provides_api": true,
+    "web_search": true,
+    "prompt_first": true
+  },
+  "ui": {
+    "hook_zones": [
+      {
+        "zone": "sidebar.plugins",
+        "label": "Docs Search",
+        "icon": "book",
+        "order": 60
+      }
+    ]
+  },
+  "rbac": {
+    "allowed_roles": ["user", "admin", "developer"],
+    "default_enabled": true
+  }
+}

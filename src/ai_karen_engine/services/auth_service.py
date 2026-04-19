@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 import jwt
 import bcrypt
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ai_karen_engine.core.services.base import BaseService, ServiceConfig
@@ -219,10 +219,6 @@ class AuthService(BaseService):
                 logger.info("Ensuring database tables exist...")
                 await self._ensure_database_tables()
 
-                # Create default admin user if it doesn't exist
-                logger.info("Checking for default admin user...")
-                await self._ensure_default_admin_user()
-
                 self._initialized = True
                 logger.info("Authentication Service initialized successfully")
             except Exception as e:
@@ -258,28 +254,14 @@ class AuthService(BaseService):
 
     async def _ensure_database_tables(self) -> None:
         """Ensure database tables exist."""
-        # This would typically create the necessary tables
-        # For now, we'll assume they exist
-        logger.debug("Database tables check completed")
-
-    async def _ensure_default_admin_user(self) -> None:
-        """Ensure default admin user exists."""
         try:
-            # Check if admin user exists
-            admin_user = await self.get_user_by_email("admin@kari.ai")
-            if not admin_user:
-                # Create default admin user
-                default_password = "admin123"  # This should be changed in production
-                await self.create_user(
-                    email="admin@kari.ai",
-                    password=default_password,
-                    full_name="System Administrator",
-                    roles=[UserRole.ADMIN, UserRole.USER],
-                    is_verified=True,
-                )
-                logger.info("Created default admin user")
+            client = self._get_db_client()
+            await client.create_tables_async()
+            logger.info("Database tables verified/created successfully")
         except Exception as e:
-            logger.error(f"Error creating default admin user: {e}")
+            logger.error(f"Failed to ensure database tables: {e}")
+            # Don't re-raise here to allow service to start even if DB is not ready
+            # though it might fail later.
 
     def set_db_session(self, session: AsyncSession) -> None:
         """Set the database session for the service."""
@@ -324,26 +306,6 @@ class AuthService(BaseService):
             "Unknown tenant identifier '%s'; using default tenant", tenant_identifier
         )
         return None
-
-    def _get_mock_developer_user(
-        self,
-        user_id: str,
-        email: Optional[str],
-        username: Optional[str],
-        full_name: Optional[str],
-        preferences: Optional[Dict[str, Any]],
-    ) -> UserAccount:
-        """Create a mock UserAccount for developer bypass."""
-        return UserAccount(
-            id=user_id,
-            email=email or "admin@karen.ai",
-            username=username or (email.split("@", 1)[0] if email else "admin"),
-            full_name=full_name or "Developer Admin",
-            password_hash="",
-            preferences=preferences or {},
-            is_active=True,
-            roles=["admin", "user"],
-        )
 
     def _build_user_account(self, auth_user: AuthUser) -> UserAccount:
         """Map AuthUser ORM model to UserAccount."""
@@ -917,29 +879,27 @@ class AuthService(BaseService):
 
         # Check cache first
         for user in self._user_cache.values():
-            email = (user.email or "").strip().lower()
-            if email == normalized_username:
+            if (user.username or "").strip().lower() == normalized_username:
                 return user
-            if email.split("@", 1)[0] == normalized_username:
+            # Fallback for email prefix for backward compatibility
+            email = (user.email or "").strip().lower()
+            if email == normalized_username or email.split("@", 1)[0] == normalized_username:
                 return user
 
         try:
             async with self._session_scope() as session:
                 result = await session.execute(
                     select(AuthUser).where(
-                        AuthUser.is_active == True,
+                        (func.lower(AuthUser.username) == normalized_username) |
+                        (func.lower(AuthUser.email) == normalized_username) |
+                        (func.lower(func.split_part(AuthUser.email, '@', 1)) == normalized_username)
                     )
                 )
-                auth_users = result.scalars().all()
-                for auth_user in auth_users:
-                    email = (getattr(auth_user, "email", "") or "").strip().lower()
-                    if (
-                        email == normalized_username
-                        or email.split("@", 1)[0] == normalized_username
-                    ):
-                        user = self._build_user_account(auth_user)
-                        self._user_cache[user.id] = user
-                        return user
+                auth_user = result.scalar_one_or_none()
+                if auth_user:
+                    user = self._build_user_account(auth_user)
+                    self._user_cache[user.id] = user
+                    return user
 
                 return None
         except Exception as e:

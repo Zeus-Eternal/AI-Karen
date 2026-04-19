@@ -65,7 +65,7 @@ export interface AuthResponse {
 
 class AuthService {
   private readonly SAME_ORIGIN_API_BASE_URL = '';
-  private readonly DIRECT_BROWSER_BACKEND_PORT = '8000';
+  private readonly DIRECT_BROWSER_BACKEND_PORT = '8010';
   private readonly SESSION_COOKIE_NAME = 'kari_session';
   private readonly LEGACY_ACCESS_COOKIE_NAME = 'access_token';
   private readonly LEGACY_REFRESH_COOKIE_NAME = 'refresh_token';
@@ -173,7 +173,7 @@ class AuthService {
 
     // Strip absolute URLs pointing to internal Docker infrastructure in a browser context.
     // This ensures requests go through the local proxy and avoids ERR_NAME_NOT_RESOLVED.
-    const dockerHostPattern = /https?:\/\/(api|api-copilot|172\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|localhost:8000|host\.docker\.internal)(:\d+)?/gi;
+    const dockerHostPattern = /https?:\/\/(api|api-copilot|172\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|localhost:80[01]0|host\.docker\.internal)(:\d+)?/gi;
     
     let finalUrl = baseUrl ? `${baseUrl}${normalizedEndpoint}` : normalizedEndpoint;
     if (typeof window !== 'undefined' && dockerHostPattern.test(finalUrl)) {
@@ -282,7 +282,9 @@ class AuthService {
     if (!this.hasFreshLoginMarker()) {
       return false;
     }
-    return Boolean(this.getAccessToken() || this.getRefreshToken() || this.hasSessionMarker());
+    // Always preserve session during grace period after login success,
+    // regardless of token presence to prevent immediate redirect loop
+    return true;
   }
 
   private async getErrorMessage(response: Response, fallback: string): Promise<string> {
@@ -592,7 +594,10 @@ class AuthService {
           return false;
         }
 
+        // Bypass backend validation immediately after login to avoid race conditions
+        // with cookie propagation and prevent immediate redirect loops
         if (accessToken && currentUser && this.hasFreshLoginMarker()) {
+          console.log('[AuthService] Skipping backend validation for fresh login session');
           return true;
         }
 
@@ -629,7 +634,52 @@ class AuthService {
 
           // Try to refresh token if validation fails and we have a refresh token available.
           try {
-            if (!refreshToken) {
+            if (refreshToken) {
+              await this.refreshToken();
+              // Retry validation with new token
+              const refreshedHeaders: Record<string, string> = {};
+              const refreshedAccessToken = this.getAccessToken();
+              if (refreshedAccessToken) {
+                refreshedHeaders.Authorization = `Bearer ${refreshedAccessToken}`;
+              }
+
+              const newResponse = await this.fetchWithTimeout('/api/auth/validate-session', {
+                method: 'GET',
+                headers: refreshedHeaders,
+                credentials: 'include',
+              }, this.SESSION_VALIDATION_TIMEOUT_MS);
+
+              console.log('[AuthService] validateSession retry response:', {
+                status: newResponse.status,
+                ok: newResponse.ok,
+                hasRefreshedAccessToken: !!refreshedAccessToken,
+              });
+
+              if (!newResponse.ok) {
+                if (this.shouldPreserveFreshLoginSession()) {
+                  console.warn('[AuthService] preserving fresh login session despite failed validation retry');
+                  return true;
+                }
+                this.clearAuth();
+                this.clearSessionMarker();
+                return false;
+              }
+
+              const refreshedSession = await newResponse.json();
+              if (refreshedSession?.user && typeof refreshedSession.user === 'object') {
+                localStorage.setItem('user_data', JSON.stringify(refreshedSession.user));
+                this.setSessionMarker();
+                this.markLoginSuccess();
+                return true;
+              }
+
+              if (this.shouldPreserveFreshLoginSession()) {
+                console.warn('[AuthService] preserving fresh login session despite missing user payload on retry validation');
+                return true;
+              }
+              this.clearAuth();
+              return false;
+            } else {
               if (this.shouldPreserveFreshLoginSession()) {
                 console.warn('[AuthService] preserving fresh login session despite missing refresh token during validation');
                 return true;
@@ -637,60 +687,16 @@ class AuthService {
               this.clearAuth();
               return false;
             }
-          await this.refreshToken();
-          // Retry validation with new token
-          const refreshedHeaders: Record<string, string> = {};
-          const refreshedAccessToken = this.getAccessToken();
-          if (refreshedAccessToken) {
-            refreshedHeaders.Authorization = `Bearer ${refreshedAccessToken}`;
-          }
-
-          const newResponse = await this.fetchWithTimeout('/api/auth/validate-session', {
-            method: 'GET',
-            headers: refreshedHeaders,
-            credentials: 'include',
-          }, this.SESSION_VALIDATION_TIMEOUT_MS);
-
-          console.log('[AuthService] validateSession retry response:', {
-            status: newResponse.status,
-            ok: newResponse.ok,
-            hasRefreshedAccessToken: !!refreshedAccessToken,
-          });
-
-          if (!newResponse.ok) {
+          } catch (refreshError) {
             if (this.shouldPreserveFreshLoginSession()) {
-              console.warn('[AuthService] preserving fresh login session despite failed validation retry');
+              console.warn('[AuthService] preserving fresh login session despite refresh failure during validation');
               return true;
             }
             this.clearAuth();
             this.clearSessionMarker();
             return false;
           }
-
-          const refreshedSession = await newResponse.json();
-          if (refreshedSession?.user && typeof refreshedSession.user === 'object') {
-            localStorage.setItem('user_data', JSON.stringify(refreshedSession.user));
-            this.setSessionMarker();
-            this.markLoginSuccess();
-            return true;
-          }
-
-          if (this.shouldPreserveFreshLoginSession()) {
-            console.warn('[AuthService] preserving fresh login session despite missing user payload on retry validation');
-            return true;
-          }
-          this.clearAuth();
-          return false;
-        } catch (refreshError) {
-          if (this.shouldPreserveFreshLoginSession()) {
-            console.warn('[AuthService] preserving fresh login session despite refresh failure during validation');
-            return true;
-          }
-          this.clearAuth();
-          this.clearSessionMarker();
-          return false;
         }
-      }
 
         const session = await response.json();
         if (session?.user && typeof session.user === 'object') {

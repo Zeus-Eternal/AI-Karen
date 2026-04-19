@@ -1,0 +1,29 @@
+{
+  "id": "web-search-deep-research",
+  "plugin_id": "web-search-deep-research",
+  "category": "plugins",
+  "gui_manifest_version": "1.0",
+  "display_name": "Deep Research",
+  "description": "Comprehensive analysis and deep research capability for Kari.",
+  "version": "1.0.0",
+  "capabilities": {
+    "provides_ui": true
+  },
+  "ui": {
+    "has_component": false,
+    "purpose": "Deep research status and configuration",
+    "menu": [
+      {
+        "placement": "sidebar.plugins",
+        "label": "Deep Research",
+        "icon": "microscope",
+        "order": 70
+      }
+    ]
+  },
+  "rbac": {
+    "allowed_roles": ["user", "admin", "developer"]
+  },
+  "tags": ["research", "deep", "analysis", "comprehensive", "prompt-first"],
+  "purpose": "Perform in-depth research and detailed analysis by retrieving and processing multiple web sources."
+}

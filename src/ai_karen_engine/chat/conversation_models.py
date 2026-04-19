@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 
 class MessageRole(str, Enum):
     """Message roles in conversation."""
+
     USER = "user"
     ASSISTANT = "assistant"
     SYSTEM = "system"
@@ -28,6 +29,7 @@ class MessageRole(str, Enum):
 
 class MessageType(str, Enum):
     """Message types for different content."""
+
     TEXT = "text"
     IMAGE = "image"
     FILE = "file"
@@ -38,6 +40,7 @@ class MessageType(str, Enum):
 
 class ConversationStatus(str, Enum):
     """Conversation status states."""
+
     ACTIVE = "active"
     ARCHIVED = "archived"
     DELETED = "deleted"
@@ -46,6 +49,7 @@ class ConversationStatus(str, Enum):
 
 class ChatMessage(BaseModel):
     """Enhanced chat message model with branching support."""
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     conversation_id: str
     role: MessageRole
@@ -57,7 +61,7 @@ class ChatMessage(BaseModel):
     updated_at: Optional[datetime] = None
     parent_message_id: Optional[str] = None  # For branching
     embedding: Optional[List[float]] = None
-    
+
     # Advanced features
     edit_history: List[Dict[str, Any]] = Field(default_factory=list)
     reactions: Dict[str, int] = Field(default_factory=dict)  # emoji -> count
@@ -68,6 +72,7 @@ class ChatMessage(BaseModel):
 
 class ConversationSettings(BaseModel):
     """Conversation-specific settings."""
+
     model_name: str = "gpt-3.5-turbo"
     temperature: float = 0.7
     max_tokens: int = 2000
@@ -83,6 +88,7 @@ class ConversationSettings(BaseModel):
 
 class ConversationFolder(BaseModel):
     """Folder for organizing conversations."""
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     user_id: str
     name: str
@@ -97,6 +103,7 @@ class ConversationFolder(BaseModel):
 
 class ConversationTemplate(BaseModel):
     """Template for creating conversations with predefined structure."""
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     user_id: Optional[str] = None  # None for system templates
     name: str
@@ -114,40 +121,41 @@ class ConversationTemplate(BaseModel):
 
 class Conversation(BaseModel):
     """Enhanced conversation model with advanced features."""
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     user_id: str
     title: str
     description: Optional[str] = None
     status: ConversationStatus = ConversationStatus.ACTIVE
-    
+
     # Organization
     folder_id: Optional[str] = None
     tags: List[str] = Field(default_factory=list)
     is_favorite: bool = False
     priority: int = 0  # 0=normal, 1=high, -1=low
-    
+
     # Content
     message_count: int = 0
     last_message_at: Optional[datetime] = None
     summary: Optional[str] = None
-    
+
     # Branching
     parent_conversation_id: Optional[str] = None  # For branches
     branch_point_message_id: Optional[str] = None
     child_branches: List[str] = Field(default_factory=list)
-    
+
     # Template
     template_id: Optional[str] = None
-    
+
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = None
     last_accessed_at: Optional[datetime] = None
-    
+
     # Settings and metadata
     settings: ConversationSettings = Field(default_factory=ConversationSettings)
     metadata: Dict[str, Any] = Field(default_factory=dict)
-    
+
     # Analytics
     view_count: int = 0
     share_count: int = 0
@@ -156,29 +164,30 @@ class Conversation(BaseModel):
 
 class ConversationFilters(BaseModel):
     """Filters for conversation search and listing."""
+
     # Date filters
     date_from: Optional[datetime] = None
     date_to: Optional[datetime] = None
     last_accessed_from: Optional[datetime] = None
     last_accessed_to: Optional[datetime] = None
-    
+
     # Organization filters
     folder_ids: Optional[List[str]] = None
     tags: Optional[List[str]] = None
     is_favorite: Optional[bool] = None
     status: Optional[ConversationStatus] = None
     priority: Optional[int] = None
-    
+
     # Content filters
     has_attachments: Optional[bool] = None
     min_messages: Optional[int] = None
     max_messages: Optional[int] = None
     message_types: Optional[List[MessageType]] = None
-    
+
     # Template filters
     template_id: Optional[str] = None
     created_from_template: Optional[bool] = None
-    
+
     # Branching filters
     is_branch: Optional[bool] = None
     has_branches: Optional[bool] = None
@@ -187,6 +196,7 @@ class ConversationFilters(BaseModel):
 
 class ConversationSearchResult(BaseModel):
     """Search result for conversation queries."""
+
     conversation: Conversation
     relevance_score: float
     matched_messages: List[ChatMessage] = Field(default_factory=list)
@@ -196,6 +206,7 @@ class ConversationSearchResult(BaseModel):
 
 class ConversationExportOptions(BaseModel):
     """Options for conversation export."""
+
     format: str = "json"  # json, markdown, pdf, html, csv
     include_metadata: bool = True
     include_attachments: bool = False
@@ -209,6 +220,7 @@ class ConversationExportOptions(BaseModel):
 
 class ConversationImportOptions(BaseModel):
     """Options for conversation import."""
+
     source_format: str = "json"
     merge_strategy: str = "create_new"  # create_new, merge_existing, replace
     preserve_ids: bool = False
@@ -220,6 +232,7 @@ class ConversationImportOptions(BaseModel):
 
 class ConversationBranch(BaseModel):
     """Information about a conversation branch."""
+
     id: str
     title: str
     branch_point_message_id: str
@@ -231,6 +244,7 @@ class ConversationBranch(BaseModel):
 
 class ConversationStats(BaseModel):
     """Statistics for conversations."""
+
     total_conversations: int = 0
     active_conversations: int = 0
     archived_conversations: int = 0
@@ -245,6 +259,7 @@ class ConversationStats(BaseModel):
 
 class QuickAction(BaseModel):
     """Quick action for conversations."""
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
     description: Optional[str] = None
@@ -257,107 +272,117 @@ class QuickAction(BaseModel):
 
 
 class ProcessingStatus(str, Enum):
-   """Processing status enumeration."""
-   IDLE = "idle"
-   PROCESSING = "processing"
-   RETRYING = "retrying"
-   COMPLETED = "completed"
-   FAILED = "failed"
-   CANCELLED = "cancelled"
+    """Processing status enumeration."""
+
+    IDLE = "idle"
+    PROCESSING = "processing"
+    RETRYING = "retrying"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
 
 
 class ErrorType(str, Enum):
-   """Error type enumeration."""
-   UNKNOWN_ERROR = "unknown_error"
-   TIMEOUT_ERROR = "timeout_error"
-   NLP_PARSING_ERROR = "nlp_parsing_error"
-   EMBEDDING_ERROR = "embedding_error"
-   AI_MODEL_ERROR = "ai_model_error"
-   REQUEST_CANCELLED = "request_cancelled"
-   VALIDATION_ERROR = "validation_error"
-   MEMORY_ERROR = "memory_error"
-   CONTEXT_ERROR = "context_error"
+    """Error type enumeration."""
+
+    UNKNOWN_ERROR = "unknown_error"
+    TIMEOUT_ERROR = "timeout_error"
+    NLP_PARSING_ERROR = "nlp_parsing_error"
+    EMBEDDING_ERROR = "embedding_error"
+    AI_MODEL_ERROR = "ai_model_error"
+    REQUEST_CANCELLED = "request_cancelled"
+    VALIDATION_ERROR = "validation_error"
+    MEMORY_ERROR = "memory_error"
+    CONTEXT_ERROR = "context_error"
 
 
 class ChatRequest(BaseModel):
-   """Chat request model with enhanced features."""
-   user_id: str
-   conversation_id: str
-   session_id: str
-   message: str
-   metadata: Dict[str, Any] = Field(default_factory=dict)
-   include_context: bool = True
-   stream: bool = False
-   attachments: List[Dict[str, Any]] = Field(default_factory=list)
-   request_timestamp: datetime = Field(default_factory=datetime.utcnow)
-   correlation_id: Optional[str] = None
-   
-   model_config = ConfigDict(
-       json_encoders={datetime: lambda v: v.isoformat() if v else None}
-   )
+    """Chat request model with enhanced features."""
+
+    user_id: str
+    conversation_id: str
+    session_id: str
+    message: str
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    include_context: bool = True
+    stream: bool = False
+    attachments: List[Dict[str, Any]] = Field(default_factory=list)
+    request_timestamp: datetime = Field(default_factory=datetime.utcnow)
+    correlation_id: Optional[str] = None
+
+    model_config = ConfigDict(
+        json_encoders={datetime: lambda v: v.isoformat() if v else None}
+    )
 
 
 class ProcessingContext(BaseModel):
-   """Processing context for tracking request lifecycle."""
-   correlation_id: str
-   user_id: str
-   conversation_id: str
-   session_id: str
-   metadata: Dict[str, Any] = Field(default_factory=dict)
-   request: ChatRequest
-   status: ProcessingStatus = ProcessingStatus.IDLE
-   processing_start: Optional[datetime] = None
-   processing_end: Optional[datetime] = None
-   retry_count: int = 0
-   cancelled: bool = False
-   cancel_event: Any = None  # Should be asyncio.Event, but we avoid import cycles
-   
-   def __init__(self, **data):
-       super().__init__(**data)
-       if self.cancel_event is None:
-           import asyncio
-           self.cancel_event = asyncio.Event()
+    """Processing context for tracking request lifecycle."""
+
+    correlation_id: str
+    user_id: str
+    conversation_id: str
+    session_id: str
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    request: ChatRequest
+    status: ProcessingStatus = ProcessingStatus.IDLE
+    processing_start: Optional[datetime] = None
+    processing_end: Optional[datetime] = None
+    retry_count: int = 0
+    cancelled: bool = False
+    cancel_event: Any = None  # Should be asyncio.Event, but we avoid import cycles
+    event_emitter: Optional[Any] = None  # Callable for emitting agent step events
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        if self.cancel_event is None:
+            import asyncio
+
+            self.cancel_event = asyncio.Event()
 
 
 class ProcessingResult(BaseModel):
-   """Processing result for chat operations."""
-   success: bool
-   response: Optional[str] = None
-   error: Optional[str] = None
-   error_type: Optional[ErrorType] = None
-   correlation_id: str
-   parsed_message: Optional[Any] = None
-   embeddings: Optional[List[float]] = None
-   context: Optional[Dict[str, Any]] = None
-   processing_time: Optional[float] = None
-   used_fallback: bool = False
-   llm_metadata: Optional[Dict[str, Any]] = None
+    """Processing result for chat operations."""
+
+    success: bool
+    response: Optional[str] = None
+    error: Optional[str] = None
+    error_type: Optional[ErrorType] = None
+    correlation_id: str
+    parsed_message: Optional[Any] = None
+    embeddings: Optional[List[float]] = None
+    context: Optional[Dict[str, Any]] = None
+    processing_time: Optional[float] = None
+    used_fallback: bool = False
+    llm_metadata: Optional[Dict[str, Any]] = None
 
 
 class ChatResponse(BaseModel):
-   """Chat response model."""
-   response: str
-   correlation_id: str
-   processing_time: Optional[float] = None
-   used_fallback: bool = False
-   context_used: bool = False
-   metadata: Dict[str, Any] = Field(default_factory=dict)
+    """Chat response model."""
+
+    response: str
+    correlation_id: str
+    processing_time: Optional[float] = None
+    used_fallback: bool = False
+    context_used: bool = False
+    metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
 class ChatStreamChunk(BaseModel):
-   """Chat streaming chunk model."""
-   type: str  # "content", "metadata", "complete", "error"
-   content: str
-   correlation_id: str
-   metadata: Dict[str, Any] = Field(default_factory=dict)
+    """Chat streaming chunk model."""
+
+    type: str  # "content", "metadata", "complete", "error"
+    content: str
+    correlation_id: str
+    metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
 class ParsedMessage(BaseModel):
-   """Parsed message result from NLP processing."""
-   entities: List[tuple[str, str]] = Field(default_factory=list)  # (text, label)
-   intent: Optional[str] = None
-   sentiment: Optional[str] = None
-   confidence: Optional[float] = None
-   used_fallback: bool = False
-   processing_time: Optional[float] = None
-   metadata: Dict[str, Any] = Field(default_factory=dict)
+    """Parsed message result from NLP processing."""
+
+    entities: List[tuple[str, str]] = Field(default_factory=list)  # (text, label)
+    intent: Optional[str] = None
+    sentiment: Optional[str] = None
+    confidence: Optional[float] = None
+    used_fallback: bool = False
+    processing_time: Optional[float] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)

@@ -102,10 +102,10 @@ class PluginLifecycleManager:
         self,
         registry: PluginRegistry,
         db_session: AsyncSession,
-        plugins_dir: Path = Path("src/extensions/plugins"),
+        plugins_dir: Path = Path("src/ai_karen_engine/extensions/plugins"),
         backups_dir: Path = Path("data/plugin_backups"),
         ui_materialization_dir: Path = Path(
-            "ui_launchers/Karen-AI-Theme/src/plugin_repo"
+            "src/ui_launchers/Karen-AI-Theme/src/plugin_repo"
         ),
     ):
         self.registry = registry

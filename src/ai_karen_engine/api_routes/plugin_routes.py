@@ -5,10 +5,7 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-try:
-    from pydantic import BaseModel, ConfigDict, Field
-except ImportError:
-    from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from ai_karen_engine.core.dependencies import (
     bypass_user_context_func,

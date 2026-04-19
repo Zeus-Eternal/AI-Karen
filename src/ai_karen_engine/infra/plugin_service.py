@@ -411,7 +411,10 @@ def get_plugin_service() -> PluginService:
     """Get global plugin service instance."""
     global _plugin_service
     if _plugin_service is None:
-        _plugin_service = PluginService()
+        # Auto-initialize with default paths if not already done
+        from pathlib import Path
+        path = Path("src/ai_karen_engine/extensions/plugins")
+        _plugin_service = PluginService(marketplace_path=path, core_plugins_path=path)
     return _plugin_service
 
 
@@ -432,8 +435,20 @@ async def initialize_plugin_service(
         Initialized plugin service
     """
     global _plugin_service
+    
+    # Use canonical paths if not provided
+    if marketplace_path is None:
+        marketplace_path = Path("src/ai_karen_engine/extensions/plugins")
+    if core_plugins_path is None:
+        core_plugins_path = Path("src/ai_karen_engine/extensions/plugins")
+        
     _plugin_service = PluginService(marketplace_path, core_plugins_path)
     await _plugin_service.initialize(auto_discover)
+    
+    if auto_discover:
+        logger.info("Auto-registering all discovered plugins...")
+        await _plugin_service.validate_and_register_all_discovered()
+        
     return _plugin_service
 
 

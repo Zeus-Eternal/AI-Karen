@@ -105,12 +105,13 @@ class EnhancedWebSocketManager:
         # Log connection
         logger.info(f"WebSocket connection established: {connection_id}")
 
-        # Send welcome message
+        # Send welcome message with compact payload
         welcome_message = {
-            "type": "connection_established",
-            "connection_id": connection_id,
-            "timestamp": datetime.utcnow().isoformat(),
-            "user_id": user_id,
+            "t": "ce",  # type: connection_established (compressed)
+            "d": {  # data: connection details
+                "cid": connection_id,  # compressed: connection_id
+                "uid": user_id,  # compressed: user_id
+            },
         }
 
         await self.send_personal_message(welcome_message, connection_id)
@@ -172,9 +173,8 @@ class EnhancedWebSocketManager:
         if not self._check_rate_limit(connection_id):
             await self.send_personal_message(
                 {
-                    "type": "rate_limit_exceeded",
-                    "timestamp": datetime.utcnow().isoformat(),
-                    "message": "Message rate limit exceeded",
+                    "t": "rle",  # type: rate_limit_exceeded (compressed)
+                    "d": "Message rate limit exceeded",  # data: error message
                 },
                 connection_id,
             )
@@ -186,9 +186,8 @@ class EnhancedWebSocketManager:
         except json.JSONDecodeError:
             await self.send_personal_message(
                 {
-                    "type": "error",
-                    "timestamp": datetime.utcnow().isoformat(),
-                    "message": "Invalid JSON format",
+                    "t": "e",  # type: error (compressed)
+                    "d": "Invalid JSON format",  # data: error message
                 },
                 connection_id,
             )
@@ -201,9 +200,10 @@ class EnhancedWebSocketManager:
         if not content_result.is_valid:
             await self.send_personal_message(
                 {
-                    "type": "validation_error",
-                    "timestamp": datetime.utcnow().isoformat(),
-                    "threats": content_result.threats_detected,
+                    "t": "ve",  # type: validation_error (compressed)
+                    "d": {  # data: validation details
+                        "t": content_result.threats_detected,  # compressed: threats
+                    },
                 },
                 connection_id,
             )
@@ -235,9 +235,9 @@ class EnhancedWebSocketManager:
             # Handle typing indicator
             await self._handle_typing_indicator(connection_id, message_data)
         elif message_type == "ping":
-            # Handle ping/pong
+            # Handle ping/pong with compact payload
             await self.send_personal_message(
-                {"type": "pong", "timestamp": datetime.utcnow().isoformat()},
+                {"t": "p"},  # type: pong (compressed)
                 connection_id,
             )
         else:
@@ -260,17 +260,17 @@ class EnhancedWebSocketManager:
                 "security_level": SecurityLevel.MEDIUM.value,
             }
 
-            # Send message and get streaming response
+            # Send message and get streaming response with compact payload
             async for chunk in orchestrator.stream_response(
                 conversation_id=message_request["conversation_id"],
                 message=message_request["content"],
                 user_id=message_request["user_id"],
             ):
+                # Compact payload - only send delta
                 await self.send_personal_message(
                     {
-                        "type": "stream_chunk",
-                        "content": chunk,
-                        "timestamp": datetime.utcnow().isoformat(),
+                        "t": "c",  # type: stream_chunk (compressed)
+                        "d": chunk,  # data: content
                     },
                     connection_id,
                 )
@@ -279,9 +279,8 @@ class EnhancedWebSocketManager:
             logger.error(f"Failed to handle chat message: {e}")
             await self.send_personal_message(
                 {
-                    "type": "error",
-                    "timestamp": datetime.utcnow().isoformat(),
-                    "message": f"Failed to process message: {str(e)}",
+                    "t": "e",  # type: error (compressed)
+                    "d": f"Failed to process message: {str(e)}",  # data: error message
                 },
                 connection_id,
             )
@@ -293,14 +292,17 @@ class EnhancedWebSocketManager:
         conversation_id = message_data.get("conversation_id")
         is_typing = message_data.get("is_typing", True)
 
-        # Broadcast to conversation
+        # Broadcast to conversation with compact payload
         await self.broadcast_to_conversation(
             {
-                "type": "typing_indicator",
-                "user_id": self.active_connections[connection_id]["user_id"],
-                "conversation_id": conversation_id,
-                "is_typing": is_typing,
-                "timestamp": datetime.utcnow().isoformat(),
+                "t": "ti",  # type: typing_indicator (compressed)
+                "d": {  # data: typing info
+                    "uid": self.active_connections[connection_id][
+                        "user_id"
+                    ],  # compressed: user_id
+                    "cid": conversation_id,  # compressed: conversation_id
+                    "it": is_typing,  # compressed: is_typing
+                },
             },
             conversation_id,
         )

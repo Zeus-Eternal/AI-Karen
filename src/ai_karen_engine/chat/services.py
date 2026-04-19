@@ -60,32 +60,12 @@ class ChatService:
         pass
 
     async def create_conversation(self, conversation_data: Dict[str, Any]) -> Any:
-        """Create a new conversation."""
+        """Create conversation - validation handled by caller/orchestrator."""
         try:
-            # Validate input
-            title = conversation_data.get("title")
-            if not title:
-                raise ValueError("Title is required")
-
-            title_result = self.content_validator.validate_content(title, "text")
-            if not title_result.is_valid:
-                raise ValueError(
-                    f"Invalid title: {', '.join(title_result.threats_detected)}"
-                )
-
-            # Prepare conversation data
-            clean_data = {
-                "title": title_result.sanitized_content,
-                "description": conversation_data.get("description"),
-                "user_id": conversation_data.get("user_id"),
-                "security_level": conversation_data.get(
-                    "security_level", SecurityLevel.MEDIUM.value
-                ),
-            }
-
-            # Create conversation through orchestrator
-            conversation = await self._orchestrator.create_conversation(clean_data)
-
+            # Delegate directly to orchestrator
+            conversation = await self._orchestrator.create_conversation(
+                conversation_data
+            )
             return conversation
 
         except Exception as e:
@@ -123,35 +103,10 @@ class ChatService:
             raise
 
     async def send_message(self, message_data: Dict[str, Any]) -> Any:
-        """Send a message in a conversation."""
+        """Send message - validation handled by caller/orchestrator."""
         try:
-            # Validate message content
-            content = message_data.get("content")
-            if not content:
-                raise ValueError("Message content is required")
-
-            security_level = SecurityLevel(
-                message_data.get("security_level", SecurityLevel.MEDIUM.value)
-            )
-            content_result = self.content_validator.validate_content(content, "text")
-
-            if not content_result.is_valid:
-                raise ValueError(
-                    f"Invalid message content: {', '.join(content_result.threats_detected)}"
-                )
-
-            # Prepare message data
-            clean_data = {
-                "conversation_id": message_data.get("conversation_id"),
-                "content": content_result.sanitized_content,
-                "role": message_data.get("role", "user"),
-                "user_id": message_data.get("user_id"),
-                "security_level": security_level.value,
-            }
-
-            # Send message through orchestrator
-            message = await self._orchestrator.send_message(clean_data)
-
+            # Delegate directly to orchestrator
+            message = await self._orchestrator.send_message(message_data)
             return message
 
         except Exception as e:
@@ -174,43 +129,10 @@ class ChatService:
             raise
 
     async def upload_file(self, file_data: Dict[str, Any]) -> Any:
-        """Upload a file to a conversation."""
+        """Upload file - validation handled by caller/orchestrator."""
         try:
-            # Validate file
-            filename = file_data.get("filename")
-            content = file_data.get("content")
-
-            if not filename or not content:
-                raise ValueError("Filename and content are required")
-
-            security_level = SecurityLevel(
-                file_data.get("security_level", SecurityLevel.MEDIUM.value)
-            )
-
-            # Sanitize filename
-            clean_filename = sanitize_filename(filename)
-
-            # Validate file content
-            file_result = validate_file_upload(content, clean_filename)
-
-            if not file_result.is_valid:
-                raise ValueError(
-                    f"Invalid file: {', '.join(file_result.threats_detected)}"
-                )
-
-            # Prepare file data
-            clean_data = {
-                "conversation_id": file_data.get("conversation_id"),
-                "filename": clean_filename,
-                "content": content,
-                "content_type": file_data.get("content_type"),
-                "user_id": file_data.get("user_id"),
-                "security_level": security_level.value,
-            }
-
-            # Upload file through orchestrator
-            uploaded_file = await self._orchestrator.upload_file(clean_data)
-
+            # Delegate directly to orchestrator
+            uploaded_file = await self._orchestrator.upload_file(file_data)
             return uploaded_file
 
         except Exception as e:

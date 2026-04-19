@@ -277,7 +277,7 @@ export const deriveDegradedPresentation = (
       ? `${requestedProvider || 'provider'} rate limited`
       : failureReasonLower.includes('unavailable')
         ? `${requestedProvider || 'provider'} unavailable`
-        : (isDegraded || Boolean(failureReason))
+        : isDegraded
           ? 'degraded mode'
           : '';
   const degradedBannerText = isSafetyBlocked
@@ -294,7 +294,9 @@ export const deriveDegradedPresentation = (
           ? `${requestedProvider} quota exceeded, switched to ${fallbackTargetLabel}.`
           : failureReason
             ? failureReason
-            : '';
+            : isDegraded
+              ? `Requested provider ${requestedProvider || 'primary'} was unavailable; Karen continued in degraded mode.`
+              : '';
   const visibleDegradedNotice = isSafetyBlocked
     ? degradedBannerText
     : degradedBannerText && failureReason && degradedBannerText !== failureReason
@@ -563,30 +565,37 @@ export function normalizeBackendChatResponse(
   ensureRuntimeModeMetadata(metadata, raw);
 
   const llm = metadata.llm ? { ...metadata.llm } : {};
-  const requestedProvider = normalizeProviderName(options?.requestedProvider);
+  const requestedProvider = normalizeProviderName(llm.requested_provider || options?.requestedProvider);
+  const requestedModel = normalizeModelName(llm.requested_model || options?.requestedModel);
   const actualProvider = normalizeProviderName(llm.provider);
-  const localProviderReturned =
-    Boolean(requestedProvider) &&
-    requestedProvider !== 'llamacpp' &&
-    actualProvider === 'llamacpp';
+  const actualModel = normalizeModelName(llm.model_id || llm.model_name);
+  
+  // A response is degraded if:
+  // 1. Backend explicitly said so via is_degraded or used_fallback
+  // 2. We detect a provider mismatch (requested != actual)
+  // 3. It's a local fallback (requested was remote, actual is local)
+  const isActuallyDegraded = 
+    llm.is_degraded === true || 
+    metadata.orchestrator?.used_fallback === true ||
+    raw.used_fallback === true ||
+    Boolean(requestedProvider && actualProvider && requestedProvider !== actualProvider) ||
+    Boolean(requestedModel && actualModel && requestedModel !== actualModel);
 
-  if (localProviderReturned) {
+  if (isActuallyDegraded) {
     metadata.degraded_mode = true;
-    metadata.orchestrator = {
-      ...(metadata.orchestrator || {}),
-      used_fallback: true,
-    };
+    if (!metadata.orchestrator) metadata.orchestrator = {};
+    metadata.orchestrator.used_fallback = true;
+    
     llm.is_degraded = true;
-    llm.fallback_level = llm.fallback_level || 'local';
-    llm.source = llm.source || 'provider_selection_fallback';
     llm.requested_provider = llm.requested_provider || options?.requestedProvider;
     llm.requested_model = llm.requested_model || options?.requestedModel;
-    llm.failure_reason =
-      llm.failure_reason ||
-      `Selected provider ${options?.requestedProvider} was unavailable; Karen continued with local llama.cpp.`;
-    llm.routing_rationale =
-      llm.routing_rationale ||
-      `Requested provider ${options?.requestedProvider} failed, so the conversation continued in degraded mode on local llama.cpp.`;
+    
+    if (!llm.failure_reason && requestedProvider && actualProvider && requestedProvider !== actualProvider) {
+        const friendlyRequested = getFriendlyProviderLabel(requestedProvider);
+        const friendlyActual = getFriendlyProviderLabel(actualProvider);
+        llm.failure_reason = `Selected provider ${friendlyRequested} was unavailable; Karen continued with ${friendlyActual}.`;
+    }
+    
     metadata.llm = llm;
   }
 

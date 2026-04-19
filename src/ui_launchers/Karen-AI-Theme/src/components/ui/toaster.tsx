@@ -17,6 +17,8 @@ export function Toaster() {
   const [sidebarFooterElement, setSidebarFooterElement] = useState<HTMLElement | null>(null)
 
   useEffect(() => {
+    if (typeof document === 'undefined') return;
+    
     const resolveSidebarFooter = () => {
       const next = document.querySelector<HTMLElement>('[data-sidebar="footer"]')
       setSidebarFooterElement((current) => (current === next ? current : next))

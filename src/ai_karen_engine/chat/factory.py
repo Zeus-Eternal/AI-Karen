@@ -4,7 +4,7 @@ Comprehensive factory for initializing and wiring all chat-related services.
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
 from ai_karen_engine.chat.chat_orchestrator import ChatOrchestrator, RetryConfig
 from ai_karen_engine.chat.memory_processor import MemoryProcessor
@@ -69,10 +69,15 @@ class ChatServiceFactory:
         logger.info("ChatServiceFactory initialized")
 
     def create_memory_processor(self) -> Optional[MemoryProcessor]:
-        """Create and configure memory processor."""
+        """Create and configure memory processor (singleton)."""
         if not self.config.enable_memory:
             logger.info("Memory processor disabled by configuration")
             return None
+
+        # Check module-level cache first
+        global _service_instances
+        if "memory_processor" in _service_instances:
+            return _service_instances["memory_processor"]
 
         try:
             from ai_karen_engine.memory.nlp_service_manager import nlp_service_manager
@@ -109,6 +114,7 @@ class ChatServiceFactory:
                 memory_manager=memory_manager,
             )
 
+            _service_instances["memory_processor"] = memory_processor
             self._services["memory_processor"] = memory_processor
 
             logger.info("Memory processor created successfully")
@@ -134,13 +140,19 @@ class ChatServiceFactory:
             return None
 
     def create_file_attachment_service(self) -> Optional[FileAttachmentService]:
-        """Create and configure file attachment service."""
+        """Create and configure file attachment service (singleton)."""
         if not self.config.enable_file_attachments:
             logger.info("File attachment service disabled by configuration")
             return None
 
+        # Check module-level cache first
+        global _service_instances
+        if "file_attachment_service" in _service_instances:
+            return _service_instances["file_attachment_service"]
+
         try:
             service = FileAttachmentService()
+            _service_instances["file_attachment_service"] = service
             self._services["file_attachment_service"] = service
             logger.info("File attachment service created successfully")
             return service
@@ -149,13 +161,19 @@ class ChatServiceFactory:
             return None
 
     def create_multimedia_service(self) -> Optional[MultimediaService]:
-        """Create and configure multimedia service."""
+        """Create and configure multimedia service (singleton)."""
         if not self.config.enable_multimedia:
             logger.info("Multimedia service disabled by configuration")
             return None
 
+        # Check module-level cache first
+        global _service_instances
+        if "multimedia_service" in _service_instances:
+            return _service_instances["multimedia_service"]
+
         try:
             service = MultimediaService()
+            _service_instances["multimedia_service"] = service
             self._services["multimedia_service"] = service
             logger.info("Multimedia service created successfully")
             return service
@@ -164,13 +182,19 @@ class ChatServiceFactory:
             return None
 
     def create_code_execution_service(self) -> Optional[CodeExecutionService]:
-        """Create and configure code execution service."""
+        """Create and configure code execution service (singleton)."""
         if not self.config.enable_code_execution:
             logger.info("Code execution service disabled by configuration")
             return None
 
+        # Check module-level cache first
+        global _service_instances
+        if "code_execution_service" in _service_instances:
+            return _service_instances["code_execution_service"]
+
         try:
             service = CodeExecutionService()
+            _service_instances["code_execution_service"] = service
             self._services["code_execution_service"] = service
             logger.info("Code execution service created successfully")
             return service
@@ -179,13 +203,19 @@ class ChatServiceFactory:
             return None
 
     def create_tool_integration_service(self) -> Optional[ToolIntegrationService]:
-        """Create and configure tool integration service."""
+        """Create and configure tool integration service (singleton)."""
         if not self.config.enable_tool_integration:
             logger.info("Tool integration service disabled by configuration")
             return None
 
+        # Check module-level cache first
+        global _service_instances
+        if "tool_integration_service" in _service_instances:
+            return _service_instances["tool_integration_service"]
+
         try:
             service = ToolIntegrationService()
+            _service_instances["tool_integration_service"] = service
             self._services["tool_integration_service"] = service
             logger.info("Tool integration service created successfully")
             return service
@@ -432,6 +462,7 @@ class ChatServiceFactory:
 
 # Global factory instance
 _global_factory: Optional[ChatServiceFactory] = None
+_service_instances: Dict[str, Any] = {}  # Module-level cache for singleton services
 
 
 def get_chat_service_factory(
@@ -453,6 +484,14 @@ def get_chat_service_factory(
         logger.info("Global chat service factory created")
 
     return _global_factory
+
+
+def get_singleton_service(service_name: str, factory_func):
+    """Get or create singleton service with module-level caching."""
+    global _service_instances
+    if service_name not in _service_instances:
+        _service_instances[service_name] = factory_func()
+    return _service_instances[service_name]
 
 
 async def get_chat_orchestrator() -> Any:

@@ -49,6 +49,9 @@ class ChatAuthenticationMiddleware(BaseHTTPMiddleware):
         self.rate_limits = RATE_LIMIT_CONFIG
         self.bearer_scheme = HTTPBearer()
 
+        # Initialize in-process cache for frequent requests (1 second window)
+        self._rate_limit_cache: Dict[str, Dict[str, Any]] = {}
+
         # Initialize Redis for rate limiting
         if redis_url:
             try:
@@ -113,18 +116,20 @@ class ChatAuthenticationMiddleware(BaseHTTPMiddleware):
             # Add security headers
             self._add_security_headers(response, start_time)
 
-            # Log successful request
-            await self.security_monitor.log_event(
-                event_type="request_completed",
-                threat_level=ThreatLevel.LOW,
-                user_id=user_info.get("user_id"),
-                ip_address=self._get_client_ip(request),
-                details={
-                    "path": path,
-                    "method": request.method,
-                    "status_code": response.status_code,
-                    "duration": time.time() - start_time,
-                },
+            # Log successful request (non-blocking)
+            asyncio.create_task(
+                self.security_monitor.log_event(
+                    event_type="request_completed",
+                    threat_level=ThreatLevel.LOW,
+                    user_id=user_info.get("user_id"),
+                    ip_address=self._get_client_ip(request),
+                    details={
+                        "path": path,
+                        "method": request.method,
+                        "status_code": response.status_code,
+                        "duration": time.time() - start_time,
+                    },
+                )
             )
 
             return response
@@ -160,14 +165,24 @@ class ChatAuthenticationMiddleware(BaseHTTPMiddleware):
         return any(path.startswith(skip_path) for skip_path in skip_paths)
 
     async def _check_rate_limit(self, request: Request) -> bool:
-        """Check if request is within rate limits."""
+        """Rate limiting with in-process caching for hot paths."""
         if not self.redis_client:
             return True  # Skip rate limiting if Redis not available
 
         client_ip = self._get_client_ip(request)
         path = request.url.path
 
-        # Create rate limit keys
+        # In-process cache for frequent requests (1 second window)
+        cache_key = f"{client_ip}:{path}"
+        now = time.time()
+
+        if hasattr(self, "_rate_limit_cache"):
+            cached = self._rate_limit_cache.get(cache_key)
+            if cached and (now - cached["timestamp"]) < 1.0:
+                # Use cached result
+                return cached["allowed"]
+
+        # Check Redis
         minute_key = f"rate_limit:{client_ip}:{path}:minute"
         hour_key = f"rate_limit:{client_ip}:{path}:hour"
 
@@ -183,12 +198,30 @@ class ChatAuthenticationMiddleware(BaseHTTPMiddleware):
             minute_count, hour_count = results[0], results[1]
 
             # Check limits
-            if minute_count > self.rate_limits["requests_per_minute"]:
-                return False
-            if hour_count > self.rate_limits["requests_per_hour"]:
-                return False
+            allowed = (
+                minute_count <= self.rate_limits["requests_per_minute"]
+                and hour_count <= self.rate_limits["requests_per_hour"]
+            )
 
-            return True
+            # Cache result
+            if not hasattr(self, "_rate_limit_cache"):
+                self._rate_limit_cache = {}
+
+            self._rate_limit_cache[cache_key] = {
+                "allowed": allowed,
+                "timestamp": now,
+            }
+
+            # Clean old cache entries
+            if len(self._rate_limit_cache) > 1000:
+                cutoff = now - 1.0
+                self._rate_limit_cache = {
+                    k: v
+                    for k, v in self._rate_limit_cache.items()
+                    if v["timestamp"] > cutoff
+                }
+
+            return allowed
 
         except Exception as e:
             logger.warning(f"Rate limiting error: {e}")

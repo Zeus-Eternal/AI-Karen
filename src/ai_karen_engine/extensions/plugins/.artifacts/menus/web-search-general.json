@@ -1,0 +1,14 @@
+{
+  "plugin_id": "web-search-general",
+  "display_name": "Web Search (General)",
+  "menus": [
+    {
+      "placement": "sidebar.plugins",
+      "label": "Web Search",
+      "icon": "search",
+      "order": 50
+    }
+  ],
+  "icons": [],
+  "generated_at": "2026-04-19T11:00:13.089261"
+}

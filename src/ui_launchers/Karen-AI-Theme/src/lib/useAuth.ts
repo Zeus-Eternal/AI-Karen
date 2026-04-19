@@ -54,7 +54,9 @@ export function useAuth() {
           isAuthenticated: authService.isAuthenticated(),
         });
 
-        if (!isValid || !currentUser) {
+        // Only clear auth if validation explicitly returned false
+        // Never clear auth during grace period for fresh logins
+        if (!isValid) {
           // Only clear when auth artifacts actually exist, to avoid no-op churn.
           if (hasAccessToken || hasRefreshToken || hadUser || hasSessionMarker) {
             console.log('[useAuth] Session invalid, clearing auth');
@@ -63,8 +65,8 @@ export function useAuth() {
         }
 
         setState({
-          user: currentUser,
-          isAuthenticated: !!currentUser && isValid,
+          user: currentUser || cachedUser,
+          isAuthenticated: isValid,
           isLoading: false,
           error: null,
         });

@@ -27,7 +27,8 @@ class SearchTool:
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         self.config = config or {}
         self.searxng_url = self.config.get('searxng_url', 'http://localhost:8080')
-        self.timeout = self.config.get('timeout', 10)
+        self.fallback_url = "https://searxng.nicfab.eu" # Public fallback
+        self.timeout = self.config.get('timeout', 15)
         self.max_results = self.config.get('max_results', 10)
         self.default_category = self.config.get('default_category', 'general')
         self.default_language = self.config.get('default_language', 'en')
@@ -76,11 +77,19 @@ class SearchTool:
             search_url = f"{self.searxng_url}/search"
             
             async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=self.timeout)) as session:
-                async with session.get(search_url, params=params) as response:
-                    if response.status != 200:
-                        raise Exception(f"Search request failed with status {response.status}")
-                    
-                    data = await response.json()
+                try:
+                    async with session.get(search_url, params=params) as response:
+                        if response.status != 200:
+                            raise Exception(f"Primary search failed: {response.status}")
+                        data = await response.json()
+                except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+                    logger.warning(f"Primary search failed ({e}), trying fallback: {self.fallback_url}")
+                    # Fallback to public instance
+                    fallback_search_url = f"{self.fallback_url}/search"
+                    async with session.get(fallback_search_url, params=params) as response:
+                        if response.status != 200:
+                            raise Exception(f"Search failed with status {response.status} (including fallback)")
+                        data = await response.json()
                     
             # Process results
             results = []

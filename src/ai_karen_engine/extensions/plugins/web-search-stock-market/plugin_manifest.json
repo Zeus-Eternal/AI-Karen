@@ -1,0 +1,46 @@
+{
+  "name": "web-search-stock-market",
+  "display_name": "Web Search (Stock Market)",
+  "version": "1.0.0",
+  "description": "Stock market and market-moving news lookup for Kari.",
+  "purpose": "Locate and retrieve stock market news, price-action context, earnings developments, and company-specific market events from the web.",
+  "author": "Kari Team",
+  "license": "MIT",
+  "entrypoint": "handler:MainExtension",
+  "category": "plugins",
+  "tags": ["stocks", "market", "finance", "earnings", "equities", "prompt-first"],
+  "capabilities": {
+    "provides_ui": true,
+    "provides_api": true,
+    "web_search": true,
+    "prompt_first": true,
+    "stock_market": true
+  },
+  "settings": {
+    "max_urls": 8,
+    "depth": 1,
+    "freshness_bias": 0.9,
+    "prefer_recent": true,
+    "prefer_official_sources": true,
+    "prefer_financial_sources": true,
+    "allow_forum_results": false,
+    "include_price_action": true,
+    "include_company_news": true,
+    "include_earnings": true,
+    "include_analyst_sentiment": false
+  },
+  "ui": {
+    "hook_zones": [
+      {
+        "zone": "sidebar.plugins",
+        "label": "Stock Market",
+        "icon": "chart-candlestick",
+        "order": 70
+      }
+    ]
+  },
+  "rbac": {
+    "allowed_roles": ["user", "admin", "developer"],
+    "default_enabled": true
+  }
+}

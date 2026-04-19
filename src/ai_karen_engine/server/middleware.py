@@ -37,7 +37,7 @@ def configure_middleware(
     app.add_middleware(
         SessionMiddleware,
         secret_key=settings.secret_key,
-        session_cookie="kari_session",
+        session_cookie="starlette_session",
         same_site="lax",
         https_only=settings.https_redirect,
     )

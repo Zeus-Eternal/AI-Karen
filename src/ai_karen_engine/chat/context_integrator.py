@@ -552,6 +552,11 @@ class ContextIntegrator:
             for item in by_type[ContextType.ATTACHMENTS]:
                 context_parts.append(f"- {item.content}")
         
+        # Add web search results
+        if ContextType.WEB_SEARCH in by_type:
+            for item in by_type[ContextType.WEB_SEARCH]:
+                context_parts.append(item.content)
+
         # Add entities
         if ContextType.ENTITIES in by_type:
             context_parts.append("KEY ENTITIES:")

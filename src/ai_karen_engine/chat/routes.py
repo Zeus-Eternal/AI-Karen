@@ -53,29 +53,16 @@ async def create_conversation(
 ):
     """Create a new conversation."""
     try:
-        # Validate input
-        validator = get_content_validator(security_level)
-        title_result = validator.validate_content(title, "text")
-        if not title_result.is_valid:
+        # Minimal validation - only required fields
+        if not title:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid title: {', '.join(title_result.threats_detected)}",
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Title is required"
             )
-
-        if description:
-            desc_result = validator.validate_content(description, "text")
-            if not desc_result.is_valid:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Invalid description: {', '.join(desc_result.threats_detected)}",
-                )
 
         # Create conversation through orchestrator
         conversation_data = {
-            "title": title_result.sanitized_content,
-            "description": description_result.sanitized_content
-            if description
-            else None,
+            "title": title,
+            "description": description,
             "user_id": request.state.user_id
             if hasattr(request.state, "user_id")
             else None,
@@ -203,14 +190,10 @@ async def send_message(
 ):
     """Send a message in a conversation."""
     try:
-        # Validate input
-        validator = get_content_validator(security_level)
-        content_result = validator.validate_content(content, "text")
-
-        if not content_result.is_valid:
+        # Minimal validation - only required fields
+        if not content:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid message content: {', '.join(content_result.threats_detected)}",
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Content is required"
             )
 
         # Get user ID from request state
@@ -219,7 +202,7 @@ async def send_message(
         # Send message through orchestrator
         message_data = {
             "conversation_id": conversation_id,
-            "content": content_result.sanitized_content,
+            "content": content,
             "role": role,
             "user_id": user_id,
             "security_level": security_level.value,
@@ -292,18 +275,9 @@ async def upload_file(
 ):
     """Upload a file to a conversation."""
     try:
-        # Validate file
+        # Read file and sanitize filename
         file_data = await file.read()
         filename = sanitize_filename(file.filename)
-
-        validator = get_content_validator(security_level)
-        file_result = validate_file_upload(file_data, filename)
-
-        if not file_result.is_valid:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid file: {', '.join(file_result.threats_detected)}",
-            )
 
         # Get user ID from request state
         user_id = request.state.user_id if hasattr(request.state, "user_id") else None

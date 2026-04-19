@@ -18,8 +18,21 @@ from PIL import Image
 from urllib.parse import urlparse
 from openai import AsyncOpenAI              # ← new
 
-from mcp.server.fastmcp import FastMCP
-from loguru import logger
+try:
+    from mcp.server.fastmcp import FastMCP
+    mcp_available = True
+except ImportError:
+    mcp_available = False
+    class FastMCP:
+        def __init__(self, *args, **kwargs): pass
+        def tool(self, *args, **kwargs):
+            return lambda f: f
+        def run(self, *args, **kwargs): pass
+try:
+    from loguru import logger
+except ImportError:
+    import logging
+    logger = logging.getLogger("image_tool")
 
 
 from dotenv import load_dotenv
@@ -136,6 +149,10 @@ class ImageAnalysisToolkit:
 # --------------------------------------------------------------------------- #
 mcp = FastMCP("image_analysis")
 toolkit = ImageAnalysisToolkit()
+
+class ImageServerTool:
+    """Stub for ImageServerTool."""
+    pass
 
 
 @mcp.tool()

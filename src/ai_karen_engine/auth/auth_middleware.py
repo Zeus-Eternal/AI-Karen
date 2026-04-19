@@ -70,23 +70,7 @@ class AuthenticationError(Exception):
         super().__init__(message)
 
 
-class BaseAuthMiddleware:
-    """Base class for authentication middleware with common interface."""
-
-    def get_current_user(self, request: Request) -> Dict[str, Any]:
-        raise NotImplementedError("Subclasses must implement get_current_user")
-
-    def is_public_endpoint(self, path: str) -> bool:
-        raise NotImplementedError("Subclasses must implement is_public_endpoint")
-
-    def _check_rate_limit(self, user_id: str, action: str) -> bool:
-        raise NotImplementedError("Subclasses must implement _check_rate_limit")
-
-    async def authenticate_request(self, request: Request) -> Dict[str, Any]:
-        raise NotImplementedError("Subclasses must implement authenticate_request")
-
-
-class SecureAuthMiddleware(BaseAuthMiddleware):
+class SecureAuthMiddleware:
     """Secure authentication middleware with comprehensive JWT validation."""
 
     def __init__(self):
@@ -107,12 +91,20 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
 
             if self.config_manager is not None:
                 config = self.config_manager.get_config()
-                if config is not None and hasattr(config, "security"):
-                    if self.jwt_secret == "fallback_secret_key_for_development_only":
-                        self.jwt_secret = config.security.jwt_secret
-
-                    self.jwt_algorithm = config.security.jwt_algorithm
-                    self.jwt_expiration_hours = config.security.jwt_expiration // 3600
+                if config is not None:
+                    # Case 1: AIKarenConfig (has .security.jwt_secret)
+                    if hasattr(config, "security") and hasattr(config.security, "jwt_secret"):
+                        if self.jwt_secret == "fallback_secret_key_for_development_only":
+                            self.jwt_secret = config.security.jwt_secret
+                        self.jwt_algorithm = config.security.jwt_algorithm
+                        self.jwt_expiration_hours = config.security.jwt_expiration // 3600
+                    # Case 2: Settings (has .secret_key)
+                    elif hasattr(config, "secret_key"):
+                        if self.jwt_secret == "fallback_secret_key_for_development_only":
+                            self.jwt_secret = config.secret_key
+                        # Hardcode defaults for Settings object if missing
+                        self.jwt_algorithm = getattr(config, "algorithm", "HS256")
+                        self.jwt_expiration_hours = getattr(config, "access_token_expire_minutes", 30 * 24 * 60) // 60
 
                 self._init_redis()
 
@@ -348,6 +340,21 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
         ]
         return any(path.startswith(pattern) for pattern in public_patterns)
 
+    async def validate_token(self, token: str) -> Dict[str, Any]:
+        """Validate a JWT token and return its status and payload."""
+        try:
+            payload = self._verify_access_token(token)
+            return {
+                "status": TokenStatus.VALID,
+                "payload": payload,
+            }
+        except AuthenticationError as e:
+            if "expired" in str(e).lower():
+                return {"status": TokenStatus.EXPIRED, "error": str(e)}
+            return {"status": TokenStatus.INVALID, "error": str(e)}
+        except Exception as e:
+            return {"status": TokenStatus.INVALID, "error": str(e)}
+
     def _verify_access_token(self, token: str) -> Dict[str, Any]:
         payload = self._decode_jwt(token)
         token_id = payload.get("token_id")
@@ -366,9 +373,15 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
             "roles": payload.get("roles", []),
         }
 
-    def get_current_user(self, request: Request) -> Dict[str, Any]:
+    async def authenticate_request(self, request: Request) -> Dict[str, Any]:
+        """Entry point for middleware-based authentication."""
+        return await self.get_current_user(request)
+
+    async def get_current_user(self, request: Request) -> Dict[str, Any]:
+        """FastAPI dependency to get current user."""
         try:
-            if self.is_public_endpoint(request.url.path):
+            path = request.url.path
+            if self.is_public_endpoint(path):
                 return {
                     "user_id": "anonymous",
                     "email": None,
@@ -376,171 +389,27 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
                     "permissions": [],
                 }
 
+            # 1. Try Bearer token or access_token cookie
             token = self._extract_token_from_request(request)
             if token:
-                payload = self._verify_access_token(token)
+                payload = await self._verify_access_token(token)
                 return self._get_user_from_payload(payload)
 
+            # 2. Try kari_session cookie
             session_token = self._extract_session_token_from_request(request)
             if session_token:
-                token_result = self.validate_token(session_token)
-                if token_result["status"] == TokenStatus.VALID:
-                    return self._get_user_from_payload(token_result["payload"])
-
-            basic_auth = self._extract_basic_auth(request)
-            if basic_auth:
-                username, _ = basic_auth
-                return {
-                    "user_id": username,
-                    "email": None,
-                    "user_type": "service",
-                    "permissions": ["api_access"],
-                }
-
-            raise AuthenticationError("Authentication required")
-        except AuthenticationError:
-            raise
-        except Exception as e:
-            logger.error(f"Error getting current user: {e}")
-            raise AuthenticationError("Failed to authenticate user")
-
-    def create_tokens(self, user_data: Dict[str, Any]) -> Dict[str, str]:
-        access_token_id = self._generate_token_id()
-        refresh_token_id = self._generate_token_id()
-
-        access_payload = self._create_jwt_payload(user_data, access_token_id)
-        refresh_payload = self._create_refresh_token_payload(
-            user_data, refresh_token_id
-        )
-
-        return {
-            "access_token": self._encode_jwt(access_payload),
-            "refresh_token": self._encode_jwt(refresh_payload),
-            "token_type": "bearer",
-            "expires_in": str(self.jwt_expiration_hours * 3600),
-        }
-
-    def validate_token(self, token: str) -> Dict[str, Any]:
-        try:
-            payload = self._verify_access_token(token)
-            return {"status": TokenStatus.VALID, "payload": payload}
-        except AuthenticationError as e:
-            message = str(e).lower()
-            if "expired" in message:
-                return {"status": TokenStatus.EXPIRED, "error": str(e)}
-            if "revoked" in message:
-                return {"status": TokenStatus.REVOKED, "error": str(e)}
-            return {"status": TokenStatus.INVALID, "error": str(e)}
-
-    def refresh_tokens(self, refresh_token: str) -> Dict[str, str]:
-        payload = self._decode_refresh_token(refresh_token)
-        token_id = payload.get("token_id")
-        if token_id and self._is_token_revoked(token_id):
-            raise AuthenticationError("Refresh token has been revoked")
-
-        user_data = {
-            "user_id": payload["sub"],
-            "email": payload.get("email"),
-            "user_type": payload.get("user_type", "user"),
-            "permissions": payload.get("permissions", []),
-            "roles": payload.get("roles", []),
-        }
-        return self.create_tokens(user_data)
-
-    def revoke_token(self, token: str) -> bool:
-        try:
-            payload = self._decode_jwt(token)
-            token_id = payload.get("token_id")
-            exp = payload.get("exp")
-            if not token_id or not exp:
-                return False
-            exp_dt = datetime.utcfromtimestamp(exp)
-            return self._revoke_token(token_id, exp_dt)
-        except Exception as e:
-            logger.warning(f"Failed to revoke token: {e}")
-            return False
-
-    def revoke_refresh_token(self, token: str) -> bool:
-        try:
-            payload = self._decode_refresh_token(token)
-            token_id = payload.get("token_id")
-            exp = payload.get("exp")
-            if not token_id or not exp:
-                return False
-            exp_dt = datetime.utcfromtimestamp(exp)
-            return self._revoke_token(token_id, exp_dt)
-        except Exception as e:
-            logger.warning(f"Failed to revoke refresh token: {e}")
-            return False
-
-    def require_permission(self, permission: str):
-        def decorator(func):
-            @wraps(func)
-            async def wrapper(request: Request, *args, **kwargs):
-                user = self.get_current_user(request)
-                if permission not in user.get("permissions", []):
-                    raise HTTPException(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        detail=f"Permission '{permission}' required",
-                    )
-                return await func(request, *args, **kwargs)
-
-            return wrapper
-
-        return decorator
-
-    async def authenticate_request(self, request: Request) -> Dict[str, Any]:
-        try:
-            token = self._extract_token_from_request(request)
-            if token:
-                token_result = self.validate_token(token)
+                token_result = await self.validate_token(session_token)
                 if token_result["status"] == TokenStatus.VALID:
                     payload = token_result["payload"]
-                    return {
-                        "user_id": payload["sub"],
-                        "email": payload.get("email"),
-                        "user_type": payload.get("user_type", "user"),
-                        "permissions": payload.get("permissions", []),
-                        "tenant_id": payload.get("tenant_id", "default"),
-                        "token_id": payload.get("token_id"),
-                        "roles": payload.get("roles", []),
-                    }
-
-            session_token = self._extract_session_token_from_request(request)
-            if session_token:
-                token_result = self.validate_token(session_token)
-                if token_result["status"] == TokenStatus.VALID:
-                    payload = token_result["payload"]
-                    return {
-                        "user_id": payload["sub"],
-                        "email": payload.get("email"),
-                        "user_type": payload.get("user_type", "user"),
-                        "permissions": payload.get("permissions", []),
-                        "tenant_id": payload.get("tenant_id", "default"),
-                        "token_id": payload.get("token_id"),
-                        "roles": payload.get("roles", []),
-                    }
-
-                auth_service = await get_auth_service()
-                client_ip = request.client.host if request.client else "unknown"
-                user_agent = request.headers.get("User-Agent", "")
-                user = await auth_service.validate_session(
-                    session_token,
-                    ip_address=client_ip,
-                    user_agent=user_agent,
+                    return self._get_user_from_payload(payload)
+                
+                # If session token is expired but valid otherwise, we might allow it
+                # if the specific endpoint handles refresh, but generally we want 401.
+                raise AuthenticationError(
+                    token_result.get("error") or "Session token invalid"
                 )
-                if not user:
-                    raise AuthenticationError(
-                        f"Invalid session: {token_result.get('error', 'verification failed')}"
-                    )
 
-                user_data = user_account_to_dict(user)
-                user_data.setdefault("user_id", user.id)
-                user_data.setdefault("user_type", "user")
-                user_data.setdefault("permissions", [])
-                return user_data
-
-            return self.get_current_user(request)
+            raise AuthenticationError("No authentication token provided")
 
         except AuthenticationError:
             raise
@@ -563,7 +432,7 @@ def get_auth_middleware() -> SecureAuthMiddleware:
 async def get_current_user(request: Request) -> Dict[str, Any]:
     """FastAPI dependency to get current user."""
     auth_middleware = get_auth_middleware()
-    return auth_middleware.get_current_user(request)
+    return await auth_middleware.get_current_user(request)
 
 
 async def get_rate_limiter() -> SecureAuthMiddleware:
@@ -574,7 +443,6 @@ async def get_rate_limiter() -> SecureAuthMiddleware:
 
 __all__ = [
     "AuthenticationError",
-    "BaseAuthMiddleware",
     "SecureAuthMiddleware",
     "TokenStatus",
     "get_auth_middleware",

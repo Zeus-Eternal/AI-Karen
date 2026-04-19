@@ -11,8 +11,21 @@ from typing import Optional, Tuple
 
 import anyio
 import pandas as pd
-from loguru import logger
-from mcp.server.fastmcp import FastMCP
+try:
+    from loguru import logger
+except ImportError:
+    import logging
+    logger = logging.getLogger("excel_tool")
+try:
+    from mcp.server.fastmcp import FastMCP
+    mcp_available = True
+except ImportError:
+    mcp_available = False
+    class FastMCP:
+        def __init__(self, *args, **kwargs): pass
+        def tool(self, *args, **kwargs):
+            return lambda f: f
+        def run(self, *args, **kwargs): pass
 
 
 # --------------------------------------------------------------------------- #
@@ -116,6 +129,10 @@ class ExcelToolkit:
 # --------------------------------------------------------------------------- #
 mcp = FastMCP("excel_toolkit")
 toolkit = ExcelToolkit()
+
+class ExcelServerTool:
+    """Stub for ExcelServerTool."""
+    pass
 
 
 @mcp.tool()

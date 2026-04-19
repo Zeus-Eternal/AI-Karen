@@ -25,6 +25,8 @@ import {
 } from '@/lib/chat-response';
 import { ChatRenderedContent } from '@/lib/chat-renderer';
 import type { SuggestedAction } from '@/lib/agent-ui/service';
+import CitationBadge from './CitationBadge';
+import SourceList from './SourceList';
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -61,6 +63,8 @@ export function MessageBubble({ message, onActionClick }: MessageBubbleProps) {
 
   // Helper for clipboard fallback
   const copyToClipboardFallback = (text: string) => {
+    if (typeof document === 'undefined') return;
+    
     const textArea = document.createElement("textarea");
     textArea.value = text;
     
@@ -285,6 +289,18 @@ export function MessageBubble({ message, onActionClick }: MessageBubbleProps) {
                     </div>
                   ))}
                 </div>
+              )}
+
+              {/* Citations and Sources */}
+              {!isUser && message.citations && message.citations.length > 0 && (
+                <CitationBadge
+                  citations={message.citations}
+                  onClick={() => setShowDetails(!showDetails)}
+                />
+              )}
+
+              {showDetails && !isUser && message.citations && message.citations.length > 0 && (
+                <SourceList citations={message.citations} />
               )}
 
               {/* Suggested Actions (Quick Replies / Agentic Follow-ups) */}

@@ -61,6 +61,23 @@ const nextConfig: NextConfig = {
   /* config options here */
   outputFileTracingRoot: path.resolve(__dirname, '../..'),
   allowedDevOrigins,
+  transpilePackages: [
+    'rehype-raw', 
+    'remark-gfm', 
+    'remark-rehype',
+    'hast-util-raw', 
+    'decode-named-character-reference',
+    'unist-util-visit',
+    'unist-util-visit-parents',
+    'vfile',
+    'vfile-message',
+    'micromark',
+    'micromark-util-symbol',
+    'micromark-util-types',
+    'mdast-util-from-markdown',
+    'mdast-util-to-hast',
+    'hast-util-to-html'
+  ],
 
   typescript: {
     ignoreBuildErrors: true,
@@ -83,7 +100,7 @@ const nextConfig: NextConfig = {
     // API proxying is handled by App Router route handlers under src/app/api,
     // including a catch-all proxy route. Rewriting /api/* here can create
     // self-referential loops when BACKEND_URL matches the Next dev origin.
-    console.log('📡 [Rewrites] No /api rewrite configured; using app/api route handlers');
+    console.log('📡 [Rewrites] No /api rewrite configured - this is normal when using App Router route handlers');
     return [];
   },
 
@@ -112,8 +129,8 @@ const nextConfig: NextConfig = {
     if (!fs.existsSync(`${legacyDataConnector}.tsx`) && !fs.existsSync(`${legacyDataConnector}.jsx`)) {
       if (!config.resolve) config.resolve = {};
       if (!config.resolve.alias) config.resolve.alias = {};
-      config.resolve.alias['@/plugins/data_connector/ui/DataConnectorPluginPage'] = path.resolve(__dirname, 'src/plugin_host/empty-plugin.tsx');
-      console.log('🧩 [PluginLoader] karen-data-connector not strictly found, marked as optional.');
+      config.resolve.alias['@/plugins/data_connector/ui/DataConnectorPluginPage'] = false;
+      console.log('🧩 [PluginLoader] karen-data-connector not strictly found, marked as optional (normal for missing plugin).');
     }
 
     return config;

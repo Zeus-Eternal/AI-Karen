@@ -182,7 +182,7 @@ async def get_plugin_service() -> Any:
             initialize_plugin_service,
         )
 
-        expected_path = Path("src/extensions/plugins")
+        expected_path = Path("src/ai_karen_engine/extensions/plugins")
         service = get_infra_plugin_service()
 
         if (
@@ -195,6 +195,20 @@ async def get_plugin_service() -> Any:
                 core_plugins_path=expected_path,
                 auto_discover=True,
             )
+        else:
+            # Service initialized but maybe not discovered lately
+            await service.discover_plugins()
+            await service.validate_and_register_all_discovered()
+
+        # Automatically trigger UI materialization to sync files to plugin_repo
+        try:
+            from ai_karen_engine.extensions.platform.core.registry.ui_materialization import get_ui_pipeline
+            pipeline = get_ui_pipeline()
+            # This is an async call but we can run it in the background or await it
+            await pipeline.materialize_all()
+            logger.info("UI materialization completed during plugin service acquisition")
+        except Exception as ui_err:
+            logger.warning(f"Auto UI materialization failed: {ui_err}")
 
         return service
 

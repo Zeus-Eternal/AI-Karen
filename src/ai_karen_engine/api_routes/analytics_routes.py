@@ -6,21 +6,10 @@ from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from ai_karen_engine.pydantic_stub import BaseModel as _BaseModelStub, Field as _FieldStub
+from pydantic import BaseModel, Field
 
 from ai_karen_engine.core.dependencies import get_analytics_service
 from ai_karen_engine.services.analytics_service import AnalyticsService
-
-BaseModel = _BaseModelStub
-Field = _FieldStub
-
-try:
-    from pydantic import BaseModel as PydanticBaseModel, Field as PydanticField
-except ImportError:
-    pass
-else:
-    BaseModel = PydanticBaseModel
-    Field = PydanticField
 
 logger = logging.getLogger(__name__)
 
@@ -60,10 +49,10 @@ async def get_usage_analytics(
 ) -> UsageAnalytics:
     """
     Get usage analytics for the specified time range.
-    
+
     Args:
         range: Time range for analytics (24h, 7d, 30d, etc.)
-        
+
     Returns:
         Usage analytics data
     """
@@ -94,14 +83,11 @@ async def get_usage_analytics(
         logger.error(f"Invalid time range format: {range} - {e}")
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid time range format: {range}. Use formats like 24h, 7d, 30d"
+            detail=f"Invalid time range format: {range}. Use formats like 24h, 7d, 30d",
         )
     except Exception as e:
         logger.error(f"Failed to fetch usage analytics: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to fetch usage analytics"
-        )
+        raise HTTPException(status_code=500, detail="Failed to fetch usage analytics")
 
 
 @router.get("/features", response_model=List[FeatureUsage])
@@ -111,10 +97,10 @@ async def get_feature_usage(
 ) -> List[FeatureUsage]:
     """
     Get feature usage statistics for the specified time range.
-    
+
     Args:
         range: Time range for analytics
-        
+
     Returns:
         List of feature usage statistics
     """
@@ -129,12 +115,11 @@ async def get_feature_usage(
         ]
 
         return features
-        
+
     except Exception as e:
         logger.error(f"Failed to fetch feature usage: {e}")
         raise HTTPException(
-            status_code=500,
-            detail="Failed to fetch feature usage statistics"
+            status_code=500, detail="Failed to fetch feature usage statistics"
         )
 
 
@@ -144,7 +129,7 @@ async def get_analytics_summary(
 ) -> Dict[str, Any]:
     """
     Get a summary of key analytics metrics.
-    
+
     Returns:
         Summary of key metrics
     """
@@ -185,10 +170,7 @@ async def get_analytics_summary(
             "system": system_summary,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
-        
+
     except Exception as e:
         logger.error(f"Failed to fetch analytics summary: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to fetch analytics summary"
-        )
+        raise HTTPException(status_code=500, detail="Failed to fetch analytics summary")

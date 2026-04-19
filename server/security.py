@@ -342,7 +342,10 @@ class ExtensionAuthManager:
             raise HTTPException(status_code=403, detail="Invalid token")
         except Exception as e:
             logger.error(f"Authentication error for extension API: {e}")
-            raise HTTPException(status_code=500, detail="Authentication service error")
+            raise HTTPException(
+                status_code=401, 
+                detail=f"Authentication service error: {str(e)}"
+            )
     
     async def _authenticate_with_api_key(self, api_key: str) -> Dict[str, Any]:
         """Authenticate using API key (for admin operations)."""

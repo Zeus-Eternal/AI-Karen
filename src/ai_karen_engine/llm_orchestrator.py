@@ -1781,10 +1781,11 @@ class LLMOrchestrator:
             Formatted response or original response if formatting fails
         """
         try:
-            # Import response formatting integration
-            from extensions.response_formatting.integration import get_response_formatting_integration
+            # Import response formatting integration from new core services path
+            from ai_karen_engine.services.ResponseFormattingClass.Specialized.Integration import get_specialized_integration
+            import asyncio
             
-            integration = get_response_formatting_integration()
+            integration = get_specialized_integration()
             
             # Get theme context from existing theme manager if available
             theme_context = {'current_theme': 'light'}  # Default fallback
@@ -1798,56 +1799,48 @@ class LLMOrchestrator:
                         'available_themes': list(available_themes.keys())
                     }
             except ImportError:
-                logger.debug("Theme manager not available, using default theme context")
+                pass
             
-            # Format the response asynchronously
-            import asyncio
-            
-            # Check if we're already in an event loop
+            # Since the new integration is async, we need to run it synchronously here
+            # as this method is currently synchronous.
             try:
-                loop = asyncio.get_running_loop()
-                # We're in an async context, run in thread pool to avoid blocking
-                import concurrent.futures
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    future = executor.submit(
-                        asyncio.run,
-                        integration.format_response(
-                            user_query=prompt,
-                            response_content=response,
-                            user_preferences={},
-                            theme_context=theme_context,
-                            session_data=context or {}
+                # Check if there's an event loop already
+                try:
+                    loop = asyncio.get_event_loop()
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+
+                if loop.is_running():
+                    # If we're already in an event loop, we'll try to run the coro
+                    # this might be tricky without nest_asyncio
+                    from concurrent.futures import ThreadPoolExecutor
+                    with ThreadPoolExecutor() as executor:
+                        future = executor.submit(
+                            lambda: asyncio.run(integration.format_response(
+                                user_query=prompt,
+                                response_content=response,
+                                theme_context=theme_context,
+                                user_preferences=context or {}
+                            ))
                         )
-                    )
-                    formatted_response = future.result(timeout=5.0)  # 5 second timeout
-            except RuntimeError:
-                # No event loop running, create one
-                formatted_response = asyncio.run(
-                    integration.format_response(
+                        formatted_response = future.result()
+                else:
+                    formatted_response = loop.run_until_complete(integration.format_response(
                         user_query=prompt,
                         response_content=response,
-                        user_preferences={},
                         theme_context=theme_context,
-                        session_data=context or {}
-                    )
-                )
-            
-            # Return formatted content if formatting was successful
-            if formatted_response and formatted_response.content:
-                # Update metrics
-                self._update_formatting_metrics(True, formatted_response.metadata.get('formatter'))
-                logger.debug(f"Response formatted successfully using {formatted_response.metadata.get('formatter', 'unknown')} formatter")
-                return formatted_response.content
-            else:
-                self._update_formatting_metrics(False, None)
-                logger.debug("Response formatting returned empty result, using original response")
-                return response
+                        user_preferences=context or {}
+                    ))
                 
+                return formatted_response.content
+            except Exception as e:
+                # Fallback for async execution failure
+                logger.debug(f"Async formatting execution failed, using raw response: {e}")
+                return response
         except Exception as e:
-            logger.debug(f"Response formatting failed: {e}")
-            self._update_formatting_metrics(False, None)
+            logger.error(f"Error applying response formatting: {e}")
             return response
-
     def _update_formatting_metrics(self, success: bool, formatter_name: Optional[str]) -> None:
         """Update response formatting metrics."""
         if not hasattr(self, '_formatting_metrics'):

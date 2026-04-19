@@ -10,10 +10,28 @@ that works without the camel package.
 import asyncio, os, io, json, subprocess
 from typing import Tuple, Optional, List, Literal
 
-from loguru import logger
-from retry import retry
+try:
+    from loguru import logger
+except ImportError:
+    import logging
+    logger = logging.getLogger("documents_tool")
+try:
+    from retry import retry
+except ImportError:
+    # Fallback if retry is not installed
+    def retry(*args, **kwargs):
+        return lambda f: f
 
-from mcp.server.fastmcp import FastMCP
+try:
+    from mcp.server.fastmcp import FastMCP
+    mcp_available = True
+except ImportError:
+    mcp_available = False
+    class FastMCP:
+        def __init__(self, *args, **kwargs): pass
+        def tool(self, *args, **kwargs):
+            return lambda f: f
+        def run(self, *args, **kwargs): pass
 import anyio
 
 # --- your own helper toolkits ------------------------------------------------ #
@@ -251,6 +269,10 @@ class DocumentProcessingToolkit:
 # --------------------------------------------------------------------------- #
 mcp = FastMCP("document_processing")
 toolkit = DocumentProcessingToolkit()
+
+class DocumentsServerTool:
+    """Stub for DocumentsServerTool."""
+    pass
 
 
 @mcp.tool()

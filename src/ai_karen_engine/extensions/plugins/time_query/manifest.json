@@ -1,0 +1,38 @@
+{
+  "id": "time-query",
+  "plugin_id": "time-query",
+  "category": "plugins",
+  "gui_manifest_version": "1.0",
+  "display_name": "Date Time",
+  "description": "Responds with the current time.",
+  "version": "0.1.0",
+  "entry": {
+    "id": "time-query-main",
+    "default": true,
+    "entry_file": "ui/DateTimePluginPage.tsx",
+    "component_id": "time-query"
+  },
+  "capabilities": {
+    "provides_ui": true
+  },
+  "ui": {
+    "has_component": true,
+    "component_id": "time-query",
+    "purpose": "Date and time display",
+    "entry_file": "ui/DateTimePluginPage.tsx",
+    "source_path": "ui",
+    "menu": [
+      {
+        "placement": "sidebar.plugins",
+        "label": "Date Time",
+        "icon": "clock",
+        "order": 0
+      }
+    ]
+  },
+  "rbac": {
+    "allowed_roles": ["user", "admin", "developer"]
+  },
+  "tags": ["time", "date", "clock", "prompt-first"],
+  "purpose": "Provide the current date and time accurately based on the system clock."
+}

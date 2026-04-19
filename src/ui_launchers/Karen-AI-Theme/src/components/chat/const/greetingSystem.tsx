@@ -61,7 +61,7 @@ export function useGreetingSystem(
 
       return [
         {
-          id: 'karen-initial-' + Date.now(),
+          id: 'karen-initial-' + (typeof window !== 'undefined' ? Date.now() : 0),
           role: 'assistant',
           content: greeting,
           timestamp: new Date(),

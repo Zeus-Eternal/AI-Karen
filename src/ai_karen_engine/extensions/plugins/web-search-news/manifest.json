@@ -1,0 +1,29 @@
+{
+  "id": "web-search-news",
+  "plugin_id": "web-search-news",
+  "category": "plugins",
+  "gui_manifest_version": "1.0",
+  "display_name": "Web Search (News)",
+  "description": "Real-time news and latest updates search for Kari.",
+  "version": "1.0.0",
+  "capabilities": {
+    "provides_ui": true
+  },
+  "ui": {
+    "has_component": false,
+    "purpose": "News search status and configuration",
+    "menu": [
+      {
+        "placement": "sidebar.plugins",
+        "label": "News Search",
+        "icon": "newspaper",
+        "order": 60
+      }
+    ]
+  },
+  "rbac": {
+    "allowed_roles": ["user", "admin", "developer"]
+  },
+  "tags": ["news", "updates", "breaking", "retrieval", "prompt-first"],
+  "purpose": "Search and retrieve the latest news articles, breaking updates, and recent stories from around the web."
+}

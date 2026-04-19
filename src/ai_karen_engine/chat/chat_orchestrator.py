@@ -44,9 +44,13 @@ from ai_karen_engine.services.response_formatting_engine import (
     DisplayContext,
     AccessibilityLevel,
 )
+from ai_karen_engine.services.ResponseFormattingClass.Specialized.Integration import (
+    get_specialized_integration,
+)
 from ai_karen_engine.services.response_policy_enforcer import ResponsePolicyEnforcer
 
 logger = logging.getLogger(__name__)
+
 
 class ChatOrchestrator(
     ChatUtilityMixin,
@@ -55,11 +59,11 @@ class ChatOrchestrator(
     ChatAgentMixin,
     ChatPromptMixin,
     ChatMemoryMixin,
-    ChatToolMixin
+    ChatToolMixin,
 ):
     """
     Production-ready chat orchestrator with modular architecture.
-    
+
     Inherits logic from specialized Mixins to maintain a clean separation of concerns:
     - ChatCoreMixin: Main processing loops and flow control.
     - ChatLLMMixin: LLM routing, trials, and fallback logic.
@@ -68,7 +72,7 @@ class ChatOrchestrator(
     - ChatToolMixin: Code and tool execution handling.
     - ChatUtilityMixin: General helper methods.
     """
-    
+
     def __init__(
         self,
         memory_processor: Optional[MemoryProcessor] = None,
@@ -83,7 +87,7 @@ class ChatOrchestrator(
         retry_config: Optional[RetryConfig] = None,
         timeout_seconds: float = 30.0,
         enable_monitoring: bool = True,
-        auth_service: Optional[Any] = None
+        auth_service: Optional[Any] = None,
     ):
         # Service registrations
         self.memory_processor = memory_processor
@@ -98,14 +102,17 @@ class ChatOrchestrator(
         self.auth_service = auth_service
         self.output_layer = PrettyOutputLayer()
         self.formatting_engine = ResponseFormattingEngine()
+        self.rich_formatting_engine = get_specialized_integration()
         self.response_policy_enforcer = ResponsePolicyEnforcer()
-        
+
         # Configuration
         self.retry_config = retry_config or RetryConfig()
         self.timeout_seconds = timeout_seconds
         self.enable_monitoring = enable_monitoring
-        self._hook_timeout_seconds = float(os.getenv("KARI_CHAT_HOOK_TIMEOUT_SECONDS", "2.0"))
-        
+        self._hook_timeout_seconds = float(
+            os.getenv("KARI_CHAT_HOOK_TIMEOUT_SECONDS", "2.0")
+        )
+
         # Internal state
         self._total_requests = 0
         self._successful_requests = 0
@@ -113,15 +120,20 @@ class ChatOrchestrator(
         self._retry_attempts = 0
         self._fallback_usage = 0
         self._processing_times: List[float] = []
-        
+
         self._active_contexts: Dict[str, ProcessingContext] = {}
         self._active_tasks: Dict[str, asyncio.Task] = {}
         self._contexts_lock = asyncio.Lock()
         self._tasks_lock = asyncio.Lock()
-        
+
+        # Context memoization and query throttling
+        self._context_cache: Dict[str, Dict[str, Any]] = {}
+        self._memory_query_counts: Dict[str, int] = {}
+        self._max_memory_queries_per_request = 2
+
         # Governance
         self.fallback_router = FallbackRouter()
-        
+
         logger.info("ChatOrchestrator initialized with modular Mixin architecture.")
 
     def _build_formatting_context(
@@ -180,6 +192,7 @@ class ChatOrchestrator(
             technical_level=technical_level or "intermediate",
             language=language or "en",
         )
+
 
 # Export aliases for backward compatibility if needed
 __all__ = ["ChatOrchestrator", "ChatRequest", "ChatResponse", "ChatStreamChunk"]

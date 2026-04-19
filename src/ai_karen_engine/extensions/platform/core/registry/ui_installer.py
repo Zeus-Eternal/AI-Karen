@@ -82,8 +82,8 @@ class UIInstallerService:
 
     def __init__(
         self,
-        plugins_repo_root: str = "ui_launchers/Karen-AI-Theme/src/plugin_repo",
-        backup_dir: str = "ui_launchers/Karen-AI-Theme/src/plugin_repo_backups",
+        plugins_repo_root: str = "src/ui_launchers/Karen-AI-Theme/src/plugin_repo",
+        backup_dir: str = "src/ui_launchers/Karen-AI-Theme/src/plugin_repo_backups",
     ):
         self.plugins_repo_root = Path(plugins_repo_root)
         self.backup_dir = Path(backup_dir)
@@ -117,8 +117,7 @@ class UIInstallerService:
 
                         package_info = UIPackageInfo(
                             plugin_id=plugin_id,
-                            source_path=Path("src/extensions")
-                            / manifest.get("category", "plugins")
+                            source_path=Path("src/ai_karen_engine/extensions/plugins")
                             / plugin_id,
                             target_path=plugin_dir,
                             manifest_path=manifest_path,
@@ -183,7 +182,7 @@ class UIInstallerService:
         """Install UI for a plugin from canonical source to plugin_repo."""
         try:
             # Check if plugin exists in canonical location
-            source_path = Path("src/extensions") / category / plugin_id
+            source_path = Path("src/ai_karen_engine/extensions/plugins") / plugin_id
             if not source_path.exists():
                 return UIInstallationResult(
                     plugin_id=plugin_id,
@@ -391,7 +390,7 @@ class UIInstallerService:
         """Restore UI package from canonical source."""
         try:
             # Check if plugin exists in canonical location
-            source_path = Path("src/extensions") / category / plugin_id
+            source_path = Path("src/ai_karen_engine/extensions/plugins") / plugin_id
             if not source_path.exists():
                 return UIInstallationResult(
                     plugin_id=plugin_id,

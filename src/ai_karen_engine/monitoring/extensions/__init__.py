@@ -29,6 +29,21 @@ from .alerting_system import (
     AlertRule
 )
 
+from .extension_alerting_system import (
+    extension_alert_manager,
+    AlertType,
+    EscalationLevel as MonitoringEscalationLevel
+)
+
+from .extension_error_logging import (
+    extension_error_logger,
+    extension_metrics_collector,
+    extension_trend_analyzer,
+    ErrorSeverity,
+    ErrorCategory,
+    AlertStatus as MonitoringAlertStatus
+)
+
 from .performance_monitor import (
     ExtensionPerformanceMonitor,
     extension_performance_monitor,
@@ -51,10 +66,21 @@ __all__ = [
     # Alerting system
     'ExtensionAlertingSystem',
     'extension_alerting',
+    'extension_alert_manager',
     'NotificationChannel',
     'EscalationLevel',
+    'MonitoringEscalationLevel',
     'NotificationConfig',
     'AlertRule',
+    'AlertType',
+    
+    # Error logging
+    'extension_error_logger',
+    'extension_metrics_collector',
+    'extension_trend_analyzer',
+    'ErrorSeverity',
+    'ErrorCategory',
+    'MonitoringAlertStatus',
     
     # Performance monitoring
     'ExtensionPerformanceMonitor',

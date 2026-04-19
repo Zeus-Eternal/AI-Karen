@@ -410,17 +410,31 @@ class UserService(BaseService):
                 "user@kari.ai": {"password": "password123", "roles": ["user"]},
             }
 
-            if email not in demo_users or demo_users[email]["password"] != password:
-                raise UserServiceError("Invalid credentials")
-
-            # Get or create user in database
+            # Try database authentication first
             try:
                 user = await self.get_user_by_email(email)
+                
+                # Verify password if user exists and has a hash
+                if hasattr(user, 'password_hash') and user.password_hash:
+                    from ai_karen_engine.server.security import pwd_context
+                    if not pwd_context.verify(password, user.password_hash):
+                        self.logger.warning(f"Password verification failed for user: {email}")
+                        raise UserServiceError("Invalid credentials")
+                    self.logger.info(f"Database authentication successful for user: {email}")
+                else:
+                    # Fallback to demo users if user has no password hash
+                    if email not in demo_users or demo_users[email]["password"] != password:
+                        raise UserServiceError("Invalid credentials")
             except UserNotFoundError:
-                # Create user if doesn't exist
+                # Fallback to demo users if not in database
+                if email not in demo_users or demo_users[email]["password"] != password:
+                    raise UserServiceError("Invalid credentials")
+                
+                # Create user from demo config if it doesn't exist yet but has demo creds
                 user = await self.create_user(
                     email=email, roles=demo_users[email]["roles"]
                 )
+                self.logger.info(f"Demo authentication successful for user: {email}")
 
             # Update last login
             await self.update_last_login(user.id)

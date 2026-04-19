@@ -19,10 +19,7 @@ from enum import Enum
 from fastapi import APIRouter, HTTPException, Request, BackgroundTasks, Depends
 from fastapi.responses import JSONResponse
 
-try:
-    from pydantic import Field, BaseModel, field_validator
-except ImportError:
-    from ai_karen_engine.pydantic_stub import Field, BaseModel, field_validator
+from pydantic import Field, BaseModel, field_validator
 
 from ai_karen_engine.utils.pydantic_base import ISO8601Model
 

@@ -14,4 +14,5 @@ export type PluginImportMap = Record<string, PluginImporter>;
 
 export const PLUGIN_IMPORT_MAP: PluginImportMap = {
   "weather-query": () => import("@/plugin_repo/weather-query/weather-query"),
+  "time-query": () => import("@/plugin_repo/time-query/ui/DateTimePluginPage"),
 };

@@ -5,7 +5,12 @@ This package provides the integration layer between the UI components and the ba
 agent orchestration system, supporting multiple execution modes (Native, LangGraph, DeepAgents).
 """
 
-from .integration_service import AgentIntegrationService, get_agent_integration_service
+from .integration_service import (
+    AgentIntegrationService,
+    get_agent_integration_service,
+    initialize_agent_integration,
+    shutdown_agent_integration,
+)
 from .models import (
     AgentExecutionMode,
     AgentRequest,
@@ -125,6 +130,8 @@ from .thread_manager_models import (
 __all__ = [
     "AgentIntegrationService",
     "get_agent_integration_service",
+    "initialize_agent_integration",
+    "shutdown_agent_integration",
     "AgentExecutionMode",
     "AgentRequest",
     "AgentResponse",

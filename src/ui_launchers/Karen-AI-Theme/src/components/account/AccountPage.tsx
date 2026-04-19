@@ -102,14 +102,16 @@ export default function AccountPage() {
                 console.log("Fetched user profile:", user); // Debug log
 
                 setAccount(user);
-                setUsername(user.username || "");
-                setName(user.full_name || "");
+                // Map DB username (handle) to the primary 'name' state (represented as "Full Name" in the instructions)
+                setName(user.username || "");
+                // Map DB full_name (descriptive) to the 'username' state (represented as "Username" in UI)
+                setUsername(user.full_name || "");
                 setEmail(user.email || "");
 
-                // Auto-suggest username if empty and email is available
+                // Auto-suggest handle if empty and email is available
                 if (!user.username && user.email) {
-                    const suggestedUsername = user.email.split('@')[0];
-                    setUsername(suggestedUsername);
+                    const suggestedHandle = user.email.split('@')[0];
+                    setName(suggestedHandle);
                 }
 
                 // Check if profile is incomplete and show prompt
@@ -151,8 +153,8 @@ export default function AccountPage() {
             setIsProfileSaving(true);
             
             await apiClient.put<AccountUser>("/api/auth/me", {
-                username: username,
-                full_name: name,
+                username: name,      // 'name' state maps to backend 'username' (the handle)
+                full_name: username, // 'username' state maps to backend 'full_name' (display name)
                 email: email
             });
 
@@ -259,8 +261,8 @@ export default function AccountPage() {
                 console.log("Refreshed user profile:", user); // Debug log
 
                 setAccount(user);
-                setUsername(user.username || "");
-                setName(user.full_name || "");
+                setName(user.username || "");
+                setUsername(user.full_name || "");
                 setEmail(user.email || "");
 
                 toast({
@@ -315,7 +317,7 @@ export default function AccountPage() {
                             <div className="relative">
                                 <Avatar className="h-24 w-24 mb-2">
                                     <AvatarImage src={account.avatarUrl || ''} alt={name} />
-                                    <AvatarFallback className="text-3xl">{getInitials(name)}</AvatarFallback>
+                                    <AvatarFallback className="text-3xl">{getInitials(username || name)}</AvatarFallback>
                                 </Avatar>
                                 <Button variant="outline" size="icon" className="absolute bottom-0 right-0 rounded-full h-8 w-8">
                                     <Camera className="h-4 w-4" />
@@ -346,9 +348,9 @@ export default function AccountPage() {
                             <CardDescription>Update your personal details here.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-<div className="space-y-2">
+                               <div className="space-y-2">
                                   <Label htmlFor="full-name" className={isProfileIncomplete && !name ? "text-orange-600" : ""}>
-                                      Full Name {isProfileIncomplete && !name && <span className="text-orange-500">(required)</span>}
+                                      Username (Handle) {isProfileIncomplete && !name && <span className="text-orange-500">(required)</span>}
                                   </Label>
                                   <div className="relative">
                                       <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -358,13 +360,14 @@ export default function AccountPage() {
                                           onChange={(e) => setName(e.target.value)}
                                           className={`pl-10 ${isProfileIncomplete && !name ? "border-orange-300 focus:border-orange-500" : ""}`}
                                           disabled={isLoading || isProfileSaving}
+                                          placeholder="e.g. Admin"
                                       />
                                   </div>
                               </div>
 
                               <div className="space-y-2">
                                   <Label htmlFor="username" className={isProfileIncomplete && !username ? "text-orange-600" : ""}>
-                                      Username {isProfileIncomplete && !username && <span className="text-orange-500">(required)</span>}
+                                      Full Name (Display) {isProfileIncomplete && !username && <span className="text-orange-500">(required)</span>}
                                   </Label>
                                   <div className="relative">
                                       <Shield className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -374,6 +377,7 @@ export default function AccountPage() {
                                           onChange={(e) => setUsername(e.target.value)}
                                           className={`pl-10 ${isProfileIncomplete && !username ? "border-orange-300 focus:border-orange-500" : ""}`}
                                           disabled={isLoading || isProfileSaving}
+                                          placeholder="e.g. System Administrator"
                                       />
                                   </div>
                               </div>

@@ -1,0 +1,40 @@
+{
+  "name": "web-search-weather",
+  "display_name": "Web Search (Weather)",
+  "version": "1.0.0",
+  "description": "Weather and forecast lookup for Kari.",
+  "purpose": "Locate and retrieve current weather, forecasts, and weather alerts for Kari.",
+  "author": "Kari Team",
+  "license": "MIT",
+  "entrypoint": "handler:MainExtension",
+  "category": "plugins",
+  "tags": ["weather", "forecast", "temperature", "alerts", "climate", "prompt-first"],
+  "capabilities": {
+    "provides_ui": true,
+    "provides_api": true,
+    "weather": true,
+    "prompt_first": true
+  },
+  "settings": {
+    "units": "auto",
+    "include_current": true,
+    "include_hourly": false,
+    "include_daily": false,
+    "include_alerts": true,
+    "max_forecast_days": 5
+  },
+  "ui": {
+    "hook_zones": [
+      {
+        "zone": "sidebar.plugins",
+        "label": "Weather",
+        "icon": "cloud-sun",
+        "order": 65
+      }
+    ]
+  },
+  "rbac": {
+    "allowed_roles": ["user", "admin", "developer"],
+    "default_enabled": true
+  }
+}

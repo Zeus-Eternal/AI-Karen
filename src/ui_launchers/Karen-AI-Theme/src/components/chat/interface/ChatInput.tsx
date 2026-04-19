@@ -158,7 +158,7 @@ export function ChatInput({
             type="text"
             value={displayedInputValue}
             onChange={(e) => {
-              if (isLoading && !isEditingDuringProcessing) {
+              if (showStopButton && !isEditingDuringProcessing) {
                 return;
               }
               onInputChange(e.target.value);
@@ -184,13 +184,12 @@ export function ChatInput({
             disabled={
               isAuthLoading ||
               isRecording ||
-              (!isLoading && !displayedInputValue.trim()) ||
-              (isLoading && !showStopButton) ||
-              isBackendOffline
+              isBackendOffline ||
+              (!isLoading && !displayedInputValue.trim())
             }
             className={`${isLoading ? 'bg-destructive hover:bg-destructive/90' : ''}`}
           >
-            {isLoading ? '⏹️' : '🚀'}
+            {showStopButton ? '⏹️' : '🚀'}
           </Button>
         </form>
       </div>

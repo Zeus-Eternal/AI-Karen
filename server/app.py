@@ -51,7 +51,7 @@ logger = logging.getLogger("kari")
 
 # Extension system integration
 try:
-    from extensions.core.host.factory import (
+    from ai_karen_engine.extensions.platform.core.host.factory import (
         initialize_extensions_for_production as initialize_extensions,
     )
 

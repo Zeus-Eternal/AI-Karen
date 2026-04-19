@@ -11,7 +11,9 @@ import re
 import threading
 import subprocess
 import sys
-from typing import Dict, Any, Optional, List, Union
+import time
+import inspect
+from typing import Dict, Any, Optional, List, Union, Iterator, AsyncIterator
 
 from ai_karen_engine.memory.spacy_service import SpacyService, ParsedMessage
 from ai_karen_engine.memory.distilbert_service import DistilBertService
@@ -221,14 +223,15 @@ class NLPServiceManager:
         registry = get_registry()
 
         # Try the specified provider first, then fall back to healthy providers
+        requested_provider = provider
         providers_to_try = []
-        if provider:
-            providers_to_try.append(provider)
+        if requested_provider:
+            providers_to_try.append(requested_provider)
 
         # Add fallback providers in order of preference: llamacpp-optimized first, then llamacpp, then fallback, then ollama
         fallback_providers = ["llamacpp-optimized", "llamacpp", "fallback", "ollama"]
         for fallback_provider in fallback_providers:
-            if fallback_provider != provider:  # Avoid duplicates
+            if fallback_provider != requested_provider:  # Avoid duplicates
                 providers_to_try.append(fallback_provider)
 
         last_error = None
@@ -279,9 +282,17 @@ class NLPServiceManager:
 
                 if result and result.get("success"):
                     logger.info(f"Generation succeeded with provider: {provider_name}")
+                    
+                    # Track if we used a fallback
+                    used_fallback = (requested_provider is not None and provider_name != requested_provider)
+                    
                     # Add provider info to result
                     result["provider"] = provider_name
+                    result["actual_provider"] = provider_name
+                    result["requested_provider"] = requested_provider
                     result["model_id"] = model_id
+                    result["used_fallback"] = used_fallback
+                    result["is_degraded"] = used_fallback
                     return result
                 else:
                     logger.warning(
@@ -319,8 +330,12 @@ class NLPServiceManager:
             "content": "Error: Generation failed",
             "error": error_msg,
             "success": False,
+            "actual_provider": "failed",
+            "requested_provider": requested_provider,
             "attempted_providers": providers_to_try,
             "failed_providers": failed_providers,
+            "used_fallback": True,
+            "is_degraded": True
         }
 
         try:
@@ -464,6 +479,7 @@ class NLPServiceManager:
             import time
 
             start_time = time.time()
+            stream = kwargs.get("stream", False)
             gen_kwargs = {
                 "max_tokens": kwargs.get("max_tokens", 256),
                 "temperature": kwargs.get("temperature", 0.7),
@@ -489,11 +505,26 @@ class NLPServiceManager:
                         asyncio.get_event_loop().run_in_executor(
                             None,
                             lambda m=messages,
-                            g=gen_kwargs: provider_instance.generate_response(m, **g),
+                            s=stream,
+                            g=gen_kwargs: provider_instance.generate_response(
+                                m, stream=s, **g
+                            ),
                         ),
                         timeout=timeout,
                     )
                     elapsed = time.time() - start_time
+
+                    # If we are streaming and got a generator, return it directly
+                    if stream and (
+                        hasattr(result, "__next__") or hasattr(result, "__iter__")
+                    ):
+                        logger.info(f"Returning generator from provider {provider_name}")
+                        return {
+                            "content": result,
+                            "success": True,
+                            "elapsed_time": elapsed,
+                        }
+
                     logger.info(
                         f"generate_response result for {provider_name} in {elapsed:.2f}s: {result}"
                     )
@@ -764,9 +795,11 @@ class NLPServiceManager:
         provider: Optional[str] = None,
         correlation_id: Optional[str] = None,
         **kwargs,
-    ):
+    ) -> AsyncIterator[Dict[str, Any]]:
         """Yield tokens from the centralized provider system in streaming mode."""
-        # Use the improved generate_response method
+        
+        # Use generate_response but with stream=True
+        # This will return a generator if the provider supports it
         result = await self.generate_response(
             model_id=model_id,
             messages=messages,
@@ -776,22 +809,61 @@ class NLPServiceManager:
             **kwargs,
         )
 
-        if result and result.get("success"):
-            # For streaming, yield the content as a single chunk for compatibility
-            content = result.get("content", "")
-            yield content
-        else:
-            # If generation failed, yield an error message with provider info
+        if not result.get("success"):
             error_content = result.get("content", "Error: Generation failed")
-            provider_info = result.get("provider", "unknown")
-            elapsed_time = result.get("elapsed_time", 0)
+            yield {
+                "content": error_content,
+                "provider": result.get("actual_provider", "unknown"),
+                "success": False,
+                "is_degraded": True
+            }
+            return
 
-            # Create a more informative error message for streaming
-            error_msg = f"[{provider_info}] {error_content}"
-            if elapsed_time > 0:
-                error_msg = f"[{provider_info} in {elapsed_time:.1f}s] {error_content}"
+        content_obj = result.get("content")
+        actual_provider = result.get("actual_provider")
 
-            yield error_msg
+        # Case 1: content is already a generator (sync iterator)
+        if hasattr(content_obj, "__next__") or hasattr(content_obj, "__iter__"):
+            logger.info(f"🌊 Streaming tokens from {actual_provider}")
+            
+            # Wrap the sync iterator into an async generator
+            def next_chunk(it):
+                try:
+                    return next(it)
+                except StopIteration:
+                    return None
+                except Exception as e:
+                    logger.error(f"Error during iterator next(): {e}")
+                    return f"\n[Stream Error: {e}]"
+
+            it = iter(content_obj)
+            while True:
+                chunk = await asyncio.get_event_loop().run_in_executor(None, next_chunk, it)
+                if chunk is None:
+                    break
+                
+                yield {
+                    "content": chunk,
+                    "provider": actual_provider,
+                    "success": True
+                }
+        
+        # Case 2: content is a string (fallback or non-streaming provider)
+        elif isinstance(content_obj, str):
+            logger.info(f"📄 Provider {actual_provider} returned full text (non-streaming)")
+            yield {
+                "content": content_obj,
+                "provider": actual_provider,
+                "success": True
+            }
+        
+        else:
+            logger.warning(f"⚠️ Unexpected content type from {actual_provider}: {type(content_obj)}")
+            yield {
+                "content": str(content_obj or ""),
+                "provider": actual_provider,
+                "success": True
+            }
 
     def _load_config(self) -> NLPConfig:
         """Load NLP configuration from config manager."""

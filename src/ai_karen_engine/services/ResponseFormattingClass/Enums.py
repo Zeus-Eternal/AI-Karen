@@ -41,6 +41,13 @@ class ContentType(str, Enum):
     PRODUCT = "product"
     TROUBLESHOOTING = "troubleshooting"
     REFERENCE = "reference"
+    MOVIE = "movie"
+    RECIPE = "recipe"
+    WEATHER = "weather"
+    NEWS = "news"
+    TRAVEL = "travel"
+    CODE = "code"
+    DEFAULT = "default"
 
 
 class SectionType(str, Enum):

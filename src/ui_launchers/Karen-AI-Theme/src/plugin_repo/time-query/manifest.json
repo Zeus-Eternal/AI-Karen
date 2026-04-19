@@ -1,0 +1,56 @@
+{
+  "id": "time-query",
+  "name": "time-query",
+  "version": "1.0.0",
+  "plugin_id": "time-query",
+  "category": "plugins",
+  "gui_manifest_version": "1.0",
+  "display_name": "Date Time",
+  "description": "Frontend GUI package for the Date Time plugin in Karen-AI-Theme.",
+  "entry": {
+    "id": "time-query-main",
+    "default": true,
+    "entry_file": "ui/DateTimePluginPage.tsx",
+    "component_id": "time-query"
+  },
+  "contributions": {
+    "pages": [
+      {
+        "id": "time-query-page",
+        "label": "Date Time",
+        "entry_file": "ui/DateTimePluginPage.tsx",
+        "route_key": "pluginTimeQuery",
+        "zone": "page.plugins.overview",
+        "order": 0
+      }
+    ],
+    "menu": [
+      {
+        "id": "time-query-sidebar",
+        "placement": "sidebar.plugins",
+        "label": "Date Time",
+        "icon": "clock",
+        "order": 0
+      }
+    ]
+  },
+  "rbac": {
+    "allowed_roles": [
+      "user",
+      "admin",
+      "developer"
+    ]
+  },
+  "install": {
+    "frontend_installable": true,
+    "copy_source_root": "time_query",
+    "copy_required": true,
+    "install_root": "src/ui_launchers/Karen-AI-Theme/src/plugin_repo/time-query"
+  },
+  "validation": {
+    "requires_entry_file": true,
+    "requires_manifest": true,
+    "requires_valid_contribution_zones": true,
+    "default_entry_fallback": "ui/DateTimePluginPage.tsx"
+  }
+}

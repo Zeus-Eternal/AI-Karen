@@ -176,6 +176,25 @@ class MonitoringConfig:
 
 
 @dataclass
+class AgentRuntimeConfig:
+    """Agent runtime configuration."""
+
+    max_agent_steps: int = 5
+    max_tool_invocations: int = 10
+    max_web_searches: int = 3
+    max_extensions_per_run: int = 5
+    agent_timeout_seconds: int = 300
+    tool_timeout_seconds: int = 30
+    web_search_timeout_seconds: int = 60
+    extension_timeout_seconds: int = 30
+    citation_min_confidence: float = 0.5
+    search_result_max_urls: int = 5
+    crawl_max_depth: int = 1
+    enable_agent_mode: bool = True
+    degraded_mode_threshold: int = 3
+
+
+@dataclass
 class WebUIConfig:
     """Web UI integration configuration."""
 
@@ -203,6 +222,7 @@ class AIKarenConfig:
     security: SecurityConfig = field(default_factory=SecurityConfig)
     monitoring: MonitoringConfig = field(default_factory=MonitoringConfig)
     web_ui: WebUIConfig = field(default_factory=WebUIConfig)
+    agent_runtime: AgentRuntimeConfig = field(default_factory=AgentRuntimeConfig)
     default_embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     spacy_model: str = "en_core_web_sm"
     event_bus: str = "memory"
@@ -210,6 +230,7 @@ class AIKarenConfig:
 
 
 # --- Default Config Dict (for backward compatibility) ---
+
 
 DEFAULT_CONFIG = {
     "active_user": "default",
@@ -243,6 +264,21 @@ DEFAULT_CONFIG = {
         "max_tokens": 2048,
         "timeout": 30,
         "max_retries": 3,
+    },
+    "agent_runtime": {
+        "max_agent_steps": 5,
+        "max_tool_invocations": 10,
+        "max_web_searches": 3,
+        "max_extensions_per_run": 5,
+        "agent_timeout_seconds": 300,
+        "tool_timeout_seconds": 30,
+        "web_search_timeout_seconds": 60,
+        "extension_timeout_seconds": 30,
+        "citation_min_confidence": 0.5,
+        "search_result_max_urls": 5,
+        "crawl_max_depth": 1,
+        "enable_agent_mode": True,
+        "degraded_mode_threshold": 3,
     },
     "spacy_model": "en_core_web_sm",
     "memory": {
@@ -398,6 +434,11 @@ def _create_config_object(config_dict: Dict[str, Any]) -> AIKarenConfig:
         )
     if "web_ui" in data:
         data["web_ui"] = WebUIConfig(**_filter_kwargs(WebUIConfig, data["web_ui"]))
+
+    if "agent_runtime" in data:
+        data["agent_runtime"] = AgentRuntimeConfig(
+            **_filter_kwargs(AgentRuntimeConfig, data["agent_runtime"])
+        )
 
     # Convert environment string to enum
     if "environment" in data and isinstance(data["environment"], str):
@@ -597,6 +638,7 @@ __all__ = [
     "SecurityConfig",
     "MonitoringConfig",
     "WebUIConfig",
+    "AgentRuntimeConfig",
     "Environment",
     "get_config_manager",
     "ConfigManager",

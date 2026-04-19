@@ -233,7 +233,9 @@ class ChatCoreMixin(Base):
             )
             raw_content = self._strip_internal_analysis_leakage(policy_result.content)
             if not raw_content.strip():
-                raw_content = "I'm here and ready to help. What would you like to work on?"
+                raw_content = (
+                    "I'm here and ready to help. What would you like to work on?"
+                )
             policy_payload = dict(policy_result.metadata or {})
 
             if hasattr(self, "_build_formatting_context"):
@@ -249,8 +251,49 @@ class ChatCoreMixin(Base):
                 )
 
             formatting_context.content_length = len(raw_content)
+
+            # Use rich engine first if available
+            rich_engine = getattr(self, "rich_formatting_engine", None)
+            formatted_content = raw_content
+            rich_metadata = {}
+            from ..Enums import FormatType  # Ensure FormatType is available
+
+            if rich_engine:
+                try:
+                    user_prompt = str(
+                        getattr(turn_context, "message", "") or ""
+                    ).strip()
+                    rich_formatted = await rich_engine.format_response(
+                        user_query=user_prompt, response_content=raw_content
+                    )
+
+                    # If we got specialized formatting (like HTML cards), use it directly
+                    if rich_formatted.format_type != FormatType.STANDARD_MARKDOWN:
+                        formatting_payload = {
+                            "render_type": rich_formatted.format_type.value,
+                            "formatted": True,
+                            "response_policy": policy_payload,
+                            "rich_metadata": rich_formatted.metadata,
+                            "formatting": {
+                                "format_type": rich_formatted.format_type.value,
+                                "sections": [],
+                                "navigation_aids": [],
+                                "accessibility_features": {},
+                                "estimated_reading_time": 0,
+                                "formatter_metadata": dict(
+                                    rich_formatted.metadata or {}
+                                ),
+                            },
+                        }
+                        return rich_formatted.content, formatting_payload
+
+                    formatted_content = rich_formatted.content
+                    rich_metadata = rich_formatted.metadata
+                except Exception as e:
+                    logger.warning(f"Rich formatting engine failed: {e}")
+
             formatted = await formatting_engine.format_response(  # type: ignore[attr-defined]
-                content=raw_content,
+                content=formatted_content,
                 context=formatting_context,
             )
 
@@ -264,6 +307,7 @@ class ChatCoreMixin(Base):
                 "render_type": formatted.format_type.value,
                 "formatted": True,
                 "response_policy": policy_payload,
+                "rich_metadata": rich_metadata,
                 "formatting": {
                     "format_type": formatted.format_type.value,
                     "sections": sections,
@@ -288,25 +332,52 @@ class ChatCoreMixin(Base):
         if request.stream or request.streaming:
             raise ValueError("handle_chat only supports non-streaming chat requests")
 
-        user_message_record = await self._persist_user_message(request)
-        conversation_state = await self._resolve_conversation_state(
-            request, user_message_record
-        )
-        working_context = await self._build_working_context(request, conversation_state)
-        execution_path = await self._select_execution_path(request, working_context)
-        generation_result = await self._execute_generation(
-            request, working_context, execution_path
-        )
-        finalized = await self._finalize_response(
-            request=request,
-            generation_result=generation_result,
-            execution_path=execution_path,
-            working_context=working_context,
-            user_message_record=user_message_record,
-        )
-        persisted = await self._persist_assistant_message(request, finalized)
-        await self._post_response_writeback(request, persisted, working_context)
-        await self._emit_chat_telemetry(request, persisted, working_context)
+        correlation_id = request.correlation_id
+
+        from ai_karen_engine.chat.telemetry import track_latency
+
+        with track_latency("total_request", correlation_id):
+            with track_latency("persist_user_message", correlation_id):
+                user_message_record = await self._persist_user_message(request)
+
+            with track_latency("resolve_conversation_state", correlation_id):
+                conversation_state = await self._resolve_conversation_state(
+                    request, user_message_record
+                )
+
+            with track_latency("build_working_context", correlation_id):
+                working_context = await self._build_working_context(
+                    request, conversation_state
+                )
+
+            with track_latency("select_execution_path", correlation_id):
+                execution_path = await self._select_execution_path(
+                    request, working_context
+                )
+
+            with track_latency("execute_generation", correlation_id):
+                generation_result = await self._execute_generation(
+                    request, working_context, execution_path
+                )
+
+            with track_latency("finalize_response", correlation_id):
+                finalized = await self._finalize_response(
+                    request=request,
+                    generation_result=generation_result,
+                    execution_path=execution_path,
+                    working_context=working_context,
+                    user_message_record=user_message_record,
+                )
+
+            with track_latency("persist_assistant_message", correlation_id):
+                persisted = await self._persist_assistant_message(request, finalized)
+
+            with track_latency("post_response_writeback", correlation_id):
+                await self._post_response_writeback(request, persisted, working_context)
+
+            with track_latency("emit_chat_telemetry", correlation_id):
+                await self._emit_chat_telemetry(request, persisted, working_context)
+
         return persisted
 
     async def handle_chat_stream(
@@ -317,17 +388,35 @@ class ChatCoreMixin(Base):
         if not (request.stream or request.streaming):
             raise ValueError("handle_chat_stream requires a streaming chat request")
 
-        user_message_record = await self._persist_user_message(request)
-        conversation_state = await self._resolve_conversation_state(
-            request, user_message_record
-        )
-        working_context = await self._build_working_context(request, conversation_state)
-        execution_path = await self._select_execution_path(request, working_context)
-        raw_stream = await self.process_message(request)
-        if not hasattr(raw_stream, "__aiter__"):
-            raise RuntimeError(
-                "Non-streaming result returned during streaming Stage 1 execution"
-            )
+        correlation_id = request.correlation_id
+
+        from ai_karen_engine.chat.telemetry import track_latency
+
+        with track_latency("stream_total_request", correlation_id):
+            with track_latency("stream_persist_user_message", correlation_id):
+                user_message_record = await self._persist_user_message(request)
+
+            with track_latency("stream_resolve_conversation_state", correlation_id):
+                conversation_state = await self._resolve_conversation_state(
+                    request, user_message_record
+                )
+
+            with track_latency("stream_build_working_context", correlation_id):
+                working_context = await self._build_working_context(
+                    request, conversation_state
+                )
+
+            with track_latency("stream_select_execution_path", correlation_id):
+                execution_path = await self._select_execution_path(
+                    request, working_context
+                )
+
+            with track_latency("stream_process_message", correlation_id):
+                raw_stream = await self.process_message(request)
+                if not hasattr(raw_stream, "__aiter__"):
+                    raise RuntimeError(
+                        "Non-streaming result returned during streaming Stage 1 execution"
+                    )
 
         async def canonical_stream() -> AsyncGenerator[ChatStreamChunk, None]:
             collected_response = ""
@@ -405,16 +494,24 @@ class ChatCoreMixin(Base):
                 error=None,
                 error_type=None,
             )
-            finalized = await self._finalize_response(
-                request=request,
-                generation_result=interim_response,
-                execution_path=execution_path,
-                working_context=working_context,
-                user_message_record=user_message_record,
-            )
-            persisted = await self._persist_assistant_message(request, finalized)
-            await self._post_response_writeback(request, persisted, working_context)
-            await self._emit_chat_telemetry(request, persisted, working_context)
+
+            with track_latency("stream_finalize_response", correlation_id):
+                finalized = await self._finalize_response(
+                    request=request,
+                    generation_result=interim_response,
+                    execution_path=execution_path,
+                    working_context=working_context,
+                    user_message_record=user_message_record,
+                )
+
+            with track_latency("stream_persist_assistant_message", correlation_id):
+                persisted = await self._persist_assistant_message(request, finalized)
+
+            with track_latency("stream_post_response_writeback", correlation_id):
+                await self._post_response_writeback(request, persisted, working_context)
+
+            with track_latency("stream_emit_chat_telemetry", correlation_id):
+                await self._emit_chat_telemetry(request, persisted, working_context)
 
             completion_metadata = dict(final_chunk_metadata)
             completion_metadata.update(
@@ -668,15 +765,14 @@ class ChatCoreMixin(Base):
             and cached_output_formatting.get("formatted") is True
         ):
             formatting_payload = dict(cached_output_formatting)
-            generation_result.response = str(
-                generation_result.response or ""
-            )
+            generation_result.response = str(generation_result.response or "")
         else:
-            formatted_content, formatting_payload = (
-                await self._format_response_with_engine(
-                    generation_result.response,
-                    request,
-                )
+            (
+                formatted_content,
+                formatting_payload,
+            ) = await self._format_response_with_engine(
+                generation_result.response,
+                request,
             )
             generation_result.response = formatted_content
 
@@ -1463,9 +1559,27 @@ class ChatCoreMixin(Base):
 
             # Handle AsyncIterator (standard streaming)
             if hasattr(result_or_gen, "__aiter__"):
-                async for token in cast(AsyncIterator[str], result_or_gen):
+                async for chunk in cast(
+                    AsyncIterator[Union[str, Dict[str, Any]]], result_or_gen
+                ):
                     if context.cancel_event.is_set():
                         break
+
+                    token = ""
+                    if isinstance(chunk, dict):
+                        token = chunk.get("content", "")
+                        # Update metadata if available in chunk
+                        if chunk.get("is_degraded") or chunk.get("used_fallback"):
+                            context.metadata["is_degraded"] = True
+                            if "llm" not in context.metadata:
+                                context.metadata["llm"] = {}
+                            context.metadata["llm"]["is_degraded"] = True
+                            context.metadata["llm"]["actual_provider"] = chunk.get(
+                                "provider"
+                            )
+                    else:
+                        token = chunk
+
                     full_response += token
                     yield ChatStreamChunk(
                         type="content",
@@ -1477,7 +1591,13 @@ class ChatCoreMixin(Base):
                     success=True,
                     response=full_response,
                     correlation_id=context.correlation_id,
-                    llm_metadata={"streaming": True},
+                    llm_metadata={
+                        "streaming": True,
+                        "is_degraded": context.metadata.get("is_degraded", False),
+                        "actual_provider": context.metadata.get("llm", {}).get(
+                            "actual_provider"
+                        ),
+                    },
                     processing_time=time.time() - start_time,
                 )
                 if self._is_low_information_response_text(full_response):
@@ -1754,12 +1874,76 @@ class ChatCoreMixin(Base):
             integrated_context = None
             if request.include_context:
                 try:
-                    raw_context = await self._retrieve_context(
-                        embeddings,
-                        parsed_message,
-                        request.user_id,
-                        request.conversation_id,
+                    # Check if context already exists from _build_working_context
+                    existing_context = (
+                        request.metadata.get("request_context")
+                        if hasattr(request, "metadata")
+                        else None
                     )
+
+                    if existing_context:
+                        logger.debug(
+                            f"Reusing existing context from _build_working_context"
+                        )
+                        raw_context = existing_context
+                    else:
+                        raw_context = await self._retrieve_context(
+                            embeddings,
+                            parsed_message,
+                            request.user_id,
+                            request.conversation_id,
+                        )
+
+                    if attachment_context:
+                        raw_context["attachments"] = attachment_context
+                    if active_instructions:
+                        raw_context["instructions"] = [
+                            {
+                                "type": inst.type.value,
+                                "content": inst.content,
+                                "priority": inst.priority.value,
+                                "scope": inst.scope.value,
+                                "confidence": inst.confidence,
+                            }
+                            for inst in active_instructions
+                        ]
+                    integrated_context = (
+                        await self.context_integrator.integrate_context(
+                            raw_context,
+                            request.message,
+                            request.user_id,
+                            request.conversation_id,
+                        )
+                    )
+                    context.metadata["integrated_context"] = (
+                        integrated_context.to_dict() if integrated_context else {}
+                    )
+                except Exception:
+                    pass
+
+            integrated_context = None
+            if request.include_context:
+                try:
+                    # Check if context already exists from _build_working_context
+                    existing_context = (
+                        context.request.metadata.get("request_context")
+                        if hasattr(context, "request")
+                        else None
+                    )
+
+                    if existing_context:
+                        logger.debug(
+                            f"Reusing existing context from _build_working_context"
+                        )
+                        raw_context = existing_context
+                    else:
+                        raw_context = await self._retrieve_context(
+                            embeddings,
+                            parsed_message,
+                            request.user_id,
+                            request.conversation_id,
+                        )
+
                     if attachment_context:
                         raw_context["attachments"] = attachment_context
                     if active_instructions:
@@ -1820,7 +2004,10 @@ class ChatCoreMixin(Base):
                     True  # LLM generation succeeded regardless of fallback usage
                 )
 
-                ai_response, formatting_payload = await self._format_response_with_engine(
+                (
+                    ai_response,
+                    formatting_payload,
+                ) = await self._format_response_with_engine(
                     ai_response,
                     request,
                 )
@@ -1935,14 +2122,45 @@ class ChatCoreMixin(Base):
         async with self._contexts_lock:
             self._active_contexts.pop(correlation_id, None)
 
+        # Clear memory query count for this request
+        if hasattr(self, "_memory_query_counts"):
+            context_obj = None
+            # Try to get the context from the cache before it was removed
+            async with self._contexts_lock:
+                context_obj = self._active_contexts.get(correlation_id)
+
+            if context_obj:
+                context_key = f"{context_obj.user_id}:{context_obj.conversation_id}"
+                self._memory_query_counts.pop(context_key, None)
+
     async def _retrieve_context(
         self,
         embeddings: List[float],
         parsed_message: Any,
         user_id: str,
         conversation_id: str,
+        force_refresh: bool = False,
     ) -> Dict[str, Any]:
-        """Retrieve relevant context."""
+        """Retrieve relevant context with request-scoped memoization."""
+        context_key = f"{user_id}:{conversation_id}"
+
+        # Check if we have cached context in orchestrator state
+        if not force_refresh and hasattr(self, "_context_cache"):
+            cached_context = self._context_cache.get(context_key)
+            if cached_context:
+                logger.debug(f"Using cached context for {context_key}")
+                return cached_context.get("context")
+
+        # Check query count for throttling
+        if hasattr(self, "_memory_query_counts"):
+            query_count = self._memory_query_counts.get(context_key, 0)
+            if query_count >= self._max_memory_queries_per_request:
+                logger.warning(f"Memory query limit exceeded for {context_key}")
+                return self._context_cache.get(context_key, {}).get("context", {})
+
+            # Increment counter
+            self._memory_query_counts[context_key] = query_count + 1
+
         if not self.memory_processor:
             return {
                 "memories": [],
@@ -1959,7 +2177,28 @@ class ChatCoreMixin(Base):
             memory_context = await self.memory_processor.get_relevant_context(
                 embeddings, parsed_message, user_id, conversation_id
             )
-            return memory_context.to_dict()
+            result = memory_context.to_dict()
+
+            # Cache the result
+            if not hasattr(self, "_context_cache"):
+                self._context_cache = {}
+
+            self._context_cache[context_key] = {
+                "context": result,
+                "timestamp": time.time(),
+                "user_id": user_id,
+                "conversation_id": conversation_id,
+            }
+
+            # Limit cache size (max 100 entries)
+            if len(self._context_cache) > 100:
+                oldest_key = min(
+                    self._context_cache.keys(),
+                    key=lambda k: self._context_cache[k]["timestamp"],
+                )
+                del self._context_cache[oldest_key]
+
+            return result
         except Exception as e:
             return {
                 "memories": [],

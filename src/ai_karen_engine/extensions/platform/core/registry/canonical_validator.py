@@ -66,14 +66,14 @@ class CanonicalStructureValidator:
 
     # Required canonical paths
     CANONICAL_PATHS = {
-        "root_manifest": "manifest.json",
-        "gui_manifest": "{plugin_name}/manifest.json",
-        "entry_file": "{plugin_name}/{plugin_name}.tsx",
+        "root_manifest": "plugin_manifest.json",
+        "gui_manifest": "manifest.json",
+        "entry_file": "{plugin_name}.tsx",
         "prompts": "prompts/prompt.json",
-        "plugin_dir": "{plugin_name}/",
+        "plugin_dir": "./",
     }
 
-    def __init__(self, extensions_root: str = "src/extensions"):
+    def __init__(self, extensions_root: str = "src/ai_karen_engine/extensions/plugins"):
         self.extensions_root = Path(extensions_root)
         self.validation_reports: Dict[str, PluginValidationReport] = {}
 
@@ -90,7 +90,7 @@ class CanonicalStructureValidator:
 
         template = self.CANONICAL_PATHS[path_type]
         relative_path = template.replace("{plugin_name}", plugin_name)
-        return self.extensions_root / category / relative_path
+        return self.extensions_root / plugin_name / relative_path
 
     def validate_manifest_structure(
         self, manifest_path: Path, is_gui_manifest: bool = False
@@ -286,17 +286,24 @@ class CanonicalStructureValidator:
         """Validate all plugins in the extensions directory."""
         all_reports = {}
 
-        # Check each category directory
-        for category_dir in self.extensions_root.iterdir():
-            if category_dir.is_dir() and category_dir.name in self.VALID_CATEGORIES:
-                # Check each plugin directory in the category
-                for plugin_dir in category_dir.iterdir():
-                    if plugin_dir.is_dir() and not plugin_dir.name.startswith("."):
-                        plugin_name = plugin_dir.name
-                        report = self.validate_plugin_structure(
-                            category_dir.name, plugin_name
-                        )
-                        all_reports[plugin_name] = report
+        # Check each plugin directory directly under extensions_root
+        for plugin_dir in self.extensions_root.iterdir():
+            if plugin_dir.is_dir() and not plugin_dir.name.startswith("."):
+                plugin_name = plugin_dir.name
+                
+                # Extract category from manifest if possible, else default to "plugins"
+                category = "plugins"
+                manifest_path = plugin_dir / "plugin_manifest.json"
+                if manifest_path.exists():
+                    try:
+                        with open(manifest_path, "r", encoding="utf-8") as f:
+                            manifest = json.load(f)
+                        category = manifest.get("category", "plugins")
+                    except Exception:
+                        pass
+                
+                report = self.validate_plugin_structure(category, plugin_name)
+                all_reports[plugin_name] = report
 
         return all_reports
 
@@ -331,7 +338,7 @@ class CanonicalStructureValidator:
 
     def fix_canonical_structure(self, category: str, plugin_name: str) -> bool:
         """Attempt to fix canonical structure issues for a plugin."""
-        canonical_path = self.extensions_root / category / plugin_name
+        canonical_path = self.extensions_root / plugin_name
         fixed_issues = 0
 
         # Ensure plugin directory exists
@@ -341,14 +348,14 @@ class CanonicalStructureValidator:
 
         # Create root manifest if missing
         root_manifest_path = self.get_canonical_path(
-            category, plugin_name, "root_manifest"
+            "plugins", plugin_name, "root_manifest"
         )
         if not root_manifest_path.exists():
             basic_manifest = {
                 "id": plugin_name,
                 "name": plugin_name,
                 "version": "1.0.0",
-                "category": category,
+                "category": "plugins",
                 "display_name": plugin_name.replace("-", " ").title(),
                 "description": f"Auto-generated manifest for {plugin_name}",
                 "extension_type": "tool_plugin",

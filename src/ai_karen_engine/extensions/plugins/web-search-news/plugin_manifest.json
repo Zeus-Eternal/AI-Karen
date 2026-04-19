@@ -1,0 +1,32 @@
+{
+  "name": "web-search-news",
+  "display_name": "Web Search (News)",
+  "version": "1.0.0",
+  "description": "Real-time news and latest updates search for Kari.",
+  "purpose": "Search and retrieve the latest news articles, breaking updates, and recent stories from around the web.",
+  "author": "Kari Team",
+  "license": "MIT",
+  "entrypoint": "handler:MainExtension",
+  "category": "plugins",
+  "tags": ["news", "updates", "breaking", "retrieval", "prompt-first"],
+  "capabilities": {
+    "provides_ui": true,
+    "provides_api": true,
+    "web_search": true,
+    "prompt_first": true
+  },
+  "ui": {
+    "hook_zones": [
+      {
+        "zone": "sidebar.plugins",
+        "label": "News Search",
+        "icon": "newspaper",
+        "order": 60
+      }
+    ]
+  },
+  "rbac": {
+    "allowed_roles": ["user", "admin", "developer"],
+    "default_enabled": true
+  }
+}
