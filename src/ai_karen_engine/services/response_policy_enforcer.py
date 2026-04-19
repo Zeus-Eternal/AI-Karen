@@ -20,6 +20,19 @@ _ARTICLE_MARKERS = (
     "over ",
 )
 
+_SCAFFOLD_LINE_PATTERNS = (
+    r"^\s*to complete the session continuity summary.*$",
+    r"^\s*session continuity summary:\s*.*$",
+    r"^\s*let'?s see if we can make sure the chat response is complete.*$",
+    r"^\s*i(?:'|\u2019)ll acknowledge their greeting and be ready to assist.*$",
+)
+
+_SCAFFOLD_PREFIX_MARKERS = (
+    "to complete the session continuity summary",
+    "session continuity summary:",
+    "since the user has greeted again without a specific new request",
+)
+
 
 @dataclass
 class PolicyDecision:
@@ -40,9 +53,15 @@ class PolicyResult:
 class ResponsePolicyEnforcer:
     """Validates/expands outputs for long-form and article-style requests."""
 
-    def __init__(self, default_article_min_words: int = 1200, max_expansion_attempts: int = 2) -> None:
+    def __init__(
+        self,
+        default_article_min_words: int = 1200,
+        max_expansion_attempts: int = 2,
+        allow_template_fallback: bool = False,
+    ) -> None:
         self.default_article_min_words = default_article_min_words
         self.max_expansion_attempts = max_expansion_attempts
+        self.allow_template_fallback = allow_template_fallback
 
     async def enforce(
         self,
@@ -52,7 +71,7 @@ class ResponsePolicyEnforcer:
         regenerate: Optional[Callable[[str], Awaitable[str]]] = None,
     ) -> PolicyResult:
         prompt = str(user_prompt or "")
-        current = str(content or "")
+        current = self._strip_scaffold_text(str(content or ""))
         decision = self.evaluate(prompt, current)
 
         if decision.accepted:
@@ -69,21 +88,38 @@ class ResponsePolicyEnforcer:
                 },
             )
 
+        # Do not fabricate synthetic long-form content without a true regenerator.
+        if regenerate is None:
+            return PolicyResult(
+                content=current,
+                decision=decision,
+                metadata={
+                    "policy_enforced": True,
+                    "policy_mode": decision.mode,
+                    "policy_reason": decision.reason,
+                    "target_words": decision.min_words,
+                    "actual_words": decision.actual_words,
+                    "expansion_attempted": False,
+                    "expanded": False,
+                    "expansion_skipped_reason": "no_regenerator",
+                    "underfilled": not decision.accepted,
+                },
+            )
+
         expanded = current
         attempts = 0
 
-        if regenerate is not None:
-            while attempts < self.max_expansion_attempts:
-                attempts += 1
-                expansion_prompt = self._build_expansion_prompt(prompt, expanded, decision.min_words)
-                candidate = str(await regenerate(expansion_prompt) or "").strip()
-                if candidate:
-                    expanded = candidate
-                decision = self.evaluate(prompt, expanded)
-                if decision.accepted:
-                    break
+        while attempts < self.max_expansion_attempts:
+            attempts += 1
+            expansion_prompt = self._build_expansion_prompt(prompt, expanded, decision.min_words)
+            candidate = self._strip_scaffold_text(str(await regenerate(expansion_prompt) or "").strip())
+            if candidate:
+                expanded = candidate
+            decision = self.evaluate(prompt, expanded)
+            if decision.accepted:
+                break
 
-        if not decision.accepted:
+        if not decision.accepted and self.allow_template_fallback:
             expanded = self._fallback_expand(expanded, prompt, decision.min_words)
             decision = self.evaluate(prompt, expanded)
 
@@ -99,6 +135,7 @@ class ResponsePolicyEnforcer:
                 "expansion_attempted": True,
                 "expansion_attempts": attempts,
                 "expanded": decision.accepted,
+                "underfilled": not decision.accepted,
             },
         )
 
@@ -156,7 +193,8 @@ class ResponsePolicyEnforcer:
         seed = content.strip()[:6000]
         return (
             f"Rewrite and expand this answer into a complete long-form article of at least {target_words} words. "
-            f"Preserve factual consistency, add clear headings, and maintain coherent structure.\n\n"
+            f"Preserve factual consistency, add clear markdown headings, and maintain coherent structure. "
+            f"Do not include meta-instructions, chain-of-thought, or session summaries.\n\n"
             f"Original user request:\n{user_prompt.strip()}\n\n"
             f"Current draft:\n{seed}"
         )
@@ -219,3 +257,20 @@ class ResponsePolicyEnforcer:
     @staticmethod
     def _word_count(text: str) -> int:
         return len(re.findall(r"\b\w+\b", text or ""))
+
+    def _strip_scaffold_text(self, content: str) -> str:
+        original = str(content or "").replace("\r\n", "\n")
+        cleaned = original
+        lowered = cleaned.lower()
+
+        for marker in _SCAFFOLD_PREFIX_MARKERS:
+            index = lowered.find(marker)
+            if 0 <= index <= 320:
+                cleaned = cleaned[:index]
+                lowered = cleaned.lower()
+
+        for pattern in _SCAFFOLD_LINE_PATTERNS:
+            cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE | re.MULTILINE)
+
+        cleaned = re.sub(r"\n{3,}", "\n\n", cleaned).strip()
+        return cleaned or original.strip()

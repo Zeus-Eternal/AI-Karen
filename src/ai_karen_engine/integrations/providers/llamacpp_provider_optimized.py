@@ -13,6 +13,7 @@ import asyncio
 import logging
 import os
 import time
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, Union
 
@@ -37,12 +38,16 @@ class OptimizedLlamaCppProvider(LLMProviderBase):
         n_batch: Optional[int] = None,
         n_gpu_layers: Optional[int] = None,
         n_threads: Optional[int] = None,
-        timeout: int = 30,  # Reduced default timeout
+        timeout: int = 90,
         **kwargs,
     ):
         """Initialize optimized LLaMA-CPP provider."""
         self.model_path = model_path
-        self.timeout = timeout
+        try:
+            env_timeout = int(os.getenv("LLAMACPP_GENERATION_TIMEOUT", "0"))
+        except ValueError:
+            env_timeout = 0
+        self.timeout = env_timeout if env_timeout > 0 else timeout
         self.runtime_kwargs = {
             "n_ctx": n_ctx,
             "n_batch": n_batch,
@@ -220,12 +225,14 @@ class OptimizedLlamaCppProvider(LLMProviderBase):
     def _load_model_with_timeout(self, model_path: str, timeout: int = 60):
         """Load model with timeout to prevent blocking."""
         try:
-            # Use asyncio.wait_for to prevent blocking
-            loop = asyncio.get_event_loop()
-            future = loop.run_in_executor(None, self.runtime.load_model, model_path)
-            asyncio.wait_for(future, timeout=timeout)
+            # This function is synchronous; use a local executor and a blocking timeout.
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                future = pool.submit(self.runtime.load_model, model_path)
+                loaded = future.result(timeout=timeout)
+            if not loaded:
+                raise GenerationFailed(f"Failed to load model {model_path}")
             logger.info(f"Successfully loaded model: {model_path}")
-        except asyncio.TimeoutError:
+        except FutureTimeoutError:
             logger.error(f"Model loading timed out after {timeout}s: {model_path}")
             raise GenerationFailed(f"Model loading timed out: {model_path}")
         except Exception as e:

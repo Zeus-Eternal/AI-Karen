@@ -77,15 +77,23 @@ def _is_placeholder_response(response_text: str) -> bool:
     if any(lowered.startswith(prefix) for prefix in known_prefixes):
         return True
 
+    # Detect known synthetic long-form scaffolds that should not be returned as final user content.
+    if "the requested topic" in lowered and lowered.count("a reliable approach to") >= 3:
+        return True
+
     return False
 
 
 _INTERNAL_ANALYSIS_PREFIX_MARKERS = (
+    "to complete the session continuity summary",
+    "session continuity summary:",
     "since the user has greeted again without a specific new request",
     "this is not a complete meaningful response",
 )
 
 _INTERNAL_ANALYSIS_LINE_PATTERNS = (
+    r"^\s*to complete the session continuity summary.*$",
+    r"^\s*session continuity summary:\s*.*$",
     r"^\s*in summary:\s*$",
     r"^\s*let'?s see if we can make sure the chat response is complete.*$",
     r"^\s*i(?:'|\u2019)ll acknowledge their greeting and be ready to assist.*$",
@@ -94,12 +102,15 @@ _INTERNAL_ANALYSIS_LINE_PATTERNS = (
 
 def _strip_internal_analysis_leakage(response_text: str) -> str:
     """Remove known internal-analysis scaffold text from model-visible output."""
-    cleaned = str(response_text or "").replace("\r\n", "\n")
+    original = str(response_text or "").replace("\r\n", "\n")
+    cleaned = original
     lowered = cleaned.lower()
 
     for marker in _INTERNAL_ANALYSIS_PREFIX_MARKERS:
         index = lowered.find(marker)
-        if index >= 0:
+        # Only trim from marker onward when scaffold appears near the beginning.
+        # This avoids cutting valid content that happens to contain similar phrases later.
+        if 0 <= index <= 240:
             cleaned = cleaned[:index]
             lowered = cleaned.lower()
 
@@ -108,7 +119,10 @@ def _strip_internal_analysis_leakage(response_text: str) -> str:
 
     cleaned = re.sub(r"^\s*=+\s*$", "", cleaned, flags=re.MULTILINE)
     cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
-    return cleaned.strip()
+    cleaned = cleaned.strip()
+    if cleaned:
+        return cleaned
+    return original.strip()
 
 
 def _sanitize_user_visible_text(response_text: str) -> str:

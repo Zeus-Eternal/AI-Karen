@@ -595,7 +595,7 @@ async def init_extensions_for_production(
 ) -> bool:
     """Initialize extensions for production environment."""
     try:
-        from extensions.core.host.factory import (
+        from ai_karen_engine.extensions.core.host.factory import (
             initialize_extensions_for_production as initialize_extensions,
         )
 
@@ -606,9 +606,28 @@ async def init_extensions_for_production(
             plugin_router=plugin_router,
         )
         return success
-    except ImportError:
-        logger.warning("Extension system not available")
-        return False
+    except ImportError as canonical_error:
+        try:
+            # Temporary fallback for migration compatibility.
+            from extensions.core.host.factory import (  # type: ignore
+                initialize_extensions_for_production as initialize_extensions,
+            )
+
+            success = await initialize_extensions(
+                app=app,
+                extension_root=extension_root,
+                db_session=db_session,
+                plugin_router=plugin_router,
+            )
+            logger.info("✅ Extension system initialized via legacy fallback path")
+            return success
+        except ImportError as legacy_error:
+            logger.warning(
+                "Extension system not available (canonical=%s, fallback=%s)",
+                canonical_error,
+                legacy_error,
+            )
+            return False
     except Exception as e:
         logger.error(f"Extension system initialization failed: {e}")
         return False

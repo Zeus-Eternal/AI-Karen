@@ -890,6 +890,18 @@ export default function ChatInterface() {
 
     const restoreSessionState = async () => {
       const sessionId = currentSession.id;
+      // Always reset volatile chat UI state when switching sessions.
+      // If the target session has no local/server history yet, this prevents
+      // stale messages from the previous session appearing as if "new chat" failed.
+      if (!cancelled) {
+        setMessages([]);
+        setInput('');
+        setStreamedContent('');
+        setProcessingStatus('');
+        setIsLoading(false);
+        submitInFlightRef.current = false;
+      }
+
       const persisted = loadSessionState(sessionId);
       const persistedMessages = (persisted?.messages || []).map(fromPersistedMessage);
       const hasRestorableState = Boolean(
@@ -1450,6 +1462,57 @@ export default function ChatInterface() {
     setMessages([]);
   }, [isLoading, stopActiveRequest, createNewSession, setMessages]);
 
+  const handleExportCurrentChat = useCallback(async () => {
+    if (!currentSession) {
+      toast({
+        title: 'No active chat',
+        description: 'Select or start a chat before exporting.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const safeTitle = (currentSession.title || 'chat-export').trim() || 'chat-export';
+    const slug = safeTitle
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'chat-export';
+
+    const lines: string[] = [
+      `# ${safeTitle}`,
+      '',
+      `Session ID: ${currentSession.id}`,
+      `Exported: ${new Date().toISOString()}`,
+      '',
+    ];
+
+    for (const message of messages) {
+      const roleLabel = message.role === 'assistant' ? 'Karen' : message.role === 'user' ? 'User' : 'System';
+      const when = message.timestamp instanceof Date
+        ? message.timestamp.toISOString()
+        : new Date(message.timestamp).toISOString();
+      lines.push(`## ${roleLabel} (${when})`);
+      lines.push('');
+      lines.push(message.content || '');
+      lines.push('');
+    }
+
+    const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' });
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `${slug}.md`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    window.URL.revokeObjectURL(url);
+
+    toast({
+      title: 'Chat exported',
+      description: `Saved ${slug}.md`,
+    });
+  }, [currentSession, messages, toast]);
+
   // Scroll functions
   const scrollChatToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
     const viewport = viewportRef.current;
@@ -1771,6 +1834,7 @@ export default function ChatInterface() {
         updateSessionTitle={updateSessionTitle}
         refreshSessions={refreshSessions}
         createNewSession={createNewSession}
+        onExportChat={handleExportCurrentChat}
         streamingStatus={streamingStatus}
       />
     </div>

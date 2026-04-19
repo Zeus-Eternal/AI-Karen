@@ -195,7 +195,7 @@ except ImportError as e:
 monitoring_router: Optional[Any] = None
 try:
     monitoring_module = importlib.import_module(
-        "ai_karen_engine.server.extension_monitoring_api"
+        "ai_karen_engine.monitoring.extensions.extension_monitoring_api"
     )
     candidate_router = getattr(monitoring_module, "monitoring_router", None)
     if isinstance(candidate_router, APIRouter):
@@ -206,9 +206,32 @@ try:
         EXTENSION_MONITORING_AVAILABLE = False
         logger.warning("🚫 Extension monitoring module found but router is invalid")
 except Exception as e:
-    monitoring_router = None
-    EXTENSION_MONITORING_AVAILABLE = False
-    logger.warning(f"🚫 Extension monitoring not available: {e}")
+    # Temporary fallback for in-flight migration paths.
+    try:
+        monitoring_module = importlib.import_module(
+            "ai_karen_engine.server.extension_monitoring_api"
+        )
+        candidate_router = getattr(monitoring_module, "monitoring_router", None)
+        if isinstance(candidate_router, APIRouter):
+            monitoring_router = candidate_router
+            EXTENSION_MONITORING_AVAILABLE = True
+            logger.info(
+                "✅ Extension monitoring router imported via legacy fallback path"
+            )
+        else:
+            monitoring_router = None
+            EXTENSION_MONITORING_AVAILABLE = False
+            logger.warning(
+                "🚫 Extension monitoring module found via fallback but router is invalid"
+            )
+    except Exception as legacy_error:
+        monitoring_router = None
+        EXTENSION_MONITORING_AVAILABLE = False
+        logger.warning(
+            "🚫 Extension monitoring not available: canonical import error=%s; fallback import error=%s",
+            e,
+            legacy_error,
+        )
 
 
 def wire_routers(app: FastAPI, settings: Settings) -> None:

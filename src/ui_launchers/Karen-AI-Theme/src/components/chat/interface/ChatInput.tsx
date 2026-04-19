@@ -1,9 +1,10 @@
-import { FormEvent, KeyboardEvent } from 'react';
+import { FormEvent, KeyboardEvent, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sparkles, Mic, MicOff } from 'lucide-react';
 import { ProviderSettingsModal } from '../const/ProviderSettingsModal';
 import { SessionHistory } from '../const/SessionHistory';
+import { ChatActionsMenu } from '../const/ChatActionsMenu';
 import type { Session, ProviderDetails } from '../types';
 
 interface ChatInputProps {
@@ -47,6 +48,7 @@ interface ChatInputProps {
   updateSessionTitle: (sessionId: string, newTitle: string) => Promise<boolean>;
   refreshSessions: () => Promise<void>;
   createNewSession: () => Promise<void>;
+  onExportChat: () => Promise<void> | void;
 
   // UI state
   streamingStatus: string;
@@ -84,8 +86,11 @@ export function ChatInput({
   updateSessionTitle,
   refreshSessions,
   createNewSession,
+  onExportChat,
   streamingStatus,
 }: ChatInputProps) {
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+
   return (
     <div id="chat-input-area">
       <div className="chat-input-container border-t border-border p-3 md:p-4 bg-background/80 backdrop-blur-sm sticky bottom-0">
@@ -98,6 +103,16 @@ export function ChatInput({
               applyModelSelection={applyModelSelection}
               isUpdatingModelSelection={isUpdatingModelSelection}
             />
+            <ChatActionsMenu
+              currentSession={currentSession}
+              isLoadingSessions={isLoadingSessions}
+              createNewSession={createNewSession}
+              refreshSessions={refreshSessions}
+              updateSessionTitle={updateSessionTitle}
+              deleteSession={deleteSession}
+              onOpenHistory={() => setIsHistoryOpen(true)}
+              onExportChat={onExportChat}
+            />
             <SessionHistory
               sessions={sessions}
               currentSession={currentSession}
@@ -109,6 +124,9 @@ export function ChatInput({
               updateSessionTitle={updateSessionTitle}
               refreshSessions={refreshSessions}
               createNewSession={createNewSession}
+              open={isHistoryOpen}
+              onOpenChange={setIsHistoryOpen}
+              hideTrigger={true}
             />
           </div>
           <div className="flex self-center md:self-auto">

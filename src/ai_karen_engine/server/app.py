@@ -56,14 +56,27 @@ logger = logging.getLogger("kari")
 
 # Extension system integration
 try:
-    from extensions.core.host.factory import (
+    from ai_karen_engine.extensions.core.host.factory import (
         initialize_extensions_for_production as initialize_extensions,
     )
 
     EXTENSIONS_AVAILABLE = True
-except ImportError:
-    EXTENSIONS_AVAILABLE = False
-    logger.warning("Extension system not available")
+except ImportError as canonical_error:
+    try:
+        # Temporary fallback for migration compatibility.
+        from extensions.core.host.factory import (  # type: ignore
+            initialize_extensions_for_production as initialize_extensions,
+        )
+
+        EXTENSIONS_AVAILABLE = True
+        logger.info("✅ Extension system imported via legacy fallback path")
+    except ImportError as legacy_error:
+        EXTENSIONS_AVAILABLE = False
+        logger.warning(
+            "Extension system not available (canonical=%s, fallback=%s)",
+            canonical_error,
+            legacy_error,
+        )
 
 # Initialize logging EARLY to ensure all subsequent imports use configured loggers
 configure_logging()

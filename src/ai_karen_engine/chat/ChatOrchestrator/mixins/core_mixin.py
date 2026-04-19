@@ -137,12 +137,16 @@ class ChatCoreMixin(Base):
     _INTERNAL_ANALYSIS_PREFIX_MARKERS = (
         "since the user has greeted again without a specific new request",
         "this is not a complete meaningful response",
+        "to complete the session continuity summary",
+        "session continuity summary:",
     )
 
     _INTERNAL_ANALYSIS_LINE_PATTERNS = (
         r"^\s*in summary:\s*$",
         r"^\s*let'?s see if we can make sure the chat response is complete.*$",
         r"^\s*i(?:'|\u2019)ll acknowledge their greeting and be ready to assist.*$",
+        r"^\s*to complete the session continuity summary.*$",
+        r"^\s*session continuity summary:\s*.*$",
     )
 
     @staticmethod
@@ -174,12 +178,15 @@ class ChatCoreMixin(Base):
     @classmethod
     def _strip_internal_analysis_leakage(cls, content: str) -> str:
         """Remove known internal-analysis scaffold text from model-visible output."""
-        cleaned = str(content or "").replace("\r\n", "\n")
+        original = str(content or "").replace("\r\n", "\n")
+        cleaned = original
         lowered = cleaned.lower()
 
         for marker in cls._INTERNAL_ANALYSIS_PREFIX_MARKERS:
             index = lowered.find(marker)
-            if index >= 0:
+            # Only trim from marker onward when scaffold appears near the beginning.
+            # This prevents accidental truncation of otherwise valid long responses.
+            if 0 <= index <= 240:
                 cleaned = cleaned[:index]
                 lowered = cleaned.lower()
 
@@ -188,7 +195,10 @@ class ChatCoreMixin(Base):
 
         cleaned = re.sub(r"^\s*=+\s*$", "", cleaned, flags=re.MULTILINE)
         cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
-        return cleaned.strip()
+        cleaned = cleaned.strip()
+        if cleaned:
+            return cleaned
+        return original.strip()
 
     async def _format_response_with_engine(
         self,

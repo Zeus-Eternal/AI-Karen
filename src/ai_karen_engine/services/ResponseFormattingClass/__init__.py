@@ -1,17 +1,13 @@
-"""Canonical public facade for response formatting.
-
-This module is the only public import surface for runtime formatting.
-Implementation lives in `ai_karen_engine.services.ResponseFormattingClass`.
-"""
-
-from ai_karen_engine.services.ResponseFormattingClass import (
-    ResponseFormattingEngine,
+from .Engine import ResponseFormattingEngine
+from .Enums import (
     DisplayContext,
     AccessibilityLevel,
     FormatType,
     ContentType,
     SectionType,
     ComplexityLevel,
+)
+from .Models import (
     FormattingContext,
     NavigationAid,
     ContentSection,

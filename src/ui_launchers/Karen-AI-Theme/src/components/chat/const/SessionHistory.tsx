@@ -30,6 +30,10 @@ export const SessionHistory = ({
   updateSessionTitle,
   refreshSessions,
   createNewSession,
+  open,
+  onOpenChange,
+  hideTrigger = false,
+  triggerLabel = 'HISTORY',
 }: {
   sessions: Session[];
   currentSession: Session | null;
@@ -41,8 +45,12 @@ export const SessionHistory = ({
   updateSessionTitle: (sessionId: string, newTitle: string) => Promise<boolean>;
   refreshSessions: () => Promise<void>;
   createNewSession: () => Promise<void>;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
+  triggerLabel?: string;
 }) => {
-    const [isOpen, setIsOpen] = useState(false);
+    const [internalOpen, setInternalOpen] = useState(false);
     const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
     const [editingTitle, setEditingTitle] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
@@ -50,6 +58,8 @@ export const SessionHistory = ({
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [isSelectionMode, setIsSelectionMode] = useState(false);
     const [isDeletingBulk, setIsDeletingBulk] = useState(false);
+    const isOpen = open ?? internalOpen;
+    const setIsOpen = onOpenChange ?? setInternalOpen;
 
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
@@ -211,17 +221,19 @@ export const SessionHistory = ({
           setSearchQuery('');
         }
       }}>
-        <DialogTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="flex gap-2 h-9 px-3 border border-input bg-background hover:bg-accent hover:text-accent-foreground"
-          >
-            <History className="h-4 w-4" />
-            HISTORY
-          </Button>
-        </DialogTrigger>
+        {!hideTrigger && (
+          <DialogTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="flex gap-2 h-9 px-3 border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+            >
+              <History className="h-4 w-4" />
+              {triggerLabel}
+            </Button>
+          </DialogTrigger>
+        )}
         <DialogContent className="sm:max-w-[720px]">
           <DialogHeader>
             <div className="flex items-center justify-between">

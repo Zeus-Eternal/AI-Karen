@@ -198,6 +198,22 @@ profiles:
 
 **Usage**: Loaded by `load_llamacpp_config()` and used by the llama.cpp runtime manager for model execution.
 
+### Monitoring Configuration
+
+#### `monitoring/` Directory
+**Purpose**: Static monitoring assets for Prometheus and Grafana used by Docker deployments.
+
+**Contents**:
+- `monitoring/prometheus/prometheus.yml`: Main Prometheus scrape configuration
+- `monitoring/prometheus/prometheus-copilot.yml`: CoPilot-specific Prometheus configuration
+- `monitoring/alerts/alert_rules.yml`: Prometheus alerting rules
+- `monitoring/grafana/provisioning/grafana_provisioning.yml`: Grafana dashboard provisioning
+- `monitoring/grafana/provisioning/grafana_datasources.yml`: Grafana data source provisioning
+- `monitoring/grafana/dashboards/grafana_dashboard.json`: Main Grafana dashboard JSON
+- `monitoring/grafana/dashboards/copilot/`: CoPilot dashboard directory
+
+**Usage**: Mounted directly by `docker-compose.yml` and `docker-compose-copilot.yml` as static config assets.
+
 ### Memory & Performance
 
 #### `memory.yml`
