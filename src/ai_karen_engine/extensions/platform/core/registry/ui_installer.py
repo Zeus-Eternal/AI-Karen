@@ -184,13 +184,18 @@ class UIInstallerService:
             # Check if plugin exists in canonical location
             source_path = Path("src/ai_karen_engine/extensions/plugins") / plugin_id
             if not source_path.exists():
-                return UIInstallationResult(
-                    plugin_id=plugin_id,
-                    status=UIInstallationStatus.NOT_FOUND,
-                    state=UIInstallationState.ERROR,
-                    message=f"Plugin not found in canonical location: {source_path}",
-                    error_code="PLUGIN_NOT_FOUND",
-                )
+                # Try alternative path
+                alt_source_path = Path(plugin_id)
+                if alt_source_path.exists():
+                    source_path = alt_source_path
+                else:
+                    return UIInstallationResult(
+                        plugin_id=plugin_id,
+                        status=UIInstallationStatus.NOT_FOUND,
+                        state=UIInstallationState.ERROR,
+                        message=f"Plugin not found in canonical location: {source_path}",
+                        error_code="PLUGIN_NOT_FOUND",
+                    )
 
             # Check if already installed
             if plugin_id in self.installations:

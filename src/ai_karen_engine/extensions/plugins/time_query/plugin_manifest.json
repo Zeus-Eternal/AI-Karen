@@ -1,14 +1,14 @@
 {
   "name": "time-query",
-  "display_name": "Date Time",
-  "version": "0.1.0",
-  "description": "Responds with the current time.",
-  "purpose": "Provide the current date and time accurately based on the system clock.",
+  "display_name": "Time Query",
+  "version": "0.2.0",
+  "description": "App-wide time authority: current time, world clocks, stopwatches, alarms, and timezone conversions.",
+  "purpose": "Serve as the central source for all app time needs, including current time, world clocks, stopwatches, scheduled alarms, and timezone arithmetic.",
   "author": "Kari Team",
   "license": "MIT",
   "entrypoint": "handler:MainExtension",
   "category": "plugins",
-  "tags": ["time", "date", "clock", "prompt-first"],
+  "tags": ["time", "date", "clock", "stopwatch", "alarm", "timezone", "prompt-first"],
   "capabilities": {
     "provides_ui": true,
     "provides_api": true,
@@ -18,7 +18,7 @@
     "hook_zones": [
       {
         "zone": "sidebar.plugins",
-        "label": "Date Time",
+        "label": "Time Query",
         "icon": "clock",
         "order": 0
       }

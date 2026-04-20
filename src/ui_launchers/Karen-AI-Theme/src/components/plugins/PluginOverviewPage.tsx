@@ -25,7 +25,7 @@ import {
   AlertDescription,
   AlertTitle
 } from "@/components/ui/alert";
-import { usePluginRegistry, usePluginHealth, type PluginHealthRecord, type FrontendMountState } from "@/plugin_host/registry";
+import { usePluginRegistry, usePluginHealth, type FrontendMountState } from "@/plugin_host/registry";
 import { apiClient } from "@/lib/api";
 
 type PluginOperationResult = {
@@ -106,7 +106,7 @@ function FrontendStateBadge({ state }: { state: FrontendMountState | 'registered
           <XCircle className="h-3 w-3" /> render error
         </span>
       );
-    case 'not_registered':
+    case 'idle':
       return (
         <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
           <AlertTriangle className="h-3 w-3" /> not registered
@@ -201,7 +201,7 @@ function PluginHealthCard({ pluginId, displayName, description, version }: {
   version: string;
 }) {
   const { refresh } = usePluginRegistry();
-  const health: PluginHealthRecord = usePluginHealth(pluginId);
+  const health = usePluginHealth(pluginId);
   const [uiInstallStatus, setUiInstallStatus] = useState<UIInstallStatus>('not_installed');
   const [uiRegistrationStatus, setUiRegistrationStatus] = useState<'not_registered' | 'registered' | 'mountable' | 'mount_error'>('not_registered');
   const [isOperationInProgress, setIsOperationInProgress] = useState(false);
@@ -227,7 +227,7 @@ function PluginHealthCard({ pluginId, displayName, description, version }: {
     [pluginId]
   );
   const frontendDisplayState: FrontendMountState | 'registered' =
-    health.frontendMountState === 'not_registered' && isUiRegistered
+    health.frontendMountState === 'idle' && isUiRegistered
       ? 'registered'
       : health.frontendMountState;
 

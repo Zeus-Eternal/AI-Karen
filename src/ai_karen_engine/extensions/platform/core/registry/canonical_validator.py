@@ -165,7 +165,11 @@ class CanonicalStructureValidator:
         self, category: str, plugin_name: str
     ) -> PluginValidationReport:
         """Validate the complete structure of a plugin."""
-        canonical_path = self.extensions_root / category / plugin_name
+        # Handle category to avoid double "plugins" in path
+        if category == "plugins":
+            canonical_path = self.extensions_root / plugin_name
+        else:
+            canonical_path = self.extensions_root / category / plugin_name
 
         # Initialize report
         report = PluginValidationReport(
@@ -290,7 +294,7 @@ class CanonicalStructureValidator:
         for plugin_dir in self.extensions_root.iterdir():
             if plugin_dir.is_dir() and not plugin_dir.name.startswith("."):
                 plugin_name = plugin_dir.name
-                
+
                 # Extract category from manifest if possible, else default to "plugins"
                 category = "plugins"
                 manifest_path = plugin_dir / "plugin_manifest.json"
@@ -301,7 +305,7 @@ class CanonicalStructureValidator:
                         category = manifest.get("category", "plugins")
                     except Exception:
                         pass
-                
+
                 report = self.validate_plugin_structure(category, plugin_name)
                 all_reports[plugin_name] = report
 

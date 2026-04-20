@@ -123,6 +123,13 @@ class ExtensionDiscoveryService:
         self.logger.info(f"Discovering extensions (force_refresh={force_refresh})")
 
         try:
+            # Check if extensions directory exists
+            if not self.extensions_dir.exists():
+                self.logger.error(
+                    f"Extensions directory does not exist: {self.extensions_dir}"
+                )
+                return {}
+
             # Check cache
             if not force_refresh and self._discovered_extensions:
                 self.logger.debug("Returning cached extension discovery results")
@@ -136,6 +143,9 @@ class ExtensionDiscoveryService:
 
             # Scan for extensions
             extension_dirs = await self._scan_extension_directories()
+            self.logger.info(
+                f"Found {len(extension_dirs)} potential extension directories"
+            )
 
             # Process each extension
             for extension_dir in extension_dirs:

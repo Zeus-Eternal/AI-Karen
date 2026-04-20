@@ -46,14 +46,18 @@ class PluginRegistry:
 
     async def initialize(self):
         """Initialize registry and perform initial discovery scan."""
-        if not self.db_session:
-            raise ValueError("Database session required for registry initialization")
+        try:
+            # Create database tables if they don't exist and session is available
+            if self.db_session:
+                await self._create_tables()
+            else:
+                logger.warning("No database session available, using in-memory storage")
 
-        # Create database tables if they don't exist
-        await self._create_tables()
-
-        # Perform initial discovery and sync with database
-        await self.refresh()
+            # Perform initial discovery and sync with database
+            await self.refresh()
+        except Exception as e:
+            logger.error(f"Failed to initialize registry: {e}")
+            # Continue without database functionality
 
     async def _create_tables(self):
         """Create database tables if they don't exist."""
@@ -135,42 +139,46 @@ class PluginRegistry:
     async def _sync_with_database(self):
         """Sync discovered extensions with database records."""
         if not self.db_session:
+            logger.info("No database session available, skipping database sync")
             return
 
-        for name, metadata in self._discovery_metadata.items():
-            try:
-                # Check if extension already exists in database
-                result = await self.db_session.execute(
-                    select(ExtensionDBModel).where(
-                        and_(
-                            ExtensionDBModel.name == name,
-                            ExtensionDBModel.version == metadata.version,
+        try:
+            for name, metadata in self._discovery_metadata.items():
+                try:
+                    # Check if extension already exists in database
+                    result = await self.db_session.execute(
+                        select(ExtensionDBModel).where(
+                            and_(
+                                ExtensionDBModel.name == name,
+                                ExtensionDBModel.version == metadata.version,
+                            )
                         )
                     )
-                )
-                existing = result.scalar_one_or_none()
+                    existing = result.scalar_one_or_none()
 
-                if not existing:
-                    # Create new database record
-                    db_record = ExtensionDBModel(
-                        name=name,
-                        version=metadata.version,
-                        display_name=metadata.display_name,
-                        description=metadata.description,
-                        author=metadata.author,
-                        category=metadata.category,
-                        tags=metadata.tags,
-                        directory_path=str(metadata.directory),
-                        is_validated=metadata.is_valid,
-                    )
-                    self.db_session.add(db_record)
-                    await self.db_session.flush()
-                    logger.debug(
-                        f"Added new extension to database: {name} v{metadata.version}"
-                    )
+                    if not existing:
+                        # Create new database record
+                        db_record = ExtensionDBModel(
+                            name=name,
+                            version=metadata.version,
+                            display_name=metadata.display_name,
+                            description=metadata.description,
+                            author=metadata.author,
+                            category=metadata.category,
+                            tags=metadata.tags,
+                            directory_path=str(metadata.directory),
+                            is_validated=metadata.is_valid,
+                        )
+                        self.db_session.add(db_record)
+                        await self.db_session.flush()
+                        logger.debug(
+                            f"Added new extension to database: {name} v{metadata.version}"
+                        )
 
-            except Exception as e:
-                logger.error(f"Failed to sync extension {name} with database: {e}")
+                except Exception as e:
+                    logger.error(f"Failed to sync extension {name} with database: {e}")
+        except Exception as e:
+            logger.error(f"Failed to sync with database: {e}")
 
     def get_extension(self, extension_id: str) -> Optional[ExtensionRecord]:
         """Get extension by name (for backward compatibility)."""

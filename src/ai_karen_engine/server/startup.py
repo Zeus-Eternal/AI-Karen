@@ -244,6 +244,22 @@ async def on_startup(settings: Any) -> None:
     logger.info("Starting Kari AI Server in %s mode", settings.environment)
     await init_database()
 
+    # Initialize extension system
+    try:
+        from ai_karen_engine.extensions.platform.core.manager import (
+            get_extension_core_manager,
+        )
+
+        extension_manager = get_extension_core_manager()
+        if extension_manager:
+            logger.info("Initializing extension system...")
+            await extension_manager.initialize()
+            logger.info("Extension system initialized successfully")
+        else:
+            logger.warning("Extension system not available")
+    except Exception as e:
+        logger.error(f"Failed to initialize extension system: {e}")
+
     # Fast-startup mode: don't block server readiness on heavy init
     fast_start = os.getenv(
         "KARI_FAST_STARTUP", os.getenv("FAST_STARTUP", "true")

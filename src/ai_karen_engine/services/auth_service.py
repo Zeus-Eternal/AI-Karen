@@ -647,7 +647,7 @@ class AuthService(BaseService):
                 result = await db_session.execute(
                     select(AuthSession).where(
                         AuthSession.refresh_token == refresh_token,
-                        AuthSession.is_active == True,
+                        AuthSession.is_active,
                     )
                 )
                 db_auth_session = result.scalar_one_or_none()
@@ -747,16 +747,8 @@ class AuthService(BaseService):
                     )
                     return
         except Exception as e:
-            logger.warning("Database logout failed, falling back to memory: %s", e)
-
-        try:
-            for session in self._active_sessions.values():
-                if session.refresh_token == refresh_token:
-                    session.is_active = False
-                    logger.info("User logged out successfully: %s", session.user_id)
-                    break
-        except Exception as e:
-            logger.error("Error during logout: %s", e)
+            logger.error("Database logout failed: %s", e)
+            raise
 
     async def get_user(self, identifier: str) -> Optional[UserAccount]:
         """
@@ -846,7 +838,7 @@ class AuthService(BaseService):
                 result = await session.execute(
                     select(AuthUser).where(
                         AuthUser.email == email,
-                        AuthUser.is_active == True,
+                        AuthUser.is_active,
                     )
                 )
                 auth_user = result.scalar_one_or_none()
@@ -883,16 +875,22 @@ class AuthService(BaseService):
                 return user
             # Fallback for email prefix for backward compatibility
             email = (user.email or "").strip().lower()
-            if email == normalized_username or email.split("@", 1)[0] == normalized_username:
+            if (
+                email == normalized_username
+                or email.split("@", 1)[0] == normalized_username
+            ):
                 return user
 
         try:
             async with self._session_scope() as session:
                 result = await session.execute(
                     select(AuthUser).where(
-                        (func.lower(AuthUser.username) == normalized_username) |
-                        (func.lower(AuthUser.email) == normalized_username) |
-                        (func.lower(func.split_part(AuthUser.email, '@', 1)) == normalized_username)
+                        (func.lower(AuthUser.username) == normalized_username)
+                        | (func.lower(AuthUser.email) == normalized_username)
+                        | (
+                            func.lower(func.split_part(AuthUser.email, "@", 1))
+                            == normalized_username
+                        )
                     )
                 )
                 auth_user = result.scalar_one_or_none()
@@ -1002,7 +1000,7 @@ class AuthService(BaseService):
                 result = await db_session.execute(
                     select(AuthSession).where(
                         AuthSession.access_token == session_token,
-                        AuthSession.is_active == True,
+                        AuthSession.is_active,
                     )
                 )
                 db_auth_session = result.scalar_one_or_none()
@@ -1463,22 +1461,6 @@ class AuthService(BaseService):
                 user_uuid = None
 
             if not user_uuid:
-                # Check for special dev users if bypass is potentially active
-                from ai_karen_engine.core.auth_config import auth_config
-
-                if auth_config.should_bypass_auth() and user_id in [
-                    "dev-user",
-                    "admin",
-                    "dev",
-                ]:
-                    logger.info(
-                        "Using developer bypass for profile update logic for user: %s",
-                        user_id,
-                    )
-                    # Return a mock successful update for dev-user
-                    return self._get_mock_developer_user(
-                        user_id, email, username, full_name, preferences
-                    ), None
                 return None, "Invalid user ID"
 
             async with self._session_scope() as session:
@@ -1539,7 +1521,7 @@ class AuthService(BaseService):
                 return user_account, None
 
         except Exception as e:
-            logger.error(f"Failed to update user profile: %s", e)
+            logger.error("Failed to update user profile: %s", e)
             return None, str(e)
 
     async def health_check(self) -> bool:
@@ -1599,7 +1581,7 @@ class AuthService(BaseService):
                         result = await session.execute(
                             select(func.count())
                             .select_from(AuthUser)
-                            .where(AuthUser.is_active == True)
+                            .where(AuthUser.is_active)
                         )
                         active_users = result.scalar() or 0
 
@@ -1614,7 +1596,7 @@ class AuthService(BaseService):
                             select(func.count())
                             .select_from(AuthSession)
                             .where(
-                                AuthSession.is_active == True,
+                                AuthSession.is_active,
                                 AuthSession.last_used
                                 >= text("NOW() - INTERVAL '24 hours'"),
                             )
@@ -1652,9 +1634,7 @@ class AuthService(BaseService):
 
             # Get active user count
             result = await self._db_session.execute(
-                select(func.count())
-                .select_from(AuthUser)
-                .where(AuthUser.is_active == True)
+                select(func.count()).select_from(AuthUser).where(AuthUser.is_active)
             )
             active_users = result.scalar() or 0
 
@@ -1669,7 +1649,7 @@ class AuthService(BaseService):
                 select(func.count())
                 .select_from(AuthSession)
                 .where(
-                    AuthSession.is_active == True,
+                    AuthSession.is_active,
                     AuthSession.last_used >= text("NOW() - INTERVAL '24 hours'"),
                 )
             )

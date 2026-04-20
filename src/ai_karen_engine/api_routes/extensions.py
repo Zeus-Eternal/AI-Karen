@@ -16,6 +16,7 @@ APIRouter, Depends, HTTPException, Request = import_fastapi(
 
 logger = logging.getLogger(__name__)
 
+
 # Import extensions manager
 def get_extension_manager():
     """Get extension manager, returns None if not available."""
@@ -23,9 +24,31 @@ def get_extension_manager():
         from ai_karen_engine.extensions.platform.core.manager import (
             get_extension_core_manager as get_manager,
         )
-        return get_manager()
-    except ImportError:
+
+        manager = get_manager()
+
+        # Initialize the manager if it hasn't been initialized yet
+        if not hasattr(manager, "_initialized"):
+            try:
+                import asyncio
+
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # Create a task to initialize the manager
+                    asyncio.create_task(manager.initialize())
+                    manager._initialized = True
+                else:
+                    # Initialize directly
+                    loop.run_until_complete(manager.initialize())
+                    manager._initialized = True
+            except Exception as e:
+                logger.warning(f"Failed to initialize extension manager: {e}")
+
+        return manager
+    except ImportError as e:
+        logger.error(f"Extension system not available: {e}")
         return None
+
 
 # Define the API model for status
 class ExtensionStatusAPI(BaseModel):
@@ -44,9 +67,11 @@ class ExtensionStatusAPI(BaseModel):
     category: str = Field(default="plugins")
     has_component: bool = Field(default=False)
 
+
 # Pydantic model for install request
 class InstallRequest(BaseModel):
     plugin_id: str
+
 
 router = APIRouter()
 
@@ -59,17 +84,23 @@ try:
         get_current_user as _real_get_current_user,
     )
     from ai_karen_engine.core.auth_config import auth_config
+
     AUTH_AVAILABLE = True
 except ImportError:
     AUTH_AVAILABLE = False
     AuthenticationError = Exception
+
 
 async def get_current_user(request: Request):
     """Get current user with auth bypass support."""
     if not AUTH_AVAILABLE:
         return {"user_id": "guest", "authenticated": False}
 
-    if auth_config and hasattr(auth_config, "should_bypass_auth") and auth_config.should_bypass_auth():
+    if (
+        auth_config
+        and hasattr(auth_config, "should_bypass_auth")
+        and auth_config.should_bypass_auth()
+    ):
         return {
             "user_id": "dev-user",
             "email": "dev-user@karen.ai",
@@ -86,6 +117,7 @@ async def get_current_user(request: Request):
             return {"user_id": "guest", "authenticated": False}
     return {"user_id": "guest", "authenticated": False}
 
+
 @router.get("/", response_model=List[ExtensionStatusAPI])
 async def list_extensions_root():
     """List all extensions and their status (root endpoint)."""
@@ -97,6 +129,7 @@ async def list_extensions_root():
     except Exception as e:
         logger.error(f"Error in list_extensions_root: {e}")
         return []
+
 
 @router.get("/list", response_model=List[ExtensionStatusAPI])
 async def list_extensions():
@@ -110,24 +143,29 @@ async def list_extensions():
         logger.error(f"Error in list_extensions: {e}")
         return []
 
+
 @router.post("/install")
 async def install_extension(request: InstallRequest):
     """Extension installation endpoint."""
     manager = get_extension_manager()
     if not manager:
         raise HTTPException(status_code=503, detail="Extension manager not initialized")
-    
+
     try:
-        from ai_karen_engine.extensions.platform.core.registry.ui_installer import install_ui
+        from ai_karen_engine.extensions.platform.core.registry.ui_installer import (
+            install_ui,
+        )
+
         result = install_ui(request.plugin_id, "plugins")
         return {
             "success": result.status.value == "success",
             "message": result.message,
-            "plugin_id": request.plugin_id
+            "plugin_id": request.plugin_id,
         }
     except Exception as e:
         logger.error(f"Error during UI installation for {request.plugin_id}: {e}")
         return {"success": False, "message": str(e), "plugin_id": request.plugin_id}
+
 
 @router.get("/{extension_name}")
 async def get_extension_status(extension_name: str):
@@ -144,6 +182,49 @@ async def get_extension_status(extension_name: str):
         raise HTTPException(status_code=404, detail="Extension not found")
     return status
 
+
+@router.get("/debug/system-status")
+async def get_extension_system_status():
+    """Debug endpoint to check extension system status."""
+    try:
+        manager = get_extension_manager()
+        if not manager:
+            return {
+                "status": "error",
+                "message": "Extension manager not available",
+                "manager": None,
+                "registry": None,
+                "discovery": None,
+            }
+
+        # Check registry status
+        registry_status = {
+            "discovered_count": len(manager.registry.list_discovered()),
+            "loaded_count": len(manager.registry.list_extensions()),
+            "discovered": manager.registry.list_discovered(),
+        }
+
+        # Check health summary
+        health_summary = manager.health_summary()
+
+        return {
+            "status": "ok",
+            "manager": {
+                "initialized": hasattr(manager, "_initialized"),
+                "extensions_dir": str(manager.extensions_dir),
+            },
+            "registry": registry_status,
+            "health": health_summary,
+            "timestamp": datetime.now().isoformat(),
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e),
+            "timestamp": datetime.now().isoformat(),
+        }
+
+
 @router.post("/{extension_name}/load")
 async def load_extension(extension_name: str, user=Depends(get_current_user)):
     """Load an extension."""
@@ -152,9 +233,13 @@ async def load_extension(extension_name: str, user=Depends(get_current_user)):
         raise HTTPException(status_code=503, detail="Extension manager not initialized")
     try:
         record = await manager.load_extension(extension_name)
-        return {"message": f"Extension {extension_name} loaded", "status": record.status.value}
+        return {
+            "message": f"Extension {extension_name} loaded",
+            "status": record.status.value,
+        }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
 
 @router.post("/{extension_name}/unload")
 async def unload_extension(extension_name: str, user=Depends(get_current_user)):
@@ -167,5 +252,6 @@ async def unload_extension(extension_name: str, user=Depends(get_current_user)):
         return {"message": f"Extension {extension_name} unloaded"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
 
 __all__ = ["router"]

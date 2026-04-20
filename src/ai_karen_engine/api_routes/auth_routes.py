@@ -150,7 +150,7 @@ class UpdateUserProfileRequest(BaseModel):
 # Use model_construct to bypass Pydantic validation for required fields
 from ai_karen_engine.auth_service import AuthService as CoreAuthService, UserRole
 from ai_karen_engine.database.dependencies import get_async_db_session_dependency
-from ai_karen_engine.core.auth_config import auth_config
+
 
 # Use centralized auth configuration
 # _auth_service_instance: Optional[AuthService] = None
@@ -497,19 +497,6 @@ async def login(
 
     logger.info(f"Login attempt for identifier: {login_identifier}")
 
-    # Check if user exists before attempting authentication
-    if "@" in login_identifier:
-        user_exists = await auth_svc.get_user_by_email(login_identifier)
-    else:
-        user_exists = await auth_svc.get_user_by_username(login_identifier)
-
-    if not user_exists:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
     try:
         coro = auth_svc.authenticate_user(
             login_identifier,  # positional string
@@ -688,7 +675,9 @@ async def update_current_user_info(
 
     try:
         current_user_id = _resolve_current_user_id(current_user)
-        logger.info(f"DEBUG_AUTH: PUT /me called for user_id: {current_user_id}, type: {type(current_user_id)}")
+        logger.info(
+            f"DEBUG_AUTH: PUT /me called for user_id: {current_user_id}, type: {type(current_user_id)}"
+        )
 
         logger.info(f"DEBUG_AUTH: Using auth_service for user {current_user_id}")
         updated_user, error = await auth_svc.update_user_profile(

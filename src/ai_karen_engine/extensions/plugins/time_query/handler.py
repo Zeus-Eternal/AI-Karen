@@ -1,9 +1,23 @@
 import logging
-from datetime import datetime
 from typing import Any, Dict, Optional
 from ai_karen_engine.extensions.platform.core.host.base import ExtensionBase, ExtensionContext
 
+from .handlers import (
+    handle_current_time,
+    handle_world_time,
+    handle_multi_clock,
+    handle_stopwatch,
+    handle_alarm,
+    handle_timezone_conversion
+)
+
 logger = logging.getLogger(__name__)
+
+SUPPORTED_MODES = {
+    "datetime", "date", "time", "timestamp", "timezone", 
+    "iso", "utc", "world_time", "multi_clock", 
+    "stopwatch", "alarm", "convert_timezone"
+}
 
 class TimeQueryExtension(ExtensionBase):
     """Extension for date and time queries."""
@@ -12,14 +26,33 @@ class TimeQueryExtension(ExtensionBase):
         super().__init__(manifest, context)
 
     async def run(self, params: Dict[str, Any]) -> Dict[str, Any]:
-        """Provide current date and time."""
-        now = datetime.now()
-        return {
-            "timestamp": now.isoformat(),
-            "formatted": now.strftime("%Y-%m-%d %H:%M:%S"),
-            "timezone": now.astimezone().tzname(),
-            "status": "success"
-        }
+        """Provide time features based on mode requests."""
+        mode = params.get("mode", "datetime")
+        
+        if mode not in SUPPORTED_MODES:
+            return {"error": f"Unsupported mode: {mode}"}
+            
+        try:
+            if mode in ["datetime", "date", "time", "timestamp", "timezone", "iso", "utc"]:
+                result = await handle_current_time(mode, params)
+            elif mode == "world_time":
+                result = await handle_world_time(params)
+            elif mode == "multi_clock":
+                result = await handle_multi_clock(params)
+            elif mode == "stopwatch":
+                result = await handle_stopwatch(params)
+            elif mode == "alarm":
+                result = await handle_alarm(params)
+            elif mode == "convert_timezone":
+                result = await handle_timezone_conversion(params)
+            else:
+                result = {"error": f"Unhandled mode mapping: {mode}"}
+                
+            return {**result, "status": "success"} if "error" not in result else {**result, "status": "error"}
+            
+        except Exception as e:
+            logger.exception(f"Error executing time_query mode {mode}")
+            return {"error": str(e), "status": "error"}
 
 class MainExtension(TimeQueryExtension):
     """Entry point for ExtensionLoader."""
@@ -27,6 +60,5 @@ class MainExtension(TimeQueryExtension):
 
 async def run(params: Dict[str, Any]) -> Dict[str, Any]:
     """Legacy entrypoint (optional)."""
-    # This is still here for backward compatibility if needed
-    now = datetime.now()
-    return {"formatted": now.strftime("%Y-%m-%d %H:%M:%S")}
+    result = await handle_current_time("datetime", params)
+    return {"formatted": result.get("formatted", ""), "status": "success"}

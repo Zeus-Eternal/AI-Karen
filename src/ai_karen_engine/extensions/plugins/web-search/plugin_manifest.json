@@ -1,0 +1,30 @@
+{
+  "name": "web-search",
+  "display_name": "Web Search",
+  "version": "2.0.0",
+  "description": "Unified web search capability with multiple search modes (general, news, docs, deep research, structured extract, weather, stock market).",
+  "author": "Kari Team",
+  "license": "MIT",
+  "category": "plugins",
+  "capabilities": {
+    "provides_ui": true,
+    "provides_api": true,
+    "prompt_first": true
+  },
+  "ui": {
+    "hook_zones": [
+      {
+        "zone": "sidebar.plugins",
+        "label": "Web Search",
+        "icon": "search",
+        "order": 50
+      }
+    ]
+  },
+  "rbac": {
+    "allowed_roles": ["user", "admin", "developer"],
+    "default_enabled": true
+  },
+  "tags": ["search", "web", "retrieval", "prompt-first"],
+  "purpose": "Unified web search capability with multiple search modes"
+}

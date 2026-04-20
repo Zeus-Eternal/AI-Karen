@@ -2,14 +2,23 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Any, Dict, List
 
 from ai_karen_engine.extensions.platform.core.host.manager import ExtensionManager
 from ai_karen_engine.extensions.platform.core.host.router import get_plugin_router
-from ai_karen_engine.extensions.platform.core.integration.manager import get_plugin_manager
-from ai_karen_engine.extensions.platform.core.integration.orchestrator import get_plugin_orchestrator
-from ai_karen_engine.extensions.platform.core.registry.plugin_registry import get_registry
+from ai_karen_engine.extensions.platform.core.integration.manager import (
+    get_plugin_manager,
+)
+from ai_karen_engine.extensions.platform.core.integration.orchestrator import (
+    get_plugin_orchestrator,
+)
+from ai_karen_engine.extensions.platform.core.registry.plugin_registry import (
+    get_registry,
+)
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -36,7 +45,9 @@ class ExtensionCoreManager:
         return {
             "provides_ui": bool(getattr(source, "provides_ui", False)),
             "provides_api": bool(getattr(source, "provides_api", False)),
-            "provides_background_tasks": bool(getattr(source, "provides_background_tasks", False)),
+            "provides_background_tasks": bool(
+                getattr(source, "provides_background_tasks", False)
+            ),
             "provides_webhooks": bool(getattr(source, "provides_webhooks", False)),
         }
 
@@ -53,8 +64,10 @@ class ExtensionCoreManager:
             return {
                 "id": manifest.name,
                 "name": manifest.name,
-                "display_name": getattr(manifest, "display_name", None) or manifest.name,
-                "description": getattr(manifest, "description", None) or "No description available",
+                "display_name": getattr(manifest, "display_name", None)
+                or manifest.name,
+                "description": getattr(manifest, "description", None)
+                or "No description available",
                 "version": manifest.version,
                 "status": record.status.value,
                 "loaded_at": record.loaded_at,
@@ -62,7 +75,9 @@ class ExtensionCoreManager:
                 "capabilities": self._extension_capabilities(
                     getattr(manifest, "capabilities", manifest)
                 ),
-                "menu_contributions": list(getattr(metadata, "menu_contributions", []) or []),
+                "menu_contributions": list(
+                    getattr(metadata, "menu_contributions", []) or []
+                ),
             }
 
         assert metadata is not None
@@ -74,7 +89,9 @@ class ExtensionCoreManager:
             "version": metadata.version,
             "status": "discovered" if metadata.is_valid else "error",
             "loaded_at": None,
-            "error_message": "; ".join(metadata.validation_errors) if metadata.validation_errors else None,
+            "error_message": "; ".join(metadata.validation_errors)
+            if metadata.validation_errors
+            else None,
             "capabilities": self._extension_capabilities(metadata.capabilities),
             "menu_contributions": list(metadata.menu_contributions or []),
         }
@@ -101,9 +118,27 @@ class ExtensionCoreManager:
         }
 
     async def initialize(self) -> Dict[str, Any]:
-        await self.refresh_registry()
-        await self.integration.initialize()
-        return self.health_summary()
+        """Initialize the extension system and perform discovery."""
+        try:
+            # Initialize the registry first
+            await self.registry.initialize()
+
+            # Perform discovery
+            await self.refresh_registry()
+
+            # Initialize integration components
+            await self.integration.initialize()
+
+            # Load any existing extensions
+            await self.host.discover_extensions()
+
+            logger.info(
+                f"Extension system initialized. Discovered {len(self.registry.list_discovered())} extensions."
+            )
+            return self.health_summary()
+        except Exception as e:
+            logger.error(f"Failed to initialize extension system: {e}")
+            return {"error": str(e)}
 
     async def load_extension(self, extension_name: str):
         return await self.host.load_extension(extension_name)
@@ -144,7 +179,9 @@ _core_manager: ExtensionCoreManager | None = None
 def get_extension_core_manager() -> ExtensionCoreManager:
     global _core_manager
     if _core_manager is None:
-        _core_manager = ExtensionCoreManager(extensions_dir="src/ai_karen_engine/extensions/plugins")
+        _core_manager = ExtensionCoreManager(
+            extensions_dir="src/ai_karen_engine/extensions/plugins"
+        )
     return _core_manager
 
 

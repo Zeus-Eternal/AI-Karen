@@ -369,8 +369,11 @@ class AuthService {
          hasSessionMarker: this.hasSessionMarker(),
        });
 
-       // The backend owns the production session cookie. Clear legacy client cookies
-       // so the app relies on the authenticated backend session instead.
+       // The backend owns the production session cookie, but to avoid Next.js middleware
+       // race conditions on the immediate client-side redirect, we also sync it locally.
+       if (typeof document !== 'undefined') {
+         document.cookie = `${this.SESSION_COOKIE_NAME}=${data.access_token}; path=/; max-age=${data.expires_in}; SameSite=Lax`;
+       }
       this.clearBrowserCookie(this.LEGACY_ACCESS_COOKIE_NAME);
       this.clearBrowserCookie(this.LEGACY_REFRESH_COOKIE_NAME);
       

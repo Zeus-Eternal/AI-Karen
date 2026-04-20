@@ -8,9 +8,5 @@ Contains user and community plugin packages for the extension system.
 # However, for the extension system's discovery, it just needs to find the folders.
 
 __all__ = [
-    "web-search-general",
-    "web-search-news",
-    "web-search-docs",
-    "web-search-deep-research",
-    "web-search-structured-extract",
+    "web-search",
 ]
