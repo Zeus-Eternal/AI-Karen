@@ -19,6 +19,8 @@ requests
 llama-cpp-python
 scikit-learn
 spacy
+nltk
+langdetect
 datasets
 jinja2
 passlib

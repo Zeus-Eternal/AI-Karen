@@ -664,38 +664,6 @@ def create_nlp_service_factory():
     return factory
 
 
-def create_chat_orchestrator_factory():
-    """Factory for Chat orchestrator service."""
-
-    async def factory():
-        logger.info("🔍 DEBUG: Creating Chat orchestrator factory instance...")
-        try:
-            from ai_karen_engine.chat.factory import get_chat_orchestrator
-
-            service = await get_chat_orchestrator()
-            logger.info("✅ Chat orchestrator factory created successfully")
-            return service
-        except Exception as e:
-            logger.error(
-                f"❌ Failed to create Chat orchestrator factory: {e}", exc_info=True
-            )
-
-            # Create a fallback service
-            class FallbackChatOrchestrator:
-                async def handle_chat(self, request):
-                    return {
-                        "response": "Chat service temporarily unavailable",
-                        "status": "error",
-                    }
-
-                async def handle_chat_stream(self, request):
-                    return None
-
-            return FallbackChatOrchestrator()
-
-    return factory
-
-
 def create_ai_orchestrator_factory():
     """Factory for AI orchestrator service."""
 
@@ -703,7 +671,7 @@ def create_ai_orchestrator_factory():
         logger.info("🔍 DEBUG: Creating AI orchestrator factory instance...")
         try:
             from ai_karen_engine.core.services.base import ServiceConfig
-            from ai_karen_engine.services.ai_orchestrator.ai_orchestrator import (
+            from ai_karen_engine.ai_orchestrator.ai_orchestrator import (
                 AIOrchestrator,
             )
 
@@ -904,7 +872,7 @@ class LazyServiceManager:
             return NLPServiceManager()
         elif name == "ai_orchestrator":
             from ai_karen_engine.core.services.base import ServiceConfig
-            from ai_karen_engine.services.ai_orchestrator.ai_orchestrator import (
+            from ai_karen_engine.ai_orchestrator.ai_orchestrator import (
                 AIOrchestrator,
             )
 

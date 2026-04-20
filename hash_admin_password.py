@@ -1,0 +1,9 @@
+import bcrypt
+
+# Generate bcrypt hash for "admin123"
+password = "admin123"
+salt = bcrypt.gensalt(rounds=12)
+hashed = bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+
+print(f"Password: {password}")
+print(f"BCrypt Hash: {hashed}")

@@ -5,14 +5,13 @@ Main service for context persistence, retrieval, versioning, and sharing.
 Integrates with existing database, memory, and file storage systems.
 """
 
-import hashlib
 import json
 import logging
 import os
 import time
 import uuid
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 from sqlalchemy import text
@@ -21,8 +20,8 @@ from ai_karen_engine.context_management.models import (
     ContextAccessLevel,
     ContextAccessLog,
     ContextEntry,
-    ContextFileType,
     ContextFile,
+    ContextFileType,
     ContextQuery,
     ContextSearchResult,
     ContextShare,
@@ -31,7 +30,7 @@ from ai_karen_engine.context_management.models import (
     ContextVersion,
 )
 from ai_karen_engine.context_management.scoring import ContextRelevanceScorer
-from ai_karen_engine.database.memory_manager import MemoryManager, MemoryQuery, MemoryItem
+from ai_karen_engine.database.memory_manager import MemoryManager, MemoryQuery
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +50,7 @@ class ContextManagementService:
     ):
         """
         Initialize context management service.
-        
+
         Args:
             memory_manager: Memory manager for vector storage and retrieval
             storage_path: Base path for file storage
@@ -59,24 +58,24 @@ class ContextManagementService:
             supported_file_types: List of supported file types
         """
         self.memory_manager = memory_manager
-        self.storage_path = storage_path
+        self.storage_path = os.path.abspath(storage_path)
         self.max_file_size_bytes = max_file_size_mb * 1024 * 1024
         self.supported_file_types = supported_file_types or list(ContextFileType)
-        
-        # Initialize relevance scorer
+
         self.relevance_scorer = ContextRelevanceScorer()
-        
-        # Ensure storage directory exists
-        os.makedirs(storage_path, exist_ok=True)
-        
-        # In-memory storage for development (replace with database in production)
+
+        os.makedirs(self.storage_path, exist_ok=True)
+
         self._contexts: Dict[str, ContextEntry] = {}
         self._files: Dict[str, ContextFile] = {}
         self._shares: Dict[str, ContextShare] = {}
         self._versions: Dict[str, List[ContextVersion]] = {}
         self._access_logs: List[ContextAccessLog] = []
-        
-        logger.info(f"ContextManagementService initialized with storage path: {storage_path}")
+
+        logger.info(
+            "ContextManagementService initialized with storage path: %s",
+            self.storage_path,
+        )
 
     # -------------------------------------------------------------------------
     # Context Storage and Retrieval
@@ -99,64 +98,57 @@ class ContextManagementService:
     ) -> ContextEntry:
         """
         Create a new context entry.
-        
-        Args:
-            user_id: User ID creating the context
-            title: Context title
-            content: Context content
-            context_type: Type of context
-            org_id: Organization ID
-            session_id: Session ID
-            conversation_id: Conversation ID
-            access_level: Access level for the context
-            metadata: Additional metadata
-            tags: List of tags
-            importance_score: Importance score (1-10)
-            expires_in_days: Days until expiration (None for no expiration)
-            
-        Returns:
-            Created context entry
         """
         start_time = time.time()
-        
+
+        normalized_title = (title or "").strip()
+        if not normalized_title:
+            raise ValueError("title is required")
+
+        if not 1.0 <= importance_score <= 10.0:
+            raise ValueError("importance_score must be between 1.0 and 10.0")
+
         try:
-            # Create context entry
             context = ContextEntry(
                 id=str(uuid.uuid4()),
                 user_id=user_id,
                 org_id=org_id,
                 session_id=session_id,
                 conversation_id=conversation_id,
-                title=title,
+                title=normalized_title,
                 content=content,
                 context_type=context_type,
                 access_level=access_level,
                 importance_score=importance_score,
-                metadata=metadata or {},
-                tags=tags or [],
+                metadata=dict(metadata or {}),
+                tags=list(tags or []),
             )
-            
-            # Set expiration if provided
+
             if expires_in_days:
                 context.expires_at = datetime.utcnow() + timedelta(days=expires_in_days)
-            
-            # Generate embedding for content
+
             if content:
                 try:
                     await self._ensure_embedding_manager()
-                    embedding_raw = await self.memory_manager.embedding_manager.get_embedding(content)
+                    assert self.memory_manager.embedding_manager is not None
+                    embedding_raw = (
+                        await self.memory_manager.embedding_manager.get_embedding(
+                            content
+                        )
+                    )
                     context.embedding = np.array(embedding_raw)
-                except Exception as e:
-                    logger.warning(f"Failed to generate embedding for context {context.id}: {e}")
-            
-            # Store in memory system for vector search
+                except Exception as exc:
+                    logger.warning(
+                        "Failed to generate embedding for context %s: %s",
+                        context.id,
+                        exc,
+                    )
+
             await self._store_context_in_memory(context)
-            
-            # Store locally
+
             self._contexts[context.id] = context
             await self._persist_context(context)
-            
-            # Log access
+
             await self._log_access(
                 context_id=context.id,
                 user_id=user_id,
@@ -164,12 +156,12 @@ class ContextManagementService:
                 access_level=access_level,
                 processing_time_ms=int((time.time() - start_time) * 1000),
             )
-            
-            logger.info(f"Created context {context.id} for user {user_id}")
+
+            logger.info("Created context %s for user %s", context.id, user_id)
             return context
-            
-        except Exception as e:
-            logger.error(f"Failed to create context for user {user_id}: {e}")
+
+        except Exception as exc:
+            logger.error("Failed to create context for user %s: %s", user_id, exc)
             raise
 
     async def get_context(
@@ -181,25 +173,17 @@ class ContextManagementService:
     ) -> Optional[ContextEntry]:
         """
         Retrieve a context entry by ID with access control.
-        
-        Args:
-            context_id: Context ID to retrieve
-            user_id: User ID requesting access
-            include_content: Whether to include content
-            include_files: Whether to include associated files
-            
-        Returns:
-            Context entry if found and accessible, None otherwise
         """
         start_time = time.time()
-        
+
         try:
-            # Get context from storage
-            context = self._contexts.get(context_id) or await self._load_context_from_db(context_id)
-            if not context:
+            context = await self._get_context_by_id(context_id)
+            if not context or context.status == ContextStatus.DELETED:
                 return None
-            
-            # Check access permissions
+
+            if context.expires_at and context.expires_at <= datetime.utcnow():
+                return None
+
             if not await self._check_access_permission(context, user_id, "read"):
                 await self._log_access(
                     context_id=context_id,
@@ -210,17 +194,18 @@ class ContextManagementService:
                     error_message="Access denied",
                 )
                 return None
-            
-            # Increment access count
+
             context.increment_access()
             await self._persist_context(context)
-            
-            # Include files if requested
+
             if include_files:
                 files = await self._load_files_for_context(context.id)
-                context.file_ids = [file.file_id for file in files if file.status != ContextStatus.DELETED]
-            
-            # Log successful access
+                context.file_ids = [
+                    file.file_id
+                    for file in files
+                    if file.status != ContextStatus.DELETED
+                ]
+
             await self._log_access(
                 context_id=context_id,
                 user_id=user_id,
@@ -228,18 +213,23 @@ class ContextManagementService:
                 access_level=context.access_level,
                 processing_time_ms=int((time.time() - start_time) * 1000),
             )
-            
+
             return context
-            
-        except Exception as e:
-            logger.error(f"Failed to get context {context_id} for user {user_id}: {e}")
+
+        except Exception as exc:
+            logger.error(
+                "Failed to get context %s for user %s: %s",
+                context_id,
+                user_id,
+                exc,
+            )
             await self._log_access(
                 context_id=context_id,
                 user_id=user_id,
                 action="read",
                 access_level=ContextAccessLevel.PRIVATE,
                 success=False,
-                error_message=str(e),
+                error_message=str(exc),
             )
             return None
 
@@ -257,30 +247,14 @@ class ContextManagementService:
     ) -> Optional[ContextEntry]:
         """
         Update a context entry with versioning support.
-        
-        Args:
-            context_id: Context ID to update
-            user_id: User ID making the update
-            title: New title (None to keep current)
-            content: New content (None to keep current)
-            metadata: New metadata (None to keep current)
-            tags: New tags (None to keep current)
-            importance_score: New importance score (None to keep current)
-            create_version: Whether to create a new version
-            change_summary: Summary of changes
-            
-        Returns:
-            Updated context entry if successful, None otherwise
         """
         start_time = time.time()
-        
+
         try:
-            # Get existing context
-            context = self._contexts.get(context_id) or await self._load_context_from_db(context_id)
-            if not context:
+            context = await self._get_context_by_id(context_id)
+            if not context or context.status == ContextStatus.DELETED:
                 return None
-            
-            # Check write permissions
+
             if not await self._check_access_permission(context, user_id, "write"):
                 await self._log_access(
                     context_id=context_id,
@@ -291,8 +265,17 @@ class ContextManagementService:
                     error_message="Write access denied",
                 )
                 return None
-            
-            # Create version snapshot if requested
+
+            if importance_score is not None and not 1.0 <= importance_score <= 10.0:
+                raise ValueError("importance_score must be between 1.0 and 10.0")
+
+            if title is not None:
+                normalized_title = title.strip()
+                if not normalized_title:
+                    raise ValueError("title cannot be empty")
+            else:
+                normalized_title = None
+
             if create_version:
                 version = ContextVersion(
                     version_id=str(uuid.uuid4()),
@@ -302,43 +285,55 @@ class ContextManagementService:
                     title=context.title,
                     created_by=user_id,
                     change_summary=change_summary,
-                    metadata=context.metadata.copy(),
-                    tags=context.tags.copy(),
+                    metadata=dict(context.metadata),
+                    tags=list(context.tags),
                 )
-                
+
                 if context_id not in self._versions:
                     self._versions[context_id] = []
                 self._versions[context_id].append(version)
                 await self._persist_version(version)
-            
-            # Update fields
-            if title is not None:
-                context.title = title
+
+            if normalized_title is not None:
+                context.title = normalized_title
+
             if content is not None:
                 context.content = content
-                # Regenerate embedding for new content
                 if content:
                     try:
                         await self._ensure_embedding_manager()
-                        embedding_raw = await self.memory_manager.embedding_manager.get_embedding(content)
+                        assert self.memory_manager.embedding_manager is not None
+                        embedding_raw = (
+                            await self.memory_manager.embedding_manager.get_embedding(
+                                content
+                            )
+                        )
                         context.embedding = np.array(embedding_raw)
-                    except Exception as e:
-                        logger.warning(f"Failed to regenerate embedding for context {context_id}: {e}")
+                    except Exception as exc:
+                        logger.warning(
+                            "Failed to regenerate embedding for context %s: %s",
+                            context_id,
+                            exc,
+                        )
+                else:
+                    context.embedding = None
+
             if metadata is not None:
-                context.metadata.update(metadata)
+                merged_metadata = dict(context.metadata or {})
+                merged_metadata.update(metadata)
+                context.metadata = merged_metadata
+
             if tags is not None:
-                context.tags = tags
+                context.tags = list(tags)
+
             if importance_score is not None:
                 context.importance_score = importance_score
-            
-            # Update timestamp
+
             context.updated_at = datetime.utcnow()
-            
-            # Update in memory system
+
             await self._store_context_in_memory(context)
             await self._persist_context(context)
-            
-            # Log access
+
             await self._log_access(
                 context_id=context_id,
                 user_id=user_id,
@@ -346,19 +341,24 @@ class ContextManagementService:
                 access_level=context.access_level,
                 processing_time_ms=int((time.time() - start_time) * 1000),
             )
-            
-            logger.info(f"Updated context {context_id} for user {user_id}")
+
+            logger.info("Updated context %s for user %s", context_id, user_id)
             return context
-            
-        except Exception as e:
-            logger.error(f"Failed to update context {context_id} for user {user_id}: {e}")
+
+        except Exception as exc:
+            logger.error(
+                "Failed to update context %s for user %s: %s",
+                context_id,
+                user_id,
+                exc,
+            )
             await self._log_access(
                 context_id=context_id,
                 user_id=user_id,
                 action="write",
                 access_level=ContextAccessLevel.PRIVATE,
                 success=False,
-                error_message=str(e),
+                error_message=str(exc),
             )
             return None
 
@@ -370,24 +370,14 @@ class ContextManagementService:
     ) -> bool:
         """
         Delete a context entry (soft delete by default).
-        
-        Args:
-            context_id: Context ID to delete
-            user_id: User ID requesting deletion
-            permanent: Whether to permanently delete (default: soft delete)
-            
-        Returns:
-            True if deleted successfully, False otherwise
         """
         start_time = time.time()
-        
+
         try:
-            # Get context
-            context = self._contexts.get(context_id) or await self._load_context_from_db(context_id)
+            context = await self._get_context_by_id(context_id)
             if not context:
                 return False
-            
-            # Check delete permissions
+
             if not await self._check_access_permission(context, user_id, "delete"):
                 await self._log_access(
                     context_id=context_id,
@@ -398,7 +388,7 @@ class ContextManagementService:
                     error_message="Delete access denied",
                 )
                 return False
-            
+
             if permanent:
                 await self._log_access(
                     context_id=context_id,
@@ -408,46 +398,50 @@ class ContextManagementService:
                     processing_time_ms=int((time.time() - start_time) * 1000),
                 )
 
-                # Permanent deletion
                 self._contexts.pop(context_id, None)
                 await self._delete_context_from_db(context_id)
-                
-                # Delete from memory system
+
                 memory_id = context.metadata.get("_memory_id")
                 if self._is_uuid_like(memory_id):
                     await self.memory_manager.delete_memory(
-                        tenant_id=user_id,
-                        memory_id=memory_id,
+                        tenant_id=context.user_id,
+                        memory_id=str(memory_id),
                     )
-                
-                # Delete associated files
-                for file_id in context.file_ids:
-                    if file_id in self._files:
-                        file_obj = self._files[file_id]
+
+                for file_id in list(context.file_ids):
+                    file_obj = self._files.get(file_id)
+                    if file_obj:
+                        absolute_path = self._resolve_storage_path(
+                            file_obj.storage_path
+                        )
                         try:
-                            os.remove(file_obj.storage_path)
-                        except Exception as e:
-                            logger.warning(f"Failed to delete file {file_id}: {e}")
-                        del self._files[file_id]
-                
-                # Delete shares
+                            if absolute_path and os.path.exists(absolute_path):
+                                os.remove(absolute_path)
+                        except Exception as exc:
+                            logger.warning(
+                                "Failed to delete file %s for context %s: %s",
+                                file_id,
+                                context_id,
+                                exc,
+                            )
+                        self._files.pop(file_id, None)
+
                 shares_to_delete = [
-                    share_id for share_id, share in self._shares.items()
+                    share_id
+                    for share_id, share in self._shares.items()
                     if share.context_id == context_id
                 ]
                 for share_id in shares_to_delete:
                     del self._shares[share_id]
-                
-                # Delete versions
-                if context_id in self._versions:
-                    del self._versions[context_id]
+
+                self._versions.pop(context_id, None)
+
             else:
-                # Soft delete
                 context.status = ContextStatus.DELETED
                 context.updated_at = datetime.utcnow()
                 await self._persist_context(context)
+                self._contexts[context_id] = context
 
-                # Log access
                 await self._log_access(
                     context_id=context_id,
                     user_id=user_id,
@@ -455,12 +449,22 @@ class ContextManagementService:
                     access_level=context.access_level,
                     processing_time_ms=int((time.time() - start_time) * 1000),
                 )
-            
-            logger.info(f"{'Permanently deleted' if permanent else 'Soft deleted'} context {context_id} for user {user_id}")
+
+            logger.info(
+                "%s context %s for user %s",
+                "Permanently deleted" if permanent else "Soft deleted",
+                context_id,
+                user_id,
+            )
             return True
-            
-        except Exception as e:
-            logger.error(f"Failed to delete context {context_id} for user {user_id}: {e}")
+
+        except Exception as exc:
+            logger.error(
+                "Failed to delete context %s for user %s: %s",
+                context_id,
+                user_id,
+                exc,
+            )
             try:
                 await self._log_access(
                     context_id=context_id,
@@ -468,11 +472,13 @@ class ContextManagementService:
                     action="delete",
                     access_level=ContextAccessLevel.PRIVATE,
                     success=False,
-                    error_message=str(e),
+                    error_message=str(exc),
                 )
             except Exception as log_error:
                 logger.warning(
-                    f"Failed to record delete audit log for context {context_id}: {log_error}"
+                    "Failed to record delete audit log for context %s: %s",
+                    context_id,
+                    log_error,
                 )
             return False
 
@@ -487,22 +493,14 @@ class ContextManagementService:
     ) -> List[ContextSearchResult]:
         """
         Search for contexts based on query parameters.
-        
-        Args:
-            query: Search query parameters
-            user_id: User ID performing the search
-            
-        Returns:
-            List of search results with relevance scores
         """
         start_time = time.time()
-        
+
         try:
             effective_user_id = user_id or query.user_id
             if not effective_user_id:
                 raise ValueError("user_id is required to search contexts")
 
-            # Build memory query for vector search
             metadata_filter: Dict[str, Any] = {}
             if query.org_id:
                 metadata_filter["org_id"] = query.org_id
@@ -517,45 +515,46 @@ class ContextManagementService:
                 similarity_threshold=query.similarity_threshold,
                 include_embeddings=True,
             )
-            
-            # Search in memory system
+
             memory_results = await self.memory_manager.query_memories(
                 tenant_id=effective_user_id,
                 query=memory_query,
             )
-            
-            # Convert memory results to context entries
-            search_results = []
+
+            search_results: List[ContextSearchResult] = []
             for memory_item in memory_results:
-                context_id = (
-                    memory_item.metadata.get("context_id")
+                metadata = (
+                    memory_item.metadata
                     if isinstance(memory_item.metadata, dict)
-                    else None
-                ) or memory_item.id
-                context = self._contexts.get(context_id) or await self._load_context_from_db(context_id)
-                
-                if not context:
+                    else {}
+                )
+                context_id = metadata.get("context_id") or memory_item.id
+                context = await self._get_context_by_id(context_id)
+
+                if not context or context.status == ContextStatus.DELETED:
                     continue
-                
-                # Check access permissions
-                if not await self._check_access_permission(context, effective_user_id, "read"):
+
+                if context.expires_at and context.expires_at <= datetime.utcnow():
                     continue
-                
-                # Apply additional filters
+
+                if not await self._check_access_permission(
+                    context, effective_user_id, "read"
+                ):
+                    continue
+
                 if not self._passes_filters(context, query):
                     continue
-                
-                # Calculate relevance score
+
+                similarity_score = memory_item.similarity_score or 0.0
                 relevance_score = await self.relevance_scorer.calculate_relevance(
                     context=context,
                     query=query,
-                    similarity_score=memory_item.similarity_score or 0.0,
+                    similarity_score=similarity_score,
                 )
-                
-                # Create search result
+
                 result = ContextSearchResult(
                     context=context,
-                    similarity_score=memory_item.similarity_score or 0.0,
+                    similarity_score=similarity_score,
                     relevance_score=relevance_score,
                     match_highlights=self.relevance_scorer.calculate_match_highlights(
                         context,
@@ -564,17 +563,15 @@ class ContextManagementService:
                     explanation=self.relevance_scorer.calculate_explanation(
                         context,
                         query,
-                        similarity_score=memory_item.similarity_score or 0.0,
+                        similarity_score=similarity_score,
                         relevance_score=relevance_score,
                     ),
                 )
-                
+
                 search_results.append(result)
-            
-            # Sort results
+
             search_results = self._sort_search_results(search_results, query)
-            
-            # Log search
+
             await self._log_access(
                 context_id="search",
                 user_id=effective_user_id,
@@ -586,19 +583,23 @@ class ContextManagementService:
                     "results_count": len(search_results),
                 },
             )
-            
-            return search_results[:query.top_k]
-            
-        except Exception as e:
+
+            return search_results[: query.top_k]
+
+        except Exception as exc:
             effective_user_id = user_id or query.user_id or "unknown"
-            logger.error(f"Failed to search contexts for user {effective_user_id}: {e}")
+            logger.error(
+                "Failed to search contexts for user %s: %s",
+                effective_user_id,
+                exc,
+            )
             await self._log_access(
                 context_id="search",
                 user_id=effective_user_id,
                 action="search",
                 access_level=ContextAccessLevel.PRIVATE,
                 success=False,
-                error_message=str(e),
+                error_message=str(exc),
             )
             return []
 
@@ -617,25 +618,12 @@ class ContextManagementService:
     ) -> Optional[ContextShare]:
         """
         Share a context with another user or group.
-        
-        Args:
-            context_id: Context ID to share
-            user_id: User ID sharing the context
-            shared_with: User ID to share with (None for team/org/public)
-            access_level: Access level for the share
-            permissions: List of permissions (read, write, share, delete)
-            expires_in_days: Days until share expires (None for no expiration)
-            
-        Returns:
-            Share object if successful, None otherwise
         """
         try:
-            # Get context
-            context = self._contexts.get(context_id) or await self._load_context_from_db(context_id)
-            if not context:
+            context = await self._get_context_by_id(context_id)
+            if not context or context.status == ContextStatus.DELETED:
                 return None
-            
-            # Check share permissions
+
             if not await self._check_access_permission(context, user_id, "share"):
                 await self._log_access(
                     context_id=context_id,
@@ -646,26 +634,22 @@ class ContextManagementService:
                     error_message="Share access denied",
                 )
                 return None
-            
-            # Create share
+
             share = ContextShare(
                 share_id=str(uuid.uuid4()),
                 context_id=context_id,
                 shared_by=user_id,
                 shared_with=shared_with,
                 access_level=access_level,
-                permissions=permissions or ["read"],
+                permissions=list(permissions or ["read"]),
             )
-            
-            # Set expiration if provided
+
             if expires_in_days:
                 share.expires_at = datetime.utcnow() + timedelta(days=expires_in_days)
-            
-            # Store share
+
             self._shares[share.share_id] = share
             await self._persist_share(share)
-            
-            # Log share
+
             await self._log_access(
                 context_id=context_id,
                 user_id=user_id,
@@ -677,19 +661,24 @@ class ContextManagementService:
                     "permissions": share.permissions,
                 },
             )
-            
-            logger.info(f"Shared context {context_id} by user {user_id}")
+
+            logger.info("Shared context %s by user %s", context_id, user_id)
             return share
-            
-        except Exception as e:
-            logger.error(f"Failed to share context {context_id} for user {user_id}: {e}")
+
+        except Exception as exc:
+            logger.error(
+                "Failed to share context %s for user %s: %s",
+                context_id,
+                user_id,
+                exc,
+            )
             await self._log_access(
                 context_id=context_id,
                 user_id=user_id,
                 action="share",
                 access_level=ContextAccessLevel.PRIVATE,
                 success=False,
-                error_message=str(e),
+                error_message=str(exc),
             )
             return None
 
@@ -704,34 +693,26 @@ class ContextManagementService:
     ) -> List[ContextVersion]:
         """
         Get all versions of a context.
-        
-        Args:
-            context_id: Context ID
-            user_id: User ID requesting versions
-            
-        Returns:
-            List of context versions
         """
         try:
-            # Check read permissions
-            context = self._contexts.get(context_id) or await self._load_context_from_db(context_id)
-            if not context:
+            context = await self._get_context_by_id(context_id)
+            if not context or context.status == ContextStatus.DELETED:
                 return []
-            
+
             if not await self._check_access_permission(context, user_id, "read"):
                 return []
-            
-            # Get versions
+
             versions = self._versions.get(context_id)
             if versions is None:
                 versions = await self._load_versions_from_db(context_id)
                 if versions:
                     self._versions[context_id] = versions
             versions = versions or []
+
             return sorted(versions, key=lambda v: v.version_number, reverse=True)
-            
-        except Exception as e:
-            logger.error(f"Failed to get versions for context {context_id}: {e}")
+
+        except Exception as exc:
+            logger.error("Failed to get versions for context %s: %s", context_id, exc)
             return []
 
     async def add_file_reference(
@@ -740,8 +721,8 @@ class ContextManagementService:
         file_id: str,
     ) -> bool:
         """Attach a file reference to a context and persist the change."""
-        context = self._contexts.get(context_id) or await self._load_context_from_db(context_id)
-        if not context:
+        context = await self._get_context_by_id(context_id)
+        if not context or context.status == ContextStatus.DELETED:
             return False
 
         if file_id not in context.file_ids:
@@ -756,7 +737,7 @@ class ContextManagementService:
         file_id: str,
     ) -> bool:
         """Detach a file reference from a context and persist the change."""
-        context = self._contexts.get(context_id) or await self._load_context_from_db(context_id)
+        context = await self._get_context_by_id(context_id)
         if not context:
             return False
 
@@ -772,8 +753,8 @@ class ContextManagementService:
         user_id: str,
     ) -> List[ContextFile]:
         """Return the files attached to a context that the user can access."""
-        context = self._contexts.get(context_id) or await self._load_context_from_db(context_id)
-        if not context:
+        context = await self._get_context_by_id(context_id)
+        if not context or context.status == ContextStatus.DELETED:
             return []
 
         if not await self._check_access_permission(context, user_id, "read"):
@@ -784,6 +765,13 @@ class ContextManagementService:
     # -------------------------------------------------------------------------
     # Helper Methods
     # -------------------------------------------------------------------------
+
+    async def _get_context_by_id(self, context_id: str) -> Optional[ContextEntry]:
+        """Load a context from cache or persistent storage."""
+        context = self._contexts.get(context_id)
+        if context:
+            return context
+        return await self._load_context_from_db(context_id)
 
     async def _ensure_embedding_manager(self) -> None:
         """Ensure embedding manager is available."""
@@ -796,7 +784,7 @@ class ContextManagementService:
             if self._is_uuid_like(previous_memory_id):
                 await self.memory_manager.delete_memory(
                     tenant_id=context.user_id,
-                    memory_id=previous_memory_id,
+                    memory_id=str(previous_memory_id),
                 )
 
             memory_id = await self.memory_manager.store_memory(
@@ -818,8 +806,12 @@ class ContextManagementService:
             )
             if memory_id:
                 context.metadata["_memory_id"] = memory_id
-        except Exception as e:
-            logger.warning(f"Failed to store context {context.id} in memory system: {e}")
+        except Exception as exc:
+            logger.warning(
+                "Failed to store context %s in memory system: %s",
+                context.id,
+                exc,
+            )
 
     def _get_db_client(self) -> Optional[Any]:
         """Return the underlying database client if available."""
@@ -830,17 +822,38 @@ class ContextManagementService:
         db_client = self._get_db_client()
         return db_client is not None and hasattr(db_client, "get_async_session")
 
-    def _is_uuid_like(self, value: str) -> bool:
-        """Check whether a string can be parsed as a UUID."""
+    def _is_uuid_like(self, value: Any) -> bool:
+        """Check whether a value can be parsed as a UUID."""
         try:
             uuid.UUID(str(value))
             return True
         except (TypeError, ValueError):
             return False
 
-    def _serialize_json(self, value: Any) -> str:
+    def _serialize_json(self, value: Any, default: Any = None) -> str:
         """Serialize a Python value for JSONB transport."""
-        return json.dumps([] if value is None else value)
+        return json.dumps(default if value is None else value)
+
+    def _resolve_storage_path(self, storage_path: str) -> Optional[str]:
+        """Resolve a stored path to an absolute local path."""
+        if not storage_path:
+            return None
+        if os.path.isabs(storage_path):
+            return storage_path
+        return os.path.abspath(os.path.join(self.storage_path, storage_path))
+
+    def _empty_context_file(self) -> ContextFile:
+        """Construct a zero-sized placeholder file for stats fallback."""
+        return ContextFile(
+            file_id="",
+            context_id="",
+            filename="",
+            file_type=ContextFileType.TXT,
+            mime_type="text/plain",
+            size_bytes=0,
+            storage_path="",
+            checksum="",
+        )
 
     def _row_to_context(self, row: Dict[str, Any]) -> ContextEntry:
         """Hydrate a ContextEntry from a database row mapping."""
@@ -850,13 +863,19 @@ class ContextManagementService:
             user_id=row["user_id"],
             org_id=row.get("org_id"),
             session_id=row.get("session_id"),
-            conversation_id=str(row["conversation_id"]) if row.get("conversation_id") else None,
+            conversation_id=str(row["conversation_id"])
+            if row.get("conversation_id")
+            else None,
             title=row.get("title") or "",
             content=row.get("content") or "",
-            context_type=ContextType(row.get("context_type") or ContextType.CUSTOM.value),
-            access_level=ContextAccessLevel(row.get("access_level") or ContextAccessLevel.PRIVATE.value),
+            context_type=ContextType(
+                row.get("context_type") or ContextType.CUSTOM.value
+            ),
+            access_level=ContextAccessLevel(
+                row.get("access_level") or ContextAccessLevel.PRIVATE.value
+            ),
             status=ContextStatus(row.get("status") or ContextStatus.ACTIVE.value),
-            embedding=np.array(embedding) if embedding else None,
+            embedding=np.array(embedding) if embedding is not None else None,
             summary=row.get("summary"),
             keywords=list(row.get("keywords") or []),
             entities=list(row.get("entities") or []),
@@ -865,7 +884,9 @@ class ContextManagementService:
             access_count=int(row.get("access_count") or 0),
             last_accessed=row.get("last_accessed"),
             version=int(row.get("version") or 1),
-            parent_context_id=str(row["parent_context_id"]) if row.get("parent_context_id") else None,
+            parent_context_id=str(row["parent_context_id"])
+            if row.get("parent_context_id")
+            else None,
             child_context_ids=list(row.get("child_context_ids") or []),
             metadata=dict(row.get("metadata") or {}),
             tags=list(row.get("tags") or []),
@@ -881,6 +902,7 @@ class ContextManagementService:
             return None
 
         db_client = self._get_db_client()
+        assert db_client is not None
         async with db_client.get_async_session() as session:
             result = await session.execute(
                 text(
@@ -908,11 +930,12 @@ class ContextManagementService:
 
     async def _load_user_scope(self, user_id: str) -> Dict[str, Optional[str]]:
         """Load tenant and organization scope for a user."""
-        scope = {"tenant_id": None, "org_id": None}
+        scope: Dict[str, Optional[str]] = {"tenant_id": None, "org_id": None}
         if not self._has_db_persistence() or not self._is_uuid_like(user_id):
             return scope
 
         db_client = self._get_db_client()
+        assert db_client is not None
         async with db_client.get_async_session() as session:
             result = await session.execute(
                 text(
@@ -930,10 +953,7 @@ class ContextManagementService:
             return scope
 
         tenant_id = str(row["tenant_id"]) if row.get("tenant_id") else None
-        return {
-            "tenant_id": tenant_id,
-            "org_id": tenant_id,
-        }
+        return {"tenant_id": tenant_id, "org_id": tenant_id}
 
     async def _persist_context(self, context: ContextEntry) -> None:
         """Persist a context entry to Postgres when the database is available."""
@@ -941,6 +961,7 @@ class ContextManagementService:
             return
 
         db_client = self._get_db_client()
+        assert db_client is not None
         async with db_client.get_async_session() as session:
             await session.execute(
                 text(
@@ -1000,21 +1021,24 @@ class ContextManagementService:
                     "access_level": context.access_level.value,
                     "status": context.status.value,
                     "summary": context.summary,
-                    "keywords": self._serialize_json(context.keywords),
-                    "entities": self._serialize_json(context.entities),
+                    "keywords": self._serialize_json(context.keywords, default=[]),
+                    "entities": self._serialize_json(context.entities, default=[]),
                     "relevance_score": context.relevance_score,
                     "importance_score": context.importance_score,
                     "access_count": context.access_count,
                     "last_accessed": context.last_accessed,
                     "version": context.version,
                     "parent_context_id": context.parent_context_id,
-                    "child_context_ids": self._serialize_json(context.child_context_ids),
-                    "metadata": json.dumps(context.metadata or {}),
-                    "tags": self._serialize_json(context.tags),
+                    "child_context_ids": self._serialize_json(
+                        context.child_context_ids,
+                        default=[],
+                    ),
+                    "metadata": self._serialize_json(context.metadata, default={}),
+                    "tags": self._serialize_json(context.tags, default=[]),
                     "created_at": context.created_at,
                     "updated_at": context.updated_at,
                     "expires_at": context.expires_at,
-                    "file_ids": self._serialize_json(context.file_ids),
+                    "file_ids": self._serialize_json(context.file_ids, default=[]),
                 },
             )
             await session.commit()
@@ -1025,9 +1049,12 @@ class ContextManagementService:
             return
 
         db_client = self._get_db_client()
+        assert db_client is not None
         async with db_client.get_async_session() as session:
             await session.execute(
-                text("DELETE FROM context_entries WHERE id = CAST(:context_id AS UUID)"),
+                text(
+                    "DELETE FROM context_entries WHERE id = CAST(:context_id AS UUID)"
+                ),
                 {"context_id": context_id},
             )
             await session.commit()
@@ -1038,6 +1065,7 @@ class ContextManagementService:
             return
 
         db_client = self._get_db_client()
+        assert db_client is not None
         async with db_client.get_async_session() as session:
             await session.execute(
                 text(
@@ -1062,8 +1090,8 @@ class ContextManagementService:
                     "title": version.title,
                     "created_by": version.created_by,
                     "change_summary": version.change_summary,
-                    "metadata": json.dumps(version.metadata or {}),
-                    "tags": self._serialize_json(version.tags),
+                    "metadata": self._serialize_json(version.metadata, default={}),
+                    "tags": self._serialize_json(version.tags, default=[]),
                     "created_at": version.created_at,
                 },
             )
@@ -1075,6 +1103,7 @@ class ContextManagementService:
             return []
 
         db_client = self._get_db_client()
+        assert db_client is not None
         async with db_client.get_async_session() as session:
             result = await session.execute(
                 text(
@@ -1112,6 +1141,7 @@ class ContextManagementService:
             return
 
         db_client = self._get_db_client()
+        assert db_client is not None
         async with db_client.get_async_session() as session:
             await session.execute(
                 text(
@@ -1140,7 +1170,7 @@ class ContextManagementService:
                     "shared_by": share.shared_by,
                     "shared_with": share.shared_with,
                     "access_level": share.access_level.value,
-                    "permissions": self._serialize_json(share.permissions),
+                    "permissions": self._serialize_json(share.permissions, default=[]),
                     "created_at": share.created_at,
                     "last_accessed": share.last_accessed,
                     "access_count": share.access_count,
@@ -1155,6 +1185,7 @@ class ContextManagementService:
             return []
 
         db_client = self._get_db_client()
+        assert db_client is not None
         async with db_client.get_async_session() as session:
             result = await session.execute(
                 text(
@@ -1184,8 +1215,10 @@ class ContextManagementService:
             )
             for row in rows
         ]
+
         for share in shares:
             self._shares[share.share_id] = share
+
         return shares
 
     async def _load_files_for_context(self, context_id: str) -> List[ContextFile]:
@@ -1194,10 +1227,12 @@ class ContextManagementService:
             return [
                 file
                 for file in self._files.values()
-                if file.context_id == context_id and file.status != ContextStatus.DELETED
+                if file.context_id == context_id
+                and file.status != ContextStatus.DELETED
             ]
 
         db_client = self._get_db_client()
+        assert db_client is not None
         async with db_client.get_async_session() as session:
             result = await session.execute(
                 text(
@@ -1229,7 +1264,9 @@ class ContextManagementService:
                 extracted_metadata=dict(row.get("extracted_metadata") or {}),
                 created_at=row.get("created_at") or datetime.utcnow(),
                 processed_at=row.get("processed_at"),
-                status=ContextStatus(row.get("status") or ContextStatus.PROCESSING.value),
+                status=ContextStatus(
+                    row.get("status") or ContextStatus.PROCESSING.value
+                ),
                 error_message=row.get("error_message"),
             )
             for row in rows
@@ -1237,6 +1274,7 @@ class ContextManagementService:
 
         for file in files:
             self._files[file.file_id] = file
+
         return files
 
     async def _check_access_permission(
@@ -1247,33 +1285,32 @@ class ContextManagementService:
     ) -> bool:
         """
         Check if user has permission to perform action on context.
-        
-        Args:
-            context: Context entry
-            user_id: User ID to check
-            action: Action to check (read, write, share, delete)
-            
-        Returns:
-            True if user has permission, False otherwise
         """
-        # Owner has all permissions
         if context.user_id == user_id:
             return True
-        
-        # Check access level
+
+        if context.status == ContextStatus.DELETED:
+            return False
+
+        if context.expires_at and context.expires_at <= datetime.utcnow():
+            return False
+
         if context.access_level == ContextAccessLevel.PRIVATE:
             return False
-        elif context.access_level == ContextAccessLevel.SHARED:
-            # Check if shared with this user
+
+        if context.access_level == ContextAccessLevel.SHARED:
             await self._load_shares_for_context(context.id)
             for share in self._shares.values():
-                if (share.context_id == context.id and 
-                    share.shared_with == user_id and 
-                    share.is_active and
-                    action in share.permissions):
+                if (
+                    share.context_id == context.id
+                    and share.shared_with == user_id
+                    and share.is_active
+                    and action in share.permissions
+                ):
                     return True
             return False
-        elif context.access_level == ContextAccessLevel.TEAM:
+
+        if context.access_level == ContextAccessLevel.TEAM:
             owner_scope = await self._load_user_scope(context.user_id)
             requester_scope = await self._load_user_scope(user_id)
             if not requester_scope["tenant_id"] or not owner_scope["tenant_id"]:
@@ -1285,7 +1322,8 @@ class ContextManagementService:
             if context.org_id and requester_scope["org_id"] == context.org_id:
                 return True
             return False
-        elif context.access_level == ContextAccessLevel.ORGANIZATION:
+
+        if context.access_level == ContextAccessLevel.ORGANIZATION:
             owner_scope = await self._load_user_scope(context.user_id)
             requester_scope = await self._load_user_scope(user_id)
             if not requester_scope["tenant_id"] or not owner_scope["tenant_id"]:
@@ -1297,39 +1335,35 @@ class ContextManagementService:
             if context.org_id and requester_scope["org_id"] == context.org_id:
                 return True
             return False
-        elif context.access_level == ContextAccessLevel.PUBLIC:
-            return True
-        
+
+        if context.access_level == ContextAccessLevel.PUBLIC:
+            return action == "read"
+
         return False
 
     def _passes_filters(self, context: ContextEntry, query: ContextQuery) -> bool:
         """Check if context passes all query filters."""
-        # Status filter
         if query.status and context.status not in query.status:
             return False
-        
-        # Type filter
+
         if query.context_types and context.context_type not in query.context_types:
             return False
-        
-        # Access level filter
+
         if query.access_levels and context.access_level not in query.access_levels:
             return False
-        
-        # Tags filter (all tags must be present)
-        if query.tags:
-            if not all(tag in context.tags for tag in query.tags):
-                return False
-        
-        # Keywords filter
+
+        if query.tags and not all(tag in context.tags for tag in query.tags):
+            return False
+
         if query.keywords:
             content_lower = context.content.lower()
             title_lower = context.title.lower()
-            if not all(keyword.lower() in content_lower or keyword.lower() in title_lower 
-                      for keyword in query.keywords):
+            if not all(
+                keyword.lower() in content_lower or keyword.lower() in title_lower
+                for keyword in query.keywords
+            ):
                 return False
-        
-        # Time filters
+
         if query.created_after and context.created_at < query.created_after:
             return False
         if query.created_before and context.created_at > query.created_before:
@@ -1338,13 +1372,12 @@ class ContextManagementService:
             return False
         if query.updated_before and context.updated_at > query.updated_before:
             return False
-        
-        # Metadata filter
+
         if query.metadata_filter:
             for key, value in query.metadata_filter.items():
                 if context.metadata.get(key) != value:
                     return False
-        
+
         return True
 
     def _sort_search_results(
@@ -1354,20 +1387,25 @@ class ContextManagementService:
     ) -> List[ContextSearchResult]:
         """Sort search results based on query parameters."""
         reverse = query.sort_order == "desc"
-        
+
         if query.sort_by == "relevance":
-            results.sort(key=lambda r: r.relevance_score, reverse=reverse)
+            results.sort(key=lambda result: result.relevance_score, reverse=reverse)
         elif query.sort_by == "similarity":
-            results.sort(key=lambda r: r.similarity_score, reverse=reverse)
+            results.sort(key=lambda result: result.similarity_score, reverse=reverse)
         elif query.sort_by == "created_at":
-            results.sort(key=lambda r: r.context.created_at, reverse=reverse)
+            results.sort(key=lambda result: result.context.created_at, reverse=reverse)
         elif query.sort_by == "updated_at":
-            results.sort(key=lambda r: r.context.updated_at, reverse=reverse)
+            results.sort(key=lambda result: result.context.updated_at, reverse=reverse)
         elif query.sort_by == "access_count":
-            results.sort(key=lambda r: r.context.access_count, reverse=reverse)
+            results.sort(
+                key=lambda result: result.context.access_count, reverse=reverse
+            )
         elif query.sort_by == "importance":
-            results.sort(key=lambda r: r.context.importance_score, reverse=reverse)
-        
+            results.sort(
+                key=lambda result: result.context.importance_score,
+                reverse=reverse,
+            )
+
         return results
 
     async def _log_access(
@@ -1392,25 +1430,24 @@ class ContextManagementService:
             processing_time_ms=processing_time_ms,
             metadata=metadata or {},
         )
-        
+
         self._access_logs.append(log_entry)
         await self._persist_access_log(log_entry)
-        
-        # Keep only recent logs (last 10000)
+
         if len(self._access_logs) > 10000:
             self._access_logs = self._access_logs[-10000:]
 
     async def _persist_access_log(self, log_entry: ContextAccessLog) -> None:
         """Persist audit logs when they reference a real context row."""
-        if (
-            not self._has_db_persistence()
-            or not self._is_uuid_like(log_entry.context_id)
+        if not self._has_db_persistence() or not self._is_uuid_like(
+            log_entry.context_id
         ):
             return
 
         action = "write" if log_entry.action == "create" else log_entry.action
 
         db_client = self._get_db_client()
+        assert db_client is not None
         async with db_client.get_async_session() as session:
             await session.execute(
                 text(
@@ -1438,7 +1475,7 @@ class ContextManagementService:
                     "success": log_entry.success,
                     "error_message": log_entry.error_message,
                     "processing_time_ms": log_entry.processing_time_ms,
-                    "metadata": json.dumps(log_entry.metadata or {}),
+                    "metadata": self._serialize_json(log_entry.metadata, default={}),
                     "created_at": log_entry.created_at,
                 },
             )
@@ -1455,69 +1492,97 @@ class ContextManagementService:
     ) -> Dict[str, Any]:
         """
         Get context statistics for a user or organization.
-        
-        Args:
-            user_id: User ID
-            org_id: Organization ID (optional)
-            
-        Returns:
-            Dictionary with statistics
         """
         try:
             if self._has_db_persistence():
                 return await self._get_context_stats_from_db(user_id, org_id)
 
             user_contexts = [
-                ctx for ctx in self._contexts.values()
+                ctx
+                for ctx in self._contexts.values()
                 if ctx.user_id == user_id and ctx.status == ContextStatus.ACTIVE
             ]
-            
+
             org_contexts = []
             if org_id:
                 org_contexts = [
-                    ctx for ctx in self._contexts.values()
+                    ctx
+                    for ctx in self._contexts.values()
                     if ctx.org_id == org_id and ctx.status == ContextStatus.ACTIVE
                 ]
-            
-            # Calculate statistics
+
+            placeholder_file = self._empty_context_file()
+
             stats = {
                 "user_stats": {
                     "total_contexts": len(user_contexts),
                     "by_type": {
-                        ctx_type.value: len([c for c in user_contexts if c.context_type == ctx_type])
+                        ctx_type.value: len(
+                            [
+                                ctx
+                                for ctx in user_contexts
+                                if ctx.context_type == ctx_type
+                            ]
+                        )
                         for ctx_type in ContextType
                     },
                     "by_access_level": {
-                        access_level.value: len([c for c in user_contexts if c.access_level == access_level])
-                        for access_level in ContextAccessLevel
+                        access.value: len(
+                            [ctx for ctx in user_contexts if ctx.access_level == access]
+                        )
+                        for access in ContextAccessLevel
                     },
                     "total_files": sum(len(ctx.file_ids) for ctx in user_contexts),
                     "total_size_mb": sum(
-                        self._files.get(file_id, ContextFile(file_id="", context_id="", filename="", file_type=ContextFileType.TXT, mime_type="", size_bytes=0, storage_path="", checksum="")).size_bytes
+                        self._files.get(file_id, placeholder_file).size_bytes
                         for ctx in user_contexts
                         for file_id in ctx.file_ids
-                    ) / (1024 * 1024),
-                    "avg_importance": sum(ctx.importance_score for ctx in user_contexts) / len(user_contexts) if user_contexts else 0,
+                    )
+                    / (1024 * 1024),
+                    "avg_importance": (
+                        sum(ctx.importance_score for ctx in user_contexts)
+                        / len(user_contexts)
+                        if user_contexts
+                        else 0
+                    ),
                     "total_accesses": sum(ctx.access_count for ctx in user_contexts),
                 },
-                "org_stats": {
-                    "total_contexts": len(org_contexts),
-                    "shared_contexts": len([c for c in org_contexts if c.access_level != ContextAccessLevel.PRIVATE]),
-                } if org_id else None,
+                "org_stats": (
+                    {
+                        "total_contexts": len(org_contexts),
+                        "shared_contexts": len(
+                            [
+                                ctx
+                                for ctx in org_contexts
+                                if ctx.access_level != ContextAccessLevel.PRIVATE
+                            ]
+                        ),
+                    }
+                    if org_id
+                    else None
+                ),
                 "system_stats": {
-                    "total_contexts": len([c for c in self._contexts.values() if c.status == ContextStatus.ACTIVE]),
+                    "total_contexts": len(
+                        [
+                            ctx
+                            for ctx in self._contexts.values()
+                            if ctx.status == ContextStatus.ACTIVE
+                        ]
+                    ),
                     "total_files": len(self._files),
                     "total_shares": len(self._shares),
-                    "total_versions": sum(len(versions) for versions in self._versions.values()),
+                    "total_versions": sum(
+                        len(versions) for versions in self._versions.values()
+                    ),
                     "access_logs_count": len(self._access_logs),
                 },
             }
-            
+
             return stats
-            
-        except Exception as e:
-            logger.error(f"Failed to get context stats for user {user_id}: {e}")
-            return {"error": str(e)}
+
+        except Exception as exc:
+            logger.error("Failed to get context stats for user %s: %s", user_id, exc)
+            return {"error": str(exc)}
 
     async def _get_context_stats_from_db(
         self,
@@ -1526,11 +1591,13 @@ class ContextManagementService:
     ) -> Dict[str, Any]:
         """Get context statistics directly from Postgres."""
         db_client = self._get_db_client()
+        assert db_client is not None
         async with db_client.get_async_session() as session:
             user_summary = (
-                await session.execute(
-                    text(
-                        """
+                (
+                    await session.execute(
+                        text(
+                            """
                         SELECT
                             COUNT(*) AS total_contexts,
                             COALESCE(AVG(importance_score), 0) AS avg_importance,
@@ -1540,45 +1607,57 @@ class ContextManagementService:
                         WHERE user_id = :user_id
                           AND status = 'active'
                         """
-                    ),
-                    {"user_id": user_id},
+                        ),
+                        {"user_id": user_id},
+                    )
                 )
-            ).mappings().first()
+                .mappings()
+                .first()
+            )
 
             by_type_rows = (
-                await session.execute(
-                    text(
-                        """
+                (
+                    await session.execute(
+                        text(
+                            """
                         SELECT context_type, COUNT(*) AS count
                         FROM context_entries
                         WHERE user_id = :user_id
                           AND status = 'active'
                         GROUP BY context_type
                         """
-                    ),
-                    {"user_id": user_id},
+                        ),
+                        {"user_id": user_id},
+                    )
                 )
-            ).mappings().all()
+                .mappings()
+                .all()
+            )
 
             by_access_rows = (
-                await session.execute(
-                    text(
-                        """
+                (
+                    await session.execute(
+                        text(
+                            """
                         SELECT access_level, COUNT(*) AS count
                         FROM context_entries
                         WHERE user_id = :user_id
                           AND status = 'active'
                         GROUP BY access_level
                         """
-                    ),
-                    {"user_id": user_id},
+                        ),
+                        {"user_id": user_id},
+                    )
                 )
-            ).mappings().all()
+                .mappings()
+                .all()
+            )
 
             file_summary = (
-                await session.execute(
-                    text(
-                        """
+                (
+                    await session.execute(
+                        text(
+                            """
                         SELECT COALESCE(SUM(cf.size_bytes), 0) AS total_size_bytes
                         FROM context_files cf
                         JOIN context_entries ce ON ce.id = cf.context_id
@@ -1586,15 +1665,19 @@ class ContextManagementService:
                           AND ce.status = 'active'
                           AND cf.status != 'deleted'
                         """
-                    ),
-                    {"user_id": user_id},
+                        ),
+                        {"user_id": user_id},
+                    )
                 )
-            ).mappings().first()
+                .mappings()
+                .first()
+            )
 
             system_summary = (
-                await session.execute(
-                    text(
-                        """
+                (
+                    await session.execute(
+                        text(
+                            """
                         SELECT
                             (SELECT COUNT(*) FROM context_entries WHERE status = 'active') AS total_contexts,
                             (SELECT COUNT(*) FROM context_files WHERE status != 'deleted') AS total_files,
@@ -1602,16 +1685,20 @@ class ContextManagementService:
                             (SELECT COUNT(*) FROM context_versions) AS total_versions,
                             (SELECT COUNT(*) FROM context_access_log) AS access_logs_count
                         """
+                        )
                     )
                 )
-            ).mappings().first()
+                .mappings()
+                .first()
+            )
 
             org_summary = None
             if org_id:
                 org_summary = (
-                    await session.execute(
-                        text(
-                            """
+                    (
+                        await session.execute(
+                            text(
+                                """
                             SELECT
                                 COUNT(*) AS total_contexts,
                                 COUNT(*) FILTER (WHERE access_level != 'private') AS shared_contexts
@@ -1619,10 +1706,13 @@ class ContextManagementService:
                             WHERE org_id = :org_id
                               AND status = 'active'
                             """
-                        ),
-                        {"org_id": org_id},
+                            ),
+                            {"org_id": org_id},
+                        )
                     )
-                ).mappings().first()
+                    .mappings()
+                    .first()
+                )
 
         by_type = {ctx_type.value: 0 for ctx_type in ContextType}
         for row in by_type_rows:
@@ -1638,14 +1728,19 @@ class ContextManagementService:
                 "by_type": by_type,
                 "by_access_level": by_access,
                 "total_files": int(user_summary["total_files"] or 0),
-                "total_size_mb": float(file_summary["total_size_bytes"] or 0) / (1024 * 1024),
+                "total_size_mb": float(file_summary["total_size_bytes"] or 0)
+                / (1024 * 1024),
                 "avg_importance": float(user_summary["avg_importance"] or 0),
                 "total_accesses": int(user_summary["total_accesses"] or 0),
             },
-            "org_stats": {
-                "total_contexts": int(org_summary["total_contexts"] or 0),
-                "shared_contexts": int(org_summary["shared_contexts"] or 0),
-            } if org_summary else None,
+            "org_stats": (
+                {
+                    "total_contexts": int(org_summary["total_contexts"] or 0),
+                    "shared_contexts": int(org_summary["shared_contexts"] or 0),
+                }
+                if org_summary
+                else None
+            ),
             "system_stats": {
                 "total_contexts": int(system_summary["total_contexts"] or 0),
                 "total_files": int(system_summary["total_files"] or 0),

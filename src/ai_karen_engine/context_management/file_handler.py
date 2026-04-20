@@ -2,7 +2,7 @@
 File Upload Handler for Context Management
 
 Handles multi-format file uploads with preprocessing, validation,
-security scanning, and storage management.
+security scanning, storage management, and optional database persistence.
 """
 
 import hashlib
@@ -10,12 +10,11 @@ import json
 import logging
 import mimetypes
 import os
-import shutil
-import tempfile
+import re
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy import text
 
@@ -34,6 +33,8 @@ class FileUploadHandler:
     validation, security scanning, and preprocessing.
     """
 
+    DEFAULT_MAX_FILENAME_LENGTH = 180
+
     def __init__(
         self,
         storage_path: str = "/tmp/context_files",
@@ -42,44 +43,47 @@ class FileUploadHandler:
         scan_for_malware: bool = True,
         extract_text: bool = True,
         db_client: Optional[Any] = None,
+        allow_open_access_without_db: bool = False,
     ):
         """
         Initialize file upload handler.
-        
+
         Args:
             storage_path: Base path for file storage
             max_file_size_mb: Maximum file size in MB
             allowed_extensions: List of allowed file extensions
             scan_for_malware: Whether to scan for malware
             extract_text: Whether to extract text content
+            db_client: Optional DB client for persistence
+            allow_open_access_without_db: Whether to allow all file access when DB
+                persistence is unavailable. Defaults to False for safer behavior.
         """
-        self.storage_path = storage_path
+        self.storage_path = os.path.abspath(storage_path)
         self.max_file_size_bytes = max_file_size_mb * 1024 * 1024
         self.scan_for_malware = scan_for_malware
         self.extract_text = extract_text
         self.db_client = db_client
+        self.allow_open_access_without_db = allow_open_access_without_db
         self._files: Dict[str, ContextFile] = {}
-        
-        # Default allowed extensions if not provided
+
         if allowed_extensions is None:
-            self.allowed_extensions = [
-                ext.value for ext in ContextFileType
-            ]
+            self.allowed_extensions = {ext.value.lower() for ext in ContextFileType}
         else:
-            self.allowed_extensions = allowed_extensions
-        
-        # Ensure storage directory exists
-        os.makedirs(storage_path, exist_ok=True)
-        
-        # Create subdirectories
-        self.uploads_dir = os.path.join(storage_path, "uploads")
-        self.processed_dir = os.path.join(storage_path, "processed")
-        self.quarantine_dir = os.path.join(storage_path, "quarantine")
-        
-        for dir_path in [self.uploads_dir, self.processed_dir, self.quarantine_dir]:
+            self.allowed_extensions = {
+                ext.lower().lstrip(".") for ext in allowed_extensions if ext
+            }
+
+        os.makedirs(self.storage_path, exist_ok=True)
+
+        self.uploads_dir = os.path.join(self.storage_path, "uploads")
+        self.quarantine_dir = os.path.join(self.storage_path, "quarantine")
+
+        for dir_path in [self.uploads_dir, self.quarantine_dir]:
             os.makedirs(dir_path, exist_ok=True)
-        
-        logger.info(f"FileUploadHandler initialized with storage path: {storage_path}")
+
+        logger.info(
+            "FileUploadHandler initialized with storage path: %s", self.storage_path
+        )
 
     async def handle_upload(
         self,
@@ -92,7 +96,7 @@ class FileUploadHandler:
     ) -> Tuple[Optional[ContextFile], Optional[str]]:
         """
         Handle file upload with validation and processing.
-        
+
         Args:
             file_data: Raw file data
             filename: Original filename
@@ -100,64 +104,104 @@ class FileUploadHandler:
             user_id: User ID uploading file
             mime_type: MIME type (detected if not provided)
             metadata: Additional metadata
-            
+
         Returns:
             Tuple of (ContextFile, error_message)
         """
+        safe_filename = self._sanitize_filename(filename)
+        detected_mime_type = mime_type or mimetypes.guess_type(safe_filename)[0]
+        context_file: Optional[ContextFile] = None
+        absolute_path: Optional[str] = None
+
         try:
-            # Validate file
-            validation_result = await self._validate_file(file_data, filename, mime_type)
-            if not validation_result[0]:
-                return None, validation_result[1]
-            
-            # Detect file type
-            file_type = self._detect_file_type(filename, mime_type)
+            is_valid, validation_error = await self._validate_file(
+                file_data=file_data,
+                filename=safe_filename,
+                mime_type=detected_mime_type,
+            )
+            if not is_valid:
+                await self._quarantine_rejected_upload(
+                    file_data=file_data,
+                    filename=safe_filename,
+                    reason=validation_error or "validation_failed",
+                )
+                return None, validation_error
+
+            file_type = self._detect_file_type(safe_filename, detected_mime_type)
             if not file_type:
+                await self._quarantine_rejected_upload(
+                    file_data=file_data,
+                    filename=safe_filename,
+                    reason="unsupported_file_type",
+                )
                 return None, "Unsupported file type"
-            
-            # Calculate checksum
+
             checksum = hashlib.sha256(file_data).hexdigest()
-            
-            # Check for duplicates
+
             existing_file = await self._find_duplicate_file(checksum, user_id)
             if existing_file:
                 return existing_file, "File already exists"
-            
-            # Save file
-            file_path, storage_path = await self._save_file(
-                file_data, filename, checksum
+
+            absolute_path, relative_storage_path = await self._save_file(
+                file_data=file_data,
+                filename=safe_filename,
+                checksum=checksum,
             )
-            
-            # Create file record
+
             context_file = ContextFile(
                 file_id=str(uuid.uuid4()),
                 context_id=context_id,
-                filename=filename,
+                filename=safe_filename,
                 file_type=file_type,
-                mime_type=mime_type or mimetypes.guess_type(filename)[0] or "application/octet-stream",
+                mime_type=detected_mime_type or "application/octet-stream",
                 size_bytes=len(file_data),
-                storage_path=storage_path,
+                storage_path=relative_storage_path,
                 checksum=checksum,
                 metadata=metadata or {},
                 status=ContextStatus.PROCESSING,
             )
-            
-            # Process file (extract text, metadata, etc.)
+
             if self.extract_text:
-                await self._process_file(context_file, file_path)
-            
-            # Update status to active
+                await self._process_file(context_file, absolute_path)
+            else:
+                context_file.error_message = None
+
             context_file.status = ContextStatus.ACTIVE
             context_file.processed_at = datetime.utcnow()
             self._files[context_file.file_id] = context_file
             await self._persist_file(context_file)
-            
-            logger.info(f"Successfully uploaded file {filename} for context {context_id}")
+
+            logger.info(
+                "Successfully uploaded file %s for context %s",
+                safe_filename,
+                context_id,
+            )
             return context_file, None
-            
-        except Exception as e:
-            logger.error(f"Failed to upload file {filename}: {e}")
-            return None, str(e)
+
+        except Exception as exc:
+            logger.exception("Failed to upload file %s", safe_filename)
+
+            if context_file is not None:
+                context_file.status = ContextStatus.ERROR
+                context_file.error_message = str(exc)
+                try:
+                    await self._persist_file(context_file)
+                except Exception:
+                    logger.exception(
+                        "Failed to persist failed upload state for %s", safe_filename
+                    )
+
+            if absolute_path and os.path.exists(absolute_path):
+                try:
+                    quarantine_path = self._build_quarantine_path(safe_filename)
+                    os.replace(absolute_path, quarantine_path)
+                except Exception:
+                    logger.exception(
+                        "Failed to quarantine file after upload error: %s",
+                        safe_filename,
+                    )
+
+            return None, str(exc)
 
     async def get_file(
         self,
@@ -167,12 +211,12 @@ class FileUploadHandler:
     ) -> Optional[ContextFile]:
         """
         Retrieve file information by ID.
-        
+
         Args:
             file_id: File ID to retrieve
             user_id: User ID requesting file
             check_access: Whether to check access permissions
-            
+
         Returns:
             ContextFile if found and accessible, None otherwise
         """
@@ -186,15 +230,17 @@ class FileUploadHandler:
             if not context_file:
                 return None
 
+            if context_file.status == ContextStatus.DELETED:
+                return None
+
             if not check_access:
                 return context_file
 
-            if await self._check_file_access(context_file.context_id, user_id):
-                return context_file
-            return None
-            
-        except Exception as e:
-            logger.error(f"Failed to get file {file_id}: {e}")
+            has_access = await self._check_file_access(context_file.context_id, user_id)
+            return context_file if has_access else None
+
+        except Exception as exc:
+            logger.error("Failed to get file %s: %s", file_id, exc)
             return None
 
     async def delete_file(
@@ -205,37 +251,44 @@ class FileUploadHandler:
     ) -> bool:
         """
         Delete a file (soft delete by default).
-        
+
         Args:
             file_id: File ID to delete
             user_id: User ID requesting deletion
             permanent: Whether to permanently delete
-            
+
         Returns:
             True if deleted successfully, False otherwise
         """
         try:
-            # Get file information
             context_file = await self.get_file(file_id, user_id)
             if not context_file:
                 return False
-            
+
+            absolute_path = self._resolve_absolute_storage_path(
+                context_file.storage_path
+            )
+
             if permanent:
-                # Delete physical file
-                if os.path.exists(context_file.storage_path):
-                    os.remove(context_file.storage_path)
+                if absolute_path and os.path.exists(absolute_path):
+                    os.remove(absolute_path)
                 await self._delete_file_record(file_id)
                 self._files.pop(file_id, None)
             else:
-                # Soft delete
                 context_file.status = ContextStatus.DELETED
+                context_file.processed_at = datetime.utcnow()
                 await self._persist_file(context_file)
-            
-            logger.info(f"{'Permanently deleted' if permanent else 'Soft deleted'} file {file_id}")
+                self._files.pop(file_id, None)
+
+            logger.info(
+                "%s file %s",
+                "Permanently deleted" if permanent else "Soft deleted",
+                file_id,
+            )
             return True
-            
-        except Exception as e:
-            logger.error(f"Failed to delete file {file_id}: {e}")
+
+        except Exception as exc:
+            logger.error("Failed to delete file %s: %s", file_id, exc)
             return False
 
     async def _validate_file(
@@ -246,34 +299,41 @@ class FileUploadHandler:
     ) -> Tuple[bool, Optional[str]]:
         """
         Validate file against security and size constraints.
-        
+
         Args:
             file_data: Raw file data
             filename: Original filename
             mime_type: MIME type
-            
+
         Returns:
             Tuple of (is_valid, error_message)
         """
-        # Check file size
         if len(file_data) > self.max_file_size_bytes:
-            return False, f"File too large. Maximum size is {self.max_file_size_bytes // (1024*1024)}MB"
-        
-        # Check if file is empty
+            return (
+                False,
+                f"File too large. Maximum size is {self.max_file_size_bytes // (1024 * 1024)}MB",
+            )
+
         if len(file_data) == 0:
             return False, "File is empty"
-        
-        # Check file extension
-        file_ext = Path(filename).suffix.lower().lstrip('.')
+
+        file_ext = Path(filename).suffix.lower().lstrip(".")
         if file_ext not in self.allowed_extensions:
             return False, f"File type '{file_ext}' not allowed"
-        
-        # Basic malware scan (simplified)
+
+        if mime_type:
+            mismatch_error = self._validate_mime_extension_consistency(
+                filename=filename,
+                mime_type=mime_type,
+            )
+            if mismatch_error:
+                return False, mismatch_error
+
         if self.scan_for_malware:
             is_safe, error = await self._basic_malware_scan(file_data, filename)
             if not is_safe:
                 return False, error
-        
+
         return True, None
 
     def _detect_file_type(
@@ -283,24 +343,14 @@ class FileUploadHandler:
     ) -> Optional[ContextFileType]:
         """
         Detect file type from filename and MIME type.
-        
-        Args:
-            filename: Original filename
-            mime_type: MIME type
-            
-        Returns:
-            Detected ContextFileType or None if unknown
         """
-        # Get file extension
-        file_ext = Path(filename).suffix.lower().lstrip('.')
-        
-        # Try to match by extension
+        file_ext = Path(filename).suffix.lower().lstrip(".")
+
         try:
             return ContextFileType(file_ext)
         except ValueError:
             pass
-        
-        # Try to match by MIME type
+
         if mime_type:
             mime_mapping = {
                 "application/pdf": ContextFileType.PDF,
@@ -329,9 +379,8 @@ class FileUploadHandler:
                 "application/x-tar": ContextFileType.TAR,
                 "application/gzip": ContextFileType.GZ,
             }
-            
             return mime_mapping.get(mime_type)
-        
+
         return None
 
     async def _save_file(
@@ -341,63 +390,55 @@ class FileUploadHandler:
         checksum: str,
     ) -> Tuple[str, str]:
         """
-        Save file to storage with checksum-based path.
-        
-        Args:
-            file_data: Raw file data
-            filename: Original filename
-            checksum: File checksum
-            
+        Save file to storage.
+
         Returns:
-            Tuple of (relative_path, full_path)
+            Tuple of (absolute_path, relative_path)
         """
-        # Create checksum-based directory structure
         checksum_prefix = checksum[:2]
         checksum_dir = os.path.join(self.uploads_dir, checksum_prefix)
         os.makedirs(checksum_dir, exist_ok=True)
-        
-        # Create unique filename
-        unique_filename = f"{checksum}_{filename}"
-        file_path = os.path.join(checksum_dir, unique_filename)
-        
-        # Write file
-        with open(file_path, 'wb') as f:
-            f.write(file_data)
-        
-        # Return relative and full paths
-        relative_path = os.path.join("uploads", checksum_prefix, unique_filename)
-        full_path = os.path.abspath(file_path)
-        
-        return relative_path, full_path
 
-    async def _process_file(self, context_file: ContextFile, file_path: str) -> None:
+        unique_filename = f"{checksum}_{filename}"
+        absolute_path = os.path.abspath(os.path.join(checksum_dir, unique_filename))
+
+        with open(absolute_path, "wb") as file_handle:
+            file_handle.write(file_data)
+
+        relative_path = os.path.join("uploads", checksum_prefix, unique_filename)
+        return absolute_path, relative_path
+
+    async def _process_file(
+        self, context_file: ContextFile, absolute_path: str
+    ) -> None:
         """
         Process file to extract text and metadata.
-        
-        Args:
-            context_file: ContextFile object to update
-            file_path: Path to the file
         """
         try:
-            # Extract text based on file type
             extracted_text = await self._extract_text_from_file(
-                context_file.file_type, file_path
+                context_file.file_type,
+                absolute_path,
             )
-            
             if extracted_text:
                 context_file.extracted_text = extracted_text
-            
-            # Extract metadata based on file type
+
             extracted_metadata = await self._extract_metadata_from_file(
-                context_file.file_type, file_path
+                context_file.file_type,
+                absolute_path,
             )
-            
-            if extracted_metadata:
-                context_file.extracted_metadata.update(extracted_metadata)
-            
-        except Exception as e:
-            logger.warning(f"Failed to process file {context_file.filename}: {e}")
-            context_file.error_message = str(e)
+            existing_metadata = dict(
+                getattr(context_file, "extracted_metadata", {}) or {}
+            )
+            existing_metadata.update(extracted_metadata or {})
+            context_file.extracted_metadata = existing_metadata
+
+        except Exception as exc:
+            logger.warning(
+                "Failed to process file %s: %s",
+                context_file.filename,
+                exc,
+            )
+            context_file.error_message = str(exc)
 
     async def _extract_text_from_file(
         self,
@@ -406,88 +447,103 @@ class FileUploadHandler:
     ) -> Optional[str]:
         """
         Extract text content from file based on type.
-        
-        Args:
-            file_type: Type of file
-            file_path: Path to the file
-            
-        Returns:
-            Extracted text or None if extraction failed
         """
         try:
-            if file_type in [ContextFileType.TXT, ContextFileType.MD, ContextFileType.PY, 
-                           ContextFileType.JS, ContextFileType.TS, ContextFileType.JAVA, 
-                           ContextFileType.CPP, ContextFileType.HTML, ContextFileType.XML]:
-                # Text files - read directly
-                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            if file_type in {
+                ContextFileType.TXT,
+                ContextFileType.MD,
+                ContextFileType.PY,
+                ContextFileType.JS,
+                ContextFileType.TS,
+                ContextFileType.JAVA,
+                ContextFileType.CPP,
+                ContextFileType.HTML,
+                ContextFileType.XML,
+            }:
+                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                     return f.read()
-            
-            elif file_type == ContextFileType.JSON:
-                # JSON files - pretty print
-                import json
-                with open(file_path, 'r', encoding='utf-8') as f:
+
+            if file_type == ContextFileType.JSON:
+                with open(file_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     return json.dumps(data, indent=2)
-            
-            elif file_type == ContextFileType.CSV:
-                # CSV files - read as text
+
+            if file_type == ContextFileType.CSV:
                 import csv
-                with open(file_path, 'r', encoding='utf-8') as f:
+
+                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                     reader = csv.reader(f)
                     rows = list(reader)
-                    return '\n'.join([','.join(row) for row in rows])
-            
-            elif file_type == ContextFileType.PDF:
-                # PDF files - extract text
+                    return "\n".join([",".join(row) for row in rows])
+
+            if file_type == ContextFileType.PDF:
                 try:
-                    import fitz  # PyMuPDF
+                    import fitz  # type: ignore
+
                     doc = fitz.open(file_path)
-                    text = ""
+                    text_content = ""
                     for page in doc:
-                        text += page.get_text()
+                        text_content += page.get_text()  # type: ignore
                     doc.close()
-                    return text if text.strip() else None
+                    return text_content if text_content.strip() else None
                 except ImportError:
                     logger.warning("PyMuPDF not installed for PDF text extraction")
                     return None
-            
-            elif file_type == ContextFileType.DOCX:
-                # DOCX files - extract text
+
+            if file_type == ContextFileType.DOCX:
                 try:
-                    from docx import Document
+                    from docx import Document  # type: ignore
+
                     doc = Document(file_path)
-                    text = ""
+                    text_content = ""
                     for paragraph in doc.paragraphs:
-                        text += paragraph.text + "\n"
-                    return text if text.strip() else None
+                        text_content += paragraph.text + "\n"
+                    return text_content if text_content.strip() else None
                 except ImportError:
                     logger.warning("python-docx not installed for DOCX text extraction")
                     return None
-            
-            # Image files - OCR (placeholder)
-            elif file_type in [ContextFileType.PNG, ContextFileType.JPG, 
-                              ContextFileType.JPEG, ContextFileType.GIF, ContextFileType.SVG]:
-                # OCR would be implemented here
-                logger.info(f"OCR extraction not implemented for {file_type}")
+
+            if file_type in {
+                ContextFileType.PNG,
+                ContextFileType.JPG,
+                ContextFileType.JPEG,
+                ContextFileType.GIF,
+                ContextFileType.SVG,
+            }:
+                logger.info(
+                    "Image text extraction is not enabled for %s; metadata-only handling applies",
+                    file_type.value,
+                )
                 return None
-            
-            # Audio/Video files - transcription (placeholder)
-            elif file_type in [ContextFileType.MP3, ContextFileType.WAV, 
-                              ContextFileType.MP4, ContextFileType.AVI, ContextFileType.MOV]:
-                # Speech-to-text would be implemented here
-                logger.info(f"Audio transcription not implemented for {file_type}")
+
+            if file_type in {
+                ContextFileType.MP3,
+                ContextFileType.WAV,
+                ContextFileType.MP4,
+                ContextFileType.AVI,
+                ContextFileType.MOV,
+            }:
+                logger.info(
+                    "Media transcription is not enabled for %s; metadata-only handling applies",
+                    file_type.value,
+                )
                 return None
-            
-            # Archive files - list contents (placeholder)
-            elif file_type in [ContextFileType.ZIP, ContextFileType.TAR, ContextFileType.GZ]:
-                # Archive listing would be implemented here
-                logger.info(f"Archive listing not implemented for {file_type}")
+
+            if file_type in {
+                ContextFileType.ZIP,
+                ContextFileType.TAR,
+                ContextFileType.GZ,
+            }:
+                logger.info(
+                    "Archive content extraction is not enabled for %s; metadata-only handling applies",
+                    file_type.value,
+                )
                 return None
-            
+
             return None
-            
-        except Exception as e:
-            logger.error(f"Failed to extract text from {file_type}: {e}")
+
+        except Exception as exc:
+            logger.error("Failed to extract text from %s: %s", file_type.value, exc)
             return None
 
     async def _extract_metadata_from_file(
@@ -497,74 +553,85 @@ class FileUploadHandler:
     ) -> Dict[str, Any]:
         """
         Extract metadata from file based on type.
-        
-        Args:
-            file_type: Type of file
-            file_path: Path to the file
-            
-        Returns:
-            Extracted metadata dictionary
         """
-        metadata = {}
-        
+        metadata: Dict[str, Any] = {}
+
         try:
-            # Basic file metadata
             stat = os.stat(file_path)
-            metadata.update({
-                "size_bytes": stat.st_size,
-                "modified_time": datetime.fromtimestamp(stat.st_mtime).isoformat(),
-                "created_time": datetime.fromtimestamp(stat.st_ctime).isoformat(),
-            })
-            
-            # Type-specific metadata
-            if file_type in [ContextFileType.PNG, ContextFileType.JPG, ContextFileType.JPEG]:
-                # Image metadata
+            metadata.update(
+                {
+                    "size_bytes": stat.st_size,
+                    "modified_time": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                    "created_time": datetime.fromtimestamp(stat.st_ctime).isoformat(),
+                }
+            )
+
+            if file_type in {
+                ContextFileType.PNG,
+                ContextFileType.JPG,
+                ContextFileType.JPEG,
+            }:
                 try:
-                    from PIL import Image
+                    from PIL import Image  # type: ignore
+
                     with Image.open(file_path) as img:
-                        metadata.update({
-                            "width": img.width,
-                            "height": img.height,
-                            "format": img.format,
-                            "mode": img.mode,
-                        })
+                        metadata.update(
+                            {
+                                "width": img.width,
+                                "height": img.height,
+                                "format": img.format,
+                                "mode": img.mode,
+                            }
+                        )
                 except ImportError:
                     logger.warning("PIL not installed for image metadata extraction")
-            
-            elif file_type in [ContextFileType.MP3, ContextFileType.WAV]:
-                # Audio metadata
+
+            elif file_type in {ContextFileType.MP3, ContextFileType.WAV}:
                 try:
-                    import mutagen
+                    import mutagen  # type: ignore
+
                     audio_file = mutagen.File(file_path)
                     if audio_file:
-                        metadata.update({
-                            "duration": getattr(audio_file.info, 'length', 0),
-                            "bitrate": getattr(audio_file.info, 'bitrate', 0),
-                            "sample_rate": getattr(audio_file.info, 'sample_rate', 0),
-                        })
+                        metadata.update(
+                            {
+                                "duration": getattr(audio_file.info, "length", 0),
+                                "bitrate": getattr(audio_file.info, "bitrate", 0),
+                                "sample_rate": getattr(
+                                    audio_file.info, "sample_rate", 0
+                                ),
+                            }
+                        )
                 except ImportError:
-                    logger.warning("mutagen not installed for audio metadata extraction")
-            
-            elif file_type in [ContextFileType.MP4, ContextFileType.AVI, ContextFileType.MOV]:
-                # Video metadata
+                    logger.warning(
+                        "mutagen not installed for audio metadata extraction"
+                    )
+
+            elif file_type in {
+                ContextFileType.MP4,
+                ContextFileType.AVI,
+                ContextFileType.MOV,
+            }:
                 try:
-                    import cv2
+                    import cv2  # type: ignore
+
                     cap = cv2.VideoCapture(file_path)
                     if cap.isOpened():
-                        metadata.update({
-                            "width": int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
-                            "height": int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
-                            "fps": cap.get(cv2.CAP_PROP_FPS),
-                            "frame_count": int(cap.get(cv2.CAP_PROP_FRAME_COUNT)),
-                        })
+                        metadata.update(
+                            {
+                                "width": int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
+                                "height": int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+                                "fps": cap.get(cv2.CAP_PROP_FPS),
+                                "frame_count": int(cap.get(cv2.CAP_PROP_FRAME_COUNT)),
+                            }
+                        )
                         cap.release()
                 except ImportError:
                     logger.warning("OpenCV not installed for video metadata extraction")
-            
+
             return metadata
-            
-        except Exception as e:
-            logger.error(f"Failed to extract metadata from {file_type}: {e}")
+
+        except Exception as exc:
+            logger.error("Failed to extract metadata from %s: %s", file_type.value, exc)
             return {}
 
     async def _basic_malware_scan(
@@ -573,42 +640,32 @@ class FileUploadHandler:
         filename: str,
     ) -> Tuple[bool, Optional[str]]:
         """
-        Basic malware scan (placeholder implementation).
-        
-        Args:
-            file_data: Raw file data
-            filename: Original filename
-            
-        Returns:
-            Tuple of (is_safe, error_message)
+        Lightweight prefilter malware scan.
+
+        This is not a substitute for a real antivirus engine.
         """
-        # This is a very basic placeholder
-        # In production, you would integrate with proper antivirus/antimalware solutions
-        
-        # Check for common executable signatures
         executable_signatures = [
-            b'MZ',  # Windows PE
-            b'\x7fELF',  # Linux ELF
-            b'\xca\xfe\xba\xbe',  # Java class
-            b'\xfe\xed\xfa\xce',  # Mach-O binary
+            b"MZ",
+            b"\x7fELF",
+            b"\xca\xfe\xba\xbe",
+            b"\xfe\xed\xfa\xce",
         ]
-        
+
         for signature in executable_signatures:
             if file_data.startswith(signature):
                 return False, "Executable file detected"
-        
-        # Check for suspicious patterns
+
         suspicious_patterns = [
-            b'eval(',
-            b'exec(',
-            b'system(',
-            b'shell_exec(',
+            b"eval(",
+            b"exec(",
+            b"system(",
+            b"shell_exec(",
         ]
-        
+
         for pattern in suspicious_patterns:
             if pattern in file_data:
                 return False, "Suspicious code pattern detected"
-        
+
         return True, None
 
     async def _find_duplicate_file(
@@ -617,18 +674,12 @@ class FileUploadHandler:
         user_id: str,
     ) -> Optional[ContextFile]:
         """
-        Find existing file by checksum.
-        
-        Args:
-            checksum: File checksum
-            user_id: User ID
-            
-        Returns:
-            Existing ContextFile or None
+        Find existing file by checksum for a given user.
         """
         if not self._has_db_persistence():
             return None
 
+        assert self.db_client is not None
         async with self.db_client.get_async_session() as session:
             result = await session.execute(
                 text(
@@ -653,15 +704,15 @@ class FileUploadHandler:
         return self._row_to_file(dict(row)) if row else None
 
     def _has_db_persistence(self) -> bool:
-        """Whether the file handler can use Postgres persistence."""
-        return self.db_client is not None and hasattr(self.db_client, "get_async_session")
+        return self.db_client is not None and hasattr(
+            self.db_client,
+            "get_async_session",
+        )
 
     def _serialize_json(self, value: Any) -> str:
-        """Serialize a Python value for JSONB transport."""
         return json.dumps({} if value is None else value)
 
     def _row_to_file(self, row: Dict[str, Any]) -> ContextFile:
-        """Hydrate a ContextFile from a database row mapping."""
         return ContextFile(
             file_id=str(row["file_id"]),
             context_id=str(row["context_id"]),
@@ -680,10 +731,10 @@ class FileUploadHandler:
         )
 
     async def _persist_file(self, context_file: ContextFile) -> None:
-        """Persist a context file row to Postgres when available."""
         if not self._has_db_persistence():
             return
 
+        assert self.db_client is not None
         async with self.db_client.get_async_session() as session:
             await session.execute(
                 text(
@@ -722,7 +773,9 @@ class FileUploadHandler:
                     "storage_path": context_file.storage_path,
                     "checksum": context_file.checksum,
                     "extracted_text": context_file.extracted_text,
-                    "extracted_metadata": self._serialize_json(context_file.extracted_metadata),
+                    "extracted_metadata": self._serialize_json(
+                        context_file.extracted_metadata
+                    ),
                     "created_at": context_file.created_at,
                     "processed_at": context_file.processed_at,
                     "status": context_file.status.value,
@@ -732,10 +785,10 @@ class FileUploadHandler:
             await session.commit()
 
     async def _load_file(self, file_id: str) -> Optional[ContextFile]:
-        """Load a file row from Postgres."""
         if not self._has_db_persistence():
             return None
 
+        assert self.db_client is not None
         async with self.db_client.get_async_session() as session:
             result = await session.execute(
                 text(
@@ -754,22 +807,27 @@ class FileUploadHandler:
         return self._row_to_file(dict(row)) if row else None
 
     async def _delete_file_record(self, file_id: str) -> None:
-        """Delete a file row from Postgres."""
         if not self._has_db_persistence():
             return
 
+        assert self.db_client is not None
         async with self.db_client.get_async_session() as session:
             await session.execute(
-                text("DELETE FROM context_files WHERE file_id = CAST(:file_id AS UUID)"),
+                text(
+                    "DELETE FROM context_files WHERE file_id = CAST(:file_id AS UUID)"
+                ),
                 {"file_id": file_id},
             )
             await session.commit()
 
     async def _check_file_access(self, context_id: str, user_id: str) -> bool:
-        """Check whether a user can access the context that owns a file."""
+        """
+        Check whether a user can access the context that owns a file.
+        """
         if not self._has_db_persistence():
-            return True
+            return self.allow_open_access_without_db
 
+        assert self.db_client is not None
         requester_is_uuid = _is_uuid_like(user_id)
         async with self.db_client.get_async_session() as session:
             result = await session.execute(
@@ -817,45 +875,139 @@ class FileUploadHandler:
         if access_level == "shared":
             return bool(row["has_share"])
         if access_level in {"team", "organization"}:
-            owner_tenant = str(row["owner_tenant_id"]) if row.get("owner_tenant_id") else None
-            requester_tenant = str(row["requester_tenant_id"]) if row.get("requester_tenant_id") else None
+            owner_tenant = (
+                str(row["owner_tenant_id"]) if row.get("owner_tenant_id") else None
+            )
+            requester_tenant = (
+                str(row["requester_tenant_id"])
+                if row.get("requester_tenant_id")
+                else None
+            )
             if owner_tenant and requester_tenant and owner_tenant == requester_tenant:
                 return True
-            if row.get("org_id") and requester_tenant and row["org_id"] == requester_tenant:
+            if (
+                row.get("org_id")
+                and requester_tenant
+                and row["org_id"] == requester_tenant
+            ):
                 return True
             return False
 
         return False
 
+    async def _quarantine_rejected_upload(
+        self,
+        file_data: bytes,
+        filename: str,
+        reason: str,
+    ) -> None:
+        """
+        Store rejected uploads for review if possible.
+        """
+        try:
+            quarantine_path = self._build_quarantine_path(filename)
+            with open(quarantine_path, "wb") as file_handle:
+                file_handle.write(file_data)
 
-def _is_uuid_like(value: str) -> bool:
-    """Check whether a string can be parsed as a UUID."""
-    try:
-        uuid.UUID(str(value))
-        return True
-    except (TypeError, ValueError):
-        return False
+            metadata_path = f"{quarantine_path}.json"
+            with open(metadata_path, "w", encoding="utf-8") as metadata_file:
+                json.dump(
+                    {
+                        "filename": filename,
+                        "reason": reason,
+                        "timestamp": datetime.utcnow().isoformat(),
+                    },
+                    metadata_file,
+                    indent=2,
+                )
+        except Exception:
+            logger.exception("Failed to quarantine rejected upload: %s", filename)
+
+    def _build_quarantine_path(self, filename: str) -> str:
+        """
+        Build a unique quarantine file path.
+        """
+        safe_filename = self._sanitize_filename(filename)
+        timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+        return os.path.join(
+            self.quarantine_dir,
+            f"{timestamp}_{uuid.uuid4().hex}_{safe_filename}",
+        )
+
+    def _sanitize_filename(self, filename: str) -> str:
+        """
+        Sanitize a user-provided filename for safe storage.
+        """
+        candidate = Path(str(filename or "")).name
+        candidate = candidate.replace("\x00", "").strip()
+
+        if not candidate:
+            candidate = f"upload_{uuid.uuid4().hex}"
+
+        candidate = re.sub(r"[^\w.\- ]+", "_", candidate)
+        candidate = re.sub(r"\s+", "_", candidate)
+
+        stem = Path(candidate).stem[: self.DEFAULT_MAX_FILENAME_LENGTH]
+        suffix = Path(candidate).suffix.lower()
+
+        if not stem:
+            stem = f"upload_{uuid.uuid4().hex[:12]}"
+
+        sanitized = f"{stem}{suffix}"
+        return sanitized[: self.DEFAULT_MAX_FILENAME_LENGTH + len(suffix)]
+
+    def _validate_mime_extension_consistency(
+        self,
+        filename: str,
+        mime_type: str,
+    ) -> Optional[str]:
+        """
+        Validate whether MIME type and extension are reasonably consistent.
+        """
+        expected_type = self._detect_file_type(filename, None)
+        mime_type_match = self._detect_file_type(filename, mime_type)
+
+        if expected_type is None or mime_type_match is None:
+            return None
+
+        if expected_type != mime_type_match:
+            return (
+                f"File extension and MIME type mismatch: extension implies "
+                f"'{expected_type.value}', MIME implies '{mime_type_match.value}'"
+            )
+
+        return None
+
+    def _resolve_absolute_storage_path(self, storage_path: str) -> Optional[str]:
+        """
+        Resolve a stored relative path to an absolute local storage path.
+        """
+        if not storage_path:
+            return None
+
+        if os.path.isabs(storage_path):
+            return storage_path
+
+        return os.path.abspath(os.path.join(self.storage_path, storage_path))
 
     def get_supported_file_types(self) -> List[Dict[str, str]]:
         """
         Get list of supported file types with descriptions.
-        
-        Returns:
-            List of file type information
         """
-        file_types = []
-        
+        file_types: List[Dict[str, str]] = []
+
         for file_type in ContextFileType:
-            file_types.append({
-                "extension": file_type.value,
-                "name": file_type.name,
-                "description": self._get_file_type_description(file_type),
-            })
-        
+            file_types.append(
+                {
+                    "extension": file_type.value,
+                    "name": file_type.name,
+                    "description": self._get_file_type_description(file_type),
+                }
+            )
+
         return file_types
 
     def _get_file_type_description(self, file_type: ContextFileType) -> str:
-        """Get description for file type."""
         descriptions = {
             ContextFileType.PDF: "PDF Document",
             ContextFileType.DOCX: "Microsoft Word Document",
@@ -884,5 +1036,15 @@ def _is_uuid_like(value: str) -> bool:
             ContextFileType.TAR: "TAR Archive",
             ContextFileType.GZ: "GZIP Archive",
         }
-        
         return descriptions.get(file_type, "Unknown File Type")
+
+
+def _is_uuid_like(value: str) -> bool:
+    """
+    Check whether a string can be parsed as a UUID.
+    """
+    try:
+        uuid.UUID(str(value))
+        return True
+    except (TypeError, ValueError):
+        return False

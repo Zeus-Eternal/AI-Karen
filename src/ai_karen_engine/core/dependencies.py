@@ -134,17 +134,6 @@ async def get_ai_orchestrator_service() -> Any:
     return await _resolve_service("ai_orchestrator")
 
 
-async def get_chat_orchestrator_service() -> Any:
-    """Absolute source of truth for Chat Orchestrator."""
-
-    async def factory():
-        from ai_karen_engine.chat.factory import get_chat_orchestrator
-
-        return await get_chat_orchestrator()
-
-    return await _resolve_service("chat_orchestrator", factory)
-
-
 async def get_memory_service() -> Any:
     """Discovery for Memory service."""
     return await _resolve_service("memory_service")
@@ -202,11 +191,16 @@ async def get_plugin_service() -> Any:
 
         # Automatically trigger UI materialization to sync files to plugin_repo
         try:
-            from ai_karen_engine.extensions.platform.core.registry.ui_materialization import get_ui_pipeline
+            from ai_karen_engine.extensions.platform.core.registry.ui_materialization import (
+                get_ui_pipeline,
+            )
+
             pipeline = get_ui_pipeline()
             # This is an async call but we can run it in the background or await it
             await pipeline.materialize_all()
-            logger.info("UI materialization completed during plugin service acquisition")
+            logger.info(
+                "UI materialization completed during plugin service acquisition"
+            )
         except Exception as ui_err:
             logger.warning(f"Auto UI materialization failed: {ui_err}")
 
@@ -217,7 +211,7 @@ async def get_plugin_service() -> Any:
 
 async def get_tool_service() -> Any:
     async def factory():
-        from ai_karen_engine.memory.tool_service import ToolService
+        from ai_karen_engine.services.tool_service import ToolService
 
         return ToolService()
 
@@ -247,7 +241,6 @@ HealthMonitor_Dep = Depends(get_health_monitor_service)
 ServiceRegistry_Dep = Depends(get_service_registry_instance)
 
 AIOrchestrator_Dep = Depends(get_ai_orchestrator_service)
-ChatOrchestrator_Dep = Depends(get_chat_orchestrator_service)
 MemoryService_Dep = Depends(get_memory_service)
 ConversationService_Dep = Depends(get_conversation_service)
 

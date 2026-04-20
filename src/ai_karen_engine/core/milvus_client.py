@@ -1,4 +1,5 @@
 """Production-grade in-memory vector store simulating Milvus for Kari AI."""
+
 from __future__ import annotations
 
 import logging
@@ -15,7 +16,7 @@ import numpy as np  # type: ignore
 logger = logging.getLogger(__name__)
 
 from ai_karen_engine.core.embedding_manager import record_metric  # type: ignore
-from ai_karen_engine.memory.metrics_service import get_metrics_service
+from ai_karen_engine.monitoring.metrics_service import get_metrics_service
 
 try:  # Optional approximate nearest neighbor backend
     import hnswlib  # type: ignore
@@ -85,7 +86,9 @@ class MilvusClient:
                 try:
                     self._index.mark_deleted(rid)
                 except Exception as idx_err:
-                    logger.warning(f"Failed to mark index entry {rid} as deleted: {idx_err}")
+                    logger.warning(
+                        f"Failed to mark index entry {rid} as deleted: {idx_err}"
+                    )
         if self._cache is not None and expired:
             self._cache.clear()
 
@@ -221,7 +224,6 @@ class MilvusClient:
             pass
         record_metric("vector_search_latency_seconds", duration)
         return results
-
 
     async def search(
         self,

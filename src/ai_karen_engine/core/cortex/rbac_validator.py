@@ -19,7 +19,8 @@ logger = logging.getLogger(__name__)
 
 # Try to import Redis manager
 try:
-    from ai_karen_engine.services.redis_connection_manager import get_redis_manager
+    from ai_karen_engine.infra.redis_connection_manager import get_redis_manager
+
     REDIS_AVAILABLE = True
 except ImportError:
     REDIS_AVAILABLE = False
@@ -28,6 +29,7 @@ except ImportError:
 # Try to import database clients
 try:
     from ai_karen_engine.clients.database.postgres_client import PostgresClient
+
     POSTGRES_AVAILABLE = True
 except ImportError:
     POSTGRES_AVAILABLE = False
@@ -40,11 +42,13 @@ RBAC_CACHE_KEY_PREFIX = "kari:rbac:plugin"
 
 class RBACValidationError(Exception):
     """Raised when RBAC validation fails."""
+
     pass
 
 
 class PermissionDeniedError(Exception):
     """Raised when user doesn't have permission."""
+
     pass
 
 
@@ -68,7 +72,9 @@ async def _check_redis_cache(user_id: str, plugin_id: str) -> Optional[bool]:
 
         if cached:
             result = json.loads(cached)
-            logger.debug(f"[RBAC] Cache HIT for user {user_id}, plugin {plugin_id}: {result}")
+            logger.debug(
+                f"[RBAC] Cache HIT for user {user_id}, plugin {plugin_id}: {result}"
+            )
             return result.get("permitted", False)
 
         logger.debug(f"[RBAC] Cache MISS for user {user_id}, plugin {plugin_id}")
@@ -90,10 +96,14 @@ async def _set_redis_cache(user_id: str, plugin_id: str, permitted: bool) -> Non
             return
 
         cache_key = f"{RBAC_CACHE_KEY_PREFIX}:{user_id}:{plugin_id}"
-        cache_value = json.dumps({"permitted": permitted, "user_id": user_id, "plugin_id": plugin_id})
+        cache_value = json.dumps(
+            {"permitted": permitted, "user_id": user_id, "plugin_id": plugin_id}
+        )
 
         await redis_mgr.set(cache_key, cache_value, ex=RBAC_CACHE_TTL)
-        logger.debug(f"[RBAC] Cached permission for user {user_id}, plugin {plugin_id}: {permitted}")
+        logger.debug(
+            f"[RBAC] Cached permission for user {user_id}, plugin {plugin_id}: {permitted}"
+        )
 
     except Exception as ex:
         logger.warning(f"[RBAC] Redis cache set failed: {ex}")
@@ -129,7 +139,9 @@ def _check_plugin_permission_postgres(user_ctx: Dict[str, Any], plugin_id: str) 
 
         # Admin always allowed
         if "admin" in roles or "superuser" in roles:
-            logger.info(f"[RBAC] Admin user {user_id} granted access to plugin {plugin_id}")
+            logger.info(
+                f"[RBAC] Admin user {user_id} granted access to plugin {plugin_id}"
+            )
             return True
 
         # TODO: Query Postgres for plugin_registry, plugin_installs, role_permissions
@@ -194,7 +206,9 @@ async def validate_plugin_permission(user_ctx: Dict[str, Any], plugin_id: str) -
         await _set_redis_cache(user_id, plugin_id, permitted)
 
         if permitted:
-            logger.info(f"[RBAC] ✅ User {user_id} permitted to execute plugin {plugin_id}")
+            logger.info(
+                f"[RBAC] ✅ User {user_id} permitted to execute plugin {plugin_id}"
+            )
             return True
         else:
             raise PermissionDeniedError(
@@ -204,12 +218,16 @@ async def validate_plugin_permission(user_ctx: Dict[str, Any], plugin_id: str) -
     except PermissionDeniedError:
         raise
     except Exception as ex:
-        error_msg = f"RBAC validation failed for user {user_id}, plugin {plugin_id}: {ex}"
+        error_msg = (
+            f"RBAC validation failed for user {user_id}, plugin {plugin_id}: {ex}"
+        )
         logger.error(error_msg)
         raise RBACValidationError(error_msg) from ex
 
 
-async def invalidate_plugin_permission_cache(user_id: str, plugin_id: Optional[str] = None) -> None:
+async def invalidate_plugin_permission_cache(
+    user_id: str, plugin_id: Optional[str] = None
+) -> None:
     """
     Invalidate cached plugin permissions for user.
 
@@ -229,10 +247,14 @@ async def invalidate_plugin_permission_cache(user_id: str, plugin_id: Optional[s
             # Invalidate specific plugin
             cache_key = f"{RBAC_CACHE_KEY_PREFIX}:{user_id}:{plugin_id}"
             await redis_mgr.delete(cache_key)
-            logger.info(f"[RBAC] Invalidated cache for user {user_id}, plugin {plugin_id}")
+            logger.info(
+                f"[RBAC] Invalidated cache for user {user_id}, plugin {plugin_id}"
+            )
         else:
             # TODO: Invalidate all plugins for user (requires scan support in RedisConnectionManager)
-            logger.warning(f"[RBAC] Bulk cache invalidation not yet implemented for user {user_id}")
+            logger.warning(
+                f"[RBAC] Bulk cache invalidation not yet implemented for user {user_id}"
+            )
 
     except Exception as ex:
         logger.warning(f"[RBAC] Cache invalidation failed: {ex}")
@@ -242,5 +264,5 @@ __all__ = [
     "validate_plugin_permission",
     "invalidate_plugin_permission_cache",
     "RBACValidationError",
-    "PermissionDeniedError"
+    "PermissionDeniedError",
 ]

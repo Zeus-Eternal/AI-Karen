@@ -494,7 +494,7 @@ async def warm_local_llm_stack(app: FastAPI) -> None:
         return
 
     try:
-        from ai_karen_engine.memory.settings_manager import get_settings_manager
+        from ai_karen_engine.services.settings_manager import get_settings_manager
 
         settings_manager = get_settings_manager()
         active_provider = (

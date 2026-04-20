@@ -16,7 +16,7 @@ import time
 from typing import Dict, List, Optional, Any
 from pathlib import Path
 
-from ai_karen_engine.memory.model_library_service import (
+from ai_karen_engine.services.model_library_service import (
     ModelLibraryService,
     ModelInfo,
     DownloadTask,

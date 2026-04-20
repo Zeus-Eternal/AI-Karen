@@ -6,32 +6,16 @@ versioning, and search functionality.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
-from ai_karen_engine.utils.dependency_checks import import_fastapi
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+
 from ai_karen_engine.context_management.models import (
     ContextAccessLevel,
-    ContextEntry,
-    ContextFileType,
     ContextQuery,
-    ContextSearchResult,
-    ContextShare,
-    ContextStatus,
     ContextType,
 )
 
-# Import FastAPI components
-APIRouter = import_fastapi("APIRouter")
-UploadFile = import_fastapi("UploadFile")
-File = import_fastapi("File")
-HTTPException = import_fastapi("HTTPException")
-status = import_fastapi("status")
-Depends = import_fastapi("Depends")
-Query = import_fastapi("Query")
-Body = import_fastapi("Body")
-Path = import_fastapi("Path")
-
-# Create router
 router = APIRouter(tags=["context-management"])
 
 logger = logging.getLogger(__name__)
@@ -54,6 +38,7 @@ def _get_integration():
             detail="Context management is not initialized",
         )
     return integration
+
 
 async def get_context_management_service():
     """Dependency to get the shared context management service."""
@@ -102,45 +87,32 @@ async def create_context(
     conversation_id: Optional[str] = None,
     access_level: ContextAccessLevel = ContextAccessLevel.PRIVATE,
     metadata: Optional[Dict[str, Any]] = None,
-    tags: Optional[List[str]] = None,
+    tags: Optional[list[str]] = None,
     importance_score: float = 5.0,
     expires_in_days: Optional[int] = None,
     user_id: str = Query(..., description="User ID"),
-    context_service = Depends(get_context_management_service),
-    preprocessor = Depends(get_context_preprocessor),
+    context_service=Depends(get_context_management_service),
+    preprocessor=Depends(get_context_preprocessor),
 ):
     """
     Create a new context entry.
-    
-    Args:
-        title: Context title
-        content: Context content
-        context_type: Type of context
-        org_id: Organization ID
-        session_id: Session ID
-        conversation_id: Conversation ID
-        access_level: Access level for context
-        metadata: Additional metadata
-        tags: List of tags
-        importance_score: Importance score (1-10)
-        expires_in_days: Days until expiration
-        user_id: User ID creating context
-        
-    Returns:
-        Created context information
     """
     try:
-        # Validate importance score
+        if not title or not title.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="Title is required",
+            )
+
         if not 1.0 <= importance_score <= 10.0:
             raise HTTPException(
                 status_code=400,
-                detail="Importance score must be between 1.0 and 10.0"
+                detail="Importance score must be between 1.0 and 10.0",
             )
-        
-        # Create context
+
         context = await context_service.create_context(
             user_id=user_id,
-            title=title,
+            title=title.strip(),
             content=content,
             context_type=context_type,
             org_id=org_id,
@@ -152,21 +124,22 @@ async def create_context(
             importance_score=importance_score,
             expires_in_days=expires_in_days,
         )
-        
-        # Preprocess context
+
         context = await preprocessor.preprocess_context(context)
-        
+
         return {
             "success": True,
             "context": context.to_dict(),
-            "message": "Context created successfully"
+            "message": "Context created successfully",
         }
-        
-    except Exception as e:
-        logger.error(f"Failed to create context: {e}")
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Failed to create context: %s", exc)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to create context: {str(e)}"
+            detail=f"Failed to create context: {str(exc)}",
         )
 
 
@@ -176,19 +149,10 @@ async def get_context(
     include_content: bool = True,
     include_files: bool = False,
     user_id: str = Query(..., description="User ID"),
-    context_service = Depends(get_context_management_service),
+    context_service=Depends(get_context_management_service),
 ):
     """
     Get a context entry by ID.
-    
-    Args:
-        context_id: Context ID to retrieve
-        include_content: Whether to include content
-        include_files: Whether to include associated files
-        user_id: User ID requesting context
-        
-    Returns:
-        Context information
     """
     try:
         context = await context_service.get_context(
@@ -197,17 +161,17 @@ async def get_context(
             include_content=include_content,
             include_files=include_files,
         )
-        
+
         if not context:
             raise HTTPException(
                 status_code=404,
-                detail="Context not found or access denied"
+                detail="Context not found or access denied",
             )
 
         response = {
             "success": True,
             "context": context.to_dict(include_content=include_content),
-            "message": "Context retrieved successfully"
+            "message": "Context retrieved successfully",
         }
 
         if include_files:
@@ -218,14 +182,14 @@ async def get_context(
             response["files"] = [file.to_dict() for file in files]
 
         return response
-        
+
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Failed to get context {context_id}: {e}")
+    except Exception as exc:
+        logger.error("Failed to get context %s: %s", context_id, exc)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to get context: {str(e)}"
+            detail=f"Failed to get context: {str(exc)}",
         )
 
 
@@ -235,44 +199,35 @@ async def update_context(
     title: Optional[str] = None,
     content: Optional[str] = None,
     metadata: Optional[Dict[str, Any]] = None,
-    tags: Optional[List[str]] = None,
+    tags: Optional[list[str]] = None,
     importance_score: Optional[float] = None,
     create_version: bool = True,
     change_summary: Optional[str] = None,
     user_id: str = Query(..., description="User ID"),
-    context_service = Depends(get_context_management_service),
-    preprocessor = Depends(get_context_preprocessor),
+    context_service=Depends(get_context_management_service),
+    preprocessor=Depends(get_context_preprocessor),
 ):
     """
     Update a context entry.
-    
-    Args:
-        context_id: Context ID to update
-        title: New title
-        content: New content
-        metadata: New metadata
-        tags: New tags
-        importance_score: New importance score
-        create_version: Whether to create new version
-        change_summary: Summary of changes
-        user_id: User ID updating context
-        
-    Returns:
-        Updated context information
     """
     try:
-        # Validate importance score if provided
         if importance_score is not None and not 1.0 <= importance_score <= 10.0:
             raise HTTPException(
                 status_code=400,
-                detail="Importance score must be between 1.0 and 10.0"
+                detail="Importance score must be between 1.0 and 10.0",
             )
-        
-        # Update context
+
+        normalized_title = title.strip() if isinstance(title, str) else title
+        if normalized_title is not None and not normalized_title:
+            raise HTTPException(
+                status_code=400,
+                detail="Title cannot be empty",
+            )
+
         context = await context_service.update_context(
             context_id=context_id,
             user_id=user_id,
-            title=title,
+            title=normalized_title,
             content=content,
             metadata=metadata,
             tags=tags,
@@ -280,29 +235,28 @@ async def update_context(
             create_version=create_version,
             change_summary=change_summary,
         )
-        
+
         if not context:
             raise HTTPException(
                 status_code=404,
-                detail="Context not found or access denied"
+                detail="Context not found or access denied",
             )
-        
-        # Preprocess updated context
+
         context = await preprocessor.preprocess_context(context)
-        
+
         return {
             "success": True,
             "context": context.to_dict(),
-            "message": "Context updated successfully"
+            "message": "Context updated successfully",
         }
-        
+
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Failed to update context {context_id}: {e}")
+    except Exception as exc:
+        logger.error("Failed to update context %s: %s", context_id, exc)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to update context: {str(e)}"
+            detail=f"Failed to update context: {str(exc)}",
         )
 
 
@@ -311,18 +265,10 @@ async def delete_context(
     context_id: str,
     permanent: bool = False,
     user_id: str = Query(..., description="User ID"),
-    context_service = Depends(get_context_management_service),
+    context_service=Depends(get_context_management_service),
 ):
     """
     Delete a context entry.
-    
-    Args:
-        context_id: Context ID to delete
-        permanent: Whether to permanently delete
-        user_id: User ID deleting context
-        
-    Returns:
-        Deletion result
     """
     try:
         success = await context_service.delete_context(
@@ -330,25 +276,25 @@ async def delete_context(
             user_id=user_id,
             permanent=permanent,
         )
-        
+
         if not success:
             raise HTTPException(
                 status_code=404,
-                detail="Context not found or access denied"
+                detail="Context not found or access denied",
             )
-        
+
         return {
             "success": True,
-            "message": f"Context {'permanently deleted' if permanent else 'soft deleted'} successfully"
+            "message": f"Context {'permanently deleted' if permanent else 'soft deleted'} successfully",
         }
-        
+
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Failed to delete context {context_id}: {e}")
+    except Exception as exc:
+        logger.error("Failed to delete context %s: %s", context_id, exc)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to delete context: {str(e)}"
+            detail=f"Failed to delete context: {str(exc)}",
         )
 
 
@@ -360,53 +306,44 @@ async def delete_context(
 async def search_contexts(
     query: ContextQuery,
     user_id: str = Query(..., description="User ID"),
-    context_service = Depends(get_context_management_service),
+    context_service=Depends(get_context_management_service),
 ):
     """
     Search for contexts based on query parameters.
-    
-    Args:
-        query: Search query parameters
-        user_id: User ID performing search
-        
-    Returns:
-        Search results
     """
     try:
-        # Validate query parameters
         if query.top_k <= 0 or query.top_k > 100:
             raise HTTPException(
                 status_code=400,
-                detail="top_k must be between 1 and 100"
+                detail="top_k must be between 1 and 100",
             )
-        
+
         if not 0.0 <= query.similarity_threshold <= 1.0:
             raise HTTPException(
                 status_code=400,
-                detail="similarity_threshold must be between 0.0 and 1.0"
+                detail="similarity_threshold must be between 0.0 and 1.0",
             )
-        
-        # Search contexts
+
         results = await context_service.search_contexts(
             query=query,
             user_id=user_id,
         )
-        
+
         return {
             "success": True,
             "results": [result.to_dict() for result in results],
             "total_results": len(results),
             "query": query.to_dict(),
-            "message": "Search completed successfully"
+            "message": "Search completed successfully",
         }
-        
+
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Failed to search contexts: {e}")
+    except Exception as exc:
+        logger.error("Failed to search contexts: %s", exc)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to search contexts: {str(e)}"
+            detail=f"Failed to search contexts: {str(exc)}",
         )
 
 
@@ -420,40 +357,45 @@ async def upload_file(
     file: UploadFile = File(...),
     metadata: Optional[Dict[str, Any]] = None,
     user_id: str = Query(..., description="User ID"),
-    file_handler = Depends(get_file_upload_handler),
-    context_service = Depends(get_context_management_service),
+    file_handler=Depends(get_file_upload_handler),
+    context_service=Depends(get_context_management_service),
 ):
     """
     Upload a file to a context.
-    
-    Args:
-        context_id: Context ID to associate file with
-        file: File to upload
-        metadata: Additional metadata for file
-        user_id: User ID uploading file
-        
-    Returns:
-        Upload result
     """
     try:
-        # Check if context exists and user has access
         context = await context_service.get_context(
             context_id=context_id,
             user_id=user_id,
             include_content=False,
         )
-        
+
         if not context:
             raise HTTPException(
                 status_code=404,
-                detail="Context not found or access denied"
+                detail="Context not found or access denied",
             )
-        
-        # Read file data
+
+        if file is None:
+            raise HTTPException(
+                status_code=400,
+                detail="File is required",
+            )
+
+        if not file.filename:
+            raise HTTPException(
+                status_code=400,
+                detail="Uploaded file must have a filename",
+            )
+
         file_data = await file.read()
-        
-        # Handle upload
-        context_file, error = await file_handler.handle_upload(
+        if not file_data:
+            raise HTTPException(
+                status_code=400,
+                detail="Uploaded file is empty",
+            )
+
+        context_file, handler_message = await file_handler.handle_upload(
             file_data=file_data,
             filename=file.filename,
             context_id=context_id,
@@ -461,28 +403,28 @@ async def upload_file(
             mime_type=file.content_type,
             metadata=metadata,
         )
-        
-        if error:
+
+        if context_file is None:
             raise HTTPException(
                 status_code=400,
-                detail=f"File upload failed: {error}"
+                detail=f"File upload failed: {handler_message or 'unknown error'}",
             )
 
         await context_service.add_file_reference(context_id, context_file.file_id)
-        
+
         return {
             "success": True,
             "file": context_file.to_dict(),
-            "message": "File uploaded successfully"
+            "message": handler_message or "File uploaded successfully",
         }
-        
+
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Failed to upload file: {e}")
+    except Exception as exc:
+        logger.error("Failed to upload file: %s", exc)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to upload file: {str(e)}"
+            detail=f"Failed to upload file: {str(exc)}",
         )
 
 
@@ -490,17 +432,10 @@ async def upload_file(
 async def get_file(
     file_id: str,
     user_id: str = Query(..., description="User ID"),
-    file_handler = Depends(get_file_upload_handler),
+    file_handler=Depends(get_file_upload_handler),
 ):
     """
     Get file information by ID.
-    
-    Args:
-        file_id: File ID to retrieve
-        user_id: User ID requesting file
-        
-    Returns:
-        File information
     """
     try:
         context_file = await file_handler.get_file(
@@ -508,26 +443,26 @@ async def get_file(
             user_id=user_id,
             check_access=True,
         )
-        
+
         if not context_file:
             raise HTTPException(
                 status_code=404,
-                detail="File not found or access denied"
+                detail="File not found or access denied",
             )
-        
+
         return {
             "success": True,
             "file": context_file.to_dict(),
-            "message": "File retrieved successfully"
+            "message": "File retrieved successfully",
         }
-        
+
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Failed to get file {file_id}: {e}")
+    except Exception as exc:
+        logger.error("Failed to get file %s: %s", file_id, exc)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to get file: {str(e)}"
+            detail=f"Failed to get file: {str(exc)}",
         )
 
 
@@ -536,19 +471,11 @@ async def delete_file(
     file_id: str,
     permanent: bool = False,
     user_id: str = Query(..., description="User ID"),
-    file_handler = Depends(get_file_upload_handler),
-    context_service = Depends(get_context_management_service),
+    file_handler=Depends(get_file_upload_handler),
+    context_service=Depends(get_context_management_service),
 ):
     """
     Delete a file.
-    
-    Args:
-        file_id: File ID to delete
-        permanent: Whether to permanently delete
-        user_id: User ID deleting file
-        
-    Returns:
-        Deletion result
     """
     try:
         existing_file = await file_handler.get_file(
@@ -559,7 +486,7 @@ async def delete_file(
         if not existing_file:
             raise HTTPException(
                 status_code=404,
-                detail="File not found or access denied"
+                detail="File not found or access denied",
             )
 
         success = await file_handler.delete_file(
@@ -567,27 +494,27 @@ async def delete_file(
             user_id=user_id,
             permanent=permanent,
         )
-        
+
         if not success:
             raise HTTPException(
                 status_code=404,
-                detail="File not found or access denied"
+                detail="File not found or access denied",
             )
 
         await context_service.remove_file_reference(existing_file.context_id, file_id)
-        
+
         return {
             "success": True,
-            "message": f"File {'permanently deleted' if permanent else 'soft deleted'} successfully"
+            "message": f"File {'permanently deleted' if permanent else 'soft deleted'} successfully",
         }
-        
+
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Failed to delete file {file_id}: {e}")
+    except Exception as exc:
+        logger.error("Failed to delete file %s: %s", file_id, exc)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to delete file: {str(e)}"
+            detail=f"Failed to delete file: {str(exc)}",
         )
 
 
@@ -600,40 +527,27 @@ async def share_context(
     context_id: str,
     shared_with: Optional[str] = None,
     access_level: ContextAccessLevel = ContextAccessLevel.SHARED,
-    permissions: Optional[List[str]] = None,
+    permissions: Optional[list[str]] = None,
     expires_in_days: Optional[int] = None,
     user_id: str = Query(..., description="User ID"),
-    context_service = Depends(get_context_management_service),
+    context_service=Depends(get_context_management_service),
 ):
     """
     Share a context with another user or group.
-    
-    Args:
-        context_id: Context ID to share
-        shared_with: User ID to share with
-        access_level: Access level for share
-        permissions: List of permissions
-        expires_in_days: Days until share expires
-        user_id: User ID sharing context
-        
-    Returns:
-        Share result
     """
     try:
-        # Check if context exists and user has access
         context = await context_service.get_context(
             context_id=context_id,
             user_id=user_id,
             include_content=False,
         )
-        
+
         if not context:
             raise HTTPException(
                 status_code=404,
-                detail="Context not found or access denied"
+                detail="Context not found or access denied",
             )
-        
-        # Create share
+
         share = await context_service.share_context(
             context_id=context_id,
             user_id=user_id,
@@ -642,26 +556,26 @@ async def share_context(
             permissions=permissions,
             expires_in_days=expires_in_days,
         )
-        
+
         if not share:
             raise HTTPException(
                 status_code=500,
-                detail="Failed to create share"
+                detail="Failed to create share",
             )
-        
+
         return {
             "success": True,
             "share": share.to_dict(),
-            "message": "Context shared successfully"
+            "message": "Context shared successfully",
         }
-        
+
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Failed to share context {context_id}: {e}")
+    except Exception as exc:
+        logger.error("Failed to share context %s: %s", context_id, exc)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to share context: {str(e)}"
+            detail=f"Failed to share context: {str(exc)}",
         )
 
 
@@ -673,36 +587,29 @@ async def share_context(
 async def get_context_versions(
     context_id: str,
     user_id: str = Query(..., description="User ID"),
-    context_service = Depends(get_context_management_service),
+    context_service=Depends(get_context_management_service),
 ):
     """
     Get all versions of a context.
-    
-    Args:
-        context_id: Context ID
-        user_id: User ID requesting versions
-        
-    Returns:
-        List of context versions
     """
     try:
         versions = await context_service.get_context_versions(
             context_id=context_id,
             user_id=user_id,
         )
-        
+
         return {
             "success": True,
             "versions": [version.to_dict() for version in versions],
             "total_versions": len(versions),
-            "message": "Versions retrieved successfully"
+            "message": "Versions retrieved successfully",
         }
-        
-    except Exception as e:
-        logger.error(f"Failed to get versions for context {context_id}: {e}")
+
+    except Exception as exc:
+        logger.error("Failed to get versions for context %s: %s", context_id, exc)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to get versions: {str(e)}"
+            detail=f"Failed to get versions: {str(exc)}",
         )
 
 
@@ -714,35 +621,28 @@ async def get_context_versions(
 async def get_context_stats(
     user_id: str = Query(..., description="User ID"),
     org_id: Optional[str] = None,
-    context_service = Depends(get_context_management_service),
+    context_service=Depends(get_context_management_service),
 ):
     """
     Get context statistics for a user or organization.
-    
-    Args:
-        user_id: User ID
-        org_id: Organization ID (optional)
-        
-    Returns:
-        Context statistics
     """
     try:
         stats = await context_service.get_context_stats(
             user_id=user_id,
             org_id=org_id,
         )
-        
+
         return {
             "success": True,
             "stats": stats,
-            "message": "Statistics retrieved successfully"
+            "message": "Statistics retrieved successfully",
         }
-        
-    except Exception as e:
-        logger.error(f"Failed to get context stats for user {user_id}: {e}")
+
+    except Exception as exc:
+        logger.error("Failed to get context stats for user %s: %s", user_id, exc)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to get statistics: {str(e)}"
+            detail=f"Failed to get statistics: {str(exc)}",
         )
 
 
@@ -752,28 +652,25 @@ async def get_context_stats(
 
 @router.get("/file-types", response_model=Dict[str, Any])
 async def get_supported_file_types(
-    file_handler = Depends(get_file_upload_handler),
+    file_handler=Depends(get_file_upload_handler),
 ):
     """
     Get list of supported file types.
-    
-    Returns:
-        List of supported file types
     """
     try:
         file_types = file_handler.get_supported_file_types()
-        
+
         return {
             "success": True,
             "file_types": file_types,
-            "message": "File types retrieved successfully"
+            "message": "File types retrieved successfully",
         }
-        
-    except Exception as e:
-        logger.error(f"Failed to get supported file types: {e}")
+
+    except Exception as exc:
+        logger.error("Failed to get supported file types: %s", exc)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to get file types: {str(e)}"
+            detail=f"Failed to get file types: {str(exc)}",
         )
 
 
@@ -781,31 +678,28 @@ async def get_supported_file_types(
 async def get_context_types():
     """
     Get list of available context types.
-    
-    Returns:
-        List of context types
     """
     try:
         context_types = [
             {
                 "value": ctx_type.value,
                 "name": ctx_type.name,
-                "description": _get_context_type_description(ctx_type)
+                "description": _get_context_type_description(ctx_type),
             }
             for ctx_type in ContextType
         ]
-        
+
         return {
             "success": True,
             "context_types": context_types,
-            "message": "Context types retrieved successfully"
+            "message": "Context types retrieved successfully",
         }
-        
-    except Exception as e:
-        logger.error(f"Failed to get context types: {e}")
+
+    except Exception as exc:
+        logger.error("Failed to get context types: %s", exc)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to get context types: {str(e)}"
+            detail=f"Failed to get context types: {str(exc)}",
         )
 
 
@@ -824,36 +718,5 @@ def _get_context_type_description(context_type: ContextType) -> str:
         ContextType.MEMORY: "Memory or recollection",
         ContextType.CUSTOM: "Custom or user-defined type",
     }
-    
+
     return descriptions.get(context_type, "Unknown context type")
-
-
-# ---------------------------------------------------------------------------
-# Error Handlers
-# ---------------------------------------------------------------------------
-
-@router.exception_handler(HTTPException)
-async def http_exception_handler(request, exc):
-    """Handle HTTP exceptions."""
-    return {
-        "success": False,
-        "error": {
-            "status_code": exc.status_code,
-            "detail": exc.detail,
-            "type": "http_exception"
-        }
-    }
-
-
-@router.exception_handler(Exception)
-async def general_exception_handler(request, exc):
-    """Handle general exceptions."""
-    logger.error(f"Unhandled exception in context management: {exc}")
-    return {
-        "success": False,
-        "error": {
-            "status_code": 500,
-            "detail": "Internal server error",
-            "type": "general_exception"
-        }
-    }

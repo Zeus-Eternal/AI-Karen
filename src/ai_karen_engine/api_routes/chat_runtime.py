@@ -17,6 +17,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Depends, Request, BackgroundTasks
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 import re
 import uuid
@@ -32,6 +33,7 @@ from ..core.chat_runtime_control_plane import (
     serialize_runtime_response,
     runtime_response_http_status,
 )
+from ..core.stream_authority import get_stream_authority
 from ..chat.chat_orchestrator import (
     ChatRequest as OrchestratorChatRequest,
     ChatResponse as OrchestratorChatResponse,
@@ -403,32 +405,77 @@ async def create_chat_response(
             request, user, validated_messages, response_id, correlation_id, session_id
         )
 
-        # 5. Process Request
+        # 5. Process Request through Stream Authority
         if request.stream:
+            try:
+                # Route streaming request through Stream Authority
+                stream_authority = await get_stream_authority()
 
-            async def generate_stream():
-                try:
-                    stream_result = await orchestrator.handle_chat_stream(chat_request)
-                    async for chunk in stream_result:
-                        yield f"data: {json.dumps(chunk.to_dict() if hasattr(chunk, 'to_dict') else chunk)}\n\n"
-                except Exception as e:
-                    structured_logger.log_error(
-                        error=str(e),
-                        endpoint="/api/chat/chat",
-                        user_id=user["user_id"],
-                        correlation_id=correlation_id,
-                        context="streaming_response",
-                    )
-                    raise HTTPException(status_code=500, detail="Streaming failed")
+                async def generate_stream():
+                    try:
+                        async for chunk in stream_authority.authorize_stream_request(
+                            user_id=user["user_id"],
+                            messages=validated_messages,
+                            model=request.model,
+                            temperature=request.temperature,
+                            max_tokens=request.max_tokens,
+                            stream=True,
+                            metadata={
+                                "session_id": session_id,
+                                "correlation_id": correlation_id,
+                                "orchestrator_request": chat_request,
+                            },
+                        ):
+                            # Convert chunk to SSE format
+                            yield f"data: {json.dumps(chunk)}\n\n"
 
-            return StreamingResponse(
-                generate_stream(),
-                media_type="text/event-stream",
-                headers={
-                    "X-Correlation-Id": correlation_id,
-                    "X-Response-Id": response_id,
-                },
-            )
+                            # Check for terminal events
+                            if chunk.get("finished", False):
+                                break
+
+                    except Exception as e:
+                        structured_logger.log_error(
+                            error=str(e),
+                            endpoint="/api/chat/chat",
+                            user_id=user["user_id"],
+                            correlation_id=correlation_id,
+                            context="stream_authority_error",
+                        )
+                        # Generate error chunk
+                        error_chunk = {
+                            "content": "",
+                            "metadata": {
+                                "event": "error",
+                                "error": str(e),
+                                "session_id": session_id,
+                            },
+                            "finished": True,
+                            "event_type": "error",
+                        }
+                        yield f"data: {json.dumps(error_chunk)}\n\n"
+                        raise HTTPException(status_code=500, detail="Streaming failed")
+
+                return StreamingResponse(
+                    generate_stream(),
+                    media_type="text/event-stream",
+                    headers={
+                        "X-Correlation-Id": correlation_id,
+                        "X-Response-Id": response_id,
+                        "Cache-Control": "no-cache",
+                        "Connection": "keep-alive",
+                    },
+                )
+            except Exception as e:
+                structured_logger.log_error(
+                    error=str(e),
+                    endpoint="/api/chat/chat",
+                    user_id=user["user_id"],
+                    correlation_id=correlation_id,
+                    context="stream_authority_initialization",
+                )
+                raise HTTPException(
+                    status_code=500, detail="Streaming service unavailable"
+                )
         else:
             response_data = await orchestrator.handle_chat(chat_request)
             processing_time = time.time() - start_time

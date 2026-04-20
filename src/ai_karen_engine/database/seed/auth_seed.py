@@ -26,7 +26,7 @@ def seed_default_auth(session: Session) -> None:
             user_id=str(uuid.uuid4()),
             email="admin@karen.ai",
             full_name="Admin User",
-            password_hash="change-me",
+            password_hash="$2b$12$76OItNxTd1aLq5eGSSCBReJtsICNWSJVblEKOHneTYMfh.pBZHSDu",
             is_active=True,
             is_verified=True,
             roles=["admin", "user"],

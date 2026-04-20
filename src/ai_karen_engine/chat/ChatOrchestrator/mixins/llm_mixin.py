@@ -281,7 +281,7 @@ class ChatLLMMixin(Base):
     ) -> Union[ProcessingResult, AsyncIterator[str]]:
         """Execute the fallback chain through system defaults and local models."""
         # Use the centralized LLM router instead of old fallback router
-        from ai_karen_engine.memory.llm_router import (
+        from ai_karen_engine.services.llm_router import (
             LLMRouter,
             ChatRequest as RouterChatRequest,
         )

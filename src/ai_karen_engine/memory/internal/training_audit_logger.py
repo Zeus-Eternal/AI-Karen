@@ -16,7 +16,12 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 from dataclasses import dataclass, field, asdict
 
-from ai_karen_engine.memory.internal.audit_logging import get_audit_logger, AuditEventType, AuditSeverity
+from ai_karen_engine.services.audit_logging import (
+    get_audit_logger,
+    AuditEventType,
+    AuditSeverity,
+)
+
 # Simple auth - using dict instead of UserData model
 from ai_karen_engine.core.logging import get_logger
 
@@ -25,6 +30,7 @@ logger = get_logger(__name__)
 
 class TrainingEventType(str, Enum):
     """Types of training-related audit events."""
+
     # Training operations
     TRAINING_STARTED = "training_started"
     TRAINING_COMPLETED = "training_completed"
@@ -32,7 +38,7 @@ class TrainingEventType(str, Enum):
     TRAINING_CANCELLED = "training_cancelled"
     TRAINING_PAUSED = "training_paused"
     TRAINING_RESUMED = "training_resumed"
-    
+
     # Model operations
     MODEL_CREATED = "model_created"
     MODEL_UPDATED = "model_updated"
@@ -43,32 +49,32 @@ class TrainingEventType(str, Enum):
     MODEL_ACCESSED = "model_accessed"
     MODEL_EXPORTED = "model_exported"
     MODEL_IMPORTED = "model_imported"
-    
+
     # Data operations
     TRAINING_DATA_UPLOADED = "training_data_uploaded"
     TRAINING_DATA_MODIFIED = "training_data_modified"
     TRAINING_DATA_DELETED = "training_data_deleted"
     TRAINING_DATA_EXPORTED = "training_data_exported"
     TRAINING_DATA_VALIDATED = "training_data_validated"
-    
+
     # Scheduler operations
     SCHEDULE_CREATED = "schedule_created"
     SCHEDULE_UPDATED = "schedule_updated"
     SCHEDULE_DELETED = "schedule_deleted"
     SCHEDULE_EXECUTED = "schedule_executed"
     AUTONOMOUS_LEARNING_TRIGGERED = "autonomous_learning_triggered"
-    
+
     # Configuration changes
     CONFIG_UPDATED = "config_updated"
     HYPERPARAMETERS_CHANGED = "hyperparameters_changed"
     SAFETY_CONTROLS_MODIFIED = "safety_controls_modified"
-    
+
     # Security events
     UNAUTHORIZED_ACCESS_ATTEMPT = "unauthorized_access_attempt"
     PERMISSION_DENIED = "permission_denied"
     SECURITY_VIOLATION = "security_violation"
     MODEL_INTEGRITY_CHECK_FAILED = "model_integrity_check_failed"
-    
+
     # System events
     SYSTEM_BACKUP_CREATED = "system_backup_created"
     SYSTEM_RESTORED = "system_restored"
@@ -79,92 +85,93 @@ class TrainingEventType(str, Enum):
 @dataclass
 class TrainingAuditEvent:
     """Specialized audit event for training operations."""
+
     event_type: TrainingEventType
     severity: AuditSeverity
     message: str
     timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    
+
     # User context
     user_id: Optional[str] = None
     user_email: Optional[str] = None
     user_roles: List[str] = field(default_factory=list)
     tenant_id: str = "default"
-    
+
     # Request context
     ip_address: str = "unknown"
     user_agent: str = ""
     session_id: Optional[str] = None
     correlation_id: Optional[str] = None
-    
+
     # Training context
     training_job_id: Optional[str] = None
     model_id: Optional[str] = None
     dataset_id: Optional[str] = None
     schedule_id: Optional[str] = None
-    
+
     # Operation details
     operation_type: str = ""
     resource_type: str = ""
     resource_id: Optional[str] = None
-    
+
     # Performance metrics
     duration_ms: Optional[float] = None
     memory_usage_mb: Optional[float] = None
     cpu_usage_percent: Optional[float] = None
-    
+
     # Results and metadata
     success: bool = True
     error_message: Optional[str] = None
     result_summary: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
-    
+
     # Security context
     permission_required: Optional[str] = None
     permission_granted: bool = True
     security_flags: List[str] = field(default_factory=list)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for storage."""
         data = asdict(self)
-        data['timestamp'] = self.timestamp.isoformat()
-        data['event_type'] = self.event_type.value
-        data['severity'] = self.severity.value
+        data["timestamp"] = self.timestamp.isoformat()
+        data["event_type"] = self.event_type.value
+        data["severity"] = self.severity.value
         return data
 
 
 class TrainingAuditLogger:
     """Specialized audit logger for training and model management operations."""
-    
+
     def __init__(self):
         """Initialize training audit logger."""
         self._base_audit_logger = None
         self.training_logger = get_logger("training_audit")
-        
+
         # Event counters for metrics
         self._event_counts: Dict[str, int] = {}
         self._security_events: List[TrainingAuditEvent] = []
-    
+
     def _log_event(self, event: TrainingAuditEvent) -> None:
         """Log a training audit event."""
         try:
             # Convert to dict and log
             event_dict = event.to_dict()
-            
+
             # Update event counters
             event_type = event.event_type.value
             self._event_counts[event_type] = self._event_counts.get(event_type, 0) + 1
-            
+
             # Store security events for analysis
             if event.event_type in [
                 TrainingEventType.UNAUTHORIZED_ACCESS_ATTEMPT,
                 TrainingEventType.PERMISSION_DENIED,
                 TrainingEventType.SECURITY_VIOLATION,
-                TrainingEventType.MODEL_INTEGRITY_CHECK_FAILED
+                TrainingEventType.MODEL_INTEGRITY_CHECK_FAILED,
             ]:
                 self._security_events.append(event)
                 # Keep only last 1000 security events
                 self._security_events = self._security_events[-1000:]
-            
+
             # Log to appropriate logger based on severity
             extra = {
                 "training_audit_event": event_dict,
@@ -176,9 +183,9 @@ class TrainingAuditLogger:
                 "dataset_id": event.dataset_id,
                 "operation_type": event.operation_type,
                 "resource_type": event.resource_type,
-                "success": event.success
+                "success": event.success,
             }
-            
+
             if event.severity == AuditSeverity.CRITICAL:
                 self.training_logger.critical(event.message, **extra)
             elif event.severity == AuditSeverity.ERROR:
@@ -187,36 +194,38 @@ class TrainingAuditLogger:
                 self.training_logger.warning(event.message, **extra)
             else:
                 self.training_logger.info(event.message, **extra)
-            
+
             # Also log to base audit system for centralized tracking
             base_logger = self._get_base_audit_logger()
             if base_logger:
-                base_logger.log_audit_event({
-                    "event_type": "training_operation",
-                    "severity": event.severity.value,
-                    "message": event.message,
-                    "user_id": event.user_id,
-                    "tenant_id": event.tenant_id,
-                    "ip_address": event.ip_address,
-                    "correlation_id": event.correlation_id,
-                    "metadata": {
-                        "training_event_type": event.event_type.value,
-                        "training_job_id": event.training_job_id,
-                        "model_id": event.model_id,
-                        "dataset_id": event.dataset_id,
-                        "operation_type": event.operation_type,
-                        "resource_type": event.resource_type,
-                        "success": event.success,
-                        "duration_ms": event.duration_ms,
-                        **event.metadata
+                base_logger.log_audit_event(
+                    {
+                        "event_type": "training_operation",
+                        "severity": event.severity.value,
+                        "message": event.message,
+                        "user_id": event.user_id,
+                        "tenant_id": event.tenant_id,
+                        "ip_address": event.ip_address,
+                        "correlation_id": event.correlation_id,
+                        "metadata": {
+                            "training_event_type": event.event_type.value,
+                            "training_job_id": event.training_job_id,
+                            "model_id": event.model_id,
+                            "dataset_id": event.dataset_id,
+                            "operation_type": event.operation_type,
+                            "resource_type": event.resource_type,
+                            "success": event.success,
+                            "duration_ms": event.duration_ms,
+                            **event.metadata,
+                        },
                     }
-                })
-            
+                )
+
         except Exception as e:
             logger.error(f"Failed to log training audit event: {e}")
-    
+
     # Training Operation Logging
-    
+
     def log_training_started(
         self,
         user: dict,
@@ -226,7 +235,7 @@ class TrainingAuditLogger:
         training_config: Optional[Dict[str, Any]] = None,
         ip_address: str = "unknown",
         correlation_id: Optional[str] = None,
-        **metadata
+        **metadata,
     ) -> None:
         """Log training job start."""
         event = TrainingAuditEvent(
@@ -245,13 +254,10 @@ class TrainingAuditLogger:
             operation_type="training",
             resource_type="training_job",
             resource_id=training_job_id,
-            metadata={
-                "training_config": training_config,
-                **metadata
-            }
+            metadata={"training_config": training_config, **metadata},
         )
         self._log_event(event)
-    
+
     def log_training_completed(
         self,
         user: dict,
@@ -260,7 +266,7 @@ class TrainingAuditLogger:
         duration_ms: Optional[float] = None,
         performance_metrics: Optional[Dict[str, float]] = None,
         correlation_id: Optional[str] = None,
-        **metadata
+        **metadata,
     ) -> None:
         """Log training job completion."""
         event = TrainingAuditEvent(
@@ -280,13 +286,10 @@ class TrainingAuditLogger:
             duration_ms=duration_ms,
             success=True,
             result_summary="Training completed successfully",
-            metadata={
-                "performance_metrics": performance_metrics,
-                **metadata
-            }
+            metadata={"performance_metrics": performance_metrics, **metadata},
         )
         self._log_event(event)
-    
+
     def log_training_failed(
         self,
         user: dict,
@@ -295,7 +298,7 @@ class TrainingAuditLogger:
         model_id: Optional[str] = None,
         duration_ms: Optional[float] = None,
         correlation_id: Optional[str] = None,
-        **metadata
+        **metadata,
     ) -> None:
         """Log training job failure."""
         event = TrainingAuditEvent(
@@ -315,12 +318,12 @@ class TrainingAuditLogger:
             duration_ms=duration_ms,
             success=False,
             error_message=error_message,
-            metadata=metadata
+            metadata=metadata,
         )
         self._log_event(event)
-    
+
     # Model Operation Logging
-    
+
     def log_model_created(
         self,
         user: dict,
@@ -331,7 +334,7 @@ class TrainingAuditLogger:
         encrypted: bool = False,
         ip_address: str = "unknown",
         correlation_id: Optional[str] = None,
-        **metadata
+        **metadata,
     ) -> None:
         """Log model creation."""
         event = TrainingAuditEvent(
@@ -353,11 +356,11 @@ class TrainingAuditLogger:
                 "model_type": model_type,
                 "file_size": file_size,
                 "encrypted": encrypted,
-                **metadata
-            }
+                **metadata,
+            },
         )
         self._log_event(event)
-    
+
     def log_model_accessed(
         self,
         user: dict,
@@ -366,7 +369,7 @@ class TrainingAuditLogger:
         access_type: str = "read",
         ip_address: str = "unknown",
         correlation_id: Optional[str] = None,
-        **metadata
+        **metadata,
     ) -> None:
         """Log model access."""
         event = TrainingAuditEvent(
@@ -383,14 +386,10 @@ class TrainingAuditLogger:
             operation_type=access_type,
             resource_type="model",
             resource_id=model_id,
-            metadata={
-                "model_name": model_name,
-                "access_type": access_type,
-                **metadata
-            }
+            metadata={"model_name": model_name, "access_type": access_type, **metadata},
         )
         self._log_event(event)
-    
+
     def log_model_deleted(
         self,
         user: dict,
@@ -398,7 +397,7 @@ class TrainingAuditLogger:
         model_name: str,
         ip_address: str = "unknown",
         correlation_id: Optional[str] = None,
-        **metadata
+        **metadata,
     ) -> None:
         """Log model deletion."""
         event = TrainingAuditEvent(
@@ -415,15 +414,12 @@ class TrainingAuditLogger:
             operation_type="delete",
             resource_type="model",
             resource_id=model_id,
-            metadata={
-                "model_name": model_name,
-                **metadata
-            }
+            metadata={"model_name": model_name, **metadata},
         )
         self._log_event(event)
-    
+
     # Data Operation Logging
-    
+
     def log_training_data_uploaded(
         self,
         user: dict,
@@ -434,7 +430,7 @@ class TrainingAuditLogger:
         data_format: str,
         ip_address: str = "unknown",
         correlation_id: Optional[str] = None,
-        **metadata
+        **metadata,
     ) -> None:
         """Log training data upload."""
         event = TrainingAuditEvent(
@@ -456,13 +452,13 @@ class TrainingAuditLogger:
                 "record_count": record_count,
                 "file_size": file_size,
                 "data_format": data_format,
-                **metadata
-            }
+                **metadata,
+            },
         )
         self._log_event(event)
-    
+
     # Security Event Logging
-    
+
     def log_unauthorized_access_attempt(
         self,
         user: Optional[dict],
@@ -472,7 +468,7 @@ class TrainingAuditLogger:
         ip_address: str = "unknown",
         user_agent: str = "",
         correlation_id: Optional[str] = None,
-        **metadata
+        **metadata,
     ) -> None:
         """Log unauthorized access attempt."""
         event = TrainingAuditEvent(
@@ -498,10 +494,10 @@ class TrainingAuditLogger:
                 "permission_granted": False,
                 "granted": False,
                 **metadata,
-            }
+            },
         )
         self._log_event(event)
-    
+
     def log_permission_denied(
         self,
         user: dict,
@@ -510,7 +506,7 @@ class TrainingAuditLogger:
         permission_required: str,
         ip_address: str = "unknown",
         correlation_id: Optional[str] = None,
-        **metadata
+        **metadata,
     ) -> None:
         """Log permission denied event."""
         event = TrainingAuditEvent(
@@ -530,10 +526,10 @@ class TrainingAuditLogger:
             permission_granted=False,
             success=False,
             security_flags=["permission_denied"],
-            metadata=metadata
+            metadata=metadata,
         )
         self._log_event(event)
-    
+
     def log_model_integrity_check_failed(
         self,
         user: dict,
@@ -542,7 +538,7 @@ class TrainingAuditLogger:
         expected_checksum: str,
         actual_checksum: str,
         correlation_id: Optional[str] = None,
-        **metadata
+        **metadata,
     ) -> None:
         """Log model integrity check failure."""
         event = TrainingAuditEvent(
@@ -565,13 +561,13 @@ class TrainingAuditLogger:
                 "model_name": model_name,
                 "expected_checksum": expected_checksum,
                 "actual_checksum": actual_checksum,
-                **metadata
-            }
+                **metadata,
+            },
         )
         self._log_event(event)
-    
+
     # Configuration Change Logging
-    
+
     def log_config_updated(
         self,
         user: dict,
@@ -579,7 +575,7 @@ class TrainingAuditLogger:
         config_changes: Dict[str, Any],
         ip_address: str = "unknown",
         correlation_id: Optional[str] = None,
-        **metadata
+        **metadata,
     ) -> None:
         """Log configuration changes."""
         event = TrainingAuditEvent(
@@ -598,26 +594,27 @@ class TrainingAuditLogger:
             metadata={
                 "config_type": config_type,
                 "changes": config_changes,
-                **metadata
-            }
+                **metadata,
+            },
         )
         self._log_event(event)
-    
+
     # Analytics and Reporting
-    
+
     def get_event_counts(self, hours: int = 24) -> Dict[str, int]:
         """Get event counts for the specified time period."""
         return self._event_counts.copy()
-    
+
     def get_security_events(self, hours: int = 24) -> List[TrainingAuditEvent]:
         """Get recent security events."""
         cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours)
         return [
-            event for event in self._security_events
-            if event.timestamp > cutoff_time
+            event for event in self._security_events if event.timestamp > cutoff_time
         ]
-    
-    def get_user_activity_summary(self, user_id: str, hours: int = 24) -> Dict[str, Any]:
+
+    def get_user_activity_summary(
+        self, user_id: str, hours: int = 24
+    ) -> Dict[str, Any]:
         """Get activity summary for a specific user."""
         # This would typically query a database in a production system
         # For now, return a placeholder
@@ -627,7 +624,7 @@ class TrainingAuditLogger:
             "total_events": 0,
             "event_types": {},
             "resources_accessed": [],
-            "security_events": 0
+            "security_events": 0,
         }
 
     def _get_base_audit_logger(self):

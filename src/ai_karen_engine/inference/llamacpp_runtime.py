@@ -227,7 +227,7 @@ class LlamaCppRuntime:
 
         # Runtime optimization settings are the system source of truth for CUDA behavior.
         try:
-            from ai_karen_engine.memory.optimization_configuration_manager import (
+            from ai_karen_engine.services.optimization_configuration_manager import (
                 get_optimization_config_manager,
             )
 

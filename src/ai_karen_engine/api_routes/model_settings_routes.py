@@ -38,7 +38,7 @@ from ai_karen_engine.config.llm_provider_config import (
 )
 from ai_karen_engine.config.model_registry import list_llama_cpp_models
 from ai_karen_engine.integrations.llm_registry import get_registry
-from ai_karen_engine.memory.settings_manager import get_settings_manager
+from ai_karen_engine.services.settings_manager import get_settings_manager
 from ai_karen_engine.models.secret_manager import get_secret_manager
 
 logger = logging.getLogger(__name__)

@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import asdict
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
-from ai_karen_engine.services.auth_service import AuthService as CoreAuthService, UserAccount
+from ai_karen_engine.services.auth_service import (
+    AuthService as CoreAuthService,
+    UserAccount,
+)
 
 __all__ = [
     "AuthService",
@@ -168,3 +171,17 @@ class AuthService:
         if not user:
             return None
         return user_account_to_dict(user)
+
+    async def list_users(
+        self,
+        tenant_id: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> List[Dict[str, Any]]:
+        """List users with optional filtering and pagination."""
+
+        service = await self._get_service()
+        users = await service.list_users(
+            tenant_id=tenant_id, limit=limit, offset=offset
+        )
+        return [user_account_to_dict(user) for user in users]

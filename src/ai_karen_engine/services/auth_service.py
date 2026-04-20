@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple, AsyncGenerator
 from dataclasses import dataclass, field
 from enum import Enum
+from contextvars import ContextVar
 import jwt
 import bcrypt
 from sqlalchemy import select, func
@@ -28,8 +29,14 @@ from ai_karen_engine.database.models import AuthUser, AuthSession, Tenant
 
 logger = get_logger(__name__)
 
+# Context variable for thread-safe session management in shared service instances
+_db_session_ctx: ContextVar[Optional[AsyncSession]] = ContextVar(
+    "auth_db_session", default=None
+)
+
 
 class UserRole(str, Enum):
+    # ... (rest of the class)
     """User role enumeration."""
 
     USER = "user"
@@ -158,12 +165,22 @@ class AuthService(BaseService):
             from ai_karen_engine.config.config_manager import get_config
 
             cfg = get_config()
-            if (
-                (not auth_secret)
-                and cfg.security.jwt_secret
-                and cfg.security.jwt_secret != "your-secret-key"
-            ):
-                self.config.jwt_secret_key = cfg.security.jwt_secret
+            if not auth_secret:
+                # Priority 1: security.jwt_secret
+                if (
+                    hasattr(cfg, "security")
+                    and cfg.security.jwt_secret
+                    and cfg.security.jwt_secret != "your-secret-key"
+                ):
+                    self.config.jwt_secret_key = cfg.security.jwt_secret
+                # Priority 2: auth.secret_key
+                elif (
+                    hasattr(cfg, "auth")
+                    and hasattr(cfg.auth, "secret_key")
+                    and cfg.auth.secret_key
+                    and cfg.auth.secret_key != "changeme"
+                ):
+                    self.config.jwt_secret_key = cfg.auth.secret_key
         except Exception:
             pass
 
@@ -216,12 +233,16 @@ class AuthService(BaseService):
                 # Validate configuration
                 self._validate_config()
 
-                # Initialize database tables if needed
+                # Mark as initialized immediately after config validation
+                # but before potentially slow DB operations
+                self._initialized = True
+                logger.info("Authentication Service initialized (config validated)")
+
+                # Initialize database tables if needed - now non-blocking for initialization status
                 logger.info("Ensuring database tables exist...")
                 await self._ensure_database_tables()
 
-                self._initialized = True
-                logger.info("Authentication Service initialized successfully")
+                logger.info("Authentication Service fully ready")
             except Exception as e:
                 logger.error(
                     f"Failed to initialize Authentication Service: {e}", exc_info=True
@@ -269,8 +290,8 @@ class AuthService(BaseService):
             # though it might fail later.
 
     def set_db_session(self, session: AsyncSession) -> None:
-        """Set the database session for the service."""
-        self._db_session = session
+        """Set the database session for the current execution context."""
+        _db_session_ctx.set(session)
 
     def _get_db_client(self) -> MultiTenantPostgresClient:
         """Return a cached database client for fallback sessions."""
@@ -280,9 +301,10 @@ class AuthService(BaseService):
 
     @asynccontextmanager
     async def _session_scope(self) -> AsyncGenerator[AsyncSession, None]:
-        """Provide a session scope using injected or fallback client sessions."""
-        if self._db_session is not None:
-            yield self._db_session
+        """Provide a session scope using context-local or fallback client sessions."""
+        session = _db_session_ctx.get()
+        if session is not None:
+            yield session
             return
         async with self._get_db_client().get_async_session() as session:
             yield session
@@ -926,6 +948,42 @@ class AuthService(BaseService):
                 return [self._build_user_account(u) for u in auth_users]
         except Exception as e:
             logger.error("Error getting all users: %s", e)
+            return []
+
+    async def list_users(
+        self,
+        tenant_id: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> List[UserAccount]:
+        """
+        List users with optional filtering and pagination.
+
+        Args:
+            tenant_id: Filter by tenant ID (optional)
+            limit: Maximum number of users to return
+            offset: Number of users to skip
+
+        Returns:
+            List of user accounts
+        """
+        if not self._initialized:
+            await self.initialize()
+
+        try:
+            async with self._session_scope() as session:
+                query = select(AuthUser)
+
+                if tenant_id:
+                    query = query.where(AuthUser.tenant_id == tenant_id)
+
+                query = query.limit(limit).offset(offset)
+
+                result = await session.execute(query)
+                auth_users = result.scalars().all()
+                return [self._build_user_account(u) for u in auth_users]
+        except Exception as e:
+            logger.error("Error listing users: %s", e)
             return []
 
     async def create_session(

@@ -782,8 +782,12 @@ class ServiceRegistry:
                     try:
                         from pathlib import Path
 
-                        marketplace_path = Path("src/ai_karen_engine/extensions/plugins")
-                        core_plugins_path = Path("src/ai_karen_engine/extensions/plugins")
+                        marketplace_path = Path(
+                            "src/ai_karen_engine/extensions/plugins"
+                        )
+                        core_plugins_path = Path(
+                            "src/ai_karen_engine/extensions/plugins"
+                        )
                         instance = PluginService(
                             marketplace_path=marketplace_path,
                             core_plugins_path=core_plugins_path,
@@ -1320,108 +1324,6 @@ async def initialize_services() -> None:
 
         registry.register_service("database_client", FallbackDatabaseClient)
         logger.info("Registered FallbackDatabaseClient service")
-
-    # Register ChatOrchestrator as the absolute source of truth for chat operations
-    try:
-        logger.info("🔍 DEBUG: Attempting to register ChatOrchestrator...")
-
-        # Import ChatOrchestrator
-        from ai_karen_engine.chat.chat_orchestrator import ChatOrchestrator
-
-        # Create a simple config for ChatOrchestrator
-        class SimpleChatOrchestratorConfig:
-            def __init__(
-                self,
-                name: str,
-                enabled: bool = True,
-                dependencies: Optional[List[str]] = None,
-                config: Optional[Dict[str, Any]] = None,
-            ):
-                self.name = name
-                self.enabled = enabled
-                self.dependencies = dependencies or []
-                self.config = config or {}
-
-        chat_orchestrator_config = SimpleChatOrchestratorConfig(
-            name="chat_orchestrator",
-            enabled=True,
-            dependencies=["memory_service"],
-            config={"environment": "production", "debug": True},
-        )
-
-        # Register ChatOrchestrator service with async factory
-        async def create_chat_orchestrator_instance():
-            """Async factory for creating ChatOrchestrator instance."""
-            from ai_karen_engine.chat.factory import ChatServiceFactory
-
-            factory = ChatServiceFactory()
-            return await factory.create_chat_orchestrator()
-
-        registry.register_service(
-            "chat_orchestrator",
-            create_chat_orchestrator_instance,
-            {
-                "memory_service": True  # Required dependency
-            },
-        )
-        logger.info("✅ Registered ChatOrchestrator service with async factory")
-
-        # Also register a fallback AIOrchestrator for compatibility
-        try:
-            # Create a concrete implementation of AIOrchestrator for now
-            class ConcreteAIOrchestrator:
-                def __init__(self, config=None):
-                    self.config = config
-                    self.initialized = False
-
-                async def initialize(self):
-                    self.initialized = True
-                    logger.info("ConcreteAIOrchestrator initialized")
-
-                async def start(self):
-                    logger.info("ConcreteAIOrchestrator started")
-
-                async def stop(self):
-                    logger.info("ConcreteAIOrchestrator stopped")
-
-                def load_config(self) -> Dict[str, Any]:
-                    return {"environment": "local", "debug": True}
-
-            registry.register_service("ai_orchestrator", ConcreteAIOrchestrator)
-            logger.info("✅ Registered ConcreteAIOrchestrator service")
-        except Exception as e:
-            logger.warning(f"Could not register AIOrchestrator: {e}")
-
-    except Exception as e:
-        logger.error(f"❌ Could not register ChatOrchestrator: {e}", exc_info=True)
-
-        # Register a fallback ChatOrchestrator
-        class FallbackChatOrchestrator:
-            def __init__(self, config=None):
-                self.config = config
-                self.initialized = False
-                logger.info("🔄 Created fallback ChatOrchestrator")
-
-            async def initialize(self):
-                self.initialized = True
-                logger.info("🔄 Fallback ChatOrchestrator initialized")
-
-            def load_config(self) -> Dict[str, Any]:
-                return {"environment": "fallback", "debug": True}
-
-        try:
-            fallback_config = SimpleChatOrchestratorConfig(
-                name="chat_orchestrator",
-                enabled=True,
-                dependencies=[],
-                config={"environment": "fallback", "debug": True},
-            )
-            registry.register_service("chat_orchestrator", FallbackChatOrchestrator)
-            logger.info("✅ Registered fallback ChatOrchestrator service")
-        except Exception as fallback_error:
-            logger.error(
-                f"❌ Could not register fallback ChatOrchestrator: {fallback_error}"
-            )
 
     try:
         logger.info("🔍 DEBUG: Attempting to register WebUIMemoryService...")

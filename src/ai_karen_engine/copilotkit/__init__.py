@@ -14,18 +14,17 @@ from ai_karen_engine.copilotkit.models import (
     GetTaskProgressResponse,
     CancelTaskRequest,
     CancelTaskResponse,
-    ExecutionMode,
     TaskType,
     TaskStatus,
     TaskStep,
-    AgentUIServiceError
+    AgentUIServiceError,
 )
 from ai_karen_engine.copilotkit.agent_ui_service import AgentUIService
 from ai_karen_engine.copilotkit.thread_manager import ThreadManager
 from ai_karen_engine.copilotkit.session_state_manager import SessionStateManager
 from ai_karen_engine.copilotkit.safety_middleware import (
     CopilotSafetyMiddleware,
-    SafetyValidationResult
+    SafetyValidationResult,
 )
 
 __all__ = [
@@ -40,7 +39,6 @@ __all__ = [
     "GetTaskProgressResponse",
     "CancelTaskRequest",
     "CancelTaskResponse",
-    "ExecutionMode",
     "TaskType",
     "TaskStatus",
     "TaskStep",
@@ -49,5 +47,5 @@ __all__ = [
     "ThreadManager",
     "SessionStateManager",
     "CopilotSafetyMiddleware",
-    "SafetyValidationResult"
+    "SafetyValidationResult",
 ]

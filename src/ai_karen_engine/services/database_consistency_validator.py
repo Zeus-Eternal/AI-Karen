@@ -25,7 +25,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.services.database_connection_manager import get_database_manager
-from ai_karen_engine.services.redis_connection_manager import get_redis_manager
+from ai_karen_engine.infra.redis_connection_manager import get_redis_manager
 from ai_karen_engine.core.milvus_client import MilvusClient
 from ai_karen_engine.database.models import (
     Base,
@@ -45,6 +45,7 @@ logger = get_logger(__name__)
 
 class ValidationStatus(str, Enum):
     """Validation status enumeration"""
+
     HEALTHY = "healthy"
     WARNING = "warning"
     CRITICAL = "critical"
@@ -53,6 +54,7 @@ class ValidationStatus(str, Enum):
 
 class DatabaseType(str, Enum):
     """Database type enumeration"""
+
     POSTGRESQL = "postgresql"
     REDIS = "redis"
     MILVUS = "milvus"
@@ -61,6 +63,7 @@ class DatabaseType(str, Enum):
 @dataclass
 class ValidationIssue:
     """Individual validation issue"""
+
     database: DatabaseType
     severity: ValidationStatus
     category: str
@@ -74,6 +77,7 @@ class ValidationIssue:
 @dataclass
 class DatabaseHealthStatus:
     """Database health status information"""
+
     database: DatabaseType
     is_connected: bool
     response_time_ms: float
@@ -87,6 +91,7 @@ class DatabaseHealthStatus:
 @dataclass
 class ConsistencyReport:
     """Database consistency validation report"""
+
     timestamp: datetime
     overall_status: ValidationStatus
     database_health: List[DatabaseHealthStatus]
@@ -101,7 +106,7 @@ class ConsistencyReport:
 class DatabaseConsistencyValidator:
     """
     Comprehensive database consistency validation system.
-    
+
     Validates:
     - Database health and connectivity
     - Cross-database reference integrity
@@ -161,38 +166,40 @@ class DatabaseConsistencyValidator:
     async def validate_all(self) -> ConsistencyReport:
         """
         Perform comprehensive database consistency validation.
-        
+
         Returns:
             ConsistencyReport: Complete validation report
         """
         self._validation_start_time = datetime.utcnow()
         self._validation_issues.clear()
         self._database_health.clear()
-        
+
         logger.info("Starting comprehensive database consistency validation")
-        
+
         try:
             # Step 1: Validate database health
             await self._validate_database_health()
-            
+
             # Step 2: Validate cross-database references
             await self._validate_cross_database_references()
-            
+
             # Step 3: Validate migration status
             await self._validate_migration_status()
-            
+
             # Step 4: Identify cleanup needs
             cleanup_recommendations = await self._identify_cleanup_needs()
-            
+
             # Step 5: Performance metrics
             performance_metrics = await self._collect_performance_metrics()
-            
+
             # Generate report
             report = self._generate_report(cleanup_recommendations, performance_metrics)
-            
-            logger.info(f"Database validation completed with status: {report.overall_status}")
+
+            logger.info(
+                f"Database validation completed with status: {report.overall_status}"
+            )
             return report
-            
+
         except Exception as e:
             logger.error(f"Database validation failed: {e}")
             # Return error report
@@ -218,32 +225,32 @@ class DatabaseConsistencyValidator:
     async def _validate_database_health(self) -> None:
         """Validate health of all database connections"""
         logger.info("Validating database health")
-        
+
         # PostgreSQL health check
         await self._check_postgresql_health()
-        
+
         # Redis health check
         await self._check_redis_health()
-        
+
         # Milvus health check
         await self._check_milvus_health()
 
     async def _check_postgresql_health(self) -> None:
         """Check PostgreSQL database health"""
         start_time = time.time()
-        
+
         try:
             # Test basic connectivity
             async with self.db_manager.async_session_scope() as session:
                 result = await session.execute(text("SELECT version()"))
                 version = result.scalar()
-                
+
                 # Get connection count
                 result = await session.execute(
                     text("SELECT count(*) FROM pg_stat_activity")
                 )
                 connection_count = result.scalar()
-                
+
                 # Check for locks
                 result = await session.execute(
                     text("""
@@ -252,16 +259,16 @@ class DatabaseConsistencyValidator:
                     """)
                 )
                 blocked_queries = result.scalar()
-                
+
             response_time = (time.time() - start_time) * 1000
-            
+
             # Determine status
             status = ValidationStatus.HEALTHY
             if response_time > 1000:  # > 1 second
                 status = ValidationStatus.WARNING
             if blocked_queries > 0:
                 status = ValidationStatus.WARNING
-                
+
             self._database_health.append(
                 DatabaseHealthStatus(
                     database=DatabaseType.POSTGRESQL,
@@ -276,7 +283,7 @@ class DatabaseConsistencyValidator:
                     },
                 )
             )
-            
+
             if blocked_queries > 0:
                 self._validation_issues.append(
                     ValidationIssue(
@@ -287,7 +294,7 @@ class DatabaseConsistencyValidator:
                         recommendation="Check for long-running transactions or deadlocks",
                     )
                 )
-                
+
         except Exception as e:
             logger.error(f"PostgreSQL health check failed: {e}")
             self._database_health.append(
@@ -299,7 +306,7 @@ class DatabaseConsistencyValidator:
                     error_message=str(e),
                 )
             )
-            
+
             self._validation_issues.append(
                 ValidationIssue(
                     database=DatabaseType.POSTGRESQL,
@@ -314,25 +321,25 @@ class DatabaseConsistencyValidator:
     async def _check_redis_health(self) -> None:
         """Check Redis database health"""
         start_time = time.time()
-        
+
         try:
             # Test basic connectivity
             await self.redis_manager.set("health_check", "test", ex=10)
             result = await self.redis_manager.get("health_check")
             await self.redis_manager.delete("health_check")
-            
+
             response_time = (time.time() - start_time) * 1000
-            
+
             # Get Redis info
             connection_info = self.redis_manager.get_connection_info()
-            
+
             # Determine status
             status = ValidationStatus.HEALTHY
             if response_time > 500:  # > 500ms
                 status = ValidationStatus.WARNING
             if self.redis_manager.is_degraded():
                 status = ValidationStatus.WARNING
-                
+
             self._database_health.append(
                 DatabaseHealthStatus(
                     database=DatabaseType.REDIS,
@@ -341,12 +348,16 @@ class DatabaseConsistencyValidator:
                     status=status,
                     metadata={
                         "degraded_mode": self.redis_manager.is_degraded(),
-                        "memory_cache_size": connection_info.get("memory_cache_size", 0),
-                        "connection_failures": connection_info.get("connection_failures", 0),
+                        "memory_cache_size": connection_info.get(
+                            "memory_cache_size", 0
+                        ),
+                        "connection_failures": connection_info.get(
+                            "connection_failures", 0
+                        ),
                     },
                 )
             )
-            
+
             if self.redis_manager.is_degraded():
                 self._validation_issues.append(
                     ValidationIssue(
@@ -357,7 +368,7 @@ class DatabaseConsistencyValidator:
                         recommendation="Check Redis connection and resolve connectivity issues",
                     )
                 )
-                
+
         except Exception as e:
             logger.error(f"Redis health check failed: {e}")
             self._database_health.append(
@@ -369,7 +380,7 @@ class DatabaseConsistencyValidator:
                     error_message=str(e),
                 )
             )
-            
+
             self._validation_issues.append(
                 ValidationIssue(
                     database=DatabaseType.REDIS,
@@ -384,21 +395,21 @@ class DatabaseConsistencyValidator:
     async def _check_milvus_health(self) -> None:
         """Check Milvus database health"""
         start_time = time.time()
-        
+
         try:
             # Test basic connectivity
             await self.milvus_client.connect()
             health_info = await self.milvus_client.health_check()
-            
+
             response_time = (time.time() - start_time) * 1000
-            
+
             # Determine status based on health info
             status = ValidationStatus.HEALTHY
             if health_info.get("status") != "healthy":
                 status = ValidationStatus.WARNING
             if response_time > 1000:  # > 1 second
                 status = ValidationStatus.WARNING
-                
+
             self._database_health.append(
                 DatabaseHealthStatus(
                     database=DatabaseType.MILVUS,
@@ -411,7 +422,7 @@ class DatabaseConsistencyValidator:
                     },
                 )
             )
-            
+
         except Exception as e:
             logger.error(f"Milvus health check failed: {e}")
             self._database_health.append(
@@ -423,7 +434,7 @@ class DatabaseConsistencyValidator:
                     error_message=str(e),
                 )
             )
-            
+
             self._validation_issues.append(
                 ValidationIssue(
                     database=DatabaseType.MILVUS,
@@ -438,17 +449,17 @@ class DatabaseConsistencyValidator:
     async def _validate_cross_database_references(self) -> None:
         """Validate cross-database reference integrity"""
         logger.info("Validating cross-database reference integrity")
-        
+
         try:
             # Check PostgreSQL -> Milvus references
             await self._validate_postgres_milvus_references()
-            
+
             # Check Redis cache consistency
             await self._validate_redis_cache_consistency()
-            
+
             # Check orphaned records
             await self._check_orphaned_records()
-            
+
         except Exception as e:
             logger.error(f"Cross-database validation failed: {e}")
             self._validation_issues.append(
@@ -472,7 +483,7 @@ class DatabaseConsistencyValidator:
                     .limit(100)
                 )
                 missing_embeddings = result.fetchall()
-                
+
                 if missing_embeddings:
                     self._validation_issues.append(
                         ValidationIssue(
@@ -485,7 +496,7 @@ class DatabaseConsistencyValidator:
                             auto_fixable=True,
                         )
                     )
-                
+
                 # Check for conversations without memory entries
                 result = await session.execute(
                     text("""
@@ -498,7 +509,7 @@ class DatabaseConsistencyValidator:
                     """)
                 )
                 orphaned_conversations = result.fetchall()
-                
+
                 if orphaned_conversations:
                     self._validation_issues.append(
                         ValidationIssue(
@@ -510,7 +521,7 @@ class DatabaseConsistencyValidator:
                             recommendation="Review and potentially archive old conversations",
                         )
                     )
-                    
+
         except Exception as e:
             logger.error(f"PostgreSQL-Milvus validation failed: {e}")
             self._validation_issues.append(
@@ -529,7 +540,7 @@ class DatabaseConsistencyValidator:
             # Check for stale cache entries
             # This is a simplified check - in production you'd want more comprehensive validation
             cache_info = self.redis_manager.get_connection_info()
-            
+
             if cache_info.get("memory_cache_size", 0) > 1000:
                 self._validation_issues.append(
                     ValidationIssue(
@@ -541,7 +552,7 @@ class DatabaseConsistencyValidator:
                         recommendation="Consider cache cleanup or TTL adjustment",
                     )
                 )
-                
+
         except Exception as e:
             logger.error(f"Redis cache validation failed: {e}")
             self._validation_issues.append(
@@ -567,7 +578,7 @@ class DatabaseConsistencyValidator:
                     """)
                 )
                 orphaned_messages = result.scalar()
-                
+
                 if orphaned_messages > 0:
                     self._validation_issues.append(
                         ValidationIssue(
@@ -580,7 +591,7 @@ class DatabaseConsistencyValidator:
                             auto_fixable=True,
                         )
                     )
-                
+
                 # Check for sessions without users
                 result = await session.execute(
                     text("""
@@ -590,7 +601,7 @@ class DatabaseConsistencyValidator:
                     """)
                 )
                 orphaned_sessions = result.scalar()
-                
+
                 if orphaned_sessions > 0:
                     self._validation_issues.append(
                         ValidationIssue(
@@ -603,7 +614,7 @@ class DatabaseConsistencyValidator:
                             auto_fixable=True,
                         )
                     )
-                    
+
         except Exception as e:
             logger.error(f"Orphaned records check failed: {e}")
             self._validation_issues.append(
@@ -619,7 +630,7 @@ class DatabaseConsistencyValidator:
     async def _validate_migration_status(self) -> None:
         """Validate database migration status"""
         logger.info("Validating migration status")
-        
+
         try:
             async with self.db_manager.async_session_scope() as session:
                 # Check if all expected tables exist
@@ -632,7 +643,7 @@ class DatabaseConsistencyValidator:
                     """)
                 )
                 existing_tables = {row[0] for row in result.fetchall()}
-                
+
                 # Expected tables based on models
                 expected_tables = {
                     "tenants",
@@ -651,7 +662,7 @@ class DatabaseConsistencyValidator:
                     "usage_counters",
                     "rate_limits",
                 }
-                
+
                 missing_tables = expected_tables - existing_tables
                 if missing_tables:
                     self._validation_issues.append(
@@ -664,7 +675,7 @@ class DatabaseConsistencyValidator:
                             recommendation="Run database migrations to create missing tables",
                         )
                     )
-                
+
                 # Check for migration tracking table
                 if "alembic_version" not in existing_tables:
                     self._validation_issues.append(
@@ -682,7 +693,7 @@ class DatabaseConsistencyValidator:
                         text("SELECT version_num FROM alembic_version")
                     )
                     current_version = result.scalar()
-                    
+
                     if not current_version:
                         self._validation_issues.append(
                             ValidationIssue(
@@ -693,7 +704,7 @@ class DatabaseConsistencyValidator:
                                 recommendation="Check migration status and run pending migrations",
                             )
                         )
-                        
+
         except Exception as e:
             logger.error(f"Migration validation failed: {e}")
             self._validation_issues.append(
@@ -710,21 +721,21 @@ class DatabaseConsistencyValidator:
         """Identify test/demo data that needs cleanup"""
         logger.info("Identifying cleanup needs")
         cleanup_recommendations = []
-        
+
         try:
             # Check data directory for test files
             await self._check_data_directory_cleanup(cleanup_recommendations)
-            
+
             # Check database for demo users
             await self._check_demo_users_cleanup(cleanup_recommendations)
-            
+
             # Check for test data patterns
             await self._check_test_data_patterns(cleanup_recommendations)
-            
+
         except Exception as e:
             logger.error(f"Cleanup identification failed: {e}")
             cleanup_recommendations.append(f"Cleanup identification failed: {str(e)}")
-            
+
         return cleanup_recommendations
 
     async def _check_data_directory_cleanup(self, recommendations: List[str]) -> None:
@@ -733,21 +744,21 @@ class DatabaseConsistencyValidator:
             # Check users.json for demo accounts
             users_file = self.data_directory / "users.json"
             if users_file.exists():
-                with open(users_file, 'r') as f:
+                with open(users_file, "r") as f:
                     users_data = json.load(f)
-                
+
                 demo_users = []
                 for email, user_data in users_data.items():
                     if email in self.demo_patterns["emails"]:
                         demo_users.append(email)
                     elif user_data.get("user_id") in self.demo_patterns["user_ids"]:
                         demo_users.append(email)
-                
+
                 if demo_users:
                     recommendations.append(
                         f"Remove demo users from data/users.json: {', '.join(demo_users)}"
                     )
-            
+
             # Check for test databases
             test_db_file = self.data_directory / "kari_automation.db"
             if test_db_file.exists():
@@ -756,7 +767,7 @@ class DatabaseConsistencyValidator:
                     recommendations.append(
                         f"Large test database file found: {test_db_file} ({file_size} bytes) - consider cleanup"
                     )
-            
+
             # Check for temporary files
             temp_patterns = ["*.tmp", "*.temp", "*.log", "*.backup"]
             for pattern in temp_patterns:
@@ -765,7 +776,7 @@ class DatabaseConsistencyValidator:
                     recommendations.append(
                         f"Remove temporary files: {len(temp_files)} files matching {pattern}"
                     )
-                    
+
         except Exception as e:
             logger.error(f"Data directory cleanup check failed: {e}")
             recommendations.append(f"Data directory cleanup check failed: {str(e)}")
@@ -776,17 +787,20 @@ class DatabaseConsistencyValidator:
             async with self.db_manager.async_session_scope() as session:
                 # Check for demo users in database
                 result = await session.execute(
-                    select(AuthUser.email, AuthUser.user_id, AuthUser.full_name)
-                    .where(AuthUser.email.in_(self.demo_patterns["emails"]))
+                    select(AuthUser.email, AuthUser.user_id, AuthUser.full_name).where(
+                        AuthUser.email.in_(self.demo_patterns["emails"])
+                    )
                 )
                 demo_users = result.fetchall()
-                
+
                 if demo_users:
-                    user_list = [f"{user.email} ({user.full_name})" for user in demo_users]
+                    user_list = [
+                        f"{user.email} ({user.full_name})" for user in demo_users
+                    ]
                     recommendations.append(
                         f"Remove demo users from database: {', '.join(user_list)}"
                     )
-                
+
                 # Check for test conversations
                 result = await session.execute(
                     select(func.count(TenantConversation.id))
@@ -794,12 +808,12 @@ class DatabaseConsistencyValidator:
                     .where(AuthUser.email.in_(self.demo_patterns["emails"]))
                 )
                 demo_conversations = result.scalar()
-                
+
                 if demo_conversations > 0:
                     recommendations.append(
                         f"Remove {demo_conversations} conversations from demo users"
                     )
-                    
+
         except Exception as e:
             logger.error(f"Demo users cleanup check failed: {e}")
             recommendations.append(f"Demo users cleanup check failed: {str(e)}")
@@ -810,28 +824,30 @@ class DatabaseConsistencyValidator:
             async with self.db_manager.async_session_scope() as session:
                 # Check for test memory items
                 result = await session.execute(
-                    select(func.count(TenantMemoryItem.id))
-                    .where(TenantMemoryItem.content.like('%test%'))
+                    select(func.count(TenantMemoryItem.id)).where(
+                        TenantMemoryItem.content.like("%test%")
+                    )
                 )
                 test_memory_items = result.scalar()
-                
+
                 if test_memory_items > 10:  # Threshold for concern
                     recommendations.append(
                         f"Review {test_memory_items} memory items containing 'test' - may be test data"
                     )
-                
+
                 # Check for old audit logs
                 result = await session.execute(
-                    select(func.count(AuditLog.event_id))
-                    .where(AuditLog.created_at < datetime.utcnow() - timedelta(days=90))
+                    select(func.count(AuditLog.event_id)).where(
+                        AuditLog.created_at < datetime.utcnow() - timedelta(days=90)
+                    )
                 )
                 old_audit_logs = result.scalar()
-                
+
                 if old_audit_logs > 1000:
                     recommendations.append(
                         f"Archive or remove {old_audit_logs} old audit log entries (>90 days)"
                     )
-                    
+
         except Exception as e:
             logger.error(f"Test data patterns check failed: {e}")
             recommendations.append(f"Test data patterns check failed: {str(e)}")
@@ -839,7 +855,7 @@ class DatabaseConsistencyValidator:
     async def _collect_performance_metrics(self) -> Dict[str, Any]:
         """Collect performance metrics from all databases"""
         metrics = {}
-        
+
         try:
             # PostgreSQL metrics
             async with self.db_manager.async_session_scope() as session:
@@ -848,7 +864,7 @@ class DatabaseConsistencyValidator:
                     text("SELECT pg_database_size(current_database())")
                 )
                 db_size = result.scalar()
-                
+
                 # Table sizes
                 result = await session.execute(
                     text("""
@@ -863,12 +879,12 @@ class DatabaseConsistencyValidator:
                     {"table": f"{row[0]}.{row[1]}", "size_bytes": row[2]}
                     for row in result.fetchall()
                 ]
-                
+
                 metrics["postgresql"] = {
                     "database_size_bytes": db_size,
                     "largest_tables": table_sizes,
                 }
-            
+
             # Redis metrics
             redis_info = self.redis_manager.get_connection_info()
             metrics["redis"] = {
@@ -876,65 +892,82 @@ class DatabaseConsistencyValidator:
                 "memory_cache_size": redis_info.get("memory_cache_size", 0),
                 "connection_failures": redis_info.get("connection_failures", 0),
             }
-            
+
             # Milvus metrics
             health_info = await self.milvus_client.health_check()
             metrics["milvus"] = {
                 "status": health_info.get("status", "unknown"),
                 "records": health_info.get("records", "0"),
             }
-            
+
         except Exception as e:
             logger.error(f"Performance metrics collection failed: {e}")
             metrics["error"] = str(e)
-            
+
         return metrics
 
     def _generate_report(
-        self, 
-        cleanup_recommendations: List[str], 
-        performance_metrics: Dict[str, Any]
+        self, cleanup_recommendations: List[str], performance_metrics: Dict[str, Any]
     ) -> ConsistencyReport:
         """Generate comprehensive validation report"""
-        
+
         # Determine overall status
         overall_status = ValidationStatus.HEALTHY
-        
+
         # Check database health
         for health in self._database_health:
             if health.status == ValidationStatus.CRITICAL:
                 overall_status = ValidationStatus.CRITICAL
                 break
-            elif health.status == ValidationStatus.WARNING and overall_status == ValidationStatus.HEALTHY:
+            elif (
+                health.status == ValidationStatus.WARNING
+                and overall_status == ValidationStatus.HEALTHY
+            ):
                 overall_status = ValidationStatus.WARNING
-        
+
         # Check validation issues
-        critical_issues = [i for i in self._validation_issues if i.severity == ValidationStatus.CRITICAL]
-        warning_issues = [i for i in self._validation_issues if i.severity == ValidationStatus.WARNING]
-        
+        critical_issues = [
+            i
+            for i in self._validation_issues
+            if i.severity == ValidationStatus.CRITICAL
+        ]
+        warning_issues = [
+            i for i in self._validation_issues if i.severity == ValidationStatus.WARNING
+        ]
+
         if critical_issues:
             overall_status = ValidationStatus.CRITICAL
         elif warning_issues and overall_status == ValidationStatus.HEALTHY:
             overall_status = ValidationStatus.WARNING
-        
+
         # Generate summary
         summary = {
             "total_issues": len(self._validation_issues),
             "critical_issues": len(critical_issues),
             "warning_issues": len(warning_issues),
-            "auto_fixable_issues": len([i for i in self._validation_issues if i.auto_fixable]),
+            "auto_fixable_issues": len(
+                [i for i in self._validation_issues if i.auto_fixable]
+            ),
             "cleanup_recommendations": len(cleanup_recommendations),
-            "databases_healthy": len([h for h in self._database_health if h.is_connected]),
+            "databases_healthy": len(
+                [h for h in self._database_health if h.is_connected]
+            ),
             "databases_total": len(self._database_health),
         }
-        
+
         return ConsistencyReport(
             timestamp=datetime.utcnow(),
             overall_status=overall_status,
             database_health=self._database_health,
             validation_issues=self._validation_issues,
-            cross_reference_issues=[i for i in self._validation_issues if i.category.startswith("cross_")],
-            migration_issues=[i for i in self._validation_issues if i.category.startswith("migration_")],
+            cross_reference_issues=[
+                i for i in self._validation_issues if i.category.startswith("cross_")
+            ],
+            migration_issues=[
+                i
+                for i in self._validation_issues
+                if i.category.startswith("migration_")
+            ],
             cleanup_recommendations=cleanup_recommendations,
             performance_metrics=performance_metrics,
             summary=summary,
@@ -943,72 +976,78 @@ class DatabaseConsistencyValidator:
     async def cleanup_demo_data(self, dry_run: bool = True) -> Dict[str, Any]:
         """
         Clean up demo/test data from databases and data directory.
-        
+
         Args:
             dry_run: If True, only report what would be cleaned without making changes
-            
+
         Returns:
             Dict containing cleanup results
         """
         logger.info(f"Starting demo data cleanup (dry_run={dry_run})")
-        
+
         cleanup_results = {
             "dry_run": dry_run,
             "timestamp": datetime.utcnow().isoformat(),
             "actions_taken": [],
             "errors": [],
         }
-        
+
         try:
             # Clean up data directory files
             await self._cleanup_data_directory(cleanup_results, dry_run)
-            
+
             # Clean up database demo users
             await self._cleanup_demo_users(cleanup_results, dry_run)
-            
+
             # Clean up orphaned records
             if not dry_run:
                 await self._cleanup_orphaned_records(cleanup_results)
-            
+
         except Exception as e:
             logger.error(f"Demo data cleanup failed: {e}")
             cleanup_results["errors"].append(str(e))
-            
+
         return cleanup_results
 
-    async def _cleanup_data_directory(self, results: Dict[str, Any], dry_run: bool) -> None:
+    async def _cleanup_data_directory(
+        self, results: Dict[str, Any], dry_run: bool
+    ) -> None:
         """Clean up demo data from data directory"""
         try:
             users_file = self.data_directory / "users.json"
             if users_file.exists():
-                with open(users_file, 'r') as f:
+                with open(users_file, "r") as f:
                     users_data = json.load(f)
-                
+
                 original_count = len(users_data)
                 demo_users_removed = []
-                
+
                 # Remove demo users
                 for email in list(users_data.keys()):
                     if email in self.demo_patterns["emails"]:
                         if not dry_run:
                             del users_data[email]
                         demo_users_removed.append(email)
-                
+
                 if demo_users_removed:
                     action = f"{'Would remove' if dry_run else 'Removed'} {len(demo_users_removed)} demo users from users.json: {', '.join(demo_users_removed)}"
                     results["actions_taken"].append(action)
-                    
+
                     if not dry_run:
                         # Backup original file
-                        backup_file = users_file.with_suffix(f".backup.{int(time.time())}")
+                        backup_file = users_file.with_suffix(
+                            f".backup.{int(time.time())}"
+                        )
                         users_file.rename(backup_file)
-                        
+
                         # Write cleaned data
-                        with open(users_file, 'w') as f:
+                        with open(users_file, "w") as f:
                             json.dump(users_data, f, indent=2)
-                        
-                        results["actions_taken"].append(f"Backed up original users.json to {backup_file.name}")
-                        
+
+                        results["actions_taken"].append(
+                            f"Backed up original users.json to {backup_file.name}"
+                        )
+
         except Exception as e:
             logger.error(f"Data directory cleanup failed: {e}")
             results["errors"].append(f"Data directory cleanup failed: {str(e)}")
@@ -1019,22 +1058,23 @@ class DatabaseConsistencyValidator:
             async with self.db_manager.async_session_scope() as session:
                 # Find demo users
                 result = await session.execute(
-                    select(AuthUser)
-                    .where(AuthUser.email.in_(self.demo_patterns["emails"]))
+                    select(AuthUser).where(
+                        AuthUser.email.in_(self.demo_patterns["emails"])
+                    )
                 )
                 demo_users = result.fetchall()
-                
+
                 if demo_users:
                     user_emails = [user.email for user in demo_users]
                     action = f"{'Would remove' if dry_run else 'Removed'} {len(demo_users)} demo users from database: {', '.join(user_emails)}"
                     results["actions_taken"].append(action)
-                    
+
                     if not dry_run:
                         # Delete demo users (cascading deletes will handle related records)
                         for user in demo_users:
                             await session.delete(user)
                         await session.commit()
-                        
+
         except Exception as e:
             logger.error(f"Demo users cleanup failed: {e}")
             results["errors"].append(f"Demo users cleanup failed: {str(e)}")
@@ -1051,10 +1091,12 @@ class DatabaseConsistencyValidator:
                     """)
                 )
                 orphaned_messages = result.rowcount
-                
+
                 if orphaned_messages > 0:
-                    results["actions_taken"].append(f"Removed {orphaned_messages} orphaned messages")
-                
+                    results["actions_taken"].append(
+                        f"Removed {orphaned_messages} orphaned messages"
+                    )
+
                 # Clean up orphaned sessions
                 result = await session.execute(
                     text("""
@@ -1063,12 +1105,14 @@ class DatabaseConsistencyValidator:
                     """)
                 )
                 orphaned_sessions = result.rowcount
-                
+
                 if orphaned_sessions > 0:
-                    results["actions_taken"].append(f"Removed {orphaned_sessions} orphaned sessions")
-                
+                    results["actions_taken"].append(
+                        f"Removed {orphaned_sessions} orphaned sessions"
+                    )
+
                 await session.commit()
-                
+
         except Exception as e:
             logger.error(f"Orphaned records cleanup failed: {e}")
             results["errors"].append(f"Orphaned records cleanup failed: {str(e)}")
@@ -1076,15 +1120,15 @@ class DatabaseConsistencyValidator:
     async def auto_fix_issues(self, issues: List[ValidationIssue]) -> Dict[str, Any]:
         """
         Automatically fix issues that are marked as auto-fixable.
-        
+
         Args:
             issues: List of validation issues to attempt to fix
-            
+
         Returns:
             Dict containing fix results
         """
         logger.info(f"Attempting to auto-fix {len(issues)} issues")
-        
+
         fix_results = {
             "timestamp": datetime.utcnow().isoformat(),
             "attempted_fixes": 0,
@@ -1093,10 +1137,10 @@ class DatabaseConsistencyValidator:
             "fix_details": [],
             "errors": [],
         }
-        
+
         auto_fixable_issues = [issue for issue in issues if issue.auto_fixable]
         fix_results["attempted_fixes"] = len(auto_fixable_issues)
-        
+
         for issue in auto_fixable_issues:
             try:
                 success = await self._fix_individual_issue(issue)
@@ -1105,13 +1149,17 @@ class DatabaseConsistencyValidator:
                     fix_results["fix_details"].append(f"Fixed: {issue.description}")
                 else:
                     fix_results["failed_fixes"] += 1
-                    fix_results["fix_details"].append(f"Failed to fix: {issue.description}")
-                    
+                    fix_results["fix_details"].append(
+                        f"Failed to fix: {issue.description}"
+                    )
+
             except Exception as e:
                 logger.error(f"Error fixing issue {issue.description}: {e}")
                 fix_results["failed_fixes"] += 1
-                fix_results["errors"].append(f"Error fixing '{issue.description}': {str(e)}")
-        
+                fix_results["errors"].append(
+                    f"Error fixing '{issue.description}': {str(e)}"
+                )
+
         return fix_results
 
     async def _fix_individual_issue(self, issue: ValidationIssue) -> bool:
@@ -1128,7 +1176,7 @@ class DatabaseConsistencyValidator:
                         )
                         await session.commit()
                         return True
-                        
+
                 elif "orphaned sessions" in issue.description:
                     async with self.db_manager.async_session_scope() as session:
                         result = await session.execute(
@@ -1139,10 +1187,10 @@ class DatabaseConsistencyValidator:
                         )
                         await session.commit()
                         return True
-            
+
             # Add more auto-fix logic for other issue types as needed
             return False
-            
+
         except Exception as e:
             logger.error(f"Failed to fix issue {issue.description}: {e}")
             return False
@@ -1166,11 +1214,11 @@ async def validate_database_consistency(
 ) -> ConsistencyReport:
     """
     Convenience function to perform database consistency validation.
-    
+
     Args:
         data_directory: Path to data directory to check for cleanup needs
         enable_auto_fix: Whether to automatically fix issues that can be auto-fixed
-        
+
     Returns:
         ConsistencyReport: Complete validation report
     """
@@ -1178,18 +1226,20 @@ async def validate_database_consistency(
         data_directory=data_directory,
         enable_auto_fix=enable_auto_fix,
     )
-    
+
     report = await validator.validate_all()
-    
+
     # Auto-fix issues if enabled
     if enable_auto_fix:
-        auto_fixable_issues = [issue for issue in report.validation_issues if issue.auto_fixable]
+        auto_fixable_issues = [
+            issue for issue in report.validation_issues if issue.auto_fixable
+        ]
         if auto_fixable_issues:
             logger.info(f"Auto-fixing {len(auto_fixable_issues)} issues")
             fix_results = await validator.auto_fix_issues(auto_fixable_issues)
-            
+
             # Add fix results to report metadata
             if "fix_results" not in report.performance_metrics:
                 report.performance_metrics["fix_results"] = fix_results
-    
+
     return report

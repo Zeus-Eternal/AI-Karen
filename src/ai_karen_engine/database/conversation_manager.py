@@ -18,7 +18,7 @@ from ai_karen_engine.core.embedding_manager import EmbeddingManager
 from ai_karen_engine.database.client import MultiTenantPostgresClient
 from ai_karen_engine.database.memory_manager import MemoryManager, MemoryQuery
 from ai_karen_engine.database.models import TenantConversation, TenantMessage
-from ai_karen_engine.services.usage_service import UsageService
+from ai_karen_engine.models.usage_service import UsageService
 
 logger = logging.getLogger(__name__)
 
@@ -247,7 +247,9 @@ class ConversationManager:
                 try:
                     await session.flush()
                 except Exception as flush_exc:
-                    logger.exception(f"❌ Database flush failed during conversation creation: {flush_exc}")
+                    logger.exception(
+                        f"❌ Database flush failed during conversation creation: {flush_exc}"
+                    )
                     raise
 
                 # Add initial message if provided
@@ -320,7 +322,9 @@ class ConversationManager:
 
         async with self.db_client.get_async_session() as session:
             result = await session.execute(
-                select(TenantConversation).where(TenantConversation.id == conversation_uuid)
+                select(TenantConversation).where(
+                    TenantConversation.id == conversation_uuid
+                )
             )
             db_conversation = result.scalar_one_or_none()
 
@@ -362,7 +366,9 @@ class ConversationManager:
                     .values(**updates)
                 )
                 await session.commit()
-                db_conversation = await session.get(TenantConversation, conversation_uuid)
+                db_conversation = await session.get(
+                    TenantConversation, conversation_uuid
+                )
 
             return Conversation(
                 id=str(db_conversation.id),
@@ -377,21 +383,33 @@ class ConversationManager:
 
     async def create_user_message(self, request: Any) -> Dict[str, Any]:
         """Persist the user turn as the canonical conversation truth."""
-        conversation_id = str(self._payload_value(request, "conversation_id") or "").strip()
+        conversation_id = str(
+            self._payload_value(request, "conversation_id") or ""
+        ).strip()
         if not conversation_id:
             raise ValueError("conversation_id is required to persist a user message")
 
-        user_id = str(self._payload_value(request, "user_id") or "").strip() or "anonymous"
-        tenant_id = self._payload_value(request, "tenant_id", "org_id", default="default")
+        user_id = (
+            str(self._payload_value(request, "user_id") or "").strip() or "anonymous"
+        )
+        tenant_id = self._payload_value(
+            request, "tenant_id", "org_id", default="default"
+        )
         metadata = dict(self._payload_value(request, "metadata", default={}) or {})
-        title = str(self._payload_value(request, "message", default="") or "").strip()[:120] or None
+        title = (
+            str(self._payload_value(request, "message", default="") or "").strip()[:120]
+            or None
+        )
 
         await self.ensure_conversation(
             tenant_id=tenant_id,
             user_id=user_id,
             conversation_id=conversation_id,
             title=title,
-            session_id=str(self._payload_value(request, "session_id", default=conversation_id) or conversation_id),
+            session_id=str(
+                self._payload_value(request, "session_id", default=conversation_id)
+                or conversation_id
+            ),
             metadata={"source": metadata.get("source", "chat_orchestrator")},
         )
 
@@ -403,7 +421,9 @@ class ConversationManager:
             metadata=metadata,
         )
         if message is None:
-            raise RuntimeError(f"Failed to persist user message for conversation {conversation_id}")
+            raise RuntimeError(
+                f"Failed to persist user message for conversation {conversation_id}"
+            )
 
         return {
             "id": message.id,
@@ -414,33 +434,59 @@ class ConversationManager:
             "metadata": message.metadata,
         }
 
-    async def create_assistant_message(self, request: Any, response: Any) -> Dict[str, Any]:
+    async def create_assistant_message(
+        self, request: Any, response: Any
+    ) -> Dict[str, Any]:
         """Persist the assistant turn once after final response finalization."""
-        conversation_id = str(self._payload_value(request, "conversation_id") or "").strip()
+        conversation_id = str(
+            self._payload_value(request, "conversation_id") or ""
+        ).strip()
         if not conversation_id:
-            raise ValueError("conversation_id is required to persist an assistant message")
+            raise ValueError(
+                "conversation_id is required to persist an assistant message"
+            )
 
-        assistant_content = str(self._payload_value(response, "response", default="") or "").strip()
+        assistant_content = str(
+            self._payload_value(response, "response", default="") or ""
+        ).strip()
         if not assistant_content:
             return {}
 
-        user_id = str(self._payload_value(request, "user_id") or "").strip() or "anonymous"
-        tenant_id = self._payload_value(request, "tenant_id", "org_id", default="default")
-        response_metadata = dict(self._payload_value(response, "metadata", default={}) or {})
+        user_id = (
+            str(self._payload_value(request, "user_id") or "").strip() or "anonymous"
+        )
+        tenant_id = self._payload_value(
+            request, "tenant_id", "org_id", default="default"
+        )
+        response_metadata = dict(
+            self._payload_value(response, "metadata", default={}) or {}
+        )
         response_status = self._payload_value(response, "status", default="completed")
         if hasattr(response_status, "value"):
             response_status = response_status.value
         response_metadata.setdefault("status", str(response_status))
-        response_metadata.setdefault("execution_path", self._payload_value(response, "execution_path"))
-        response_metadata.setdefault("used_fallback", bool(self._payload_value(response, "used_fallback", default=False)))
-        response_metadata.setdefault("request_id", self._payload_value(response, "request_id"))
-        response_metadata.setdefault("correlation_id", self._payload_value(response, "correlation_id"))
+        response_metadata.setdefault(
+            "execution_path", self._payload_value(response, "execution_path")
+        )
+        response_metadata.setdefault(
+            "used_fallback",
+            bool(self._payload_value(response, "used_fallback", default=False)),
+        )
+        response_metadata.setdefault(
+            "request_id", self._payload_value(response, "request_id")
+        )
+        response_metadata.setdefault(
+            "correlation_id", self._payload_value(response, "correlation_id")
+        )
 
         await self.ensure_conversation(
             tenant_id=tenant_id,
             user_id=user_id,
             conversation_id=conversation_id,
-            session_id=str(self._payload_value(request, "session_id", default=conversation_id) or conversation_id),
+            session_id=str(
+                self._payload_value(request, "session_id", default=conversation_id)
+                or conversation_id
+            ),
             metadata={"last_request_id": self._payload_value(response, "request_id")},
         )
 
@@ -452,7 +498,9 @@ class ConversationManager:
             metadata=response_metadata,
         )
         if message is None:
-            raise RuntimeError(f"Failed to persist assistant message for conversation {conversation_id}")
+            raise RuntimeError(
+                f"Failed to persist assistant message for conversation {conversation_id}"
+            )
 
         return {
             "id": message.id,

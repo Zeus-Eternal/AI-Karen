@@ -6,24 +6,28 @@ and first-run setup flow.
 """
 
 import logging
-import os
+import asyncio
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any, List, Optional
 
 from fastapi import APIRouter, Request, HTTPException, Depends, status
 from fastapi.responses import JSONResponse
-
-logger = logging.getLogger("kari.auth_routes")
-
-from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from ..auth.models import UserData
 from ..auth.session import get_current_user as get_authenticated_user
 from ..auth.rbac_middleware import get_rbac_manager
+from ..auth.auth_middleware import get_rate_limiter
+from ai_karen_engine.services.auth_service import (
+    AuthService as CoreAuthService,
+    UserRole,
+)
+from ai_karen_engine.database.dependencies import get_async_db_session_dependency
 
 # AuthService is imported locally where needed to avoid circular imports
-from ..core.services.base import ServiceConfig
+
+logger = logging.getLogger("kari.auth_routes")
 
 
 # Request/Response Models
@@ -126,75 +130,36 @@ class ChangePasswordRequest(BaseModel):
         return self
 
 
-class UpdateUserProfileRequest(BaseModel):
-    """Update current user profile request."""
-
-    email: Optional[str] = None
-    username: Optional[str] = Field(default=None, min_length=1)
-    full_name: Optional[str] = Field(default=None, min_length=1)
-    preferences: Optional[Dict[str, Any]] = None
-
-    @model_validator(mode="after")
-    def validate_payload(self):
-        if (
-            self.email is None
-            and self.username is None
-            and self.full_name is None
-            and self.preferences is None
-        ):
-            raise ValueError("At least one profile field must be provided")
-        return self
-
-
 # Initialize service with default configuration
-# Use model_construct to bypass Pydantic validation for required fields
-from ai_karen_engine.auth_service import AuthService as CoreAuthService, UserRole
-from ai_karen_engine.database.dependencies import get_async_db_session_dependency
-
-
-# Use centralized auth configuration
-# _auth_service_instance: Optional[AuthService] = None
+# Global auth service instance for singleton usage
+_auth_service_instance: Optional[CoreAuthService] = None
+_auth_service_init_lock = asyncio.Lock()
 
 
 async def get_auth_service(
     db_session: AsyncSession = Depends(get_async_db_session_dependency),
 ) -> CoreAuthService:
-    """Get the auth service instance with database session."""
-    # AuthService will use the provided session
-    auth_service = CoreAuthService()
-    auth_service.set_db_session(db_session)
-    # Explicitly initialize to ensure DB tables and default admin user exist
-    await auth_service.initialize()
-    return auth_service
+    """Get the singleton auth service instance with request-specific DB session."""
+    global _auth_service_instance
+
+    if _auth_service_instance is None:
+        async with _auth_service_init_lock:
+            if _auth_service_instance is None:
+                logger.info("Creating singleton AuthService instance")
+                _auth_service_instance = CoreAuthService()
+
+    # CoreAuthService.initialize() has its own internal lock and is safe to call concurrently.
+    # We call it here to ensure it's ready before use, without holding our local init lock.
+    if not _auth_service_instance._initialized:
+        await _auth_service_instance.initialize()
+
+    # Set the request-specific session in ContextVar-safe way (via set_db_session)
+    _auth_service_instance.set_db_session(db_session)
+    return _auth_service_instance
 
 
 # Router - now with explicit /auth prefix for API gateway consistency
 router = APIRouter(prefix="/auth", tags=["authentication"])
-
-
-async def _get_authenticated_user_from_request(request: Request):
-    """Prefer the middleware-resolved user already attached to the request."""
-    # Check for direct marker in request state (set by middleware)
-    request_user = getattr(request.state, "user", None)
-    if request_user:
-        logger.error(f"DEBUG_AUTH: Found request.state.user: {request_user}")
-        return UserData.ensure(request_user)
-
-    # Standard authentication path
-    try:
-        user = await get_authenticated_user(request)
-        if user:
-            return UserData.ensure(user)
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication failed or session expired",
-        )
-    except Exception as e:
-        logger.warning(f"Authentication failed: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication failed or session expired",
-        )
 
 
 def get_client_ip(request: Request) -> str:
@@ -487,6 +452,7 @@ async def login(
     request: LoginRequest,
     http_request: Request,
     auth_svc: CoreAuthService = Depends(get_auth_service),
+    limiter: Any = Depends(get_rate_limiter),
 ) -> JSONResponse:
     """Authenticate user and return tokens."""
     ip_address = get_client_ip(http_request)
@@ -494,6 +460,14 @@ async def login(
 
     # Determine login identifier (email or username)
     login_identifier = request.email or request.username or ""
+
+    # Check rate limit before proceeding
+    if not limiter._check_rate_limit(login_identifier, "login_attempts"):
+        logger.warning(f"Rate limit exceeded for login attempts: {login_identifier}")
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many login attempts. Please try again later.",
+        )
 
     logger.info(f"Login attempt for identifier: {login_identifier}")
 
@@ -511,6 +485,10 @@ async def login(
         raise
 
     if not user:
+        # Record failed attempt for rate limiting
+        limiter._record_failed_attempt(
+            login_identifier, "login_attempts", refresh_token_or_error
+        )
         # refresh_token_or_error contains error message
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -604,7 +582,7 @@ async def refresh_token(
 @router.post("/logout")
 async def logout(
     request: RefreshTokenRequest,
-    current_user=Depends(_get_authenticated_user_from_request),
+    current_user=Depends(get_authenticated_user),
 ) -> JSONResponse:
     auth_svc = await get_auth_service()
     await auth_svc.logout(request.refresh_token)
@@ -618,7 +596,7 @@ async def logout(
 
 @router.get("/validate-session")
 async def validate_session(
-    current_user=Depends(_get_authenticated_user_from_request),
+    current_user=Depends(get_authenticated_user),
     auth_svc: CoreAuthService = Depends(get_auth_service),
 ) -> Dict[str, Any]:
     """Validate current session and return user information."""
@@ -643,7 +621,7 @@ async def validate_session(
 
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(
-    current_user=Depends(_get_authenticated_user_from_request),
+    current_user=Depends(get_authenticated_user),
     auth_svc: CoreAuthService = Depends(get_auth_service),
 ) -> Dict[str, Any]:
     """Get current user information."""
@@ -667,19 +645,17 @@ async def test_put_endpoint() -> Dict[str, Any]:
 
 @router.put("/me")
 async def update_current_user_info(
-    request: UpdateUserProfileRequest,
-    current_user=Depends(_get_authenticated_user_from_request),
+    request: UpdateProfileRequest,
+    current_user=Depends(get_authenticated_user),
     auth_svc: CoreAuthService = Depends(get_auth_service),
 ) -> Dict[str, Any]:
     """Update current user information."""
 
     try:
         current_user_id = _resolve_current_user_id(current_user)
-        logger.info(
-            f"DEBUG_AUTH: PUT /me called for user_id: {current_user_id}, type: {type(current_user_id)}"
-        )
+        logger.info(f"PUT /me called for user_id: {current_user_id}")
 
-        logger.info(f"DEBUG_AUTH: Using auth_service for user {current_user_id}")
+        logger.info(f"Using auth_service for user {current_user_id}")
         updated_user, error = await auth_svc.update_user_profile(
             current_user_id,
             email=str(request.email) if request.email is not None else None,
@@ -695,17 +671,22 @@ async def update_current_user_info(
             elif error == "User with this email already exists":
                 status_code = status.HTTP_409_CONFLICT
 
-            debug_msg = f"{error or 'Failed to update profile'} - ID was '{current_user_id}' type {type(current_user_id)}"
-            logger.error(f"DEBUG_AUTH: Profile update failed: {debug_msg}")
+            debug_msg = (
+                f"{error or 'Failed to update profile'} - ID was '{current_user_id}'"
+            )
+            logger.error(f"Profile update failed: {debug_msg}")
             raise HTTPException(status_code=status_code, detail=debug_msg)
 
-        logger.info(f"DEBUG_AUTH: Profile update successful for user {current_user_id}")
+        logger.info(f"Profile update successful for user {current_user_id}")
         return _serialize_user_response(updated_user)
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"DEBUG_AUTH: Unexpected error in PUT /me: {e}", exc_info=True)
+        logger.error(
+            f"Unexpected error in PUT /me for user {current_user_id}: {e}",
+            exc_info=True,
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update user profile: {str(e)}",
@@ -715,7 +696,7 @@ async def update_current_user_info(
 @router.post("/change-password")
 async def change_password(
     request: ChangePasswordRequest,
-    current_user=Depends(_get_authenticated_user_from_request),
+    current_user=Depends(get_authenticated_user),
 ) -> Dict[str, str]:
     """Change the current user's password."""
 

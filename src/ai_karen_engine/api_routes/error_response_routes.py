@@ -29,7 +29,7 @@ from ai_karen_engine.memory.error_response_service import (
     ErrorCategory,
     ErrorSeverity,
 )
-from ai_karen_engine.memory.internal.provider_health_monitor import get_health_monitor
+from ai_karen_engine.services.provider_health_monitor import get_health_monitor
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["error-response"], prefix="/error-response")

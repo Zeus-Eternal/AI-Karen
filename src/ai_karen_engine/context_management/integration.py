@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 class ContextManagementIntegration:
     """
     Integration class for Context Management system.
-    
+
     Handles initialization, configuration, and integration with existing services.
     """
 
@@ -43,7 +43,7 @@ class ContextManagementIntegration:
     ):
         """
         Initialize Context Management integration.
-        
+
         Args:
             app: FastAPI application instance
             database_client: Database client for storage
@@ -54,61 +54,68 @@ class ContextManagementIntegration:
         self.database_client = database_client
         self.embedding_manager = embedding_manager
         self.config = config or {}
-        
+
         # Initialize services
         self.context_service = None
         self.file_handler = None
         self.preprocessor = None
         self.relevance_scorer = None
-        
+
         logger.info("ContextManagementIntegration initialized")
 
     async def initialize(self) -> None:
         """
         Initialize all Context Management components.
-        
+
         Sets up services, registers routes, and performs startup tasks.
         """
         try:
             # Initialize core services
             await self._initialize_services()
-            
+
             # Register routes with FastAPI app
             if self.app:
                 await self._register_routes()
-            
+
             # Perform startup tasks
             await self._perform_startup_tasks()
-            
+
             logger.info("Context Management system initialized successfully")
-            
+
         except Exception as e:
             logger.error(f"Failed to initialize Context Management: {e}")
             raise
 
     async def _initialize_services(self) -> None:
         """Initialize core Context Management services."""
-        # Initialize memory manager
-        from ai_karen_engine.database.memory_manager import MemoryManager
-        
-        memory_manager = MemoryManager(
-            db_client=self.database_client,
-            embedding_manager=self.embedding_manager,
-        )
-        
-        # Initialize context service
-        self.context_service = ContextManagementService(
-            memory_manager=memory_manager,
-            storage_path=self.config.get("storage_path", "/tmp/context_storage"),
-            max_file_size_mb=self.config.get("max_file_size_mb", 100),
-            supported_file_types=[
-                ContextFileType(ft) for ft in self.config.get(
-                    "allowed_file_types", 
-                    [ft.value for ft in ContextFileType]
-                )
-            ],
-        )
-        
+        # Only initialize services that require database and embedding manager if available
+        if self.database_client is not None and self.embedding_manager is not None:
+            # Initialize memory manager
+            from ai_karen_engine.database.memory_manager import MemoryManager
+
+            memory_manager = MemoryManager(
+                db_client=self.database_client,
+                embedding_manager=self.embedding_manager,
+            )
+
+            # Initialize context service
+            self.context_service = ContextManagementService(
+                memory_manager=memory_manager,
+                storage_path=self.config.get("storage_path", "/tmp/context_storage"),
+                max_file_size_mb=self.config.get("max_file_size_mb", 100),
+                supported_file_types=[
+                    ContextFileType(ft)
+                    for ft in self.config.get(
+                        "allowed_file_types", [ft.value for ft in ContextFileType]
+                    )
+                ],
+            )
+        else:
+            logger.warning(
+                "Database client and/or embedding manager not provided. Context service will not be initialized."
+            )
+            self.context_service = None
+
         # Initialize file handler
         self.file_handler = FileUploadHandler(
             storage_path=self.config.get("file_storage_path", "/tmp/context_files"),
@@ -118,7 +125,7 @@ class ContextManagementIntegration:
             extract_text=self.config.get("extract_text", True),
             db_client=self.database_client,
         )
-        
+
         # Initialize preprocessor
         self.preprocessor = ContextPreprocessor(
             min_keyword_length=self.config.get("min_keyword_length", 3),
@@ -127,9 +134,11 @@ class ContextManagementIntegration:
             enable_entity_extraction=self.config.get("enable_entity_extraction", True),
             enable_summarization=self.config.get("enable_summarization", True),
             spacy_model_name=self.config.get("spacy_model_name", "en_core_web_sm"),
-            allow_runtime_nltk_downloads=self.config.get("allow_runtime_nltk_downloads"),
+            allow_runtime_nltk_downloads=self.config.get(
+                "allow_runtime_nltk_downloads"
+            ),
         )
-        
+
         # Initialize relevance scorer
         self.relevance_scorer = ContextRelevanceScorer(
             semantic_weight=self.config.get("semantic_weight", 0.4),
@@ -151,7 +160,7 @@ class ContextManagementIntegration:
                     # Add rate limiting if available
                 ],
             )
-            
+
             logger.info("Context Management routes registered with FastAPI app")
 
     async def _perform_startup_tasks(self) -> None:
@@ -159,13 +168,13 @@ class ContextManagementIntegration:
         try:
             # Run cleanup tasks
             await self._cleanup_expired_contexts()
-            
+
             # Initialize default configurations
             await self._initialize_default_configurations()
-            
+
             # Validate system health
             await self._validate_system_health()
-            
+
         except Exception as e:
             logger.warning(f"Startup tasks failed: {e}")
 
@@ -213,7 +222,7 @@ class ContextManagementIntegration:
     def get_service_status(self) -> Dict[str, Any]:
         """
         Get status of all Context Management services.
-        
+
         Returns:
             Dictionary with service status information
         """
@@ -235,21 +244,21 @@ class ContextManagementIntegration:
                 "database_connected": self.database_client is not None,
                 "embedding_manager": self.embedding_manager is not None,
                 "fastapi_app": self.app is not None,
-                "routes_registered": hasattr(self.app, 'routes'),
+                "routes_registered": hasattr(self.app, "routes"),
             },
         }
 
     def update_configuration(self, new_config: Dict[str, Any]) -> None:
         """
         Update configuration for Context Management services.
-        
+
         Args:
             new_config: New configuration parameters
         """
         try:
             # Update configuration
             self.config.update(new_config)
-            
+
             # Update services with new configuration
             if self.relevance_scorer:
                 self.relevance_scorer.update_config(
@@ -260,7 +269,7 @@ class ContextManagementIntegration:
                     usage_weight=new_config.get("usage_weight"),
                     recency_half_life_days=new_config.get("recency_half_life_days"),
                 )
-            
+
             if self.preprocessor:
                 self.preprocessor.update_config(
                     min_keyword_length=new_config.get("min_keyword_length"),
@@ -269,16 +278,16 @@ class ContextManagementIntegration:
                     enable_entity_extraction=new_config.get("enable_entity_extraction"),
                     enable_summarization=new_config.get("enable_summarization"),
                 )
-            
+
             logger.info("Configuration updated successfully")
-            
+
         except Exception as e:
             logger.error(f"Configuration update failed: {e}")
 
     async def get_system_metrics(self) -> Dict[str, Any]:
         """
         Get system metrics and performance data.
-        
+
         Returns:
             Dictionary with system metrics
         """
@@ -289,7 +298,7 @@ class ContextManagementIntegration:
                 "performance": {},
                 "usage": {},
             }
-            
+
             # Get context service metrics
             if self.context_service:
                 # This would get actual metrics from the service
@@ -299,24 +308,30 @@ class ContextManagementIntegration:
                     "total_files": 0,
                     "total_shares": 0,
                 }
-            
+
             # Get file handler metrics
             if self.file_handler:
                 metrics["services"]["file_handler"] = {
-                    "supported_file_types": len(self.file_handler.get_supported_file_types()),
+                    "supported_file_types": len(
+                        self.file_handler.get_supported_file_types()
+                    ),
                     "storage_path": self.file_handler.storage_path,
                 }
-            
+
             # Get preprocessor metrics
             if self.preprocessor:
-                metrics["services"]["preprocessor"] = self.preprocessor.get_preprocessor_config()
-            
+                metrics["services"]["preprocessor"] = (
+                    self.preprocessor.get_preprocessor_config()
+                )
+
             # Get relevance scorer metrics
             if self.relevance_scorer:
-                metrics["services"]["relevance_scorer"] = self.relevance_scorer.get_scorer_config()
-            
+                metrics["services"]["relevance_scorer"] = (
+                    self.relevance_scorer.get_scorer_config()
+                )
+
             return metrics
-            
+
         except Exception as e:
             logger.error(f"Failed to get system metrics: {e}")
             return {"error": str(e)}
@@ -334,18 +349,18 @@ async def initialize_context_management(
 ) -> ContextManagementIntegration:
     """
     Initialize Context Management system with existing services.
-    
+
     Args:
         app: FastAPI application instance
         database_client: Database client for storage
         embedding_manager: Embedding manager for vector search
         config: Configuration dictionary
-        
+
     Returns:
         Initialized Context Management integration
     """
     global _integration_instance
-    
+
     if _integration_instance is None:
         _integration_instance = ContextManagementIntegration(
             app=app,
@@ -353,16 +368,16 @@ async def initialize_context_management(
             embedding_manager=embedding_manager,
             config=config,
         )
-        
+
         await _integration_instance.initialize()
-    
+
     return _integration_instance
 
 
 def get_context_management_integration() -> Optional[ContextManagementIntegration]:
     """
     Get the global Context Management integration instance.
-    
+
     Returns:
         Context Management integration instance or None
     """
@@ -372,7 +387,7 @@ def get_context_management_integration() -> Optional[ContextManagementIntegratio
 async def shutdown_context_management() -> None:
     """Shutdown Context Management system."""
     global _integration_instance
-    
+
     if _integration_instance:
         await _integration_instance.shutdown()
         _integration_instance = None

@@ -99,7 +99,12 @@ def _should_use_registry() -> bool:
         logger.info("Simple LLM mode forced via AI_KAREN_FORCE_SIMPLE_LLM")
         return False
 
-    if os.getenv("AI_KAREN_ENABLE_FULL_REGISTRY", "").lower() in {"1", "true", "yes", "on"}:
+    if os.getenv("AI_KAREN_ENABLE_FULL_REGISTRY", "").lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }:
         return True
 
     if os.getenv("OPENAI_API_KEY"):
@@ -112,6 +117,7 @@ def _should_use_registry() -> bool:
         "LLM registry disabled automatically (no API keys or local llama.cpp models detected)"
     )
     return False
+
 
 # Lazy imports to avoid circular import issues
 # Providers will be imported when needed in get_provider_class()
@@ -157,7 +163,7 @@ def _get_metrics_service_safe():
     """Lazily import the metrics service to avoid circular dependencies."""
 
     try:
-        from ai_karen_engine.services.metrics_service import get_metrics_service
+        from ai_karen_engine.monitoring.metrics_service import get_metrics_service
 
         return get_metrics_service()
     except Exception:  # pragma: no cover - optional dependency path
@@ -308,7 +314,9 @@ class LLMUtils:
                             )
                             self.default = picked
                 except Exception:
-                    logger.debug("Default provider auto-select probe failed", exc_info=True)
+                    logger.debug(
+                        "Default provider auto-select probe failed", exc_info=True
+                    )
             except Exception as registry_error:
                 logger.warning(
                     "LLM registry unavailable (%s); falling back to simple provider mode",
@@ -408,7 +416,11 @@ class LLMUtils:
         user_ctx: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Persist request metrics for cost reporting."""
-        if not _ensure_db_dependencies() or not get_db_session_context or not LLMRequest:
+        if (
+            not _ensure_db_dependencies()
+            or not get_db_session_context
+            or not LLMRequest
+        ):
             if _DB_IMPORT_ERROR:
                 logger.debug(
                     "Database dependencies unavailable; skipping LLM request recording: %s",
@@ -496,7 +508,9 @@ class LLMUtils:
                     continue
 
                 if self._should_skip_for_rate_limit(provider_name, state):
-                    wait_remaining = state.get("rate_limited_until", 0) - time.monotonic()
+                    wait_remaining = (
+                        state.get("rate_limited_until", 0) - time.monotonic()
+                    )
                     logger.info(
                         "Provider %s is cooling down after rate limit (%.1fs remaining)",
                         provider_name,
@@ -510,7 +524,9 @@ class LLMUtils:
                     provider_kwargs.pop("model", None)
 
                 try:
-                    provider_obj = self._resolve_provider(provider_name, provider_kwargs)
+                    provider_obj = self._resolve_provider(
+                        provider_name, provider_kwargs
+                    )
                 except ProviderNotAvailable as exc:
                     logger.warning("Provider %s unavailable: %s", provider_name, exc)
                     errors.append(f"{provider_name}: unavailable")
@@ -525,7 +541,9 @@ class LLMUtils:
                 if effective_provider != provider_name:
                     effective_state = self._get_provider_state(effective_provider)
                     if self._is_circuit_open(effective_provider, effective_state):
-                        remaining = effective_state.get("open_until", 0) - time.monotonic()
+                        remaining = (
+                            effective_state.get("open_until", 0) - time.monotonic()
+                        )
                         logger.warning(
                             "Circuit open for fallback provider %s – skipping (%.1fs remaining)",
                             effective_provider,
@@ -533,8 +551,13 @@ class LLMUtils:
                         )
                         errors.append(f"{effective_provider}: circuit_open")
                         continue
-                    if self._should_skip_for_rate_limit(effective_provider, effective_state):
-                        wait_remaining = effective_state.get("rate_limited_until", 0) - time.monotonic()
+                    if self._should_skip_for_rate_limit(
+                        effective_provider, effective_state
+                    ):
+                        wait_remaining = (
+                            effective_state.get("rate_limited_until", 0)
+                            - time.monotonic()
+                        )
                         logger.info(
                             "Fallback provider %s cooling down after rate limit (%.1fs remaining)",
                             effective_provider,
@@ -543,7 +566,9 @@ class LLMUtils:
                         errors.append(f"{effective_provider}: rate_limited")
                         continue
 
-                model_name = provider_kwargs.get("model") or getattr(provider_obj, "model", None)
+                model_name = provider_kwargs.get("model") or getattr(
+                    provider_obj, "model", None
+                )
 
                 for attempt in range(1, self.max_retries + 1):
                     attempt_start = time.time()
@@ -551,9 +576,9 @@ class LLMUtils:
                     attempt_meta = {
                         **meta_base,
                         "provider": effective_provider,
-                    "model": model_name,
-                    "attempt": attempt,
-                }
+                        "model": model_name,
+                        "attempt": attempt,
+                    }
                 try:
                     output = provider_obj.generate_text(prompt, **provider_kwargs)
                     duration = time.time() - attempt_start
@@ -595,7 +620,9 @@ class LLMUtils:
                         overall_model = model_name
                     overall_status = "success"
                     return output
-                except Exception as ex:  # pragma: no cover - provider specific errors vary
+                except (
+                    Exception
+                ) as ex:  # pragma: no cover - provider specific errors vary
                     status = "error"
                     duration = time.time() - attempt_start
                     if metrics_service:
@@ -607,11 +634,13 @@ class LLMUtils:
                             correlation_id=trace_id,
                         )
                     self._record_failure(effective_provider, ex)
-                    attempt_meta.update({
-                        "duration": duration,
-                        "error": str(ex),
-                        "status": status,
-                    })
+                    attempt_meta.update(
+                        {
+                            "duration": duration,
+                            "error": str(ex),
+                            "status": status,
+                        }
+                    )
                     trace_llm_event("generate_text_error", trace_id, attempt_meta)
                     logger.warning(
                         "Provider %s attempt %d failed: %s",
@@ -677,7 +706,7 @@ class LLMUtils:
                     status=overall_status,
                     correlation_id=trace_id,
                 )
-    
+
     def _resolve_provider(
         self, provider_name: str, provider_kwargs: Dict[str, Any]
     ) -> LLMProviderBase:
@@ -714,14 +743,14 @@ class LLMUtils:
                     f"Provider '{provider_name}' not available in registry."
                 )
             if provider_obj.__class__.__name__ == "FallbackProvider":
-                provider_kwargs.setdefault("model", getattr(provider_obj, "model", None))
+                provider_kwargs.setdefault(
+                    "model", getattr(provider_obj, "model", None)
+                )
             return provider_obj
 
         provider_obj = self.get_provider(provider_name)
         if provider_obj is None:
-            raise ProviderNotAvailable(
-                f"Provider '{provider_name}' not registered."
-            )
+            raise ProviderNotAvailable(f"Provider '{provider_name}' not registered.")
         return provider_obj
 
     def _build_provider_chain(self, requested_provider: str) -> List[str]:
@@ -800,9 +829,7 @@ class LLMUtils:
         state["rate_limited_until"] = time.monotonic() + cooldown
         return cooldown
 
-    def _should_skip_for_rate_limit(
-        self, provider: str, state: Dict[str, Any]
-    ) -> bool:
+    def _should_skip_for_rate_limit(self, provider: str, state: Dict[str, Any]) -> bool:
         until = state.get("rate_limited_until")
         if not until:
             return False
@@ -860,7 +887,9 @@ class LLMUtils:
         if self.use_registry:
             provider_obj = self.registry.get_provider(provider_name, model=model_name)  # type: ignore[arg-type]
             if not provider_obj:
-                raise ProviderNotAvailable(f"Provider '{provider_name}' not available in registry.")
+                raise ProviderNotAvailable(
+                    f"Provider '{provider_name}' not available in registry."
+                )
         else:
             provider_obj = self.get_provider(provider)
         trace_id = trace_id or str(uuid.uuid4())

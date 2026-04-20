@@ -32,7 +32,9 @@ from ai_karen_engine.memory.provider_registry import (
 )
 from ai_karen_engine.services.distilbert_service import DistilBertService
 from ai_karen_engine.services.spacy_service import SpacyService
-from ai_karen_engine.services.small_language_model_service import SmallLanguageModelService
+from ai_karen_engine.memory.small_language_model_service import (
+    SmallLanguageModelService,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +46,9 @@ class OrchestrationInput:
     session_id: Optional[str] = None
     conversation_id: Optional[str] = None
     user_id: Optional[str] = None
-    llm_preferences: Optional[Dict[str, str]] = None  # {preferred_llm_provider, preferred_model}
+    llm_preferences: Optional[Dict[str, str]] = (
+        None  # {preferred_llm_provider, preferred_model}
+    )
     context: Optional[Dict[str, Any]] = None
 
 
@@ -63,135 +67,168 @@ class OrchestrationAgent:
     ) -> None:
         # Configuration for orchestration behavior (must be first)
         self.config = config or {}
-        
+
         self.provider_registry = provider_registry or get_provider_registry_service()
         self.llm_utils = llm_utils or LLMUtils()
         self.health_checker = health_checker or HealthChecker()
         self.degraded_manager = get_degraded_mode_manager()
         self.distilbert = distilbert or DistilBertService()
         self.spacy_service = spacy_service or SpacyService()
-        self.small_language_model_service = small_language_model_service or SmallLanguageModelService()
-        
+        self.small_language_model_service = (
+            small_language_model_service or SmallLanguageModelService()
+        )
+
         # Initialize model selection algorithm
         self.model_selector = ModelSelectionAlgorithm(
             provider_registry=self.provider_registry,
             health_checker=self.health_checker,
-            config=self.config
+            config=self.config,
         )
-        
+
         # Configurable system default fallback hierarchy [Llama-CPP (DL models with hugginface), Transformers, OpenAI, Gemini, DeepSeek]
         # Requirements 1.1, 1.2, 2.1, 2.2
-        self.default_hierarchy = self.config.get("default_hierarchy", [
-            "llamacpp",      # Llama-CPP (DL models with huggingface)
-            "transformers",  # Transformers
-            "openai",        # OpenAI
-            "gemini",        # Gemini
-            "deepseek",      # DeepSeek
-            "huggingface",   # HuggingFace fallback
-        ])
-        
+        self.default_hierarchy = self.config.get(
+            "default_hierarchy",
+            [
+                "llamacpp",  # Llama-CPP (DL models with huggingface)
+                "transformers",  # Transformers
+                "openai",  # OpenAI
+                "gemini",  # Gemini
+                "deepseek",  # DeepSeek
+                "huggingface",  # HuggingFace fallback
+            ],
+        )
+
         # Hard final fallback model - last resort before degraded mode
         try:
             from ai_karen_engine.config.config_manager import get_config
+
             cfg = get_config()
             default_lightweight = cfg.llm.default_lightweight_model_id
         except Exception:
             default_lightweight = "default-lightweight-model"
 
-        self.hard_final_fallback = self.config.get("hard_final_fallback", {
-            "provider": "llamacpp",
-            "model": default_lightweight
-        })
-        
+        self.hard_final_fallback = self.config.get(
+            "hard_final_fallback",
+            {"provider": "llamacpp", "model": default_lightweight},
+        )
+
         # User preference validation settings
-        self.preference_validation = self.config.get("preference_validation", {
-            "validate_provider_exists": True,
-            "validate_model_exists": True,
-            "fallback_on_invalid": True
-        })
+        self.preference_validation = self.config.get(
+            "preference_validation",
+            {
+                "validate_provider_exists": True,
+                "validate_model_exists": True,
+                "fallback_on_invalid": True,
+            },
+        )
 
     async def orchestrate_response(self, data: OrchestrationInput) -> Dict[str, Any]:
         """
         Main orchestration entrypoint: returns strict JSON envelope.
-        
+
         Implements 4-step model selection:
         1. User preference → 2. System defaults → 3. Hard fallback → 4. Degraded mode
         Requirements: 1.1, 1.2, 2.1, 2.2
         """
         t0 = time.time()
-        
+
         # Validate and extract user preferences (Requirement 1.1)
-        validated_preferences = self._validate_user_preferences(data.llm_preferences or {})
-        
+        validated_preferences = self._validate_user_preferences(
+            data.llm_preferences or {}
+        )
+
         # Quick task routing using helpers (Requirement 6)
         task_type = await self._infer_task_type(data)
 
         # If classification-only, prefer DistilBERT
         if task_type == "classification":
             classification = await self._run_classification(data.message)
-            suggestions = self._generate_suggestions(data, familiarity=self._estimate_familiarity(data))
+            suggestions = self._generate_suggestions(
+                data, familiarity=self._estimate_familiarity(data)
+            )
             meta = {
                 "annotations": ["AI Enhanced", "Helper: DistilBERT"],
                 "routing": {
                     "task": task_type,
                     "rationale": "Classification task routed to DistilBERT",
-                    "selection_path": "helper_model_routing"
+                    "selection_path": "helper_model_routing",
                 },
                 "latency": time.time() - t0,
                 "confidence": 0.8,
             }
-            return build_response_envelope(classification, "Helper", "distilbert", metadata=meta, suggestions=suggestions)
+            return build_response_envelope(
+                classification,
+                "Helper",
+                "distilbert",
+                metadata=meta,
+                suggestions=suggestions,
+            )
 
         # If extraction, prefer spaCy
         if task_type == "extraction":
             extracted = await self._run_extraction(data.message)
-            suggestions = self._generate_suggestions(data, familiarity=self._estimate_familiarity(data))
+            suggestions = self._generate_suggestions(
+                data, familiarity=self._estimate_familiarity(data)
+            )
             meta = {
                 "annotations": ["AI Enhanced", "Helper: spaCy"],
                 "routing": {
                     "task": task_type,
                     "rationale": "Extraction task routed to spaCy",
-                    "selection_path": "helper_model_routing"
+                    "selection_path": "helper_model_routing",
                 },
                 "latency": time.time() - t0,
                 "confidence": 0.75,
             }
-            return build_response_envelope(extracted, "Helper", "spacy", metadata=meta, suggestions=suggestions)
+            return build_response_envelope(
+                extracted, "Helper", "spacy", metadata=meta, suggestions=suggestions
+            )
 
         # If scaffolding, prefer SmallLanguageModel
         if task_type == "scaffolding":
             scaffolded = await self._run_scaffolding(data.message)
-            suggestions = self._generate_suggestions(data, familiarity=self._estimate_familiarity(data))
+            suggestions = self._generate_suggestions(
+                data, familiarity=self._estimate_familiarity(data)
+            )
             meta = {
                 "annotations": ["AI Enhanced", "Helper: SmallLanguageModel"],
                 "routing": {
                     "task": task_type,
                     "rationale": "Scaffolding task routed to SmallLanguageModel",
-                    "selection_path": "helper_model_routing"
+                    "selection_path": "helper_model_routing",
                 },
                 "latency": time.time() - t0,
                 "confidence": 0.8,
             }
-            return build_response_envelope(scaffolded, "Helper", "small_language_model", metadata=meta, suggestions=suggestions)
+            return build_response_envelope(
+                scaffolded,
+                "Helper",
+                "small_language_model",
+                metadata=meta,
+                suggestions=suggestions,
+            )
 
         # General/complex chat → main LLM with 4-step selection process
         selection_result = await self.model_selector.select_provider_and_model(
             user_preferences=validated_preferences,
-            context={"message": data.message, "session_id": data.session_id}
+            context={"message": data.message, "session_id": data.session_id},
         )
-        
+
         if selection_result.provider is None:
             # Enter degraded mode (Requirement 8/9)
             self.degraded_manager.activate_degraded_mode(
-                DegradedModeReason.ALL_PROVIDERS_FAILED, 
-                failed_providers=self.default_hierarchy
+                DegradedModeReason.ALL_PROVIDERS_FAILED,
+                failed_providers=self.default_hierarchy,
             )
-            degraded = await self.degraded_manager.generate_degraded_response(data.message)
+            degraded = await self.degraded_manager.generate_degraded_response(
+                data.message
+            )
             # Ensure suggestions for recovery are present
             if not degraded.get("suggestions"):
                 degraded["suggestions"] = [
                     "Retry later when providers recover",
-                    "Switch provider in settings", 
+                    "Switch provider in settings",
                     "Ask for a shorter or simpler response",
                 ]
             return degraded
@@ -199,9 +236,7 @@ class OrchestrationAgent:
         # Invoke the selected provider
         try:
             final_text, latency, usage = await self._invoke_provider(
-                selection_result.provider,
-                selection_result.model,
-                data
+                selection_result.provider, selection_result.model, data
             )
         except GenerationFailed as exc:
             logger.error(
@@ -230,7 +265,9 @@ class OrchestrationAgent:
             )
 
         # Add dynamic suggestions
-        suggestions = self._generate_suggestions(data, familiarity=self._estimate_familiarity(data))
+        suggestions = self._generate_suggestions(
+            data, familiarity=self._estimate_familiarity(data)
+        )
 
         # Confidence calibration: base + helper corroboration
         confidence = 0.7
@@ -261,7 +298,7 @@ class OrchestrationAgent:
             selection_result.provider,
             selection_result.model or "default",
             metadata=meta,
-            suggestions=suggestions
+            suggestions=suggestions,
         )
 
     async def _handle_generation_failure(
@@ -325,20 +362,25 @@ class OrchestrationAgent:
 
         return degraded
 
-    def _validate_user_preferences(self, llm_preferences: Dict[str, str]) -> Dict[str, str]:
+    def _validate_user_preferences(
+        self, llm_preferences: Dict[str, str]
+    ) -> Dict[str, str]:
         """
         Validate and polish user preference extraction.
         Requirements: 1.1, 1.2
         """
         validated = {}
-        
+
         # Extract and normalize provider preference
-        provider = llm_preferences.get("preferred_llm_provider") or llm_preferences.get("provider", "").strip()
+        provider = (
+            llm_preferences.get("preferred_llm_provider")
+            or llm_preferences.get("provider", "").strip()
+        )
         if provider:
             # Normalize common variations
             provider_mapping = {
                 "llama-cpp": "llamacpp",
-                "llama_cpp": "llamacpp", 
+                "llama_cpp": "llamacpp",
                 "openai": "openai",
                 "gpt": "openai",
                 "gemini": "gemini",
@@ -346,27 +388,36 @@ class OrchestrationAgent:
                 "deepseek": "deepseek",
                 "huggingface": "huggingface",
                 "hf": "huggingface",
-                "transformers": "transformers"
+                "transformers": "transformers",
             }
-            normalized_provider = provider_mapping.get(provider.lower(), provider.lower())
-            
+            normalized_provider = provider_mapping.get(
+                provider.lower(), provider.lower()
+            )
+
             # Validate provider exists if configured to do so
             if self.preference_validation["validate_provider_exists"]:
                 available_providers = self.provider_registry.get_available_providers()
                 if normalized_provider in available_providers:
                     validated["provider"] = normalized_provider
                 else:
-                    logger.warning(f"User preferred provider '{provider}' not available. Available: {available_providers}")
+                    logger.warning(
+                        f"User preferred provider '{provider}' not available. Available: {available_providers}"
+                    )
                     if self.preference_validation["fallback_on_invalid"]:
                         validated["provider"] = None  # Will trigger fallback
             else:
                 validated["provider"] = normalized_provider
-        
+
         # Extract and validate model preference
-        model = llm_preferences.get("preferred_model") or llm_preferences.get("model", "").strip()
+        model = (
+            llm_preferences.get("preferred_model")
+            or llm_preferences.get("model", "").strip()
+        )
         if model and validated.get("provider"):
             # Basic model validation - could be enhanced with registry lookup
-            if self.preference_validation["validate_model_exists"] and validated.get("provider"):
+            if self.preference_validation["validate_model_exists"] and validated.get(
+                "provider"
+            ):
                 provider_name = validated["provider"]
                 if provider_name:
                     is_available = self.provider_registry.is_model_available(
@@ -400,11 +451,33 @@ class OrchestrationAgent:
         """Infer task type: classification, extraction, scaffolding, or chat."""
         text = (data.message or "").lower()
         # Simple heuristics; can be enhanced using helpers
-        if any(k in text for k in ["classify", "is this", "label this", "sentiment of"]):
+        if any(
+            k in text for k in ["classify", "is this", "label this", "sentiment of"]
+        ):
             return "classification"
-        if any(k in text for k in ["extract", "pull entities", "ner", "find names", "find entities", "structured"]):
+        if any(
+            k in text
+            for k in [
+                "extract",
+                "pull entities",
+                "ner",
+                "find names",
+                "find entities",
+                "structured",
+            ]
+        ):
             return "extraction"
-        if any(k in text for k in ["outline", "scaffold", "structure", "organize", "break down", "summarize"]):
+        if any(
+            k in text
+            for k in [
+                "outline",
+                "scaffold",
+                "structure",
+                "organize",
+                "break down",
+                "summarize",
+            ]
+        ):
             return "scaffolding"
         return "chat"
 
@@ -412,16 +485,21 @@ class OrchestrationAgent:
         """Use DistilBERT embeddings to produce simple sentiment/intent classification."""
         try:
             emb = await self.distilbert.get_embeddings(text)
-            
+
             # Handle different embedding types
             if isinstance(emb, list) and len(emb) > 0:
                 if isinstance(emb[0], list):
                     # It's a list of lists (batch embeddings), flatten the first one
-                    emb_flat = [x for sublist in emb[:1] for x in sublist if isinstance(x, (int, float))]
+                    emb_flat = [
+                        x
+                        for sublist in emb[:1]
+                        for x in sublist
+                        if isinstance(x, (int, float))
+                    ]
                 else:
                     # It's a flat list of floats, filter out non-numeric values
                     emb_flat = [x for x in emb if isinstance(x, (int, float))]
-                
+
                 # Calculate average embedding value
                 if emb_flat:
                     score = sum(emb_flat) / max(1, len(emb_flat))
@@ -429,9 +507,19 @@ class OrchestrationAgent:
                     score = 0.0
             else:
                 score = 0.0
-                
-            sentiment = "positive" if score > 0.1 else "negative" if score < -0.1 else "neutral"
-            intent = "question" if "?" in text else ("task" if any(w in text.lower() for w in ["build", "create", "make"]) else "statement")
+
+            sentiment = (
+                "positive" if score > 0.1 else "negative" if score < -0.1 else "neutral"
+            )
+            intent = (
+                "question"
+                if "?" in text
+                else (
+                    "task"
+                    if any(w in text.lower() for w in ["build", "create", "make"])
+                    else "statement"
+                )
+            )
             return f"Classification -> intent: {intent}, sentiment: {sentiment}"
         except Exception as e:
             logger.debug(f"DistilBERT classification failed: {e}")
@@ -446,7 +534,9 @@ class OrchestrationAgent:
             return f"Entities: {ents}\nKey phrases: {nouns}"
         except Exception as e:
             logger.debug(f"spaCy extraction failed: {e}")
-            return "Extraction unavailable; falling back to main LLM would be appropriate."
+            return (
+                "Extraction unavailable; falling back to main LLM would be appropriate."
+            )
 
     async def _run_scaffolding(self, text: str) -> str:
         """Use SmallLanguageModel to generate scaffolding, outlines, and quick structures."""
@@ -454,35 +544,47 @@ class OrchestrationAgent:
             # Determine scaffolding type based on content
             text_lower = text.lower()
             if "outline" in text_lower:
-                outline_result = await self.small_language_model_service.generate_outline(text, max_points=5)
+                outline_result = (
+                    await self.small_language_model_service.generate_outline(
+                        text, max_points=5
+                    )
+                )
                 if outline_result.outline:
-                    formatted_outline = "\n".join([f"• {point}" for point in outline_result.outline])
+                    formatted_outline = "\n".join(
+                        [f"• {point}" for point in outline_result.outline]
+                    )
                     return f"Generated outline:\n{formatted_outline}"
                 else:
                     return "Outline generation completed but no points extracted."
-            
+
             elif "summarize" in text_lower or "summary" in text_lower:
-                summary_result = await self.small_language_model_service.summarize_context(text, summary_type="concise")
+                summary_result = (
+                    await self.small_language_model_service.summarize_context(
+                        text, summary_type="concise"
+                    )
+                )
                 if summary_result.summary:
                     return f"Summary: {summary_result.summary}"
                 else:
                     return "Summary generation completed but no content extracted."
-            
+
             else:
                 # General scaffolding
-                scaffold_result = await self.small_language_model_service.generate_scaffold(text, scaffold_type="structure")
+                scaffold_result = (
+                    await self.small_language_model_service.generate_scaffold(
+                        text, scaffold_type="structure"
+                    )
+                )
                 if scaffold_result.content:
                     return f"Structure scaffold:\n{scaffold_result.content}"
                 else:
-                    return "Scaffolding generation completed but no structure extracted."
-                    
+                    return (
+                        "Scaffolding generation completed but no structure extracted."
+                    )
+
         except Exception as e:
             logger.debug(f"SmallLanguageModel scaffolding failed: {e}")
             return "Scaffolding unavailable; falling back to main LLM would be appropriate."
-
-
-
-
 
     def _default_model_for(self, provider: str) -> Optional[str]:
         try:
@@ -506,7 +608,15 @@ class OrchestrationAgent:
         for attempt_provider in self._iter_provider_chain(provider):
             try:
                 kwargs: Dict[str, Any] = {"model": model} if model else {}
-                text = self.llm_utils.generate_text(prompt, provider=attempt_provider, user_ctx={"session_id": data.session_id, "conversation_id": data.conversation_id}, **kwargs)
+                text = self.llm_utils.generate_text(
+                    prompt,
+                    provider=attempt_provider,
+                    user_ctx={
+                        "session_id": data.session_id,
+                        "conversation_id": data.conversation_id,
+                    },
+                    **kwargs,
+                )
                 latency = time.time() - start
                 # Try to pull usage if provider exposes it
                 try:
@@ -536,14 +646,14 @@ class OrchestrationAgent:
     async def _build_helper_prefix(self, data: OrchestrationInput) -> str:
         """Use helper models to build brief scaffolding and context."""
         parts: List[str] = []
-        
+
         # SmallLanguageModel scaffolding for reasoning and outline generation
         try:
             if self.small_language_model_service:
-                scaffold_result = await self.small_language_model_service.generate_scaffold(
-                    data.message,
-                    scaffold_type="reasoning",
-                    max_tokens=50
+                scaffold_result = (
+                    await self.small_language_model_service.generate_scaffold(
+                        data.message, scaffold_type="reasoning", max_tokens=50
+                    )
                 )
                 if scaffold_result.content:
                     parts.append(f"Reasoning scaffold: {scaffold_result.content}")
@@ -553,7 +663,7 @@ class OrchestrationAgent:
             outline = self._scaffold_outline(data.message)
             if outline:
                 parts.append(f"Outline: {outline}")
-        
+
         # spaCy entities
         try:
             parsed = await self.spacy_service.parse_message(data.message)
@@ -562,7 +672,7 @@ class OrchestrationAgent:
                 parts.append(f"Entities: {ents}")
         except Exception:
             pass
-        
+
         return "\n".join(parts) if parts else ""
 
     def _scaffold_outline(self, text: str) -> str:
@@ -582,12 +692,18 @@ class OrchestrationAgent:
             return "novice"
         questions = sum(1 for m in history if "?" in (m.get("content") or ""))
         ratio = questions / max(1, len(history))
-        return "novice" if ratio > 0.5 else "expert" if len(history) > 10 and ratio < 0.2 else "intermediate"
+        return (
+            "novice"
+            if ratio > 0.5
+            else "expert"
+            if len(history) > 10 and ratio < 0.2
+            else "intermediate"
+        )
 
     def _get_available_helpers(self) -> List[str]:
         """Get list of available helper models."""
         helpers = []
-        
+
         # Check SmallLanguageModel availability
         if self.small_language_model_service:
             try:
@@ -596,7 +712,7 @@ class OrchestrationAgent:
                     helpers.append("SmallLanguageModel")
             except Exception:
                 pass
-        
+
         # Check DistilBERT availability
         if self.distilbert:
             try:
@@ -605,7 +721,7 @@ class OrchestrationAgent:
                     helpers.append("DistilBERT")
             except Exception:
                 pass
-        
+
         # Check spaCy availability
         if self.spacy_service:
             try:
@@ -614,10 +730,12 @@ class OrchestrationAgent:
                     helpers.append("spaCy")
             except Exception:
                 pass
-        
+
         return helpers
 
-    def _generate_suggestions(self, data: OrchestrationInput, familiarity: str) -> List[str]:
+    def _generate_suggestions(
+        self, data: OrchestrationInput, familiarity: str
+    ) -> List[str]:
         """Generate 3-5 concise, contextual next-step prompts."""
         msg = (data.message or "").lower()
         base: List[str] = []
@@ -658,7 +776,8 @@ class OrchestrationAgent:
         return out[:5]
 
 
-def get_orchestration_agent(config: Optional[Dict[str, Any]] = None) -> OrchestrationAgent:
+def get_orchestration_agent(
+    config: Optional[Dict[str, Any]] = None,
+) -> OrchestrationAgent:
     """Factory for default orchestration agent instance with optional configuration."""
     return OrchestrationAgent(config=config)
-

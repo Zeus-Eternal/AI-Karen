@@ -39,7 +39,7 @@ from ai_karen_engine.chat.ChatOrchestrator import (
     ProcessingStatus,
 )
 from ai_karen_engine.chat.factory import get_chat_orchestrator
-from ai_karen_engine.services.metrics_service import get_metrics_service
+from ai_karen_engine.monitoring.metrics_service import get_metrics_service
 
 logger = logging.getLogger(__name__)
 

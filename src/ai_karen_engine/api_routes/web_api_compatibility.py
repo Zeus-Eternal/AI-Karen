@@ -57,7 +57,7 @@ from ai_karen_engine.core.dependencies import (
     get_analytics_service,
 )
 from ai_karen_engine.models.shared_types import ToolType
-from ai_karen_engine.memory.analytics_service import AnalyticsService
+from ai_karen_engine.services.analytics_service import AnalyticsService
 
 # Ensure both `ai_karen_engine` and `src.ai_karen_engine` module paths reference the same module
 sys.modules.setdefault(

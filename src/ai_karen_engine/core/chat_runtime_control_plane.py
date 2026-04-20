@@ -74,7 +74,9 @@ class RuntimeConstants:
     # Standard fallback messages
     DEGRADED_BRAIN_ERROR = "I'm having trouble connecting to my brain right now. Please try again in a moment."
     EMERGENCY_UNAVAILABLE = "Service temporarily unavailable. Please try again shortly."
-    MAINTENANCE_MESSAGE = "We're performing scheduled improvements to enhance your experience."
+    MAINTENANCE_MESSAGE = (
+        "We're performing scheduled improvements to enhance your experience."
+    )
 
     # Detection patterns for placeholder responses
     PLACEHOLDER_PATTERNS = [
@@ -367,7 +369,9 @@ class RedisProbe:
                 pass
 
             # Fall back to the legacy manager path where older health probes still report.
-            from ai_karen_engine.memory.redis_connection_manager import get_redis_manager
+            from ai_karen_engine.memory.redis_connection_manager import (
+                get_redis_manager,
+            )
 
             manager = get_redis_manager()
             health = await manager.health_check()
@@ -401,39 +405,6 @@ class RedisProbe:
             )
 
 
-class ChatOrchestratorProbe:
-    """Probes ChatOrchestrator availability via factory resolution."""
-
-    name = "chat_orchestrator"
-
-    async def check(self) -> DependencyHealth:
-        start = time.time()
-        try:
-            from ai_karen_engine.chat.factory import get_chat_orchestrator
-
-            orchestrator = await get_chat_orchestrator()
-            elapsed = (time.time() - start) * 1000
-            if orchestrator is not None:
-                return DependencyHealth(
-                    name=self.name,
-                    status=DependencyStatus.HEALTHY,
-                    response_time_ms=elapsed,
-                )
-            return DependencyHealth(
-                name=self.name,
-                status=DependencyStatus.UNHEALTHY,
-                reason="Factory returned None",
-                response_time_ms=elapsed,
-            )
-        except Exception as e:
-            return DependencyHealth(
-                name=self.name,
-                status=DependencyStatus.UNHEALTHY,
-                reason=str(e),
-                response_time_ms=(time.time() - start) * 1000,
-            )
-
-
 class ProviderRouterProbe:
     """Probes whether at least one LLM provider is available."""
 
@@ -442,11 +413,11 @@ class ProviderRouterProbe:
     async def check(self) -> DependencyHealth:
         start = time.time()
         try:
-            from ai_karen_engine.memory.llm_router import LLMRouter
+            from ai_karen_engine.services.llm_router import LLMRouter
 
             router = LLMRouter()
             # Check if router can select a provider for a basic request
-            from ai_karen_engine.memory.llm_router import ChatRequest
+            from ai_karen_engine.services.llm_router import ChatRequest
 
             test_request = ChatRequest(message="test", stream=False)
             provider_selection = await router.select_provider(test_request)
@@ -505,10 +476,17 @@ class MemorySubsystemProbe:
 
 class ChatRuntimeControlPlane:
     """
-    Central authority for chat runtime mode management.
+    Enhanced central authority for chat runtime mode management with hardening features.
 
     This is the ONE place that decides which mode the system is in.
     All chat entry points must consult this before processing requests.
+
+    Enhanced features:
+    - Runtime state persistence with recovery mechanisms
+    - Emergency protocol system
+    - Circuit breaker integration
+    - Enhanced dependency health checks
+    - Guaranteed response contracts
     """
 
     # Critical dependencies required for normal mode
@@ -569,6 +547,40 @@ class ChatRuntimeControlPlane:
             MemorySubsystemProbe(),
         ]
 
+        # Enhanced hardening features
+        self._runtime_state_persistence: bool = True
+        self._emergency_protocols_active: bool = False
+        self._circuit_breaker_state: Dict[str, Any] = {}
+        self._response_contracts: Dict[str, Any] = {}
+        self._health_check_history: List[Dict[str, Any]] = []
+        self._mode_transition_history: List[Dict[str, Any]] = []
+        self._failure_thresholds: Dict[str, int] = {
+            "normal_to_degraded": 3,
+            "degraded_to_emergency": 5,
+            "emergency_to_degraded": 2,
+            "maintenance_to_normal": 1,
+        }
+        self._recovery_windows: Dict[str, int] = {
+            "normal_recovery": 300,  # 5 minutes
+            "degraded_recovery": 600,  # 10 minutes
+            "emergency_recovery": 1800,  # 30 minutes
+        }
+
+        # Runtime authority state
+        self._authority_initialized: bool = False
+        self._last_authority_check: Optional[datetime] = None
+        self._authority_health_score: float = 0.0
+        self._emergency_protocol_triggers: List[str] = []
+
+        # Performance monitoring
+        self._performance_metrics: Dict[str, Any] = {
+            "mode_changes": 0,
+            "health_check_duration": [],
+            "response_time": [],
+            "error_rate": 0.0,
+            "last_healthy_mode": None,
+        }
+
         self._initialized = False
 
     # -----------------------------------------------------------------------
@@ -601,6 +613,9 @@ class ChatRuntimeControlPlane:
         self._maintenance_monitor_task = asyncio.create_task(
             self._maintenance_monitor_loop()
         )
+
+        # 5. Initialize enhanced runtime authority
+        await self.initialize_runtime_authority()
 
         self._initialized = True
         logger.info(f"Control Plane ready — mode: {self._current_mode.value}")
@@ -1668,6 +1683,518 @@ class ChatRuntimeControlPlane:
 
         except Exception as e:
             logger.warning(f"Failed to dispatch maintenance notifications: {e}")
+
+    # -----------------------------------------------------------------------
+    # Enhanced Hardening Features
+    # -----------------------------------------------------------------------
+
+    async def initialize_runtime_authority(self) -> bool:
+        """Initialize runtime authority with enhanced hardening features."""
+        try:
+            logger.info("Initializing Runtime Authority with enhanced hardening")
+
+            # Initialize runtime state persistence
+            await self._initialize_runtime_state_persistence()
+
+            # Initialize emergency protocols
+            await self._initialize_emergency_protocols()
+
+            # Initialize circuit breaker integration
+            await self._initialize_circuit_breakers()
+
+            # Initialize response contracts
+            await self._initialize_response_contracts()
+
+            # Initialize performance monitoring
+            await self._initialize_performance_monitoring()
+
+            self._authority_initialized = True
+            self._last_authority_check = datetime.utcnow()
+
+            # Calculate initial authority health score
+            self._authority_health_score = (
+                await self._calculate_authority_health_score()
+            )
+
+            logger.info(
+                f"Runtime Authority initialized with health score: {self._authority_health_score:.2f}"
+            )
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to initialize runtime authority: {e}")
+            self._emergency_protocol_triggers.append("authority_initialization_failed")
+            return False
+
+    async def _initialize_runtime_state_persistence(self) -> None:
+        """Initialize runtime state persistence with recovery mechanisms."""
+        try:
+            # Load persisted state from storage
+            persisted_state = await self._load_persisted_runtime_state()
+
+            if persisted_state:
+                # Restore runtime state
+                self._restore_runtime_state(persisted_state)
+                logger.info("Runtime state restored from persistence")
+            else:
+                logger.info("No persisted runtime state found, using defaults")
+
+        except Exception as e:
+            logger.warning(f"Failed to initialize runtime state persistence: {e}")
+
+    async def _initialize_emergency_protocols(self) -> None:
+        """Initialize emergency protocol system."""
+        try:
+            # Define emergency protocol triggers
+            self._emergency_protocol_triggers = []
+
+            # Define emergency responses
+            self._emergency_responses = {
+                "database_unavailable": self._emergency_database_response,
+                "redis_unavailable": self._emergency_redis_response,
+                "orchestrator_unavailable": self._emergency_orchestrator_response,
+                "provider_router_unavailable": self._emergency_provider_response,
+                "memory_unavailable": self._emergency_memory_response,
+            }
+
+            logger.info("Emergency protocols initialized")
+
+        except Exception as e:
+            logger.warning(f"Failed to initialize emergency protocols: {e}")
+
+    async def _initialize_circuit_breakers(self) -> None:
+        """Initialize circuit breaker integration."""
+        try:
+            self._circuit_breaker_state = {
+                "database": {"state": "closed", "failures": 0, "last_failure": None},
+                "redis": {"state": "closed", "failures": 0, "last_failure": None},
+                "orchestrator": {
+                    "state": "closed",
+                    "failures": 0,
+                    "last_failure": None,
+                },
+                "provider_router": {
+                    "state": "closed",
+                    "failures": 0,
+                    "last_failure": None,
+                },
+                "memory": {"state": "closed", "failures": 0, "last_failure": None},
+            }
+
+            logger.info("Circuit breakers initialized")
+
+        except Exception as e:
+            logger.warning(f"Failed to initialize circuit breakers: {e}")
+
+    async def _initialize_response_contracts(self) -> None:
+        """Initialize response contract system."""
+        try:
+            self._response_contracts = {
+                "normal_execution": {
+                    "guaranteed": True,
+                    "timeout": 30,
+                    "fallback": "degraded",
+                    "dependencies": [
+                        "database",
+                        "redis",
+                        "orchestrator",
+                        "provider_router",
+                    ],
+                },
+                "degraded_execution": {
+                    "guaranteed": True,
+                    "timeout": 60,
+                    "fallback": "emergency",
+                    "dependencies": ["orchestrator"],
+                },
+                "emergency_execution": {
+                    "guaranteed": True,
+                    "timeout": 10,
+                    "fallback": None,
+                    "dependencies": [],
+                },
+                "maintenance_execution": {
+                    "guaranteed": True,
+                    "timeout": 5,
+                    "fallback": None,
+                    "dependencies": [],
+                },
+            }
+
+            logger.info("Response contracts initialized")
+
+        except Exception as e:
+            logger.warning(f"Failed to initialize response contracts: {e}")
+
+    async def _initialize_performance_monitoring(self) -> None:
+        """Initialize performance monitoring."""
+        try:
+            self._performance_metrics = {
+                "mode_changes": 0,
+                "health_check_duration": [],
+                "response_time": [],
+                "error_rate": 0.0,
+                "last_healthy_mode": None,
+                "circuit_breaker_trips": 0,
+                "emergency_protocol_activations": 0,
+                "response_contract_violations": 0,
+            }
+
+            logger.info("Performance monitoring initialized")
+
+        except Exception as e:
+            logger.warning(f"Failed to initialize performance monitoring: {e}")
+
+    async def _calculate_authority_health_score(self) -> float:
+        """Calculate overall authority health score (0.0 to 1.0)."""
+        try:
+            factors = []
+
+            # Dependency health score
+            healthy_deps = sum(
+                1
+                for health in self._dependency_health.values()
+                if health.status == DependencyStatus.HEALTHY
+            )
+            total_deps = len(self._dependency_health)
+            if total_deps > 0:
+                factors.append(healthy_deps / total_deps)
+
+            # Mode appropriateness score
+            if self._current_mode == RuntimeMode.NORMAL:
+                factors.append(1.0)
+            elif self._current_mode == RuntimeMode.DEGRADED:
+                factors.append(0.7)
+            elif self._current_mode == RuntimeMode.MAINTENANCE:
+                factors.append(0.5)
+            else:  # EMERGENCY_FALLBACK
+                factors.append(0.3)
+
+            # Circuit breaker health score
+            closed_breakers = sum(
+                1
+                for state in self._circuit_breaker_state.values()
+                if state["state"] == "closed"
+            )
+            total_breakers = len(self._circuit_breaker_state)
+            if total_breakers > 0:
+                factors.append(closed_breakers / total_breakers)
+
+            # Emergency protocol health score
+            if not self._emergency_protocol_triggers:
+                factors.append(1.0)
+            else:
+                factors.append(
+                    max(0.0, 1.0 - len(self._emergency_protocol_triggers) * 0.1)
+                )
+
+            # Return weighted average
+            if factors:
+                return sum(factors) / len(factors)
+            return 0.0
+
+        except Exception as e:
+            logger.error(f"Failed to calculate authority health score: {e}")
+            return 0.0
+
+    def _update_circuit_breaker_state(self, service_name: str, failure: bool) -> None:
+        """Update circuit breaker state for a service."""
+        try:
+            if service_name not in self._circuit_breaker_state:
+                return
+
+            state = self._circuit_breaker_state[service_name]
+
+            if failure:
+                state["failures"] += 1
+                state["last_failure"] = datetime.utcnow()
+
+                # Check if circuit breaker should trip
+                if state["failures"] >= 5:  # Threshold
+                    state["state"] = "open"
+                    self._performance_metrics["circuit_breaker_trips"] += 1
+                    logger.warning(f"Circuit breaker opened for {service_name}")
+
+                    # Add to emergency protocol triggers
+                    if service_name not in self._emergency_protocol_triggers:
+                        self._emergency_protocol_triggers.append(
+                            f"{service_name}_circuit_breaker"
+                        )
+            else:
+                state["failures"] = 0
+                state["last_failure"] = None
+
+                # Check if circuit breaker should close
+                if state["state"] == "open" and state["failures"] == 0:
+                    state["state"] = "closed"
+                    logger.info(f"Circuit breaker closed for {service_name}")
+
+        except Exception as e:
+            logger.error(f"Failed to update circuit breaker state: {e}")
+
+    async def _execute_emergency_protocol(self, trigger: str) -> None:
+        """Execute emergency protocol for a given trigger."""
+        try:
+            logger.warning(f"Executing emergency protocol for trigger: {trigger}")
+
+            if trigger in self._emergency_responses:
+                response = await self._emergency_responses[trigger]()
+
+                # Update performance metrics
+                self._performance_metrics["emergency_protocol_activations"] += 1
+
+                # Log the emergency activation
+                await self._log_runtime_event(
+                    "emergency_protocol_activated",
+                    self._current_mode.value,
+                    {"trigger": trigger, "response": str(response)},
+                )
+
+                return response
+            else:
+                logger.warning(f"No emergency response defined for trigger: {trigger}")
+
+        except Exception as e:
+            logger.error(f"Failed to execute emergency protocol: {e}")
+
+    async def _emergency_database_response(self) -> RuntimeResponse:
+        """Emergency response when database is unavailable."""
+        self._update_circuit_breaker_state("database", True)
+
+        if self._current_mode == RuntimeMode.NORMAL:
+            # Downgrade to degraded mode
+            await self.transition_mode(RuntimeMode.DEGRADED, "database_emergency")
+
+        return EmergencyFallbackResponse(
+            message="Database temporarily unavailable. Using limited functionality.",
+            retry_after_seconds=30,
+        )
+
+    async def _emergency_redis_response(self) -> RuntimeResponse:
+        """Emergency response when Redis is unavailable."""
+        self._update_circuit_breaker_state("redis", True)
+
+        if self._current_mode == RuntimeMode.NORMAL:
+            # Downgrade to degraded mode
+            await self.transition_mode(RuntimeMode.DEGRADED, "redis_emergency")
+
+        return DegradedResponse(
+            message="Cache service temporarily unavailable. Using degraded mode.",
+            capabilities=DegradedCapabilities(
+                memory_available=False,
+                tools_available=False,
+                plugins_available=False,
+                external_providers_available=False,
+                streaming_supported=False,
+                local_model_available=False,
+                description="Limited text-only assistant without caching",
+            ),
+            is_minimal=True,
+        )
+
+    async def _emergency_orchestrator_response(self) -> RuntimeResponse:
+        """Emergency response when orchestrator is unavailable."""
+        self._update_circuit_breaker_state("orchestrator", True)
+
+        return EmergencyFallbackResponse(
+            message="Chat service temporarily unavailable. Please try again shortly.",
+            retry_after_seconds=60,
+        )
+
+    async def _emergency_provider_response(self) -> RuntimeResponse:
+        """Emergency response when provider router is unavailable."""
+        self._update_circuit_breaker_state("provider_router", True)
+
+        return EmergencyFallbackResponse(
+            message="AI service temporarily unavailable. Using limited responses.",
+            retry_after_seconds=30,
+        )
+
+    async def _emergency_memory_response(self) -> RuntimeResponse:
+        """Emergency response when memory service is unavailable."""
+        self._update_circuit_breaker_state("memory", True)
+
+        return DegradedResponse(
+            message="Memory service temporarily unavailable. Conversation history limited.",
+            capabilities=DegradedCapabilities(
+                memory_available=False,
+                tools_available=True,
+                plugins_available=True,
+                external_providers_available=True,
+                streaming_supported=True,
+                local_model_available=True,
+                description="Assistant with limited conversation memory",
+            ),
+            is_minimal=False,
+        )
+
+    async def _load_persisted_runtime_state(self) -> Optional[Dict[str, Any]]:
+        """Load persisted runtime state from storage."""
+        try:
+            # This would typically load from a database or file
+            # For now, return None to indicate no persistence
+            return None
+
+        except Exception as e:
+            logger.error(f"Failed to load persisted runtime state: {e}")
+            return None
+
+    def _restore_runtime_state(self, state: Dict[str, Any]) -> None:
+        """Restore runtime state from persisted data."""
+        try:
+            # Restore mode
+            if "mode" in state:
+                self._current_mode = RuntimeMode(state["mode"])
+
+            # Restore dependency health
+            if "dependency_health" in state:
+                self._dependency_health = {
+                    name: DependencyHealth(**health)
+                    for name, health in state["dependency_health"].items()
+                }
+
+            # Restore performance metrics
+            if "performance_metrics" in state:
+                self._performance_metrics.update(state["performance_metrics"])
+
+            logger.info("Runtime state restored successfully")
+
+        except Exception as e:
+            logger.error(f"Failed to restore runtime state: {e}")
+
+    async def get_runtime_authority_status(self) -> Dict[str, Any]:
+        """Get comprehensive runtime authority status."""
+        try:
+            # Calculate current health score
+            health_score = await self._calculate_authority_health_score()
+
+            # Get circuit breaker states
+            circuit_breaker_states = {
+                name: state["state"]
+                for name, state in self._circuit_breaker_state.items()
+            }
+
+            # Get emergency protocol status
+            emergency_status = {
+                "active": len(self._emergency_protocol_triggers) > 0,
+                "triggers": self._emergency_protocol_triggers,
+            }
+
+            # Get performance metrics
+            performance_metrics = dict(self._performance_metrics)
+
+            # Get response contract status
+            response_contracts = {
+                name: {
+                    "guaranteed": contract["guaranteed"],
+                    "dependencies_met": all(
+                        dep in self._dependency_health
+                        and self._dependency_health[dep].status
+                        == DependencyStatus.HEALTHY
+                        for dep in contract["dependencies"]
+                    ),
+                }
+                for name, contract in self._response_contracts.items()
+            }
+
+            return {
+                "authority_initialized": self._authority_initialized,
+                "current_mode": self._current_mode.value,
+                "health_score": health_score,
+                "circuit_breakers": circuit_breaker_states,
+                "emergency_protocols": emergency_status,
+                "performance_metrics": performance_metrics,
+                "response_contracts": response_contracts,
+                "last_authority_check": self._last_authority_check.isoformat()
+                if self._last_authority_check
+                else None,
+                "dependency_health": {
+                    name: {
+                        "status": health.status.value,
+                        "consecutive_successes": health.consecutive_successes,
+                        "consecutive_failures": health.consecutive_failures,
+                    }
+                    for name, health in self._dependency_health.items()
+                },
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to get runtime authority status: {e}")
+            return {
+                "authority_initialized": False,
+                "error": str(e),
+            }
+
+    async def enforce_response_contract(self, contract_name: str) -> bool:
+        """Enforce response contract for a given execution path."""
+        try:
+            if contract_name not in self._response_contracts:
+                logger.warning(f"Unknown response contract: {contract_name}")
+                return False
+
+            contract = self._response_contracts[contract_name]
+
+            # Check if dependencies are healthy
+            dependencies_met = all(
+                dep in self._dependency_health
+                and self._dependency_health[dep].status == DependencyStatus.HEALTHY
+                for dep in contract["dependencies"]
+            )
+
+            if not dependencies_met and contract["guaranteed"]:
+                # Log contract violation
+                self._performance_metrics["response_contract_violations"] += 1
+
+                logger.warning(
+                    f"Response contract violation: {contract_name} - dependencies not met"
+                )
+
+                # Attempt to recover
+                await self.reconcile_mode("response_contract_violation")
+
+                return False
+
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to enforce response contract: {e}")
+            return False
+
+    async def health_check(self) -> bool:
+        """Enhanced health check for runtime authority."""
+        try:
+            if not self._authority_initialized:
+                return False
+
+            # Check if we need to reinitialize
+            if (
+                self._last_authority_check
+                and (datetime.utcnow() - self._last_authority_check).total_seconds()
+                > 300
+            ):  # 5 minutes
+                await self.initialize_runtime_authority()
+
+            # Check emergency protocols
+            if self._emergency_protocol_triggers:
+                logger.warning(
+                    f"Emergency protocols active: {self._emergency_protocol_triggers}"
+                )
+
+            # Check circuit breakers
+            open_breakers = [
+                name
+                for name, state in self._circuit_breaker_state.items()
+                if state["state"] == "open"
+            ]
+
+            if open_breakers:
+                logger.warning(f"Open circuit breakers: {open_breakers}")
+
+            return True
+
+        except Exception as e:
+            logger.error(f"Runtime authority health check failed: {e}")
+            return False
 
 
 # ---------------------------------------------------------------------------

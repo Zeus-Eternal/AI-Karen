@@ -37,6 +37,8 @@ from langgraph.prebuilt import ToolNode
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from langchain_core.tools import BaseTool
 
+from ai_karen_engine.agent_medusa.agent_medusa_node import medusa_node
+
 logger = logging.getLogger(__name__)
 
 
@@ -311,6 +313,10 @@ class OrchestrationState(TypedDict):
     streaming_enabled: Optional[bool]
     stream_chunks: Optional[List[str]]
     request_config: Optional[Dict[str, Any]]
+
+    # Medusa Extensions
+    agent_trace: Optional[List[str]]
+    medusa_status: Optional[str]
 
 
 @dataclass

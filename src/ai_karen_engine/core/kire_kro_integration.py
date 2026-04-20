@@ -207,12 +207,8 @@ class KIREKROIntegration:
         """
         await self.initialize()
 
-        try:
-            from ai_karen_engine.chat.ChatOrchestrator import (
-                ChatRequest as OrchestratorChatRequest,
-                ProcessingStatus,
-            )
-            from ai_karen_engine.chat.factory import get_chat_orchestrator
+try:
+            from ai_karen_engine.core.langgraph_orchestrator import LangGraphOrchestrator
 
             context = dict(context or {})
             correlation_id = str(context.get("correlation_id") or uuid.uuid4())
@@ -241,24 +237,28 @@ class KIREKROIntegration:
                 except Exception as route_exc:
                     logger.debug(f"KIRE advisory routing unavailable: {route_exc}")
 
-            chat_request = OrchestratorChatRequest(
-                correlation_id=correlation_id,
-                message=user_input,
-                user_id=user_id,
-                tenant_id=context.get("tenant_id"),
-                org_id=context.get("org_id"),
-                conversation_id=conversation_id,
-                session_id=session_id,
-                metadata={
+            # Use LangGraph orchestrator instead of ChatOrchestrator
+            orchestrator = LangGraphOrchestrator()
+            
+            # Prepare request for LangGraph orchestrator
+            langgraph_request = {
+                "user_id": user_id,
+                "session_id": session_id,
+                "prompt": user_input,
+                "conversation_history": conversation_history or [],
+                "user_settings": context.get("user_settings", {}),
+                "memories": context.get("memories", []),
+                "metadata": {
                     "source": "kire_kro_integration",
                     "channel": context.get("channel", "kro"),
                     "conversation_history": conversation_history or [],
                     "kire_routing_advisory": routing_advisory,
                     **context,
-                },
-            )
-            orchestrator = await get_chat_orchestrator()
-            chat_response = await orchestrator.handle_chat(chat_request)
+                }
+            }
+
+            # Execute with LangGraph orchestrator
+            chat_response = await orchestrator.ainvoke(langgraph_request)
 
             advisory_decision = self._route_decision_from_advisory(routing_advisory)
             routing_outcome = self._determine_routing_outcome(
@@ -266,47 +266,46 @@ class KIREKROIntegration:
                 if advisory_decision
                 else None,
                 advisory_model=advisory_decision.model if advisory_decision else None,
-                final_provider=chat_response.metadata.get("provider"),
-                final_model=chat_response.metadata.get("model"),
+                final_provider=chat_response.get("metadata", {}).get("provider"),
+                final_model=chat_response.get("metadata", {}).get("model"),
             )
             KIRE_ADVISORY_OUTCOMES_TOTAL.labels(
                 outcome=routing_outcome,
-                final_status=chat_response.status.value,
-                execution_path=chat_response.execution_path or "unknown",
+                final_status=chat_response.get("status", "completed"),
+                execution_path=chat_response.get("execution_path", "unknown"),
             ).inc()
             self._decision_logger.log_outcome(
                 correlation_id,
                 user_id,
                 context.get("task_type", "chat"),
                 outcome=routing_outcome,
-                final_status=chat_response.status.value,
-                execution_path=chat_response.execution_path,
+                final_status=chat_response.get("status", "completed"),
+                execution_path=chat_response.get("execution_path"),
                 advisory_decision=advisory_decision,
-                final_provider=chat_response.metadata.get("provider"),
-                final_model=chat_response.metadata.get("model"),
+                final_provider=chat_response.get("metadata", {}).get("provider"),
+                final_model=chat_response.get("metadata", {}).get("model"),
                 metadata={
-                    "assistant_message_id": chat_response.assistant_message_id,
-                    "degraded": chat_response.status == ProcessingStatus.DEGRADED,
+                    "assistant_message_id": chat_response.get("assistant_message_id"),
+                    "degraded": chat_response.get("status") == "degraded",
                 },
             )
 
             response_dict = {
-                "success": chat_response.status
-                in {ProcessingStatus.COMPLETED, ProcessingStatus.DEGRADED},
-                "message": chat_response.response,
+                "success": chat_response.get("status") in ["completed", "degraded"],
+                "message": chat_response.get("response"),
                 "meta": {
-                    "timestamp": chat_response.created_at.isoformat(),
-                    "agent": "ChatOrchestrator",
-                    "confidence": float(chat_response.metadata.get("confidence", 0.0)),
-                    "latency_ms": round(chat_response.processing_time * 1000, 2),
-                    "tokens_used": chat_response.metadata.get("tokens_used"),
-                    "provider": chat_response.metadata.get("provider"),
-                    "model": chat_response.metadata.get("model"),
-                    "degraded_mode": chat_response.status == ProcessingStatus.DEGRADED,
-                    "status": chat_response.status.value,
-                    "execution_path": chat_response.execution_path,
-                    "assistant_message_id": chat_response.assistant_message_id,
-                    "correlation_id": chat_response.correlation_id,
+                    "timestamp": chat_response.get("created_at", datetime.now().isoformat()),
+                    "agent": "LangGraphOrchestrator",
+                    "confidence": float(chat_response.get("metadata", {}).get("confidence", 0.0)),
+                    "latency_ms": round(chat_response.get("processing_time", 0.0) * 1000, 2),
+                    "tokens_used": chat_response.get("metadata", {}).get("tokens_used"),
+                    "provider": chat_response.get("metadata", {}).get("provider"),
+                    "model": chat_response.get("metadata", {}).get("model"),
+                    "degraded_mode": chat_response.get("status") == "degraded",
+                    "status": chat_response.get("status"),
+                    "execution_path": chat_response.get("execution_path"),
+                    "assistant_message_id": chat_response.get("assistant_message_id"),
+                    "correlation_id": chat_response.get("correlation_id", correlation_id),
                 },
                 "routing": routing_advisory,
                 "structured_content": chat_response.structured_content,

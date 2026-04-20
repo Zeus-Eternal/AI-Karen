@@ -11,24 +11,19 @@ This module provides secure authentication with:
 
 from __future__ import annotations
 
-import asyncio
 import base64
-import hashlib
-import json
 import logging
 import secrets
 import time
 from datetime import datetime, timedelta
 from enum import Enum
-from functools import wraps
 from typing import Any, Dict, List, Optional, Union
 
 import jwt
 import redis
-from fastapi import HTTPException, Request, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi import Request
+from fastapi.security import HTTPBearer
 
-from ai_karen_engine.auth.auth_service import get_auth_service, user_account_to_dict
 from ai_karen_engine.config.config_manager import get_config_manager
 from ai_karen_engine.core.logging.logger import get_structured_logger
 from ai_karen_engine.core.metrics_manager import get_metrics_manager
@@ -41,14 +36,22 @@ def _load_auth_jwt_secret() -> str:
     """Resolve the JWT secret using the shared auth env precedence."""
     import os
 
-    return (
+    secret = (
         os.getenv("AUTH_JWT_SECRET_KEY")
         or os.getenv("AUTH_SECRET_KEY")
         or os.getenv("JWT_SECRET_KEY")
         or os.getenv("JWT_SECRET")
         or os.getenv("SECRET_KEY")
-        or "fallback_secret_key_for_development_only"
     )
+
+    if not secret:
+        env = os.getenv("ENVIRONMENT", "development").lower()
+        if env == "production":
+            logger.error("CRITICAL: No JWT secret configured in production environment!")
+            raise RuntimeError("Authentication secret must be configured in production")
+        return "fallback_secret_key_for_development_only"
+
+    return secret
 
 
 class TokenStatus(Enum):
@@ -94,17 +97,32 @@ class SecureAuthMiddleware:
                 if config is not None:
                     # Case 1: AIKarenConfig (has .security.jwt_secret)
                     if hasattr(config, "security") and hasattr(config.security, "jwt_secret"):
-                        if self.jwt_secret == "fallback_secret_key_for_development_only":
-                            self.jwt_secret = config.security.jwt_secret
+                        cfg_secret = config.security.jwt_secret
+                        if cfg_secret and cfg_secret != "your-secret-key":
+                            self.jwt_secret = cfg_secret
+                        
                         self.jwt_algorithm = config.security.jwt_algorithm
-                        self.jwt_expiration_hours = config.security.jwt_expiration // 3600
+                        # Use access_token_expire_minutes if available, else jwt_expiration
+                        if hasattr(config.security, "access_token_expire_minutes"):
+                            self.jwt_expiration_hours = config.security.access_token_expire_minutes // 60
+                        else:
+                            self.jwt_expiration_hours = config.security.jwt_expiration // 3600
                     # Case 2: Settings (has .secret_key)
                     elif hasattr(config, "secret_key"):
-                        if self.jwt_secret == "fallback_secret_key_for_development_only":
-                            self.jwt_secret = config.secret_key
+                        cfg_secret = config.secret_key
+                        if cfg_secret:
+                            self.jwt_secret = cfg_secret
                         # Hardcode defaults for Settings object if missing
                         self.jwt_algorithm = getattr(config, "algorithm", "HS256")
                         self.jwt_expiration_hours = getattr(config, "access_token_expire_minutes", 30 * 24 * 60) // 60
+                    
+                    # Case 3: ProductionSettings (nested auth object)
+                    elif hasattr(config, "auth") and hasattr(config.auth, "secret_key"):
+                        cfg_secret = config.auth.secret_key
+                        if cfg_secret and cfg_secret != "changeme":
+                            self.jwt_secret = cfg_secret
+                        self.jwt_algorithm = getattr(config.auth, "algorithm", "HS256")
+                        self.jwt_expiration_hours = getattr(config.auth, "access_token_expire_minutes", 30) // 60
 
                 self._init_redis()
 
@@ -235,6 +253,9 @@ class SecureAuthMiddleware:
         except jwt.ExpiredSignatureError:
             raise AuthenticationError("Token has expired")
         except jwt.InvalidTokenError as e:
+            # Mask part of the secret for security while still identifying it
+            secret_hint = f"{self.jwt_secret[:3]}...{self.jwt_secret[-3:]}" if len(self.jwt_secret) > 6 else "***"
+            logger.debug(f"JWT decode failed using algorithm {self.jwt_algorithm} and secret hint {secret_hint}")
             raise AuthenticationError(f"Invalid token: {e}")
 
     def _decode_refresh_token(self, token: str) -> Dict[str, Any]:
@@ -274,10 +295,23 @@ class SecureAuthMiddleware:
             return False
 
     def _check_rate_limit(self, user_id: str, action: str) -> bool:
+        """Check if user has exceeded rate limit for a specific action."""
         limit_config = self.auth_rate_limits.get(action)
         if not limit_config:
             return True
 
+        # Try Redis first
+        if self.redis_client:
+            try:
+                key = self._get_redis_key(f"rate_limit:{action}", user_id)
+                count = self.redis_client.get(key)
+                if count and int(count) >= limit_config["limit"]:
+                    return False
+                return True
+            except Exception as e:
+                logger.warning(f"Redis rate limit check failed: {e}")
+
+        # Fallback to process-local in-memory tracking
         now = time.time()
         attempts = self.failed_attempts.get(user_id, [])
         attempts = [
@@ -289,27 +323,50 @@ class SecureAuthMiddleware:
         return len(attempts) < limit_config["limit"]
 
     def _record_failed_attempt(self, user_id: str, action: str, reason: str) -> None:
+        """Record a failed authentication attempt."""
+        limit_config = self.auth_rate_limits.get(action)
+        if not limit_config:
+            return
+
+        # Record in Redis if available
+        if self.redis_client:
+            try:
+                key = self._get_redis_key(f"rate_limit:{action}", user_id)
+                pipe = self.redis_client.pipeline()
+                pipe.incr(key)
+                pipe.expire(key, limit_config["window"])
+                pipe.execute()
+                return
+            except Exception as e:
+                logger.warning(f"Redis failed attempt recording failed: {e}")
+
+        # Fallback to in-memory
         attempts = self.failed_attempts.setdefault(user_id, [])
         attempts.append({"timestamp": time.time(), "action": action, "reason": reason})
 
     def _extract_token_from_request(self, request: Request) -> Optional[str]:
+        """Extract access token from Authorization header or canonical cookies."""
+        # 1. Check Authorization: Bearer header
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
             return auth_header[7:]
 
-        cookie_token = request.cookies.get("access_token")
+        # 2. Check canonical kari_session cookie
+        cookie_token = request.cookies.get("kari_session")
         if cookie_token:
             return cookie_token
 
-        return None
+        # 3. Check legacy access_token cookie
+        return request.cookies.get("access_token")
 
     def _extract_session_token_from_request(self, request: Request) -> Optional[str]:
+        """Extract session token from canonical cookies."""
         # Check for kari_session cookie (set by login endpoint)
         session_token = request.cookies.get("kari_session")
         if session_token:
             return session_token
-        # Fallback to session_token for backward compatibility
-        return request.cookies.get("session_token")
+        # Fallback to session_token/access_token for backward compatibility
+        return request.cookies.get("session_token") or request.cookies.get("access_token")
 
     def _extract_basic_auth(self, request: Request) -> Optional[tuple[str, str]]:
         auth_header = request.headers.get("Authorization")
@@ -324,6 +381,16 @@ class SecureAuthMiddleware:
             return None
 
     def is_public_endpoint(self, path: str) -> bool:
+        """
+        Check if an endpoint is public and does not require authentication.
+        
+        Public endpoints include:
+        - Health and monitoring
+        - API documentation
+        - Authentication entry points (login, register, password reset)
+        - Explicitly public API paths
+        - WebSocket entry points (authenticated via subprotocol or first message)
+        """
         public_patterns = [
             "/health",
             "/docs",
@@ -332,7 +399,6 @@ class SecureAuthMiddleware:
             "/api/auth/login",
             "/api/auth/register",
             "/api/auth/refresh",
-            "/api/auth/logout",
             "/api/auth/forgot-password",
             "/api/auth/reset-password",
             "/api/public/",
@@ -392,8 +458,14 @@ class SecureAuthMiddleware:
             # 1. Try Bearer token or access_token cookie
             token = self._extract_token_from_request(request)
             if token:
-                payload = await self._verify_access_token(token)
-                return self._get_user_from_payload(payload)
+                try:
+                    payload = self._verify_access_token(token)
+                    return self._get_user_from_payload(payload)
+                except AuthenticationError as e:
+                    logger.warning(f"Access token verification failed for {path}: {e}")
+                    # Continue to try session token if access token fails
+                except Exception as e:
+                    logger.error(f"Unexpected error verifying access token for {path}: {e}")
 
             # 2. Try kari_session cookie
             session_token = self._extract_session_token_from_request(request)
@@ -403,12 +475,12 @@ class SecureAuthMiddleware:
                     payload = token_result["payload"]
                     return self._get_user_from_payload(payload)
                 
-                # If session token is expired but valid otherwise, we might allow it
-                # if the specific endpoint handles refresh, but generally we want 401.
+                logger.warning(f"Session token validation failed for {path}: {token_result.get('error')}")
                 raise AuthenticationError(
                     token_result.get("error") or "Session token invalid"
                 )
 
+            logger.info(f"No authentication provided for protected endpoint {path}")
             raise AuthenticationError("No authentication token provided")
 
         except AuthenticationError:

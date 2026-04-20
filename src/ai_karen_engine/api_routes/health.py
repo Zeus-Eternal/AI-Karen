@@ -18,7 +18,9 @@ from ai_karen_engine.memory.connection_health_manager import (
     get_connection_health_manager,
 )
 from ai_karen_engine.monitoring.correlation_service import get_request_id
-from ai_karen_engine.memory.internal.structured_logging import get_structured_logging_service
+from ai_karen_engine.memory.internal.structured_logging import (
+    get_structured_logging_service,
+)
 import logging
 
 logger = logging.getLogger(__name__)
@@ -125,9 +127,10 @@ def _check_nlp_assets(model_name: str = "en_core_web_sm") -> Dict[str, Any]:
     except Exception:
         nltk_installed = False
 
-    runtime_downloads_enabled = str(
-        __import__("os").getenv("KARI_ENABLE_NLTK_DOWNLOADS", "false")
-    ).lower() == "true"
+    runtime_downloads_enabled = (
+        str(__import__("os").getenv("KARI_ENABLE_NLTK_DOWNLOADS", "false")).lower()
+        == "true"
+    )
 
     return {
         "spacy_installed": spacy_installed,
@@ -136,7 +139,9 @@ def _check_nlp_assets(model_name: str = "en_core_web_sm") -> Dict[str, Any]:
         "nltk_installed": nltk_installed,
         "nltk_resources": nltk_resources,
         "runtime_downloads_enabled": runtime_downloads_enabled,
-        "ready": spacy_model_installed and nltk_installed and all(nltk_resources.values()),
+        "ready": spacy_model_installed
+        and nltk_installed
+        and all(nltk_resources.values()),
     }
 
 
@@ -149,7 +154,9 @@ async def _install_nlp_assets(model_name: str = "en_core_web_sm") -> Dict[str, A
 
         try:
             spacy.load(model_name)
-            actions.append({"asset": f"spacy:{model_name}", "status": "already_present"})
+            actions.append(
+                {"asset": f"spacy:{model_name}", "status": "already_present"}
+            )
         except Exception:
             result = subprocess.run(
                 [sys.executable, "-m", "spacy", "download", model_name],
@@ -165,7 +172,9 @@ async def _install_nlp_assets(model_name: str = "en_core_web_sm") -> Dict[str, A
                 }
             )
     except Exception as exc:
-        actions.append({"asset": f"spacy:{model_name}", "status": "failed", "detail": str(exc)})
+        actions.append(
+            {"asset": f"spacy:{model_name}", "status": "failed", "detail": str(exc)}
+        )
 
     try:
         import nltk
@@ -215,12 +224,13 @@ async def overall_health(request: Request) -> Dict[str, Any]:
             pass
 
     services = _collect_health(manager)
-    
+
     # Check extension system health
     extension_health = {}
     extension_status = "healthy"
     try:
         from server.extension_health_monitor import get_extension_health_monitor
+
         extension_monitor = get_extension_health_monitor()
         if extension_monitor:
             ext_health = await extension_monitor.get_extension_health_for_api()
@@ -231,34 +241,41 @@ async def overall_health(request: Request) -> Dict[str, Any]:
                 "degraded_extensions": ext_health["extensions"]["degraded"],
                 "unhealthy_extensions": ext_health["extensions"]["unhealthy"],
                 "uptime_seconds": ext_health["uptime_seconds"],
-                "supporting_services": ext_health["supporting_services"]
+                "supporting_services": ext_health["supporting_services"],
             }
             extension_status = ext_health["status"]
-            
+
             # Update extension metrics
-            extension_monitor.update_extension_metrics(await extension_monitor.check_extension_system_health())
+            extension_monitor.update_extension_metrics(
+                await extension_monitor.check_extension_system_health()
+            )
         else:
-            extension_health = {"status": "unknown", "error": "Extension monitor not available"}
+            extension_health = {
+                "status": "unknown",
+                "error": "Extension monitor not available",
+            }
             extension_status = "degraded"
     except Exception as e:
-        logger.warning(f"Failed to get extension health for overall health endpoint: {e}")
+        logger.warning(
+            f"Failed to get extension health for overall health endpoint: {e}"
+        )
         extension_health = {"status": "error", "error": str(e)}
         extension_status = "degraded"
-    
+
     # Add extension status to services
     services["extensions"] = {
         "status": extension_status,
         "last_check": datetime.now(timezone.utc).isoformat(),
         "response_time_ms": (time.time() - start) * 1000,
-        "degraded_features": [] if extension_status == "healthy" else ["extension_system"]
+        "degraded_features": []
+        if extension_status == "healthy"
+        else ["extension_system"],
     }
-    
+
     # Determine overall status including extensions
     all_statuses = [s["status"] for s in services.values()]
     overall = (
-        "healthy"
-        if all(status == "healthy" for status in all_statuses)
-        else "degraded"
+        "healthy" if all(status == "healthy" for status in all_statuses) else "degraded"
     )
 
     duration_ms = (time.time() - start) * 1000
@@ -287,14 +304,14 @@ async def _check_local_model_capabilities() -> Dict[str, int]:
     capabilities = {
         "llamacpp_models": 0,
         "transformers_models": 0,
-        "spacy_available": 0
+        "spacy_available": 0,
     }
-    
+
     # Check llama-cpp models
     try:
         from pathlib import Path
         from ai_karen_engine.inference.llamacpp_runtime import LlamaCppRuntime
-        
+
         if LlamaCppRuntime.is_available():
             models_dir = Path("models/llama-cpp")
             if models_dir.exists():
@@ -306,7 +323,7 @@ async def _check_local_model_capabilities() -> Dict[str, int]:
                             model_path=str(gguf_file),
                             n_ctx=128,
                             n_batch=32,
-                            verbose=False
+                            verbose=False,
                         )
                         if runtime.is_loaded():
                             capabilities["llamacpp_models"] += 1
@@ -316,13 +333,13 @@ async def _check_local_model_capabilities() -> Dict[str, int]:
                         continue
     except Exception:
         pass
-    
+
     # Check transformers models
     try:
         from pathlib import Path
         import transformers
         from transformers import AutoTokenizer, AutoModelForCausalLM
-        
+
         models_dir = Path("models/transformers")
         if models_dir.exists():
             model_dirs = [d for d in models_dir.iterdir() if d.is_dir()]
@@ -337,16 +354,17 @@ async def _check_local_model_capabilities() -> Dict[str, int]:
                     continue
     except Exception:
         pass
-    
+
     # Check spaCy
     try:
         import spacy
+
         nlp = spacy.load("en_core_web_sm")
         if nlp:
             capabilities["spacy_available"] = 1
     except Exception:
         pass
-    
+
     return capabilities
 
 
@@ -399,7 +417,9 @@ async def _build_degraded_mode_status() -> Dict[str, Any]:
 
     # Database check
     try:
-        from ai_karen_engine.services.database_connection_manager import get_database_manager
+        from ai_karen_engine.services.database_connection_manager import (
+            get_database_manager,
+        )
 
         db_manager = get_database_manager()
         if db_manager.is_degraded():
@@ -412,6 +432,7 @@ async def _build_degraded_mode_status() -> Dict[str, Any]:
     extension_degraded = False
     try:
         from server.extension_health_monitor import get_extension_health_monitor
+
         extension_monitor = get_extension_health_monitor()
         if extension_monitor:
             extension_health = await extension_monitor.get_extension_health_for_api()
@@ -421,31 +442,46 @@ async def _build_degraded_mode_status() -> Dict[str, Any]:
                 "healthy_extensions": extension_health["extensions"]["healthy"],
                 "degraded_extensions": extension_health["extensions"]["degraded"],
                 "unhealthy_extensions": extension_health["extensions"]["unhealthy"],
-                "authentication_healthy": extension_health["supporting_services"]["authentication"]["healthy"],
-                "background_tasks_healthy": extension_health["supporting_services"]["background_tasks"]["healthy"],
-                "uptime_seconds": extension_health["uptime_seconds"]
+                "authentication_healthy": extension_health["supporting_services"][
+                    "authentication"
+                ]["healthy"],
+                "background_tasks_healthy": extension_health["supporting_services"][
+                    "background_tasks"
+                ]["healthy"],
+                "uptime_seconds": extension_health["uptime_seconds"],
             }
-            
+
             # Check if extension system is degraded
-            if (extension_health["status"] in ["degraded", "unhealthy"] or
-                extension_health["extensions"]["unhealthy"] > 0 or
-                not extension_health["supporting_services"]["authentication"]["healthy"] or
-                not extension_health["supporting_services"]["background_tasks"]["healthy"]):
+            if (
+                extension_health["status"] in ["degraded", "unhealthy"]
+                or extension_health["extensions"]["unhealthy"] > 0
+                or not extension_health["supporting_services"]["authentication"][
+                    "healthy"
+                ]
+                or not extension_health["supporting_services"]["background_tasks"][
+                    "healthy"
+                ]
+            ):
                 extension_degraded = True
                 degraded_components.append("extensions")
         else:
-            extension_system_status = {"status": "unknown", "error": "Extension monitor not available"}
+            extension_system_status = {
+                "status": "unknown",
+                "error": "Extension monitor not available",
+            }
             extension_degraded = True
             degraded_components.append("extensions")
     except Exception as e:
-        logger.warning(f"Failed to check extension system health for degraded mode: {e}")
+        logger.warning(
+            f"Failed to check extension system health for degraded mode: {e}"
+        )
         extension_system_status = {"status": "error", "error": str(e)}
         extension_degraded = True
         degraded_components.append("extensions")
 
     # Redis check
     try:
-        from ai_karen_engine.services.redis_connection_manager import get_redis_manager
+        from ai_karen_engine.infra.redis_connection_manager import get_redis_manager
 
         redis_manager = get_redis_manager()
         if redis_manager.is_degraded():
@@ -455,10 +491,16 @@ async def _build_degraded_mode_status() -> Dict[str, Any]:
 
     # Provider health checks with local fallback awareness
     total_ai_capabilities = 0
-    local_capabilities = {"llamacpp_models": 0, "transformers_models": 0, "spacy_available": 0}
+    local_capabilities = {
+        "llamacpp_models": 0,
+        "transformers_models": 0,
+        "spacy_available": 0,
+    }
 
     try:
-        from ai_karen_engine.memory.provider_registry import get_provider_registry_service
+        from ai_karen_engine.memory.provider_registry import (
+            get_provider_registry_service,
+        )
 
         provider_service = get_provider_registry_service()
         system_status = provider_service.get_system_status()
@@ -485,9 +527,11 @@ async def _build_degraded_mode_status() -> Dict[str, Any]:
         from pathlib import Path
 
         models_dir = Path("models")
-        default_model_available = any(
-            (models_dir / "llama-cpp").glob("*.gguf")
-        ) if (models_dir / "llama-cpp").exists() else False
+        default_model_available = (
+            any((models_dir / "llama-cpp").glob("*.gguf"))
+            if (models_dir / "llama-cpp").exists()
+            else False
+        )
 
         spacy_available = False
         try:  # pragma: no cover - optional dependency
@@ -510,15 +554,19 @@ async def _build_degraded_mode_status() -> Dict[str, Any]:
 
         if total_ai_capabilities == 0:
             degraded_components.append("ai_providers")
-        failed_providers = remote_provider_outages or system_status.get("failed_providers", [])
+        failed_providers = remote_provider_outages or system_status.get(
+            "failed_providers", []
+        )
     except Exception:
         try:
             from pathlib import Path
 
             models_dir = Path("models")
-            default_model_available = any(
-                (models_dir / "llama-cpp").glob("*.gguf")
-            ) if (models_dir / "llama-cpp").exists() else False
+            default_model_available = (
+                any((models_dir / "llama-cpp").glob("*.gguf"))
+                if (models_dir / "llama-cpp").exists()
+                else False
+            )
 
             import spacy  # type: ignore
 
@@ -533,7 +581,9 @@ async def _build_degraded_mode_status() -> Dict[str, Any]:
             failed_providers = ["unknown"]
 
     ai_degraded = "ai_providers" in degraded_components
-    infrastructure_issues = [comp for comp in degraded_components if comp != "ai_providers"]
+    infrastructure_issues = [
+        comp for comp in degraded_components if comp != "ai_providers"
+    ]
 
     # Determine canonical degraded status
     is_degraded = ai_degraded
@@ -544,9 +594,11 @@ async def _build_degraded_mode_status() -> Dict[str, Any]:
         from pathlib import Path
 
         models_dir = Path("models")
-        default_model_file_available = any(
-            (models_dir / "llama-cpp").glob("*.gguf")
-        ) if (models_dir / "llama-cpp").exists() else False
+        default_model_file_available = (
+            any((models_dir / "llama-cpp").glob("*.gguf"))
+            if (models_dir / "llama-cpp").exists()
+            else False
+        )
 
         spacy_online = False
         try:  # pragma: no cover - optional dependency
@@ -571,7 +623,9 @@ async def _build_degraded_mode_status() -> Dict[str, Any]:
 
         remote_providers_available = 0
         try:
-            from ai_karen_engine.memory.provider_registry import get_provider_registry_service
+            from ai_karen_engine.memory.provider_registry import (
+                get_provider_registry_service,
+            )
 
             provider_service = get_provider_registry_service()
             system_status = provider_service.get_system_status()
@@ -587,7 +641,9 @@ async def _build_degraded_mode_status() -> Dict[str, Any]:
             "llm_orchestrator_models": llm_orchestrator_models,
             "remote_providers": remote_providers_available,
             "llamacpp_working_models": local_capabilities.get("llamacpp_models", 0),
-            "transformers_working_models": local_capabilities.get("transformers_models", 0),
+            "transformers_working_models": local_capabilities.get(
+                "transformers_models", 0
+            ),
             "spacy_intelligent_responses": local_capabilities.get("spacy_available", 0),
             "fallback_responses": True,
             "basic_analytics": True,
@@ -655,7 +711,7 @@ def _build_compatibility_response(status: Dict[str, Any]) -> Dict[str, Any]:
     if ai_status == "degraded":
         degraded_components.append("ai_providers")
     degraded_components.extend(infrastructure)
-    
+
     # Include extension system in degraded components if applicable
     extension_system = status.get("extension_system", {})
     if status.get("extension_degraded", False):
@@ -731,32 +787,33 @@ async def extension_system_health(request: Request) -> Dict[str, Any]:
     """Return comprehensive extension system health status."""
     start = time.time()
     correlation_id = request.headers.get("X-Correlation-Id") or get_request_id()
-    
+
     try:
         from server.extension_health_monitor import get_extension_health_monitor
+
         extension_monitor = get_extension_health_monitor()
-        
+
         if not extension_monitor:
             return {
                 "status": "unavailable",
                 "error": "Extension health monitor not initialized",
                 "correlation_id": correlation_id,
-                "timestamp": time.time()
+                "timestamp": time.time(),
             }
-        
+
         # Get comprehensive extension health
         health_data = await extension_monitor.get_extension_health_for_api()
-        
+
         # Update metrics
         system_health = await extension_monitor.check_extension_system_health()
         extension_monitor.update_extension_metrics(system_health)
-        
+
         # Get database performance metrics
         db_performance = await extension_monitor.get_database_performance_metrics()
-        
+
         duration_ms = (time.time() - start) * 1000
         _record_metrics("extensions", duration_ms)
-        
+
         get_structured_logging_service().log_api_request(
             method="GET",
             endpoint="/api/health/extensions",
@@ -764,19 +821,19 @@ async def extension_system_health(request: Request) -> Dict[str, Any]:
             duration_ms=duration_ms,
             correlation_id=correlation_id,
         )
-        
+
         return {
             **health_data,
             "database_performance": db_performance,
             "correlation_id": correlation_id,
             "timestamp": time.time(),
-            "response_time_ms": duration_ms
+            "response_time_ms": duration_ms,
         }
-        
+
     except Exception as e:
         logger.error(f"Extension health endpoint failed: {e}")
         duration_ms = (time.time() - start) * 1000
-        
+
         get_structured_logging_service().log_api_request(
             method="GET",
             endpoint="/api/health/extensions",
@@ -784,52 +841,55 @@ async def extension_system_health(request: Request) -> Dict[str, Any]:
             duration_ms=duration_ms,
             correlation_id=correlation_id,
         )
-        
+
         return {
             "status": "error",
             "error": str(e),
             "correlation_id": correlation_id,
             "timestamp": time.time(),
-            "response_time_ms": duration_ms
+            "response_time_ms": duration_ms,
         }
 
 
 @router.get("/extensions/{extension_name}")
-async def individual_extension_health(extension_name: str, request: Request) -> Dict[str, Any]:
+async def individual_extension_health(
+    extension_name: str, request: Request
+) -> Dict[str, Any]:
     """Return health status for a specific extension."""
     start = time.time()
     correlation_id = request.headers.get("X-Correlation-Id") or get_request_id()
-    
+
     try:
         from server.extension_health_monitor import get_extension_health_monitor
+
         extension_monitor = get_extension_health_monitor()
-        
+
         if not extension_monitor:
             return {
                 "extension": extension_name,
                 "status": "unavailable",
                 "error": "Extension health monitor not initialized",
                 "correlation_id": correlation_id,
-                "timestamp": time.time()
+                "timestamp": time.time(),
             }
-        
+
         # Get system health to access individual extension metrics
         system_health = await extension_monitor.check_extension_system_health()
-        
+
         if extension_name not in system_health.extension_metrics:
             return {
                 "extension": extension_name,
                 "status": "not_found",
                 "error": f"Extension '{extension_name}' not found",
                 "correlation_id": correlation_id,
-                "timestamp": time.time()
+                "timestamp": time.time(),
             }
-        
+
         metrics = system_health.extension_metrics[extension_name]
-        
+
         duration_ms = (time.time() - start) * 1000
         _record_metrics(f"extension_{extension_name}", duration_ms)
-        
+
         get_structured_logging_service().log_api_request(
             method="GET",
             endpoint=f"/api/health/extensions/{extension_name}",
@@ -837,7 +897,7 @@ async def individual_extension_health(extension_name: str, request: Request) -> 
             duration_ms=duration_ms,
             correlation_id=correlation_id,
         )
-        
+
         return {
             "extension": extension_name,
             "status": metrics.status.value,
@@ -854,13 +914,15 @@ async def individual_extension_health(extension_name: str, request: Request) -> 
             "error": metrics.error,
             "correlation_id": correlation_id,
             "timestamp": time.time(),
-            "check_duration_ms": duration_ms
+            "check_duration_ms": duration_ms,
         }
-        
+
     except Exception as e:
-        logger.error(f"Individual extension health endpoint failed for {extension_name}: {e}")
+        logger.error(
+            f"Individual extension health endpoint failed for {extension_name}: {e}"
+        )
         duration_ms = (time.time() - start) * 1000
-        
+
         get_structured_logging_service().log_api_request(
             method="GET",
             endpoint=f"/api/health/extensions/{extension_name}",
@@ -868,14 +930,14 @@ async def individual_extension_health(extension_name: str, request: Request) -> 
             duration_ms=duration_ms,
             correlation_id=correlation_id,
         )
-        
+
         return {
             "extension": extension_name,
             "status": "error",
             "error": str(e),
             "correlation_id": correlation_id,
             "timestamp": time.time(),
-            "check_duration_ms": duration_ms
+            "check_duration_ms": duration_ms,
         }
 
 

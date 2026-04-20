@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
 
-from ai_karen_engine.memory.internal.provider_model_compatibility import (
+from ai_karen_engine.services.provider_model_compatibility import (
     ProviderModelCompatibilityService,
 )
 

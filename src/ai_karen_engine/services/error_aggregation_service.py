@@ -16,13 +16,14 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 from enum import Enum
 
 from ai_karen_engine.core.logging import get_logger
-from ai_karen_engine.services.structured_logging_service import LogLevel, LogCategory
+from ai_karen_engine.monitoring.structured_logging_service import LogLevel, LogCategory
 
 logger = get_logger(__name__)
 
 
 class ErrorSeverity(str, Enum):
     """Error severity levels"""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -31,6 +32,7 @@ class ErrorSeverity(str, Enum):
 
 class ErrorPattern(str, Enum):
     """Common error patterns"""
+
     AUTHENTICATION_FAILURE = "authentication_failure"
     DATABASE_CONNECTION = "database_connection"
     LLM_TIMEOUT = "llm_timeout"
@@ -45,6 +47,7 @@ class ErrorPattern(str, Enum):
 @dataclass
 class ErrorOccurrence:
     """Individual error occurrence"""
+
     timestamp: datetime
     correlation_id: Optional[str]
     user_id: Optional[str]
@@ -61,6 +64,7 @@ class ErrorOccurrence:
 @dataclass
 class ErrorSummary:
     """Aggregated error summary"""
+
     error_type: str
     error_pattern: ErrorPattern
     severity: ErrorSeverity
@@ -77,6 +81,7 @@ class ErrorSummary:
 @dataclass
 class ErrorTrend:
     """Error trend analysis"""
+
     time_period: str
     error_counts: Dict[str, int] = field(default_factory=dict)
     severity_distribution: Dict[ErrorSeverity, int] = field(default_factory=dict)
@@ -92,18 +97,18 @@ class ErrorAggregationService:
     def __init__(self, max_errors: int = 10000, retention_hours: int = 168):  # 7 days
         self.max_errors = max_errors
         self.retention_hours = retention_hours
-        
+
         # Error storage
         self.error_occurrences: deque = deque(maxlen=max_errors)
         self.error_summaries: Dict[str, ErrorSummary] = {}
-        
+
         # Analysis data
         self.hourly_trends: Dict[str, ErrorTrend] = {}
         self.daily_trends: Dict[str, ErrorTrend] = {}
-        
+
         # Pattern recognition
         self.error_patterns = self._initialize_error_patterns()
-        
+
         # Last cleanup time
         self._last_cleanup = datetime.utcnow()
 
@@ -116,27 +121,22 @@ class ErrorAggregationService:
             "PermissionError": ErrorPattern.PERMISSION_DENIED,
             "Forbidden": ErrorPattern.PERMISSION_DENIED,
             "Unauthorized": ErrorPattern.AUTHENTICATION_FAILURE,
-            
             # Database patterns
             "DatabaseError": ErrorPattern.DATABASE_CONNECTION,
             "ConnectionError": ErrorPattern.DATABASE_CONNECTION,
             "TimeoutError": ErrorPattern.DATABASE_CONNECTION,
             "OperationalError": ErrorPattern.DATABASE_CONNECTION,
-            
             # LLM patterns
             "LLMTimeoutError": ErrorPattern.LLM_TIMEOUT,
             "ModelNotAvailableError": ErrorPattern.LLM_TIMEOUT,
             "RateLimitError": ErrorPattern.RATE_LIMIT_EXCEEDED,
-            
             # Response formatting patterns
             "FormattingError": ErrorPattern.RESPONSE_FORMATTING,
             "TemplateError": ErrorPattern.RESPONSE_FORMATTING,
-            
             # Validation patterns
             "ValidationError": ErrorPattern.VALIDATION_ERROR,
             "ValueError": ErrorPattern.VALIDATION_ERROR,
             "TypeError": ErrorPattern.VALIDATION_ERROR,
-            
             # System resource patterns
             "MemoryError": ErrorPattern.SYSTEM_RESOURCE,
             "DiskSpaceError": ErrorPattern.SYSTEM_RESOURCE,
@@ -155,10 +155,10 @@ class ErrorAggregationService:
         error_type: str,
         error_message: str,
         stack_trace: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ):
         """Record a new error occurrence"""
-        
+
         error_occurrence = ErrorOccurrence(
             timestamp=timestamp,
             correlation_id=correlation_id,
@@ -170,30 +170,30 @@ class ErrorAggregationService:
             error_type=error_type,
             error_message=error_message,
             stack_trace=stack_trace,
-            metadata=metadata or {}
+            metadata=metadata or {},
         )
-        
+
         # Add to occurrences
         self.error_occurrences.append(error_occurrence)
-        
+
         # Update error summary
         self._update_error_summary(error_occurrence)
-        
+
         # Update trends
         self._update_trends(error_occurrence)
-        
+
         # Cleanup old data if needed
         self._cleanup_old_data()
 
     def _update_error_summary(self, error: ErrorOccurrence):
         """Update aggregated error summary"""
         error_key = f"{error.service}:{error.error_type}"
-        
+
         if error_key not in self.error_summaries:
             # Create new summary
             pattern = self._detect_error_pattern(error.error_type, error.error_message)
             severity = self._determine_error_severity(pattern, error.error_type)
-            
+
             self.error_summaries[error_key] = ErrorSummary(
                 error_type=error.error_type,
                 error_pattern=pattern,
@@ -204,74 +204,103 @@ class ErrorAggregationService:
                 affected_users={error.user_id} if error.user_id else set(),
                 affected_services={error.service},
                 sample_stack_trace=error.stack_trace,
-                resolution_suggestions=self._get_resolution_suggestions(pattern)
+                resolution_suggestions=self._get_resolution_suggestions(pattern),
             )
         else:
             # Update existing summary
             summary = self.error_summaries[error_key]
             summary.count += 1
             summary.last_occurrence = error.timestamp
-            
+
             if error.user_id:
                 summary.affected_users.add(error.user_id)
             summary.affected_services.add(error.service)
-            
+
             # Update sample stack trace if current one is empty
             if not summary.sample_stack_trace and error.stack_trace:
                 summary.sample_stack_trace = error.stack_trace
 
-    def _detect_error_pattern(self, error_type: str, error_message: str) -> ErrorPattern:
+    def _detect_error_pattern(
+        self, error_type: str, error_message: str
+    ) -> ErrorPattern:
         """Detect error pattern from error type and message"""
-        
+
         # Check direct error type mapping
         if error_type in self.error_patterns:
             return self.error_patterns[error_type]
-        
+
         # Check error message for patterns
         error_message_lower = error_message.lower()
-        
-        if any(keyword in error_message_lower for keyword in ["auth", "login", "token", "credential"]):
+
+        if any(
+            keyword in error_message_lower
+            for keyword in ["auth", "login", "token", "credential"]
+        ):
             return ErrorPattern.AUTHENTICATION_FAILURE
-        elif any(keyword in error_message_lower for keyword in ["database", "connection", "sql"]):
+        elif any(
+            keyword in error_message_lower
+            for keyword in ["database", "connection", "sql"]
+        ):
             return ErrorPattern.DATABASE_CONNECTION
-        elif any(keyword in error_message_lower for keyword in ["timeout", "llm", "model"]):
+        elif any(
+            keyword in error_message_lower for keyword in ["timeout", "llm", "model"]
+        ):
             return ErrorPattern.LLM_TIMEOUT
-        elif any(keyword in error_message_lower for keyword in ["format", "template", "render"]):
+        elif any(
+            keyword in error_message_lower
+            for keyword in ["format", "template", "render"]
+        ):
             return ErrorPattern.RESPONSE_FORMATTING
-        elif any(keyword in error_message_lower for keyword in ["permission", "forbidden", "access"]):
+        elif any(
+            keyword in error_message_lower
+            for keyword in ["permission", "forbidden", "access"]
+        ):
             return ErrorPattern.PERMISSION_DENIED
-        elif any(keyword in error_message_lower for keyword in ["rate limit", "quota", "throttle"]):
+        elif any(
+            keyword in error_message_lower
+            for keyword in ["rate limit", "quota", "throttle"]
+        ):
             return ErrorPattern.RATE_LIMIT_EXCEEDED
-        elif any(keyword in error_message_lower for keyword in ["validation", "invalid", "malformed"]):
+        elif any(
+            keyword in error_message_lower
+            for keyword in ["validation", "invalid", "malformed"]
+        ):
             return ErrorPattern.VALIDATION_ERROR
-        elif any(keyword in error_message_lower for keyword in ["memory", "disk", "resource"]):
+        elif any(
+            keyword in error_message_lower for keyword in ["memory", "disk", "resource"]
+        ):
             return ErrorPattern.SYSTEM_RESOURCE
-        
+
         return ErrorPattern.UNKNOWN
 
-    def _determine_error_severity(self, pattern: ErrorPattern, error_type: str) -> ErrorSeverity:
+    def _determine_error_severity(
+        self, pattern: ErrorPattern, error_type: str
+    ) -> ErrorSeverity:
         """Determine error severity based on pattern and type"""
-        
+
         # Critical patterns
         if pattern in [ErrorPattern.DATABASE_CONNECTION, ErrorPattern.SYSTEM_RESOURCE]:
             return ErrorSeverity.CRITICAL
-        
+
         # High severity patterns
         if pattern in [ErrorPattern.AUTHENTICATION_FAILURE, ErrorPattern.LLM_TIMEOUT]:
             return ErrorSeverity.HIGH
-        
+
         # Medium severity patterns
-        if pattern in [ErrorPattern.PERMISSION_DENIED, ErrorPattern.RATE_LIMIT_EXCEEDED]:
+        if pattern in [
+            ErrorPattern.PERMISSION_DENIED,
+            ErrorPattern.RATE_LIMIT_EXCEEDED,
+        ]:
             return ErrorSeverity.MEDIUM
-        
+
         # Low severity patterns
         if pattern in [ErrorPattern.VALIDATION_ERROR, ErrorPattern.RESPONSE_FORMATTING]:
             return ErrorSeverity.LOW
-        
+
         # Default based on error type
         if "Error" in error_type and error_type not in ["ValueError", "TypeError"]:
             return ErrorSeverity.MEDIUM
-        
+
         return ErrorSeverity.LOW
 
     def _get_resolution_suggestions(self, pattern: ErrorPattern) -> List[str]:
@@ -281,158 +310,175 @@ class ErrorAggregationService:
                 "Check authentication service status",
                 "Verify JWT token configuration",
                 "Review user credentials and permissions",
-                "Check for expired tokens or sessions"
+                "Check for expired tokens or sessions",
             ],
             ErrorPattern.DATABASE_CONNECTION: [
                 "Check database server status",
                 "Verify connection pool configuration",
                 "Review database connection strings",
-                "Check network connectivity to database"
+                "Check network connectivity to database",
             ],
             ErrorPattern.LLM_TIMEOUT: [
                 "Check LLM provider status",
                 "Review timeout configurations",
                 "Implement fallback mechanisms",
-                "Monitor LLM provider rate limits"
+                "Monitor LLM provider rate limits",
             ],
             ErrorPattern.RESPONSE_FORMATTING: [
                 "Check response formatter implementations",
                 "Verify template configurations",
                 "Review content type detection logic",
-                "Test fallback formatting mechanisms"
+                "Test fallback formatting mechanisms",
             ],
             ErrorPattern.PERMISSION_DENIED: [
                 "Review user role assignments",
                 "Check RBAC configuration",
                 "Verify resource permissions",
-                "Audit access control policies"
+                "Audit access control policies",
             ],
             ErrorPattern.RATE_LIMIT_EXCEEDED: [
                 "Review rate limiting configuration",
                 "Implement request queuing",
                 "Check for unusual traffic patterns",
-                "Consider scaling resources"
+                "Consider scaling resources",
             ],
             ErrorPattern.VALIDATION_ERROR: [
                 "Review input validation rules",
                 "Check data format requirements",
                 "Verify API request schemas",
-                "Update validation error messages"
+                "Update validation error messages",
             ],
             ErrorPattern.SYSTEM_RESOURCE: [
                 "Monitor system resource usage",
                 "Check memory and disk space",
                 "Review resource allocation",
-                "Consider scaling infrastructure"
+                "Consider scaling infrastructure",
             ],
             ErrorPattern.UNKNOWN: [
                 "Review error logs for patterns",
                 "Check system health status",
                 "Verify service configurations",
-                "Contact support if issue persists"
-            ]
+                "Contact support if issue persists",
+            ],
         }
-        
+
         return suggestions.get(pattern, [])
 
     def _update_trends(self, error: ErrorOccurrence):
         """Update error trend analysis"""
-        
+
         # Update hourly trends
         hour_key = error.timestamp.strftime("%Y-%m-%d-%H")
         if hour_key not in self.hourly_trends:
             self.hourly_trends[hour_key] = ErrorTrend(time_period=hour_key)
-        
+
         trend = self.hourly_trends[hour_key]
-        trend.error_counts[error.error_type] = trend.error_counts.get(error.error_type, 0) + 1
-        
+        trend.error_counts[error.error_type] = (
+            trend.error_counts.get(error.error_type, 0) + 1
+        )
+
         pattern = self._detect_error_pattern(error.error_type, error.error_message)
         severity = self._determine_error_severity(pattern, error.error_type)
-        
-        trend.pattern_distribution[pattern] = trend.pattern_distribution.get(pattern, 0) + 1
-        trend.severity_distribution[severity] = trend.severity_distribution.get(severity, 0) + 1
-        
+
+        trend.pattern_distribution[pattern] = (
+            trend.pattern_distribution.get(pattern, 0) + 1
+        )
+        trend.severity_distribution[severity] = (
+            trend.severity_distribution.get(severity, 0) + 1
+        )
+
         # Update daily trends
         day_key = error.timestamp.strftime("%Y-%m-%d")
         if day_key not in self.daily_trends:
             self.daily_trends[day_key] = ErrorTrend(time_period=day_key)
-        
+
         daily_trend = self.daily_trends[day_key]
-        daily_trend.error_counts[error.error_type] = daily_trend.error_counts.get(error.error_type, 0) + 1
-        daily_trend.pattern_distribution[pattern] = daily_trend.pattern_distribution.get(pattern, 0) + 1
-        daily_trend.severity_distribution[severity] = daily_trend.severity_distribution.get(severity, 0) + 1
+        daily_trend.error_counts[error.error_type] = (
+            daily_trend.error_counts.get(error.error_type, 0) + 1
+        )
+        daily_trend.pattern_distribution[pattern] = (
+            daily_trend.pattern_distribution.get(pattern, 0) + 1
+        )
+        daily_trend.severity_distribution[severity] = (
+            daily_trend.severity_distribution.get(severity, 0) + 1
+        )
 
     def _cleanup_old_data(self):
         """Clean up old error data based on retention policy"""
         now = datetime.utcnow()
-        
+
         # Only cleanup every hour
         if (now - self._last_cleanup).total_seconds() < 3600:
             return
-        
+
         cutoff_time = now - timedelta(hours=self.retention_hours)
-        
+
         # Clean up error occurrences
         self.error_occurrences = deque(
-            [error for error in self.error_occurrences if error.timestamp > cutoff_time],
-            maxlen=self.max_errors
+            [
+                error
+                for error in self.error_occurrences
+                if error.timestamp > cutoff_time
+            ],
+            maxlen=self.max_errors,
         )
-        
+
         # Clean up trends
         cutoff_hour = cutoff_time.strftime("%Y-%m-%d-%H")
         cutoff_day = cutoff_time.strftime("%Y-%m-%d")
-        
+
         self.hourly_trends = {
             k: v for k, v in self.hourly_trends.items() if k > cutoff_hour
         }
-        
+
         self.daily_trends = {
             k: v for k, v in self.daily_trends.items() if k > cutoff_day
         }
-        
+
         self._last_cleanup = now
 
     def get_error_dashboard_data(self) -> Dict[str, Any]:
         """Get comprehensive error dashboard data"""
         now = datetime.utcnow()
-        
+
         # Calculate time ranges
         last_hour = now - timedelta(hours=1)
         last_24_hours = now - timedelta(hours=24)
         last_7_days = now - timedelta(days=7)
-        
+
         # Get recent errors
         recent_errors = [
-            error for error in self.error_occurrences
-            if error.timestamp > last_24_hours
+            error for error in self.error_occurrences if error.timestamp > last_24_hours
         ]
-        
+
         # Calculate error rates
         errors_last_hour = len([e for e in recent_errors if e.timestamp > last_hour])
         errors_last_24h = len(recent_errors)
-        
+
         # Get top error types
         error_type_counts = defaultdict(int)
         for error in recent_errors:
             error_type_counts[error.error_type] += 1
-        
-        top_errors = sorted(error_type_counts.items(), key=lambda x: x[1], reverse=True)[:10]
-        
+
+        top_errors = sorted(
+            error_type_counts.items(), key=lambda x: x[1], reverse=True
+        )[:10]
+
         # Get severity distribution
         severity_counts = defaultdict(int)
         for summary in self.error_summaries.values():
             severity_counts[summary.severity] += summary.count
-        
+
         # Get pattern distribution
         pattern_counts = defaultdict(int)
         for summary in self.error_summaries.values():
             pattern_counts[summary.error_pattern] += summary.count
-        
+
         # Get affected services
         affected_services = set()
         for error in recent_errors:
             affected_services.add(error.service)
-        
+
         return {
             "timestamp": now.isoformat(),
             "summary": {
@@ -456,24 +502,31 @@ class ErrorAggregationService:
                 for error in recent_errors
                 if self._determine_error_severity(
                     self._detect_error_pattern(error.error_type, error.error_message),
-                    error.error_type
-                ) == ErrorSeverity.CRITICAL
+                    error.error_type,
+                )
+                == ErrorSeverity.CRITICAL
             ][:10],
             "trends": {
-                "hourly": {k: dict(v.error_counts) for k, v in self.hourly_trends.items()},
-                "daily": {k: dict(v.error_counts) for k, v in self.daily_trends.items()},
-            }
+                "hourly": {
+                    k: dict(v.error_counts) for k, v in self.hourly_trends.items()
+                },
+                "daily": {
+                    k: dict(v.error_counts) for k, v in self.daily_trends.items()
+                },
+            },
         }
 
-    def get_error_details(self, error_type: str, service: str) -> Optional[Dict[str, Any]]:
+    def get_error_details(
+        self, error_type: str, service: str
+    ) -> Optional[Dict[str, Any]]:
         """Get detailed information about a specific error type"""
         error_key = f"{service}:{error_type}"
-        
+
         if error_key not in self.error_summaries:
             return None
-        
+
         summary = self.error_summaries[error_key]
-        
+
         # Get recent occurrences
         recent_occurrences = [
             {
@@ -487,7 +540,7 @@ class ErrorAggregationService:
             for error in self.error_occurrences
             if error.error_type == error_type and error.service == service
         ][-20:]  # Last 20 occurrences
-        
+
         return {
             "error_type": summary.error_type,
             "error_pattern": summary.error_pattern.value,
@@ -511,12 +564,12 @@ class ErrorAggregationService:
         pattern: Optional[ErrorPattern] = None,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
-        limit: int = 100
+        limit: int = 100,
     ) -> List[Dict[str, Any]]:
         """Search errors with various filters"""
-        
+
         filtered_errors = []
-        
+
         for error in self.error_occurrences:
             # Apply filters
             if service and error.service != service:
@@ -529,32 +582,38 @@ class ErrorAggregationService:
                 continue
             if query and query.lower() not in error.error_message.lower():
                 continue
-            
+
             # Check severity and pattern filters
             if severity or pattern:
-                detected_pattern = self._detect_error_pattern(error.error_type, error.error_message)
-                detected_severity = self._determine_error_severity(detected_pattern, error.error_type)
-                
+                detected_pattern = self._detect_error_pattern(
+                    error.error_type, error.error_message
+                )
+                detected_severity = self._determine_error_severity(
+                    detected_pattern, error.error_type
+                )
+
                 if severity and detected_severity != severity:
                     continue
                 if pattern and detected_pattern != pattern:
                     continue
-            
-            filtered_errors.append({
-                "timestamp": error.timestamp.isoformat(),
-                "correlation_id": error.correlation_id,
-                "user_id": error.user_id,
-                "service": error.service,
-                "component": error.component,
-                "operation": error.operation,
-                "error_type": error.error_type,
-                "error_message": error.error_message,
-                "metadata": error.metadata,
-            })
-            
+
+            filtered_errors.append(
+                {
+                    "timestamp": error.timestamp.isoformat(),
+                    "correlation_id": error.correlation_id,
+                    "user_id": error.user_id,
+                    "service": error.service,
+                    "component": error.component,
+                    "operation": error.operation,
+                    "error_type": error.error_type,
+                    "error_message": error.error_message,
+                    "metadata": error.metadata,
+                }
+            )
+
             if len(filtered_errors) >= limit:
                 break
-        
+
         return filtered_errors
 
 

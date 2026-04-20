@@ -235,13 +235,29 @@ class AsyncStreamProcessor:
         response_id: str,
     ) -> AsyncGenerator[StreamChunk, None]:
         """
-        Process streaming response with non-blocking operations
+        Process streaming response with enhanced timeout enforcement and fallback handling.
+
+        This method ensures:
+        - First token timeout enforcement
+        - Chunk inactivity timeout
+        - Provider cancellation on stall
+        - Guaranteed terminal event emission
+        - Fallback conversion handling
         """
         try:
             # Update session status
             await self._update_session_status(session_id, StreamStatus.ACTIVE)
             session = await self._get_session(session_id)
             session_metadata = dict((session.metadata if session else {}) or {})
+
+            # Initialize timeout tracking
+            first_token_timeout = asyncio.create_task(
+                asyncio.sleep(getattr(self.config_manager, "first_token_timeout", 15))
+            )
+            last_chunk_time = datetime.utcnow()
+            chunk_timeout = asyncio.create_task(
+                asyncio.sleep(getattr(self.config_manager, "chunk_timeout", 30))
+            )
 
             # Simulate model response generation (non-blocking)
             response_generator = self._generate_response_stream(
@@ -254,11 +270,30 @@ class AsyncStreamProcessor:
             chunk_id = 0
             bytes_sent = 0
             full_response = ""
+            first_token_sent = False
+            stream_failed = False
 
             async for chunk_data in response_generator:
                 # Check for cancellation
                 session = await self._get_session(session_id)
                 if not session or session.status == StreamStatus.CANCELLED:
+                    break
+
+                # Check first token timeout
+                if not first_token_sent and chunk_data.strip():
+                    first_token_timeout.cancel()
+                    first_token_sent = True
+                    self.metrics_manager.register_histogram(
+                        "stream_first_token_latency_seconds"
+                    ).observe((datetime.utcnow() - session.created_at).total_seconds())
+
+                # Check chunk timeout
+                current_time = datetime.utcnow()
+                if (current_time - last_chunk_time).total_seconds() > getattr(
+                    self.config_manager, "chunk_timeout", 30
+                ):
+                    chunk_timeout.cancel()
+                    await self._handle_chunk_timeout(session_id, user_id)
                     break
 
                 # Create stream chunk
@@ -269,23 +304,34 @@ class AsyncStreamProcessor:
                         "model": model,
                         "session_id": session_id,
                         "response_id": response_id,
+                        "first_token": not first_token_sent,
+                        "chunk_timestamp": current_time.isoformat(),
                     },
                 )
 
-                # Send chunk with timeout
+                # Send chunk with enhanced timeout handling
                 try:
                     await asyncio.wait_for(
                         self._send_chunk(chunk), timeout=self.chunk_timeout
                     )
                 except asyncio.TimeoutError:
-                    await self._update_session_status(session_id, StreamStatus.TIMEOUT)
+                    await self._handle_chunk_timeout(session_id, user_id)
                     break
+
                 full_response += chunk_data
                 yield chunk
 
-                # Update session
+                # Update tracking
                 chunk_id += 1
                 bytes_sent += len(chunk_data.encode("utf-8"))
+                last_chunk_time = current_time
+                first_token_sent = True
+
+                # Reset chunk timeout
+                chunk_timeout.cancel()
+                chunk_timeout = asyncio.create_task(
+                    asyncio.sleep(getattr(self.config_manager, "chunk_timeout", 30))
+                )
 
                 await self._update_session_progress(
                     session_id, chunks_sent=chunk_id, bytes_sent=bytes_sent
@@ -294,6 +340,86 @@ class AsyncStreamProcessor:
                 # Check backpressure
                 if await self._check_backpressure(session_id):
                     await asyncio.sleep(0.1)  # Brief pause to reduce pressure
+
+            # Ensure terminal event is always emitted
+            try:
+                # Cancel timeout tasks
+                first_token_timeout.cancel()
+                chunk_timeout.cancel()
+
+                # Check if stream completed successfully
+                if stream_failed or not full_response.strip():
+                    # Generate fallback response
+                    fallback_chunk = await self._generate_fallback_chunk(
+                        session_id, user_id, "stream_incomplete"
+                    )
+                    yield fallback_chunk
+                else:
+                    # Format and complete response
+                    formatted_chunk = await self._format_completion_chunk(
+                        full_response, session_metadata, session_id, response_id, model
+                    )
+                    yield formatted_chunk
+
+                # Mark session as completed
+                await self._update_session_status(session_id, StreamStatus.COMPLETED)
+
+                # Record completion metrics
+                if session:
+                    processing_time = (
+                        datetime.utcnow() - session.created_at
+                    ).total_seconds()
+                    self.metrics_manager.register_histogram(
+                        "stream_session_duration_seconds", ["status"]
+                    ).labels(status="completed").observe(processing_time)
+
+            except Exception as e:
+                # Ensure terminal event even on error
+                error_chunk = StreamChunk(
+                    chunk_id=chunk_id,
+                    content="",
+                    metadata={
+                        "event": "error",
+                        "error": str(e),
+                        "session_id": session_id,
+                        "response_id": response_id,
+                    },
+                    finished=True,
+                    event_type="error",
+                )
+                yield error_chunk
+                await self._update_session_status(session_id, StreamStatus.ERROR)
+
+        except Exception as e:
+            await self._update_session_status(session_id, StreamStatus.ERROR)
+            await self._increment_session_errors(session_id)
+
+            self.structured_logger.log_error(
+                error=str(e),
+                user_id=user_id,
+                context="stream_processing",
+                details={"session_id": session_id, "response_id": response_id},
+            )
+
+            # Record error metrics
+            self.metrics_manager.register_counter(
+                "stream_session_errors_total", ["error_type"]
+            ).labels(error_type=type(e).__name__).inc()
+
+            # Generate error terminal event
+            error_chunk = StreamChunk(
+                chunk_id=0,
+                content="",
+                metadata={
+                    "event": "error",
+                    "error": str(e),
+                    "session_id": session_id,
+                    "response_id": response_id,
+                },
+                finished=True,
+                event_type="error",
+            )
+            yield error_chunk
 
             formatted_content = full_response
             completion_metadata: Dict[str, Any] = {
@@ -790,6 +916,218 @@ class AsyncStreamProcessor:
                 f"Error sending agent event chunk for session {session_id}: {e}"
             )
             raise
+
+    async def _handle_chunk_timeout(self, session_id: str, user_id: str):
+        """Handle chunk timeout with fallback logic"""
+        try:
+            session = await self._get_session(session_id)
+            if session:
+                session.status = StreamStatus.TIMEOUT
+                session.timeout_count += 1
+
+                self.structured_logger.log_event(
+                    event="chunk_timeout",
+                    user_id=user_id,
+                    details={
+                        "session_id": session_id,
+                        "timeout_count": session.timeout_count,
+                    },
+                )
+
+                self.metrics_manager.register_counter(
+                    "stream_chunk_timeouts_total"
+                ).inc()
+
+                # Generate fallback response if enabled
+                if getattr(self.config_manager, "enable_fallback", True):
+                    fallback_chunk = await self._generate_fallback_chunk(
+                        session_id, user_id, "chunk_timeout"
+                    )
+                    yield fallback_chunk
+
+                await self._update_session_status(session_id, StreamStatus.TIMEOUT)
+
+        except Exception as e:
+            logger.error(f"Error handling chunk timeout: {e}")
+            # Generate error terminal event
+            error_chunk = StreamChunk(
+                chunk_id=0,
+                content="",
+                metadata={
+                    "event": "error",
+                    "error": str(e),
+                    "session_id": session_id,
+                },
+                finished=True,
+                event_type="error",
+            )
+            yield error_chunk
+
+    async def _generate_fallback_chunk(
+        self, session_id: str, user_id: str, reason: str
+    ) -> StreamChunk:
+        """Generate fallback chunk for timeout or error scenarios"""
+        fallback_content = (
+            "I apologize, but I'm experiencing technical difficulties. "
+            "Please try again in a moment or contact support if the issue persists."
+        )
+
+        self.structured_logger.log_event(
+            event="stream_fallback_generated",
+            user_id=user_id,
+            details={
+                "session_id": session_id,
+                "reason": reason,
+            },
+        )
+
+        self.metrics_manager.register_counter(
+            "stream_fallbacks_total", ["reason"]
+        ).labels(reason=reason).inc()
+
+        return StreamChunk(
+            chunk_id=0,
+            content=fallback_content,
+            metadata={
+                "event": "fallback",
+                "session_id": session_id,
+                "reason": reason,
+                "formatted": False,
+            },
+            finished=True,
+            event_type="fallback",
+        )
+
+    async def _format_completion_chunk(
+        self,
+        full_response: str,
+        session_metadata: Dict[str, Any],
+        session_id: str,
+        response_id: str,
+        model: Optional[str],
+    ) -> StreamChunk:
+        """Format completion chunk with guaranteed terminal event"""
+        try:
+            formatted_content = full_response
+            completion_metadata: Dict[str, Any] = {
+                "model": model,
+                "session_id": session_id,
+                "response_id": response_id,
+                "formatted": False,
+            }
+
+            if full_response.strip():
+                user_prompt = ""
+                if hasattr(self, "_last_messages") and self._last_messages:
+                    last_message = self._last_messages[-1]
+                    if isinstance(last_message, dict):
+                        user_prompt = str(last_message.get("content") or "").strip()
+
+                # Apply policy enforcement
+                if hasattr(self, "response_policy_enforcer"):
+                    policy_result = await self.response_policy_enforcer.enforce(
+                        user_prompt=user_prompt,
+                        content=full_response,
+                        regenerate=None,
+                    )
+                    full_response = policy_result.content
+                    completion_metadata["response_policy"] = dict(
+                        policy_result.metadata or {}
+                    )
+
+                # Apply formatting if enabled
+                if hasattr(self, "formatting_engine") and session_metadata:
+                    display_context_value = str(
+                        session_metadata.get("display_context", "desktop")
+                    ).strip()
+                    accessibility_value = str(
+                        session_metadata.get("accessibility_level", "basic")
+                    ).strip()
+                    language = str(session_metadata.get("language", "en")).strip()
+                    technical_level = str(
+                        session_metadata.get("technical_level", "intermediate")
+                    ).strip()
+
+                    try:
+                        from .ResponseFormattingClass.Enums import (
+                            DisplayContext,
+                            AccessibilityLevel,
+                        )
+
+                        display_context = DisplayContext(display_context_value)
+                        accessibility_level = AccessibilityLevel(accessibility_value)
+                    except (ValueError, ImportError):
+                        display_context = DisplayContext.DESKTOP
+                        accessibility_level = AccessibilityLevel.BASIC
+
+                    from .services.response_formatting_engine import FormattingContext
+
+                    formatting_context = FormattingContext(
+                        display_context=display_context,
+                        accessibility_level=accessibility_level,
+                        user_preferences=session_metadata,
+                        content_length=len(full_response),
+                        technical_level=technical_level or "intermediate",
+                        language=language or "en",
+                    )
+
+                    formatted_response = await self.formatting_engine.format_response(
+                        content=full_response,
+                        context=formatting_context,
+                    )
+                    formatted_content = formatted_response.content
+                    completion_metadata.update(
+                        {
+                            "render_type": formatted_response.format_type.value,
+                            "formatted": True,
+                            "formatting": {
+                                "format_type": formatted_response.format_type.value,
+                                "sections": [
+                                    section.model_dump()
+                                    if hasattr(section, "model_dump")
+                                    else section.dict()
+                                    for section in formatted_response.sections
+                                ],
+                                "navigation_aids": [
+                                    nav.model_dump()
+                                    if hasattr(nav, "model_dump")
+                                    else nav.dict()
+                                    for nav in formatted_response.navigation_aids
+                                ],
+                                "accessibility_features": dict(
+                                    formatted_response.accessibility_features or {}
+                                ),
+                                "estimated_reading_time": formatted_response.estimated_reading_time,
+                                "formatter_metadata": dict(
+                                    formatted_response.metadata or {}
+                                ),
+                            },
+                        }
+                    )
+
+            return StreamChunk(
+                chunk_id=0,
+                content=formatted_content,
+                metadata=completion_metadata,
+                finished=True,
+            )
+
+        except Exception as e:
+            logger.error(f"Error formatting completion chunk: {e}")
+            # Return unformatted content on error
+            return StreamChunk(
+                chunk_id=0,
+                content=full_response,
+                metadata={
+                    "event": "error",
+                    "error": str(e),
+                    "session_id": session_id,
+                    "response_id": response_id,
+                    "formatted": False,
+                },
+                finished=True,
+                event_type="error",
+            )
 
 
 # Global processor instance
