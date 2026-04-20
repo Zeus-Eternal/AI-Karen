@@ -8,7 +8,7 @@
     "requires_api_key": false,
     "default_model": "Phi-3-mini-4k-instruct-q4.gguf",
     "health_status": "healthy",
-    "last_health_check": 1776620130.5930426,
+    "last_health_check": 1776669415.086804,
     "error_message": null
   },
   {
@@ -20,7 +20,7 @@
     "requires_api_key": false,
     "default_model": "starcoder:128k",
     "health_status": "healthy",
-    "last_health_check": 1776620130.6858985,
+    "last_health_check": 1776669415.4025471,
     "error_message": null
   },
   {
@@ -32,7 +32,7 @@
     "requires_api_key": true,
     "default_model": "gpt-4o-mini",
     "health_status": "unhealthy",
-    "last_health_check": 1776620130.9106507,
+    "last_health_check": 1776669415.4032626,
     "error_message": "No OpenAI API key provided. Set OPENAI_API_KEY environment variable."
   },
   {
@@ -44,7 +44,7 @@
     "requires_api_key": true,
     "default_model": "glm-4.5",
     "health_status": "unhealthy",
-    "last_health_check": 1776620132.186167,
+    "last_health_check": 1776669416.4564955,
     "error_message": "API key validation failed: Error code: 401 - {'error': {'code': '401', 'message': 'token expired or incorrect'}}"
   },
   {
@@ -56,7 +56,7 @@
     "requires_api_key": true,
     "default_model": "gemini-2.5-flash",
     "health_status": "healthy",
-    "last_health_check": 1776616596.5876133,
+    "last_health_check": 1776668965.6548917,
     "error_message": null
   },
   {
@@ -68,7 +68,7 @@
     "requires_api_key": true,
     "default_model": "deepseek-chat",
     "health_status": "unhealthy",
-    "last_health_check": 1776616596.58835,
+    "last_health_check": 1776668965.655788,
     "error_message": "No DeepSeek API key provided. Set DEEPSEEK_API_KEY environment variable."
   },
   {
@@ -80,7 +80,7 @@
     "requires_api_key": true,
     "default_model": "microsoft/DialoGPT-large",
     "health_status": "unhealthy",
-    "last_health_check": 1776616596.5888066,
+    "last_health_check": 1776668965.6563487,
     "error_message": "No API token provided"
   },
   {
@@ -92,7 +92,7 @@
     "requires_api_key": true,
     "default_model": "gpt-4",
     "health_status": "healthy",
-    "last_health_check": 1776616596.5906053,
+    "last_health_check": 1776668965.6567283,
     "error_message": null
   },
   {
@@ -104,7 +104,7 @@
     "requires_api_key": false,
     "default_model": "kari-fallback-v1",
     "health_status": "healthy",
-    "last_health_check": 1776616596.591073,
+    "last_health_check": 1776668965.6570933,
     "error_message": null
   },
   {
@@ -116,7 +116,7 @@
     "requires_api_key": false,
     "default_model": "Phi-3-mini-4k-instruct-q4.gguf",
     "health_status": "healthy",
-    "last_health_check": 1776616596.5918312,
+    "last_health_check": 1776668965.6577904,
     "error_message": null
   }
 ]

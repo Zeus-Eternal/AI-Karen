@@ -71,10 +71,10 @@ class AuthService {
   private readonly LEGACY_REFRESH_COOKIE_NAME = 'refresh_token';
   private readonly SESSION_MARKER_KEY = 'kari_session_expected';
   private readonly LOGIN_SUCCESS_AT_KEY = 'kari_login_success_at';
-  private readonly REQUEST_TIMEOUT_MS = 15000;
+  private readonly REQUEST_TIMEOUT_MS = 30000;
   private readonly SESSION_VALIDATION_TIMEOUT_MS = 30000;
   private readonly REFRESH_RETRY_COOLDOWN_MS = 60000;
-  private readonly LOGIN_VALIDATION_GRACE_MS = 15000;
+  private readonly LOGIN_VALIDATION_GRACE_MS = 30000;
   private refreshInFlight: Promise<string> | null = null;
   private sessionValidationInFlight: Promise<boolean> | null = null;
   private refreshBlockedUntil = 0;

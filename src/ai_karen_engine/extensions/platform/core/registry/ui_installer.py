@@ -108,30 +108,44 @@ class UIInstallerService:
             if plugin_dir.is_dir():
                 plugin_id = plugin_dir.name
                 manifest_path = plugin_dir / "manifest.json"
-                entry_file = plugin_dir / f"{plugin_id}.tsx"
-
-                if manifest_path.exists() and entry_file.exists():
+                
+                if manifest_path.exists():
                     try:
                         with open(manifest_path, "r") as f:
                             manifest = json.load(f)
+                        
+                        # Check for entry file
+                        entry = manifest.get("entry", {})
+                        entry_file_rel = None
+                        if isinstance(entry, dict) and entry.get("entry_file"):
+                            entry_file_rel = entry.get("entry_file")
+                        elif manifest.get("entry_file"):
+                            entry_file_rel = manifest.get("entry_file")
+                        else:
+                            entry_file_rel = f"{plugin_id}.tsx"
+                        
+                        entry_file = plugin_dir / entry_file_rel
 
-                        package_info = UIPackageInfo(
-                            plugin_id=plugin_id,
-                            source_path=Path("src/ai_karen_engine/extensions/plugins")
-                            / plugin_id,
-                            target_path=plugin_dir,
-                            manifest_path=manifest_path,
-                            entry_file=entry_file,
-                            checksum=self._calculate_checksum(plugin_dir),
-                            size_bytes=self._get_directory_size(plugin_dir),
-                            installed_at=datetime.fromtimestamp(
-                                manifest_path.stat().st_mtime
-                            ),
-                            last_validated=datetime.now(),
-                        )
+                        if entry_file.exists():
+                            package_info = UIPackageInfo(
+                                plugin_id=plugin_id,
+                                source_path=Path("src/ai_karen_engine/extensions/plugins")
+                                / plugin_id,
+                                target_path=plugin_dir,
+                                manifest_path=manifest_path,
+                                entry_file=entry_file,
+                                checksum=self._calculate_checksum(plugin_dir),
+                                size_bytes=self._get_directory_size(plugin_dir),
+                                installed_at=datetime.fromtimestamp(
+                                    manifest_path.stat().st_mtime
+                                ),
+                                last_validated=datetime.now(),
+                            )
 
-                        self.installations[plugin_id] = package_info
-                        logger.info(f"Loaded existing UI installation: {plugin_id}")
+                            self.installations[plugin_id] = package_info
+                            logger.info(f"Loaded existing UI installation: {plugin_id}")
+                        else:
+                            logger.warning(f"Skipping {plugin_id}: missing entry file {entry_file}")
 
                     except Exception as e:
                         logger.error(f"Failed to load UI installation {plugin_id}: {e}")
@@ -181,21 +195,24 @@ class UIInstallerService:
     def install_ui(self, plugin_id: str, category: str) -> UIInstallationResult:
         """Install UI for a plugin from canonical source to plugin_repo."""
         try:
-            # Check if plugin exists in canonical location
             source_path = Path("src/ai_karen_engine/extensions/plugins") / plugin_id
             if not source_path.exists():
-                # Try alternative path
-                alt_source_path = Path(plugin_id)
-                if alt_source_path.exists():
-                    source_path = alt_source_path
+                alt_underscore_path = Path("src/ai_karen_engine/extensions/plugins") / plugin_id.replace('-', '_')
+                if alt_underscore_path.exists():
+                    source_path = alt_underscore_path
                 else:
-                    return UIInstallationResult(
-                        plugin_id=plugin_id,
-                        status=UIInstallationStatus.NOT_FOUND,
-                        state=UIInstallationState.ERROR,
-                        message=f"Plugin not found in canonical location: {source_path}",
-                        error_code="PLUGIN_NOT_FOUND",
-                    )
+                    # Try alternative path
+                    alt_source_path = Path(plugin_id)
+                    if alt_source_path.exists():
+                        source_path = alt_source_path
+                    else:
+                        return UIInstallationResult(
+                            plugin_id=plugin_id,
+                            status=UIInstallationStatus.NOT_FOUND,
+                            state=UIInstallationState.ERROR,
+                            message=f"Plugin not found in canonical location: {source_path}",
+                            error_code="PLUGIN_NOT_FOUND",
+                        )
 
             # Check if already installed
             if plugin_id in self.installations:
@@ -240,9 +257,29 @@ class UIInstallerService:
 
             # Copy UI package to plugin_repo
             target_path = self.plugins_repo_root / plugin_id
+            ui_source = source_path / "ui"
             try:
-                shutil.copytree(source_path, target_path)
-                logger.info(f"Copied UI package from {source_path} to {target_path}")
+                # Ensure target directory exists
+                target_path.mkdir(parents=True, exist_ok=True)
+
+                if ui_source.exists() and ui_source.is_dir():
+                    # Copy contents of ui directory
+                    for item in ui_source.iterdir():
+                        if item.is_dir():
+                            shutil.copytree(item, target_path / item.name, dirs_exist_ok=True)
+                        else:
+                            shutil.copy2(item, target_path / item.name)
+                    
+                    # Also copy manifest.json from root if it exists
+                    manifest_source = source_path / "manifest.json"
+                    if manifest_source.exists():
+                        shutil.copy2(manifest_source, target_path / "manifest.json")
+                    
+                    logger.info(f"Copied UI artifacts from {ui_source} to {target_path}")
+                else:
+                    # Fallback to copying entire source if no ui directory
+                    shutil.copytree(source_path, target_path, dirs_exist_ok=True)
+                    logger.info(f"Copied entire plugin source from {source_path} to {target_path}")
             except Exception as e:
                 if backup_path:
                     shutil.rmtree(target_path, ignore_errors=True)
@@ -394,16 +431,19 @@ class UIInstallerService:
     def restore_ui(self, plugin_id: str, category: str) -> UIInstallationResult:
         """Restore UI package from canonical source."""
         try:
-            # Check if plugin exists in canonical location
             source_path = Path("src/ai_karen_engine/extensions/plugins") / plugin_id
             if not source_path.exists():
-                return UIInstallationResult(
-                    plugin_id=plugin_id,
-                    status=UIInstallationStatus.NOT_FOUND,
-                    state=UIInstallationState.ERROR,
-                    message=f"Plugin not found in canonical location: {source_path}",
-                    error_code="PLUGIN_NOT_FOUND",
-                )
+                alt_underscore_path = Path("src/ai_karen_engine/extensions/plugins") / plugin_id.replace('-', '_')
+                if alt_underscore_path.exists():
+                    source_path = alt_underscore_path
+                else:
+                    return UIInstallationResult(
+                        plugin_id=plugin_id,
+                        status=UIInstallationStatus.NOT_FOUND,
+                        state=UIInstallationState.ERROR,
+                        message=f"Plugin not found in canonical location: {source_path}",
+                        error_code="PLUGIN_NOT_FOUND",
+                    )
 
             # Remove existing installation first
             if plugin_id in self.installations:

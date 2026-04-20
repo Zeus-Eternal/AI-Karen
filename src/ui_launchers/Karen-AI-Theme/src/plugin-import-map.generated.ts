@@ -13,6 +13,7 @@ export type PluginImporter = () => Promise<{
 export type PluginImportMap = Record<string, PluginImporter>;
 
 export const PLUGIN_IMPORT_MAP: PluginImportMap = {
+  "time-query": () => import("@/plugin_repo/time-query/TimeQueryPage"),
   "weather-query": () => import("@/plugin_repo/weather-query/weather-query"),
-  "time-query": () => import("@/plugin_repo/time-query/ui/DateTimePluginPage"),
+  "web-search": () => import("@/plugin_repo/web-search/WebSearchPage"),
 };

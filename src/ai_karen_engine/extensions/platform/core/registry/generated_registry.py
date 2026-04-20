@@ -37,8 +37,8 @@ class GeneratedImportRegistry:
     """Registry that auto-generates import maps from plugin_repo."""
 
     def __init__(self,
-                 plugins_repo_root: str = "ui_launchers/Karen-AI-Theme/src/plugin_repo",
-                 output_file: str = "ui_launchers/Karen-AI-Theme/src/plugin-import-map.generated.ts"):
+                 plugins_repo_root: str = "src/ui_launchers/Karen-AI-Theme/src/plugin_repo",
+                 output_file: str = "src/ui_launchers/Karen-AI-Theme/src/plugin-import-map.generated.ts"):
         self.plugins_repo_root = Path(plugins_repo_root)
         self.output_file = Path(output_file)
         self.ui_service = get_ui_service()
@@ -62,11 +62,36 @@ class GeneratedImportRegistry:
 
     def _generate_import_path(self, plugin_id: str) -> str:
         """Generate import path for a plugin."""
+        manifest = self._load_manifest_data(plugin_id)
+        
+        # Check for entry in manifest (GUI manifest structure)
+        entry = manifest.get("entry", {})
+        if isinstance(entry, dict) and entry.get("entry_file"):
+            entry_file = entry.get("entry_file")
+            # Remove extension if present
+            if entry_file.endswith(".tsx"):
+                entry_file = entry_file[:-4]
+            elif entry_file.endswith(".ts"):
+                entry_file = entry_file[:-3]
+            
+            return f"@/plugin_repo/{plugin_id}/{entry_file}"
+        
+        # Fallback to legacy entry_file field
+        entry_file = manifest.get("entry_file")
+        if entry_file:
+            # Remove extension if present
+            if entry_file.endswith(".tsx"):
+                entry_file = entry_file[:-4]
+            elif entry_file.endswith(".ts"):
+                entry_file = entry_file[:-3]
+            
+            return f"@/plugin_repo/{plugin_id}/{entry_file}"
+            
         return f"@/plugin_repo/{plugin_id}/{plugin_id}"
 
     def _generate_component_name(self, plugin_id: str) -> str:
         """Generate component name for a plugin."""
-        return f"{plugin_id}Plugin"
+        return f"{plugin_id.replace('-', '_')}Plugin"
 
     def _validate_plugin_package(self, plugin_id: str) -> bool:
         """Validate a plugin package in plugin_repo."""
@@ -76,9 +101,7 @@ class GeneratedImportRegistry:
 
         # Check required files
         manifest_path = package_path / "manifest.json"
-        entry_file = package_path / f"{plugin_id}.tsx"
-        
-        if not (manifest_path.exists() and entry_file.exists()):
+        if not manifest_path.exists():
             return False
 
         # Try to load manifest
@@ -93,6 +116,22 @@ class GeneratedImportRegistry:
                     logger.warning(f"Missing required field '{field}' in {plugin_id} manifest")
                     return False
             
+            # Check for entry file
+            entry = manifest_data.get("entry", {})
+            entry_file_path = None
+            
+            if isinstance(entry, dict) and entry.get("entry_file"):
+                entry_file_path = package_path / entry.get("entry_file")
+            elif manifest_data.get("entry_file"):
+                entry_file_path = package_path / manifest_data.get("entry_file")
+            else:
+                # Default fallback
+                entry_file_path = package_path / f"{plugin_id}.tsx"
+            
+            if not entry_file_path.exists():
+                logger.warning(f"Missing entry file '{entry_file_path}' for {plugin_id}")
+                return False
+                
             return True
             
         except Exception as e:

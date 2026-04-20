@@ -235,6 +235,111 @@ class SecurityValidator:
         return sanitized.strip()
 
 
+class ChatRuntimeHelper:
+    """Helper for chat runtime operations to keep routes thin."""
+
+    @staticmethod
+    async def gate_request() -> Optional[Any]:
+        """Consult the control plane for maintenance or degradation."""
+        control_plane = await get_chat_runtime_control_plane()
+        runtime_response = await control_plane.get_runtime_response()
+
+        if runtime_response is not None:
+            if isinstance(runtime_response, DegradedResponse):
+                if runtime_response.is_minimal:
+                    from fastapi.responses import JSONResponse
+
+                    payload = serialize_runtime_response(runtime_response) or {}
+                    return JSONResponse(
+                        status_code=runtime_response_http_status(runtime_response)
+                        or 200,
+                        content=payload,
+                        headers={
+                            "Retry-After": str(runtime_response.retry_after_seconds)
+                        },
+                    )
+            elif isinstance(
+                runtime_response, (MaintenanceResponse, EmergencyFallbackResponse)
+            ):
+                from fastapi.responses import JSONResponse
+
+                payload = serialize_runtime_response(runtime_response) or {}
+                status_code = runtime_response_http_status(runtime_response) or 503
+                return JSONResponse(
+                    status_code=status_code,
+                    content=payload,
+                    headers={"Retry-After": str(runtime_response.retry_after_seconds)},
+                )
+        return None
+
+    @staticmethod
+    def validate_model(model: Optional[str]):
+        """Validate model selection against available models."""
+        from ..config.config_manager import get_config_value
+
+        available_models = get_config_value("available_models", [])
+        if model and model not in available_models:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Model '{model}' not available. Available models: {available_models}",
+            )
+
+    @staticmethod
+    def normalize_messages(messages: List[ChatMessage]) -> List[Dict[str, Any]]:
+        """Normalize and sanitize messages for the orchestrator."""
+        validated = []
+        for msg in messages:
+            sanitized_content = SecurityValidator.validate_user_input(msg.content)
+            validated.append(
+                {
+                    "content": sanitized_content,
+                    "message_type": msg.message_type,
+                    "metadata": msg.metadata or {},
+                }
+            )
+        return validated
+
+    @staticmethod
+    def build_orchestrator_request(
+        request: ChatRequest,
+        user: Dict[str, Any],
+        validated_messages: List[Dict[str, Any]],
+        response_id: str,
+        correlation_id: str,
+        session_id: str,
+    ) -> OrchestratorChatRequest:
+        """Build the canonical orchestrator request object."""
+        conversation_id = normalize_chat_session_id(session_id)
+        flattened_prompt = "\n".join(
+            msg["content"]
+            for msg in validated_messages
+            if msg.get("message_type") == "user"
+        ).strip()
+
+        return OrchestratorChatRequest(
+            request_id=response_id,
+            correlation_id=correlation_id,
+            tenant_id=str(user.get("tenant_id") or "default"),
+            message=flattened_prompt,
+            user_id=user["user_id"],
+            org_id=str(user.get("tenant_id") or "default"),
+            conversation_id=conversation_id,
+            session_id=conversation_id,
+            message_id=str(uuid.uuid4()),
+            streaming=bool(request.stream),
+            stream=bool(request.stream),
+            include_context=True,
+            attachments=[],
+            metadata={
+                "model": request.model,
+                "temperature": request.temperature,
+                "max_tokens": request.max_tokens,
+                "messages": validated_messages,
+                "response_id": response_id,
+            },
+        )
+
+
 # Dependency functions
 async def get_chat_orchestrator():
     """Get chat orchestrator instance"""
@@ -262,82 +367,22 @@ async def create_chat_response(
     Create a chat response with comprehensive validation and security checks
     """
     start_time = time.time()
-    processing_time = 0.0  # Initialize to avoid unbound variable
-    session_id = ""  # Initialize to avoid unbound variable
     correlation_id = http_request.headers.get("X-Correlation-Id", str(uuid.uuid4()))
+    response_id = str(uuid.uuid4())
     structured_logger = get_structured_logger()
 
     try:
-        # ── Control Plane Gate ─────────────────────────────────────
-        # All chat entry points must consult the single authority.
-        control_plane = await get_chat_runtime_control_plane()
-        runtime_response = await control_plane.get_runtime_response()
+        # 1. Control Plane Gate
+        gate_response = await ChatRuntimeHelper.gate_request()
+        if gate_response:
+            return gate_response
 
-        if runtime_response is not None:
-            # Non-normal mode — consume the control-plane contract directly.
-            if isinstance(runtime_response, DegradedResponse):
-                if runtime_response.is_minimal:
-                    # Minimal degraded — can't reach orchestrator, return message
-                    from fastapi.responses import JSONResponse
-
-                    payload = serialize_runtime_response(runtime_response) or {}
-                    return JSONResponse(
-                        status_code=runtime_response_http_status(runtime_response)
-                        or 200,
-                        content=payload,
-                        headers={
-                            "Retry-After": str(runtime_response.retry_after_seconds)
-                        },
-                    )
-                # Non-minimal degraded: proceed to orchestrator with available capabilities
-            elif isinstance(
-                runtime_response,
-                (MaintenanceResponse, EmergencyFallbackResponse),
-            ):
-                from fastapi.responses import JSONResponse
-
-                payload = serialize_runtime_response(runtime_response) or {}
-                status_code = runtime_response_http_status(runtime_response) or 503
-                return JSONResponse(
-                    status_code=status_code,
-                    content=payload,
-                    headers={"Retry-After": str(runtime_response.retry_after_seconds)},
-                )
-        # ── End Control Plane Gate ─────────────────────────────────
-
-        # Validate and sanitize session ID
+        # 2. Basic Validation & Normalization
         session_id = SecurityValidator.sanitize_session_id(request.session_id)
+        ChatRuntimeHelper.validate_model(request.model)
+        validated_messages = ChatRuntimeHelper.normalize_messages(request.messages)
 
-        # Validate model selection
-        from ..config.config_manager import get_config_value
-
-        available_models = get_config_value("available_models", [])
-        if request.model and request.model not in available_models:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Model '{request.model}' not available. Available models: {available_models}",
-            )
-
-        # Get chat orchestrator
-        orchestrator = await get_chat_orchestrator()
-
-        # Process messages with security validation
-        validated_messages = []
-        for msg in request.messages:
-            # Validate message content
-            sanitized_content = SecurityValidator.validate_user_input(msg.content)
-            validated_messages.append(
-                {
-                    "content": sanitized_content,
-                    "message_type": msg.message_type,
-                    "metadata": msg.metadata or {},
-                }
-            )
-
-        # Generate response ID
-        response_id = str(uuid.uuid4())
-
-        # Log request start
+        # 3. Log request start
         structured_logger.log_event(
             event="chat_request_started",
             user_id=user["user_id"],
@@ -352,49 +397,20 @@ async def create_chat_response(
             },
         )
 
-        conversation_id = normalize_chat_session_id(session_id)
-        flattened_prompt = "\n".join(
-            msg["content"]
-            for msg in validated_messages
-            if msg.get("message_type") == "user"
-        ).strip()
-        chat_request = OrchestratorChatRequest(
-            request_id=response_id,
-            correlation_id=correlation_id,
-            tenant_id=str(user.get("tenant_id") or "default"),
-            message=flattened_prompt,
-            user_id=user["user_id"],
-            org_id=str(user.get("tenant_id") or "default"),
-            conversation_id=conversation_id,
-            session_id=conversation_id,
-            message_id=str(uuid.uuid4()),
-            streaming=bool(request.stream),
-            stream=bool(request.stream),
-            include_context=True,
-            attachments=[],
-            metadata={
-                "model": request.model,
-                "temperature": request.temperature,
-                "max_tokens": request.max_tokens,
-                "messages": validated_messages,
-                "response_id": response_id,
-            },
+        # 4. Build Orchestrator Request
+        orchestrator = await get_chat_orchestrator()
+        chat_request = ChatRuntimeHelper.build_orchestrator_request(
+            request, user, validated_messages, response_id, correlation_id, session_id
         )
 
-        # Process chat request
+        # 5. Process Request
         if request.stream:
 
             async def generate_stream():
                 try:
                     stream_result = await orchestrator.handle_chat_stream(chat_request)
                     async for chunk in stream_result:
-                        chunk_payload = {
-                            "type": chunk.type,
-                            "content": chunk.content,
-                            "correlation_id": chunk.correlation_id,
-                            "metadata": chunk.metadata or {},
-                        }
-                        yield f"data: {json.dumps(chunk_payload)}\n\n"
+                        yield f"data: {json.dumps(chunk.to_dict() if hasattr(chunk, 'to_dict') else chunk)}\n\n"
                 except Exception as e:
                     structured_logger.log_error(
                         error=str(e),
@@ -414,41 +430,10 @@ async def create_chat_response(
                 },
             )
         else:
-            # Non-streaming response
             response_data = await orchestrator.handle_chat(chat_request)
+            processing_time = time.time() - start_time
 
-            # Note: Rate limiter update skipped - needs implementation
-
-            # Record metrics
-            try:
-                metrics_manager = get_metrics_manager()
-                counter_metric = metrics_manager.register_counter(
-                    "chat_requests_total",
-                    "Total number of chat requests",
-                    ["model", "user_type", "response_type"],
-                )
-                if counter_metric:
-                    counter_metric.labels(
-                        model=request.model or "default",
-                        user_type=user.get("user_type", "unknown"),
-                        response_type="standard",
-                    ).inc()
-
-                processing_time = time.time() - start_time
-                histogram_metric = metrics_manager.register_histogram(
-                    "chat_request_duration_seconds",
-                    "Duration of chat requests in seconds",
-                    ["model"],
-                )
-                if histogram_metric:
-                    histogram_metric.labels(model=request.model or "default").observe(
-                        processing_time
-                    )
-            except Exception as e:
-                # Log metrics error but don't fail the request
-                logger.warning(f"Failed to record metrics: {e}")
-
-            # Log successful response
+            # Log & Metrics (Thin wrapper around telemetry)
             structured_logger.log_response(
                 status_code=200,
                 endpoint="/api/chat/chat",
@@ -457,11 +442,6 @@ async def create_chat_response(
                 response_data={
                     "response_id": response_id,
                     "model": request.model or "orchestrated",
-                    "tokens_used": (
-                        (response_data.metadata or {}).get("llm", {}).get("usage", {})
-                        if isinstance(response_data, OrchestratorChatResponse)
-                        else {}
-                    ).get("total_tokens", 0),
                     "processing_time": processing_time,
                 },
             )

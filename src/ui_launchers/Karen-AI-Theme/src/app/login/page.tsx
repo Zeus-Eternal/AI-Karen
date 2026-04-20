@@ -40,7 +40,13 @@ function LoginForm() {
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      router.replace(nextPath);
+      // Add a small delay to ensure session is properly established
+      // before redirecting to prevent flash-back to login
+      const timeoutId = setTimeout(() => {
+        router.replace(nextPath);
+      }, 100);
+
+      return () => clearTimeout(timeoutId);
     }
   }, [isAuthenticated, isLoading, nextPath, router]);
 

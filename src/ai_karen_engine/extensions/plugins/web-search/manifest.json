@@ -1,0 +1,40 @@
+{
+  "id": "web-search",
+  "name": "web-search",
+  "plugin_id": "web-search",
+  "gui_manifest_version": "1.0",
+  "display_name": "Web Search",
+  "version": "2.0.0",
+  "author": "Kari Team",
+  "license": "MIT",
+  "entrypoint": "handler:MainExtension",
+  "description": "Unified web search capability with multiple search modes (general, news, docs, deep research, structured extract, weather, stock market).",
+  "category": "plugins",
+  "capabilities": {
+    "provides_ui": true,
+    "provides_api": true,
+    "prompt_first": true
+  },
+  "ui": {
+    "hook_zones": [
+      {
+        "zone": "sidebar.plugins",
+        "label": "Web Search",
+        "icon": "search",
+        "order": 50
+      }
+    ]
+  },
+  "rbac": {
+    "allowed_roles": ["user", "admin", "developer"],
+    "default_enabled": true
+  },
+  "tags": ["search", "web", "retrieval", "prompt-first"],
+  "purpose": "Unified web search capability with multiple search modes",
+  "entry": {
+    "id": "web-search-main",
+    "default": true,
+    "entry_file": "WebSearchPage.tsx"
+  }
+}
+

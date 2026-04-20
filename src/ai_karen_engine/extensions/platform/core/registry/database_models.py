@@ -70,7 +70,7 @@ class ExtensionDBModel(Base):
     marketplace_info = Column(JSONB, default=dict)
 
     # Runtime state
-    status = Column(Enum(ExtensionStatus), default=ExtensionStatus.INACTIVE, index=True)
+    status = Column(String(50), default="inactive", index=True)
     directory_path = Column(String(500))
     is_validated = Column(Boolean, default=False)
     validation_errors = Column(JSON, default=list)

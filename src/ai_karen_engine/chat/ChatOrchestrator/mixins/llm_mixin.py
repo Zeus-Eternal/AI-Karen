@@ -236,7 +236,11 @@ class ChatLLMMixin(Base):
             if isinstance(result, dict):
                 if result.get("success") is False:
                     raise RuntimeError(
-                        str(result.get("error") or result.get("content") or "Provider generation failed")
+                        str(
+                            result.get("error")
+                            or result.get("content")
+                            or "Provider generation failed"
+                        )
                     )
                 self._verify_model_output(result, model_id)
                 metadata = self._build_llm_metadata(
@@ -345,7 +349,11 @@ class ChatLLMMixin(Base):
                 if isinstance(result, dict):
                     if result.get("success") is False:
                         raise RuntimeError(
-                            str(result.get("error") or result.get("content") or "Provider generation failed")
+                            str(
+                                result.get("error")
+                                or result.get("content")
+                                or "Provider generation failed"
+                            )
                         )
                     # Verify non-empty output
                     self._verify_model_output(result, model_id)
@@ -504,7 +512,7 @@ class ChatLLMMixin(Base):
                     "content": m.content,
                     "timestamp": (
                         timestamp.isoformat()
-                        if hasattr(timestamp, "isoformat")
+                        if timestamp is not None and hasattr(timestamp, "isoformat")
                         else str(timestamp or "")
                     ),
                 }
@@ -663,7 +671,12 @@ class ChatLLMMixin(Base):
         )
 
         # If actual differs from requested, it's degraded/fallback
-        if not is_degraded and requested_provider and provider and requested_provider != provider:
+        if (
+            not is_degraded
+            and requested_provider
+            and provider
+            and requested_provider != provider
+        ):
             is_degraded = True
 
         # Ensure degraded mode is set if fallback was used
@@ -745,7 +758,7 @@ class ChatLLMMixin(Base):
             value = extra.get(key)
             if value is None and additional:
                 value = additional.get(key)
-                
+
             if value is not None:
                 metadata[key] = value
 

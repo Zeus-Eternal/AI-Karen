@@ -110,7 +110,7 @@ class GUIManifestModel(BaseModel):
 class ManifestStandardsEnforcer:
     """Enforces manifest standards across all plugins."""
 
-    def __init__(self, extensions_root: str = "src/extensions"):
+    def __init__(self, extensions_root: str = "src/ai_karen_engine/extensions/plugins"):
         self.extensions_root = Path(extensions_root)
         self.validation_results: Dict[str, List[ManifestValidationResult]] = {}
 
@@ -348,12 +348,12 @@ class ManifestStandardsEnforcer:
         }
 
         # Validate root manifest
-        root_manifest_path = self.extensions_root / category / plugin_name / "manifest.json"
+        root_manifest_path = self.extensions_root / category / plugin_name / "plugin_manifest.json"
         if root_manifest_path.exists():
             results[ManifestType.ROOT] = self.validate_root_manifest(root_manifest_path)
 
         # Validate GUI manifest if it exists
-        gui_manifest_path = self.extensions_root / category / plugin_name / plugin_name / "manifest.json"
+        gui_manifest_path = self.extensions_root / category / plugin_name / "manifest.json"
         if gui_manifest_path.exists():
             results[ManifestType.GUI] = self.validate_gui_manifest(gui_manifest_path)
 

@@ -1,0 +1,31 @@
+{
+  "id": "web-search",
+  "plugin_id": "web-search",
+  "category": "plugins",
+  "gui_manifest_version": "1.0",
+  "display_name": "Web Search",
+  "description": "Unified web search capability with multiple search modes (general, news, docs, deep research, structured extract, weather, stock market).",
+  "version": "2.0.0",
+  "modes": ["general", "news", "docs", "deep_research", "structured_extract", "weather", "stock_market"],
+  "default_mode": "general",
+  "capabilities": {
+    "provides_ui": true
+  },
+  "ui": {
+    "has_component": false,
+    "purpose": "Web search status and configuration with mode selection",
+    "menu": [
+      {
+        "placement": "sidebar.plugins",
+        "label": "Web Search",
+        "icon": "search",
+        "order": 50
+      }
+    ]
+  },
+  "rbac": {
+    "allowed_roles": ["user", "admin", "developer"]
+  },
+  "tags": ["search", "web", "retrieval", "prompt-first"],
+  "purpose": "Perform internet searches across multiple specialized modes including general queries, news, documentation, deep research, structured data extraction, weather, and stock market information."
+}

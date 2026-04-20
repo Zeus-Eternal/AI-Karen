@@ -1,14 +1,20 @@
 from __future__ import annotations
 import logging
 import time
+from datetime import datetime
 from typing import Optional, cast, TYPE_CHECKING, List, Dict, Any
 from langchain_core.messages import HumanMessage
 
 if TYPE_CHECKING:
     from ..models import ProcessingResult, ChatRequest, ProcessingContext, ErrorType
     from ..base import ChatOrchestratorProtocol
+    from ai_karen_engine.chat.agent_action_models import WebSearchResult
+
+    Base = ChatOrchestratorProtocol
 else:
     Base = object
+
+logger = logging.getLogger(__name__)
 
 
 class ChatAgentMixin(Base):
@@ -33,6 +39,7 @@ class ChatAgentMixin(Base):
         from ai_karen_engine.core.langgraph_orchestrator import (
             LangGraphOrchestrator,
             OrchestrationConfig,
+            OrchestrationState,
         )
         from ai_karen_engine.chat.agent_action_models import (
             AgentAction,
@@ -59,12 +66,18 @@ class ChatAgentMixin(Base):
             correlation_id=context.correlation_id, status="in_progress"
         )
 
-        working_state = {
+        working_state: OrchestrationState = {
             "messages": [HumanMessage(content=request.message)],
             "user_id": request.user_id,
             "session_id": request.session_id or request.conversation_id,
             "tenant_id": request.metadata.get("org_id", "default"),
+            "auth_status": None,
+            "user_permissions": None,
             "auth_context": request.metadata.get("auth_context", {}),
+            "user_profile": None,
+            "safety_status": None,
+            "safety_flags": None,
+            "safety_evaluation": None,
             "request_config": request.metadata,
             "errors": [],
             "warnings": [],
@@ -138,7 +151,7 @@ class ChatAgentMixin(Base):
 
                     if action.action == AgentActionType.ANSWER:
                         agent_trace.status = "completed"
-                        agent_trace.end_time = time.time()
+                        agent_trace.end_time = datetime.utcnow()
                         agent_trace.total_steps = step_count
 
                         response = current_state.get("response", "")
@@ -320,7 +333,7 @@ class ChatAgentMixin(Base):
 
                     elif action.action == AgentActionType.TERMINATE:
                         agent_trace.status = "terminated"
-                        agent_trace.end_time = time.time()
+                        agent_trace.end_time = datetime.utcnow()
                         agent_trace.total_steps = step_count
 
                         return ProcessingResult(
@@ -340,7 +353,7 @@ class ChatAgentMixin(Base):
                     break
 
             agent_trace.status = "max_steps_reached"
-            agent_trace.end_time = time.time()
+            agent_trace.end_time = datetime.utcnow()
             agent_trace.total_steps = step_count
 
             fallback_response = f"Agent execution completed after {step_count} steps. "
@@ -364,7 +377,7 @@ class ChatAgentMixin(Base):
                 f"Agent loop failed for {context.correlation_id}: {exc}", exc_info=True
             )
             agent_trace.status = "failed"
-            agent_trace.end_time = time.time()
+            agent_trace.end_time = datetime.utcnow()
             agent_trace.total_steps = step_count
 
             return ProcessingResult(
@@ -377,11 +390,12 @@ class ChatAgentMixin(Base):
 
     async def _execute_web_search(
         self, action, request: ChatRequest, context: ProcessingContext
-    ) -> WebSearchResult:  # Changed return type
+    ) -> "WebSearchResult":  # Changed return type
         """Execute web search action through InternetCapabilityService."""
         from ai_karen_engine.services.internet_capability_service import (
             InternetCapabilityService,
         )
+        from ai_karen_engine.chat.agent_action_models import WebSearchResult
 
         internet_service = InternetCapabilityService()
         query = action.params.get("query", request.message)

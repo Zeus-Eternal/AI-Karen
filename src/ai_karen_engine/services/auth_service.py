@@ -120,6 +120,7 @@ class AuthService(BaseService):
         """Initialize the Authentication Service."""
         super().__init__(config or AuthConfig())
         self._initialized = False
+        self._tables_ensured = False
         self._lock: Optional[asyncio.Lock] = None
 
         # Database session will be injected
@@ -254,9 +255,13 @@ class AuthService(BaseService):
 
     async def _ensure_database_tables(self) -> None:
         """Ensure database tables exist."""
+        if self._tables_ensured:
+            return
+
         try:
             client = self._get_db_client()
             await client.create_tables_async()
+            self._tables_ensured = True
             logger.info("Database tables verified/created successfully")
         except Exception as e:
             logger.error(f"Failed to ensure database tables: {e}")

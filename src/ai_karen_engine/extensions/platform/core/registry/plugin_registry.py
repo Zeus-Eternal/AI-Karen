@@ -67,56 +67,58 @@ class PluginRegistry:
         try:
             from sqlalchemy import text
 
-            # This is a simplified table creation - in production you'd use Alembic migrations
-            async with self.db_session.begin():
-                await self.db_session.execute(
-                    text("""
-                    CREATE TABLE IF NOT EXISTS extension_registry (
-                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                        name VARCHAR(100) NOT NULL UNIQUE,
-                        version VARCHAR(50) NOT NULL,
-                        display_name VARCHAR(255) NOT NULL,
-                        description TEXT,
-                        author VARCHAR(100),
-                        license VARCHAR(50),
-                        category VARCHAR(50),
-                        tags TEXT[],
-                        api_version VARCHAR(20) DEFAULT '1.0',
-                        kari_min_version VARCHAR(20) DEFAULT '0.4.0',
-                        capabilities JSONB DEFAULT '{}',
-                        dependencies JSONB DEFAULT '{}',
-                        permissions JSONB DEFAULT '{}',
-                        resources JSONB DEFAULT '{}',
-                        ui_config JSONB DEFAULT '{}',
-                        api_config JSONB DEFAULT '{}',
-                        background_tasks JSONB DEFAULT '[]',
-                        marketplace_info JSONB DEFAULT '{}',
-                        status VARCHAR(20) DEFAULT 'inactive',
-                        directory_path VARCHAR(500),
-                        is_validated BOOLEAN DEFAULT FALSE,
-                        validation_errors JSON DEFAULT '[]',
-                        created_at TIMESTAMPTZ DEFAULT NOW(),
-                        updated_at TIMESTAMPTZ DEFAULT NOW(),
-                        loaded_at TIMESTAMPTZ,
-                        last_error_at TIMESTAMPTZ,
-                        error_message TEXT,
-                        error_stack_trace TEXT,
-                        error_count INTEGER DEFAULT 0,
-                        load_time_ms INTEGER,
-                        memory_usage_mb INTEGER,
-                        cpu_usage_percent INTEGER
-                    );
-                    
-                    CREATE INDEX IF NOT EXISTS idx_extension_name ON extension_registry(name);
-                    CREATE INDEX IF NOT EXISTS idx_extension_version ON extension_registry(version);
-                    CREATE INDEX IF NOT EXISTS idx_extension_category ON extension_registry(category);
-                    CREATE INDEX IF NOT EXISTS idx_extension_status ON extension_registry(status);
-                    CREATE INDEX IF NOT EXISTS idx_extension_created_at ON extension_registry(created_at);
-                    CREATE INDEX IF NOT EXISTS idx_extension_name_version ON extension_registry(name, version);
-                """)
+            # Create tables and indexes one by one to avoid prepared statement limitations
+            statements = [
+                """
+                CREATE TABLE IF NOT EXISTS extension_registry (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    name VARCHAR(100) NOT NULL UNIQUE,
+                    version VARCHAR(50) NOT NULL,
+                    display_name VARCHAR(255) NOT NULL,
+                    description TEXT,
+                    author VARCHAR(100),
+                    license VARCHAR(50),
+                    category VARCHAR(50),
+                    tags TEXT[],
+                    api_version VARCHAR(20) DEFAULT '1.0',
+                    kari_min_version VARCHAR(20) DEFAULT '0.4.0',
+                    capabilities JSONB DEFAULT '{}',
+                    dependencies JSONB DEFAULT '{}',
+                    permissions JSONB DEFAULT '{}',
+                    resources JSONB DEFAULT '{}',
+                    ui_config JSONB DEFAULT '{}',
+                    api_config JSONB DEFAULT '{}',
+                    background_tasks JSONB DEFAULT '[]',
+                    marketplace_info JSONB DEFAULT '{}',
+                    status VARCHAR(50) DEFAULT 'inactive',
+                    directory_path VARCHAR(500),
+                    is_validated BOOLEAN DEFAULT FALSE,
+                    validation_errors JSONB DEFAULT '[]',
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW(),
+                    loaded_at TIMESTAMPTZ,
+                    last_error_at TIMESTAMPTZ,
+                    error_message TEXT,
+                    error_stack_trace TEXT,
+                    error_count INTEGER DEFAULT 0,
+                    load_time_ms INTEGER,
+                    memory_usage_mb INTEGER,
+                    cpu_usage_percent INTEGER
                 )
+                """,
+                "CREATE INDEX IF NOT EXISTS idx_extension_name ON extension_registry(name)",
+                "CREATE INDEX IF NOT EXISTS idx_extension_version ON extension_registry(version)",
+                "CREATE INDEX IF NOT EXISTS idx_extension_category ON extension_registry(category)",
+                "CREATE INDEX IF NOT EXISTS idx_extension_status ON extension_registry(status)",
+                "CREATE INDEX IF NOT EXISTS idx_extension_created_at ON extension_registry(created_at)",
+                "CREATE INDEX IF NOT EXISTS idx_extension_name_version ON extension_registry(name, version)",
+            ]
 
-                logger.info("Database tables created/verified for extension registry")
+            async with self.db_session.begin():
+                for stmt in statements:
+                    await self.db_session.execute(text(stmt))
+
+            logger.info("Database tables created/verified for extension registry")
 
         except Exception as e:
             logger.error(f"Failed to create database tables: {e}")

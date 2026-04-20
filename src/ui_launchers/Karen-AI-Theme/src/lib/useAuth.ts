@@ -21,70 +21,59 @@ export function useAuth() {
 
   // Initialize auth state
   const initializeAuth = useCallback(async () => {
-    if (initializeInFlightRef.current) {
-      return initializeInFlightRef.current;
-    }
+    try {
+      setState((prev: AuthState) => ({ ...prev, isLoading: true, error: null }));
 
-    initializeInFlightRef.current = (async () => {
-      try {
-        const cachedUser = authService.getCurrentUser();
-        const hasCachedSession = !!cachedUser && authService.isAuthenticated();
+      // Skip full validation if we have a fresh login session to prevent flash
+      const hasFreshLogin = (authService as any).hasFreshLoginMarker?.() || false;
+      const currentUser = authService.getCurrentUser();
+      const hasAccessToken = !!authService.getAccessToken();
 
-        setState((prev: AuthState) => ({
-          ...prev,
-          user: hasCachedSession ? cachedUser : prev.user,
-          isAuthenticated: hasCachedSession ? true : prev.isAuthenticated,
-          isLoading: true,
-          error: null,
-        }));
-        console.log('[useAuth] Initializing auth state...');
-
-        const isValid = await authService.validateSession();
-        const currentUser = isValid ? authService.getCurrentUser() : null;
-        const hasAccessToken = !!authService.getAccessToken();
-        const hasRefreshToken = !!authService.getRefreshToken();
-        const hadUser = !!authService.getCurrentUser();
-        const hasSessionMarker = authService.isAuthenticated();
-
-        console.log('[useAuth] Session validation result:', {
-          isValid,
-          hasCurrentUser: !!currentUser,
-          hasAccessToken,
-          hasRefreshToken,
-          isAuthenticated: authService.isAuthenticated(),
-        });
-
-        // Only clear auth if validation explicitly returned false
-        // Never clear auth during grace period for fresh logins
-        if (!isValid) {
-          // Only clear when auth artifacts actually exist, to avoid no-op churn.
-          if (hasAccessToken || hasRefreshToken || hadUser || hasSessionMarker) {
-            console.log('[useAuth] Session invalid, clearing auth');
-            authService.clearAuth();
-          }
-        }
-
+      if (hasFreshLogin && currentUser && hasAccessToken) {
+        console.log('[useAuth] Skipping validation for fresh login session');
         setState({
-          user: currentUser || cachedUser,
-          isAuthenticated: isValid,
+          user: currentUser,
+          isAuthenticated: true,
           isLoading: false,
           error: null,
         });
-      } catch (error) {
-        console.error('Auth initialization error:', error);
-        authService.clearAuth();
-        setState({
-          user: null,
-          isAuthenticated: false,
-          isLoading: false,
-          error: error instanceof Error ? error.message : 'Authentication failed',
-        });
-      } finally {
-        initializeInFlightRef.current = null;
+        return;
       }
-    })();
 
-    return initializeInFlightRef.current;
+      console.log('[useAuth] Initializing auth state...');
+
+      const isValid = await authService.validateSession();
+      const validatedUser = isValid ? authService.getCurrentUser() : null;
+
+      console.log('[useAuth] Session validation result:', {
+        isValid,
+        hasCurrentUser: !!validatedUser,
+        hasAccessToken: !!authService.getAccessToken(),
+        hasRefreshToken: !!authService.getRefreshToken(),
+        isAuthenticated: authService.isAuthenticated(),
+      });
+
+      if (!isValid || !validatedUser) {
+        console.log('[useAuth] Session invalid, clearing auth');
+        authService.clearAuth();
+      }
+
+      setState({
+        user: isValid ? validatedUser : null,
+        isAuthenticated: isValid && !!validatedUser,
+        isLoading: false,
+        error: null,
+      });
+    } catch (error) {
+      console.error('Auth initialization error:', error);
+      authService.clearAuth();
+      setState({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Authentication failed',
+      });
+    }
   }, []);
 
   // Login function
@@ -189,14 +178,21 @@ export function useAuth() {
     initializeAuth();
   }, [initializeAuth]);
 
-  // Listen for storage changes (for multi-tab support)
+  // Listen for storage changes (for multi-tab support) with debounce
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+
     const handleStorageChange = () => {
-      initializeAuth();
+      // Debounce storage change handling to prevent excessive re-validations
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        initializeAuth();
+      }, 500);
     };
 
     window.addEventListener('storage', handleStorageChange);
     return () => {
+      clearTimeout(timeoutId);
       window.removeEventListener('storage', handleStorageChange);
     };
   }, [initializeAuth]);
