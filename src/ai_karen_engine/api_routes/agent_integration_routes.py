@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, R
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from ai_karen_engine.services.auth_utils import get_current_user
+from ai_karen_engine.memory.internal.auth_utils import get_current_user
 from ..agents import (
     get_agent_integration_service,
     AgentExecutionMode,

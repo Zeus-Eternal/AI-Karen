@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
-from .langgraph_orchestrator import LangGraphOrchestrator, OrchestrationState
+from .langgraph_orchestrator import LangGraphOrchestrator, LangGraphOrchestrationState
 
 logger = logging.getLogger(__name__)
 

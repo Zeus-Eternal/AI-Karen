@@ -74,13 +74,14 @@ try:
     REDIS_MANAGER_AVAILABLE = True
 except ImportError:
     try:
-from ai_karen_engine.infra.redis_connection_manager import (
-        RedisConnectionManager,
-        get_redis_manager,
-        initialize_redis_manager
-    )
+        from ai_karen_engine.infra.redis_connection_manager import (
+            RedisConnectionManager,
+            get_redis_manager,
+            initialize_redis_manager
+        )
         REDIS_MANAGER_AVAILABLE = True
     except ImportError:
+
         RedisConnectionManager = None
         get_redis_manager = None
         initialize_redis_manager = None

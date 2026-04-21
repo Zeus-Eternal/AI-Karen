@@ -7,20 +7,18 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from tempfile import SpooledTemporaryFile
 
-from ai_karen_engine.chat.file_attachment_service import (
+from ai_karen_engine.services.file_attachment_service import (
     FileAttachmentService,
     FileProcessingResult,
     FileType,
     FileUploadRequest,
     FileUploadResponse,
     ProcessingStatus,
-)
-from ai_karen_engine.chat.hook_enabled_file_service import get_hook_enabled_file_service
-from ai_karen_engine.chat.multimedia_service import (
+    get_hook_enabled_file_service,
+    MultimediaService,
     MediaProcessingRequest,
     MediaProcessingResponse,
     MediaType,
-    MultimediaService,
     ProcessingCapability,
 )
 from ai_karen_engine.core.logging import get_logger
@@ -46,6 +44,7 @@ router = APIRouter(tags=["file-attachments"])
 # Initialize services
 file_service = FileAttachmentService()
 multimedia_service = MultimediaService()
+
 
 # Request/Response Models
 class FileUploadMetadata(BaseModel):

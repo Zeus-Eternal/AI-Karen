@@ -30,8 +30,8 @@ from ai_karen_engine.memory.provider_registry import (
     ProviderRegistryService,
     ProviderCapability,
 )
-from ai_karen_engine.services.distilbert_service import DistilBertService
-from ai_karen_engine.services.spacy_service import SpacyService
+from ai_karen_engine.memory.distilbert_service import DistilBertService
+from ai_karen_engine.memory.spacy_service import SpacyService
 from ai_karen_engine.memory.small_language_model_service import (
     SmallLanguageModelService,
 )

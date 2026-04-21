@@ -11,8 +11,8 @@ import logging
 import os
 from typing import Any, Dict, Optional
 
-from ai_karen_engine.chat.tool_integration_service import (
-    BuiltinTool,
+from ai_karen_engine.services.tool_service import (
+    BaseTool,
     ToolMetadata,
     ToolParameter,
     ParameterType,
@@ -23,7 +23,7 @@ from ai_karen_engine.chat.tool_integration_service import (
 logger = logging.getLogger(__name__)
 
 
-class WeatherTool(BuiltinTool):
+class WeatherTool(BaseTool):
     """Weather query tool for Karen AI's tool integration system."""
 
     def __init__(self):

@@ -13,7 +13,7 @@ from datetime import datetime, timezone, timedelta
 from enum import Enum
 import uuid
 
-from .database_models import ExtensionPermission, ExtensionModel
+from ..database_models import ExtensionPermission, ExtensionModel
 
 logger = logging.getLogger(__name__)
 

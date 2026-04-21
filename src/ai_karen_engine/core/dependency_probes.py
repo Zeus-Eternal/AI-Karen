@@ -571,7 +571,7 @@ class EnhancedMemorySubsystemProbe(DependencyProbe):
 
         try:
             # Try to import and test memory subsystem
-            from ..chat.memory_processor import MemoryProcessor
+            from ..memory.memory_service import MemoryService
 
             # Test memory processor initialization
             memory_processor = MemoryProcessor()

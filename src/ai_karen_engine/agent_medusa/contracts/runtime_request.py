@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 from datetime import datetime
 
 @dataclass
-class MedusaRuntimeRequest:
+class RuntimeRequest:
     """Incoming request for the AgentMedusa runtime"""
     query: str
     session_id: str

@@ -76,7 +76,7 @@ class PluginManager:
         Returns:
             ExtensionExecutionResult with success status and data
         """
-        from ai_karen_engine.chat.agent_action_models import ExtensionExecutionResult
+        from ai_karen_engine.models.shared_types import ExtensionExecutionResult
         import time
 
         start_time = time.time()

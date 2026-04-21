@@ -1,7 +1,7 @@
 from typing import Any, Dict, List, Optional
 import logging
 from ..contracts.execution_action import ExecutionAction, ActionType
-from ...extensions.platform.core.manager import PluginManager # Verify path later if fails
+# from ...extensions.platform.core.manager import PluginManager # Verify path later if fails
 
 logger = logging.getLogger(__name__)
 

@@ -34,12 +34,12 @@ from ..core.chat_runtime_control_plane import (
     runtime_response_http_status,
 )
 from ..core.stream_authority import get_stream_authority
-from ..chat.chat_orchestrator import (
-    ChatRequest as OrchestratorChatRequest,
-    ChatResponse as OrchestratorChatResponse,
+from ..models.shared_types import (
+    CanonicalChatRequest,
+    CanonicalChatResponse,
 )
-from ..chat.ChatOrchestrator import normalize_session_id as normalize_chat_session_id
-from ..chat.stream_processor import AsyncStreamProcessor as StreamProcessor
+from ..utils.chat_helpers import normalize_session_id as normalize_chat_session_id
+from ..services.streaming.stream_processor import AsyncStreamProcessor
 from ..core.metrics_manager import get_metrics_manager
 
 logger = logging.getLogger(__name__)
@@ -48,7 +48,7 @@ security = HTTPBearer()
 
 
 def _runtime_metadata_from_orchestrator_response(
-    response: OrchestratorChatResponse,
+    response: CanonicalChatResponse,
     *,
     response_id: str,
     requested_model: Optional[str],
@@ -309,7 +309,7 @@ class ChatRuntimeHelper:
         response_id: str,
         correlation_id: str,
         session_id: str,
-    ) -> OrchestratorChatRequest:
+    ) -> CanonicalChatRequest:
         """Build the canonical orchestrator request object."""
         conversation_id = normalize_chat_session_id(session_id)
         flattened_prompt = "\n".join(
@@ -318,7 +318,7 @@ class ChatRuntimeHelper:
             if msg.get("message_type") == "user"
         ).strip()
 
-        return OrchestratorChatRequest(
+        return CanonicalChatRequest(
             request_id=response_id,
             correlation_id=correlation_id,
             tenant_id=str(user.get("tenant_id") or "default"),
@@ -345,15 +345,15 @@ class ChatRuntimeHelper:
 # Dependency functions
 async def get_chat_orchestrator():
     """Get chat orchestrator instance"""
-    from ..chat.factory import get_chat_orchestrator as get_factory_chat_orchestrator
+    from ..core.langgraph_orchestrator import get_default_orchestrator
 
-    return await get_factory_chat_orchestrator()
+    return await get_default_orchestrator()
 
 
 async def get_stream_processor():
     """Get stream processor instance"""
     # Create a new instance with default parameters
-    return StreamProcessor()
+    return AsyncStreamProcessor()
 
 
 # API endpoints
@@ -496,18 +496,18 @@ async def create_chat_response(
             return ChatResponse(
                 response_id=response_id,
                 content=response_data.response
-                if isinstance(response_data, OrchestratorChatResponse)
+                if isinstance(response_data, CanonicalChatResponse)
                 else "",
                 model=request.model or "orchestrated",
                 usage=(response_data.metadata or {}).get("llm", {}).get("usage", {})
-                if isinstance(response_data, OrchestratorChatResponse)
+                if isinstance(response_data, CanonicalChatResponse)
                 else {},
                 metadata=_runtime_metadata_from_orchestrator_response(
                     response_data,
                     response_id=response_id,
                     requested_model=request.model,
                 )
-                if isinstance(response_data, OrchestratorChatResponse)
+                if isinstance(response_data, CanonicalChatResponse)
                 else {},
                 timestamp=datetime.utcnow(),
             )

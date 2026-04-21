@@ -443,11 +443,11 @@ class AgentOrchestrator(BaseService):
         try:
             if service_name == "ai_orchestrator":
                 try:
-                    from ai_karen_engine.ai_orchestrator.ai_orchestrator import (
-                        AIOrchestrator,
+                    from ai_karen_engine.core.langgraph_orchestrator import (
+                        LangGraphOrchestrator,
                     )
 
-                    service = AIOrchestrator()
+                    service = LangGraphOrchestrator()
                     await service.initialize()
                 except ImportError:
                     logger.warning(

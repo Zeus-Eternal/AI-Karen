@@ -7,8 +7,8 @@ Chat Memory & Auth Configuration
 - Loads from `.env` by default, ignores any extra vars
 """
 
-from __future__ import annotations
-
+import os
+import re
 from pathlib import Path
 from typing import Optional
 
@@ -59,6 +59,23 @@ try:
         load_dotenv(env_path)
 except ImportError:
     pass
+
+
+def expand_env_vars(v: str) -> str:
+    """Expand environment variables in a string like ${VAR} or $VAR"""
+    if not isinstance(v, str):
+        return v
+    
+    # Handle ${VAR} syntax
+    def replace_match(match):
+        var_name = match.group(1)
+        return os.environ.get(var_name, match.group(0))
+    
+    # First expand ${VAR}
+    result = re.sub(r'\${([^}]+)}', replace_match, v)
+    # Then expand $VAR (if any left that didn't use {})
+    result = os.path.expandvars(result)
+    return result
 
 
 class ChatMemorySettings(BaseSettings):
@@ -160,10 +177,20 @@ class ProductionAuthSettings(BaseSettings):
         @classmethod
         def _normalize_cookie_secure(cls, value: object) -> object:
             return cls._parse_boolish(value)
+            
+        @field_validator("database_url", "redis_url", mode="before")
+        @classmethod
+        def _expand_urls(cls, value: str) -> str:
+            return expand_env_vars(value)
+            
     elif not V2 and validator is not None:
         @validator("cookie_secure", pre=True)
         def _normalize_cookie_secure(cls, value: object) -> object:
             return cls._parse_boolish(value)
+            
+        @validator("database_url", "redis_url", pre=True)
+        def _expand_urls(cls, value: str) -> str:
+            return expand_env_vars(value)
 
     if V2:
         model_config = SettingsConfigDict(
@@ -229,10 +256,20 @@ class ProductionSettings(BaseSettings):
         @classmethod
         def _normalize_debug(cls, value: object) -> object:
             return cls._parse_boolish(value)
+            
+        @field_validator("database_url", "redis_url", mode="before")
+        @classmethod
+        def _expand_urls(cls, value: str) -> str:
+            return expand_env_vars(value)
+            
     elif not V2 and validator is not None:
         @validator("debug", pre=True)
         def _normalize_debug(cls, value: object) -> object:
             return cls._parse_boolish(value)
+            
+        @validator("database_url", "redis_url", pre=True)
+        def _expand_urls(cls, value: str) -> str:
+            return expand_env_vars(value)
 
     if V2:
         model_config = SettingsConfigDict(
@@ -246,6 +283,10 @@ class ProductionSettings(BaseSettings):
             env_file = ".env"
             env_file_encoding = "utf-8"
             extra = "ignore"
+
+
+# Single, global settings instance
+settings = ProductionSettings()
 
 
 # Single, global settings instance

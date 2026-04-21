@@ -11,7 +11,7 @@ class ResponseStatus(str, Enum):
     DEGRADED = "degraded"
 
 @dataclass
-class MedusaRuntimeResponse:
+class RuntimeResponse:
     """Standard response from the AgentMedusa runtime"""
     request_id: str
     status: ResponseStatus

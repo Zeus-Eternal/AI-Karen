@@ -3,8 +3,15 @@ from typing import Any, Dict, List
 
 import pytest
 
-from ai_karen_engine.chat.ChatOrchestrator.mixins.core_mixin import ChatCoreMixin
-from ai_karen_engine.chat.stream_processor import AsyncStreamProcessor
+from ai_karen_engine.utils.chat_helpers import strip_internal_analysis_leakage
+from ai_karen_engine.services.response_formatting.response_formatter import (
+    PrettyOutputLayer,
+)
+from ai_karen_engine.services.ResponseFormattingClass.Specialized.Integration import (
+    get_specialized_integration,
+)
+from ai_karen_engine.services.response_policy_enforcer import ResponsePolicyEnforcer
+from ai_karen_engine.services.streaming.stream_processor import AsyncStreamProcessor
 from ai_karen_engine.api_routes.formatting_routes import (
     FormatRequest,
     format_content,
@@ -58,7 +65,10 @@ async def test_search_answer_appends_deduplicated_sources() -> None:
     raw = "Latest update from [Site](https://example.com/a) and again https://example.com/a."
     context = FormattingContext(display_context=DisplayContext.DESKTOP)
     result = await engine.format_response(raw, context)
-    assert result.format_type in {FormatType.SEARCH_ANSWER, FormatType.STANDARD_MARKDOWN}
+    assert result.format_type in {
+        FormatType.SEARCH_ANSWER,
+        FormatType.STANDARD_MARKDOWN,
+    }
     assert "## Sources" in result.content
     assert result.content.count("https://example.com/a") <= 2
 
@@ -102,22 +112,36 @@ async def test_formatting_route_uses_canonical_engine() -> None:
     assert isinstance(response.metadata, dict)
 
 
-class _DummyCore(ChatCoreMixin):
+class _DummyCore:
     def __init__(self) -> None:
         self.formatting_engine = ResponseFormattingEngine()
-        self.response_policy_enforcer = None
+        self.response_policy_enforcer = ResponsePolicyEnforcer()
+        self.pretty_layer = PrettyOutputLayer()
 
-    def _build_formatting_context(
+    async def _format_response_with_engine(
         self,
+        raw_content: str,
         turn_context: Any,
-        *,
-        content_length: int = 0,
-    ) -> FormattingContext:
-        return FormattingContext(
+    ) -> Tuple[str, Dict[str, Any]]:
+        cleaned = strip_internal_analysis_leakage(raw_content)
+        context = FormattingContext(
             display_context=DisplayContext.DESKTOP,
             accessibility_level=AccessibilityLevel.BASIC,
-            content_length=content_length,
+            content_length=len(cleaned),
         )
+        formatted = await self.formatting_engine.format_response(cleaned, context)
+        policy_result = await self.response_policy_enforcer.enforce_policies(
+            formatted.content,
+            intent="unknown",
+        )
+        final_text = await self.pretty_layer.render(policy_result.content)
+
+        specialized = get_specialized_integration()
+        payload = await specialized.extract_payload(final_text)
+        payload.setdefault("formatted", True)
+        payload.setdefault("render_type", "markdown")
+
+        return final_text, payload
 
 
 @pytest.mark.asyncio

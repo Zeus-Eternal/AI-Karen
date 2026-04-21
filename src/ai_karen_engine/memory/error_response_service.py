@@ -22,7 +22,7 @@ except ImportError:
 
 from ai_karen_engine.models.web_api_error_responses import WebAPIErrorCode
 from ai_karen_engine.services.llm_router import ProviderHealth
-from ai_karen_engine.services.provider_health_monitor import (
+from ai_karen_engine.memory.internal.provider_health_monitor import (
     get_health_monitor,
     ProviderHealthInfo,
     HealthStatus,
@@ -181,13 +181,13 @@ class ErrorResponseService:
         """Lazily initialize AI orchestrator to avoid circular imports."""
         if self._ai_orchestrator is None:
             try:
-                from ai_karen_engine.ai_orchestrator.ai_orchestrator import (
-                    AIOrchestrator,
+                from ai_karen_engine.core.langgraph_orchestrator import (
+                    LangGraphOrchestrator,
                 )
                 from ai_karen_engine.core.services.base import ServiceConfig
 
                 config = ServiceConfig(name="error_response_ai_orchestrator")
-                self._ai_orchestrator = AIOrchestrator(config)
+                self._ai_orchestrator = LangGraphOrchestrator(config)
                 # Initialize without full startup to avoid dependencies
                 self._ai_orchestrator._initialized = True
             except Exception as e:

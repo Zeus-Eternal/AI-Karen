@@ -1,4 +1,4 @@
-from ai_karen_engine.chat.ChatOrchestrator.mixins.core_mixin import ChatCoreMixin
+from ai_karen_engine.utils.chat_helpers import strip_internal_analysis_leakage
 
 
 def test_strip_internal_analysis_block_when_appended():
@@ -10,7 +10,7 @@ def test_strip_internal_analysis_block_when_appended():
         "This is NOT a complete meaningful response, the summary is cut off.\n"
     )
 
-    cleaned = ChatCoreMixin._strip_internal_analysis_leakage(content)
+    cleaned = strip_internal_analysis_leakage(content)
 
     assert cleaned == "Hello! How can I help with your project today?"
 
@@ -23,7 +23,7 @@ def test_strip_internal_analysis_only_content_to_empty():
         "This is NOT a complete meaningful response, the summary is cut off.\n"
     )
 
-    cleaned = ChatCoreMixin._strip_internal_analysis_leakage(content)
+    cleaned = strip_internal_analysis_leakage(content)
 
     assert cleaned == ""
 
@@ -31,6 +31,6 @@ def test_strip_internal_analysis_only_content_to_empty():
 def test_preserve_normal_summary_text():
     content = "In summary:\nUse a single DB transaction and return early on validation errors."
 
-    cleaned = ChatCoreMixin._strip_internal_analysis_leakage(content)
+    cleaned = strip_internal_analysis_leakage(content)
 
     assert cleaned == content

@@ -26,7 +26,9 @@ from ai_karen_engine.core.services.base import BaseService, ServiceConfig
 
 # Try to import AI Orchestrator
 try:
-    from ai_karen_engine.ai_orchestrator.ai_orchestrator import AIOrchestrator
+    from ai_karen_engine.core.langgraph_orchestrator import (
+        LangGraphOrchestrator as AIOrchestrator,
+    )
 
     HAS_AI_ORCHESTRATOR = True
 except ImportError:

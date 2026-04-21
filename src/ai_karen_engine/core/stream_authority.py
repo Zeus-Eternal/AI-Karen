@@ -22,7 +22,11 @@ import json
 from ..config.config_manager import get_config_manager
 from ..core.logging.logger import get_structured_logger
 from ..core.metrics_manager import get_metrics_manager
-from ..chat.stream_processor import AsyncStreamProcessor, StreamChunk, StreamStatus
+from ..services.streaming.stream_processor import (
+    AsyncStreamProcessor,
+    StreamChunk,
+    StreamStatus,
+)
 from ..core.chat_runtime_control_plane import (
     get_chat_runtime_control_plane,
     ChatRuntimeControlPlane,

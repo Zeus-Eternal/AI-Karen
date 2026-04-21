@@ -31,14 +31,14 @@ from ..core.langgraph_orchestrator import (
     get_default_orchestrator,
     LangGraphOrchestrator,
 )
-from ai_karen_engine.services.auth_utils import get_current_user
-from ai_karen_engine.chat.ChatOrchestrator import (
-    ChatRequest as CanonicalChatRequest,
-    ChatResponse as CanonicalChatResponse,
+from ai_karen_engine.memory.internal.auth_utils import get_current_user
+from ai_karen_engine.models.shared_types import (
+    CanonicalChatRequest,
+    CanonicalChatResponse,
     ChatStreamChunk,
     ProcessingStatus,
 )
-from ai_karen_engine.chat.factory import get_chat_orchestrator
+from ai_karen_engine.core.langgraph_orchestrator import get_default_orchestrator
 from ai_karen_engine.monitoring.metrics_service import get_metrics_service
 
 logger = logging.getLogger(__name__)

@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional
 import logging
-from ..contracts.runtime_request import MedusaRuntimeRequest
+from ..contracts.runtime_request import RuntimeRequest
 from ..contracts.deep_execution_plan import DeepExecutionPlan, PlanStep, StepStatus
 
 logger = logging.getLogger(__name__)
@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 class MedusaPlanner:
     """The planning specialist that constructs the initial execution strategy"""
     
-    async def create_plan(self, request: MedusaRuntimeRequest) -> DeepExecutionPlan:
+    async def create_plan(self, request: RuntimeRequest) -> DeepExecutionPlan:
         """Parses the user query and generates a multi-step plan"""
         logger.debug(f"Medusa Planner -> Creating plan for request {request.request_id}")
         

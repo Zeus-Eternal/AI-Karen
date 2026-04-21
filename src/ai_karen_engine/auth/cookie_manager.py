@@ -7,7 +7,7 @@ from typing import Optional
 
 from fastapi import Response
 
-from ai_karen_engine.services import auth_utils
+from ai_karen_engine.memory.internal import auth_utils
 
 
 @dataclass(frozen=True)

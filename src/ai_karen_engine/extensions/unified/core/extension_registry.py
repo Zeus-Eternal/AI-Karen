@@ -15,11 +15,11 @@ import json
 import uuid
 from enum import Enum
 
-from .database_models import ExtensionModel, ExtensionState
-from .manifest import ExtensionManifest
-from ..platform.core.registry.database_service import DatabaseService
-from ..platform.core.registry.discovery import ExtensionDiscovery
-from ..platform.core.registry.manifest_enforcer import ManifestEnforcer
+from ..database_models import ExtensionModel, ExtensionState
+from ..manifest import ExtensionManifest
+from ...platform.core.registry.database_service import ExtensionDatabaseService
+from ...platform.core.registry.discovery import ExtensionDiscoveryService
+from ...platform.core.registry.manifest_enforcer import ManifestStandardsEnforcer
 
 logger = logging.getLogger(__name__)
 
@@ -27,10 +27,10 @@ logger = logging.getLogger(__name__)
 class ExtensionRegistry:
     """Unified extension registry with database persistence and discovery."""
 
-    def __init__(self, database_service: Optional[DatabaseService] = None):
-        self.database_service = database_service or DatabaseService()
-        self.discovery = ExtensionDiscovery()
-        self.manifest_enforcer = ManifestEnforcer()
+    def __init__(self, database_service: Optional[ExtensionDatabaseService] = None):
+        self.database_service = database_service or ExtensionDatabaseService()
+        self.discovery = ExtensionDiscoveryService()
+        self.manifest_enforcer = ManifestStandardsEnforcer()
         self._cache: Dict[str, ExtensionModel] = {}
         self._lock = asyncio.Lock()
 

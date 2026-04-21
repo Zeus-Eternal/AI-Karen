@@ -36,12 +36,12 @@ from ..core.response.factory import (
 )
 from ..core.response.scheduler_manager import AutonomousConfig
 from ..core.response.config import PipelineConfig
-from ..chat.chat_orchestrator import (
-    ChatOrchestrator,
-    ChatRequest as LegacyChatRequest,
-    ChatResponse as LegacyChatResponse,
+from ..core.langgraph_orchestrator import LangGraphOrchestrator
+from ..models.shared_types import (
+    CanonicalChatRequest,
+    CanonicalChatResponse,
 )
-from ..chat.ChatOrchestrator import normalize_session_id as normalize_chat_session_id
+from ..utils.chat_helpers import normalize_session_id
 from ai_karen_engine.memory.internal.auth_utils import get_current_user
 from ..core.dependencies import bypass_user_context_func
 
@@ -498,12 +498,12 @@ class TrainingResponse(BaseModel):
 
 
 # Dependency functions
-async def get_chat_orchestrator() -> ChatOrchestrator:
+async def get_chat_orchestrator() -> LangGraphOrchestrator:
     """Get existing chat orchestrator instance"""
     # Import here to avoid circular dependencies
-    from ..chat.factory import get_chat_orchestrator as get_factory_chat_orchestrator
+    from ..core.langgraph_orchestrator import get_default_orchestrator
 
-    return await get_factory_chat_orchestrator()
+    return await get_default_orchestrator()
 
 
 def get_response_orchestrator(

@@ -18,7 +18,11 @@ ConfigDict = _ConfigDictStub
 Field = _FieldStub
 
 try:
-    from pydantic import BaseModel as PydanticBaseModel, ConfigDict as PydanticConfigDict, Field as PydanticField
+    from pydantic import (
+        BaseModel as PydanticBaseModel,
+        ConfigDict as PydanticConfigDict,
+        Field as PydanticField,
+    )
 except ImportError:
     pass
 else:
@@ -33,10 +37,10 @@ from ai_karen_engine.models.web_api_error_responses import (
     create_service_error_response,
     get_http_status_for_error_code,
 )
-from ai_karen_engine.services.ai_orchestrator.ai_orchestrator import (
-    AIOrchestrator,
-    FlowType,
+from ai_karen_engine.core.langgraph_orchestrator import (
+    LangGraphOrchestrator as AIOrchestrator,
 )
+from ai_karen_engine.ai_orchestrator.ai_orchestrator import FlowType
 from ai_karen_engine.utils.flow_helpers import build_flow_input, format_flow_response
 
 # Temporarily disable auth imports for web UI integration
@@ -229,7 +233,7 @@ async def conversation_processing(
                 "tenant_id": "default",  # Use default tenant for Web UI API
             }
         )
-        
+
         # Add LLM preferences to context for proper fallback hierarchy
         if request.llm_preferences:
             context["llm_preferences"] = request.llm_preferences

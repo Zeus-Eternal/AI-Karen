@@ -9,8 +9,9 @@ from .contracts import (
     RuntimeRequest,
     RuntimeResponse,
     ExecutionAction,
-    PolicyContract,
-    ArbitrationContract,
+    MedusaRuntimePolicy,
+    ArbitrationRequest,
+    ArbitrationDecision,
     SubagentContract,
     DeepExecutionPlan,
 )
@@ -34,8 +35,9 @@ __all__ = [
     "RuntimeRequest",
     "RuntimeResponse",
     "ExecutionAction",
-    "PolicyContract",
-    "ArbitrationContract",
+    "MedusaRuntimePolicy",
+    "ArbitrationRequest",
+    "ArbitrationDecision",
     "SubagentContract",
     "DeepExecutionPlan",
     # Core Components

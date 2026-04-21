@@ -28,7 +28,7 @@ src/ai_karen_engine/copilotkit/
 #### 1. Data Models (`models.py`)
 
 **AgentTask Model**
-- Properties: session_id, thread_id, task_type, content, context, execution_mode, priority, timeout_seconds, created_at, updated_at, user_id, tenant_id, status
+- Properties: session_id, thread_id, task_type, content, context, priority, timeout_seconds, created_at, updated_at, user_id, tenant_id, status
 - Validation: Content validation, context size limits, priority clamping
 - Serialization: Support for both `model_dump()` and `dict()` methods
 - Type Safety: All optional properties properly handled
@@ -41,7 +41,6 @@ src/ai_karen_engine/copilotkit/
 - `AgentUIServiceError`: Standardized error responses
 
 **Enums**
-- `ExecutionMode`: NATIVE, LANGGRAPH, DEEPAGENT, AUTO
 - `TaskType`: CONVERSATION, TEXT_TRANSFORM, CODE_GENERATION, CODE_REFACTOR, CODE_AUDIT, RESEARCH, ANALYSIS, DOCUMENTATION, DEBUGGING, CUSTOM
 - `TaskStatus`: PENDING, RUNNING, COMPLETED, FAILED, CANCELLED
 
@@ -55,12 +54,9 @@ src/ai_karen_engine/copilotkit/
 - **Task History**: Provides access to completed and active tasks
 - **Active Tasks Management**: Lists currently running tasks for monitoring
 
-**Execution Mode Handling**
-- **Automatic Mode Selection**: Determines best execution mode based on task complexity:
-  - Simple conversation/text tasks → Native mode
-  - Complex code tasks with context → LangGraph mode
-  - Refactor/audit/research tasks → DeepAgents mode
-- **Manual Override**: Supports explicit execution mode specification
+**Runtime Routing**
+- **Unified Runtime**: All tasks route to unified runtime (LangGraph/ChatOrchestrator)
+- **No Mode Selection**: System automatically routes to canonical runtime without mode selection
 
 **Integration Points**
 - Designed to integrate with existing AI Karen Engine services
@@ -128,7 +124,7 @@ src/ai_karen_engine/copilotkit/
 - **Thread Manager Tests**: Thread lifecycle and metadata operations
 - **Session State Manager Tests**: State persistence and field operations
 - **Safety Middleware Tests**: Content validation and authorization checks
-- **Execution Mode Tests**: Automatic mode selection logic
+- **Runtime Integration Tests**: Unified runtime routing validation
 - **Task Duration Tests**: Estimation algorithm validation
 - **Integration Tests**: End-to-end workflow testing
 

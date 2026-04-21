@@ -590,7 +590,6 @@ class AgentUIService:
                         "task_type": task.task_type,
                         "status": task.status,
                         "content": content_preview,
-                        "execution_mode": task.execution_mode,
                         "created_at": task.created_at,
                         "updated_at": task.updated_at,
                         "progress": progress.model_dump() if progress else None,

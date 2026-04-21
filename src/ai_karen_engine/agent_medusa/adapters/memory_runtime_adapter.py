@@ -1,7 +1,7 @@
 from typing import Any, Dict, List, Optional
 import logging
 from ..contracts.execution_action import ExecutionAction, ActionType
-from ...memory.memory_service import get_memory_service # Verify path
+from ai_karen_engine.core.dependencies import get_memory_service
 
 logger = logging.getLogger(__name__)
 

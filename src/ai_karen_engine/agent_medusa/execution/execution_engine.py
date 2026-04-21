@@ -21,7 +21,7 @@ from .execution_policy import (
     execution_policy,
 )
 from ..contracts.execution_action import ExecutionAction
-from ..contracts.runtime_response import RuntimeResponse, RuntimeStatus
+from ..contracts.runtime_response import RuntimeResponse, ResponseStatus
 
 logger = logging.getLogger(__name__)
 

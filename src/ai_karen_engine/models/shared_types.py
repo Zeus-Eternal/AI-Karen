@@ -23,6 +23,37 @@ class MessageRole(str, Enum):
     SYSTEM = "system"
 
 
+class ProcessingStatus(str, Enum):
+    """Refined status tracking for long-running chat operations."""
+    INITIALIZING = "initializing"
+    PROCESSING = "processing"
+    EXTRACTING_CONTEXT = "extracting_context"
+    GENERATING_RESPONSE = "generating_response"
+    STREAMING = "streaming"
+    EXECUTING_TOOLS = "executing_tools"
+    RECORDING_MEMORY = "recording_memory"
+    POST_PROCESSING = "post_processing"
+    COMPLETED = "completed"
+    DEGRADED = "degraded"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+    RETRYING = "retrying"
+
+
+class ErrorType(str, Enum):
+    """Categorized processing failures for structured reporting."""
+    NLP_PARSING_ERROR = "nlp_parsing_error"
+    CONTEXT_RETRIEVAL_ERROR = "context_retrieval_error"
+    AI_MODEL_ERROR = "ai_model_error"
+    TOOL_EXECUTION_ERROR = "tool_execution_error"
+    MEMORY_STORAGE_ERROR = "memory_storage_error"
+    TIMEOUT_ERROR = "timeout_error"
+    AUTHENTICATION_ERROR = "auth_error"
+    EMBEDDING_ERROR = "embedding_error"
+    REQUEST_CANCELLED = "request_cancelled"
+    UNKNOWN_ERROR = "unknown_error"
+
+
 class MemoryDepth(str, Enum):
     """Enum for memory depth settings."""
     SHORT = "short"
@@ -246,3 +277,67 @@ class KarenEnhancedOutput(BaseModel):
     ai_data: Optional[AiData] = Field(None, description="AI metadata")
     proactive_suggestion: Optional[str] = Field(None, description="Proactive suggestion")
     suggested_new_facts: Optional[List[str]] = Field(None, description="Suggested new facts")
+
+
+class RetryConfig(BaseModel):
+    """Strategy for handling transient processing failures."""
+    max_attempts: int = Field(3, description="Maximum number of retry attempts")
+    initial_delay: float = Field(1.0, description="Initial delay between retries in seconds")
+    backoff_factor: float = Field(2.0, description="Multiplier for exponential backoff")
+    exponential_backoff: bool = Field(True, description="Whether to use exponential backoff")
+    max_delay: float = Field(10.0, description="Maximum delay between retries in seconds")
+
+
+class ChatStreamChunk(BaseModel):
+    """Granular output chunk for streaming responses."""
+    model_config = ConfigDict(protected_namespaces=())
+
+    type: str = Field(..., description="Chunk type: 'content', 'status', 'error', 'complete'")
+    content: str = Field("", description="The text fragment or status update")
+    correlation_id: str = Field(..., description="Request tracking identifier")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Optional chunk metadata")
+
+
+class CanonicalChatRequest(BaseModel):
+    # ... (skipping for brevity in thought, but I must provide full new_string in tool call)
+    """Input payload for the canonical chat orchestration runtime."""
+    model_config = ConfigDict(protected_namespaces=())
+
+    request_id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="Stable request identifier")
+    correlation_id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="Cross-service correlation identifier")
+    tenant_id: Optional[str] = Field(None, description="Tenant identifier when available")
+    message: str = Field(..., description="The user's message content")
+    user_id: str = Field(..., description="Unique user identifier")
+    org_id: Optional[str] = Field(None, description="Organization or Tenant ID")
+    conversation_id: str = Field(..., description="Active conversation context ID")
+    session_id: Optional[str] = Field(None, description="Optional session tracking ID")
+    message_id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="Stable user message identifier")
+    attachments: List[Dict[str, Any]] = Field(default_factory=list, description="Associated file or media links")
+    include_context: bool = Field(True, description="Whether to perform RAG recall")
+    metadata: Dict[str, Any] = Field(default_factory=list, description="Additional request-specific metadata")
+    streaming: bool = Field(False, description="Whether to return a stream generator")
+    stream: bool = Field(False, description="Alias for streaming")
+    created_at: datetime = Field(default_factory=datetime.utcnow, description="Request creation timestamp")
+
+
+class CanonicalChatResponse(BaseModel):
+    """Terminal output from the canonical orchestration runtime."""
+    model_config = ConfigDict(protected_namespaces=())
+
+    request_id: Optional[str] = Field(None, description="Source request identifier")
+    response: str = Field(..., description="The final generated response")
+    correlation_id: str = Field(..., description="Request tracking identifier")
+    conversation_id: Optional[str] = Field(None, description="Conversation identifier")
+    assistant_message_id: Optional[str] = Field(None, description="Persisted assistant message identifier")
+    processing_time: float = Field(..., description="Total execution time in seconds")
+    status: ProcessingStatus = Field(..., description="Terminal processing state")
+    used_fallback: bool = Field(False, description="Whether a fallback model was used")
+    context_used: bool = Field(False, description="Whether RAG context was utilized")
+    execution_path: Optional[str] = Field(None, description="Execution path selected by the orchestrator")
+    structured_content: Dict[str, Any] = Field(default_factory=dict, description="Rich JSON output or application state")
+    actions: List[Dict[str, Any]] = Field(default_factory=list, description="Suggested or triggered automation actions")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Detailed execution and model metadata")
+    telemetry: Dict[str, Any] = Field(default_factory=dict, description="Telemetry payload for frontend/runtime inspection")
+    error: Optional[str] = Field(None, description="Error message if failed")
+    error_type: Optional[ErrorType] = Field(None, description="Error classification")
+    created_at: datetime = Field(default_factory=datetime.utcnow, description="Response creation timestamp")

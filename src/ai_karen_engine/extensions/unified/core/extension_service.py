@@ -16,7 +16,7 @@ from .extension_permissions import ExtensionPermissions
 from .extension_health_monitor import ExtensionHealthMonitor
 from .extension_lifecycle_manager import ExtensionLifecycleManager
 from .extension_config import ExtensionConfigManager
-from ..platform.core.host.loader import ExtensionContext
+from ...platform.core.host.loader import ExtensionContext
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +80,7 @@ class ExtensionService:
         """Install a new extension."""
         try:
             # Create manifest
-            from .manifest import ExtensionManifest
+            from ..manifest import ExtensionManifest
 
             manifest = ExtensionManifest.from_dict(manifest_data)
 
@@ -332,7 +332,7 @@ class ExtensionService:
     ) -> ExtensionServiceResult:
         """List all extensions."""
         try:
-            from .database_models import ExtensionState
+            from ..database_models import ExtensionState
 
             # Convert state string to enum
             state_enum = None

@@ -197,7 +197,7 @@ class HelperModels:
             self.distilbert = nlp_service_manager
 
             # Initialize spaCy for NLP
-            from ai_karen_engine.services.spacy_service import get_spacy_service
+            from ai_karen_engine.memory.spacy_service import get_spacy_service
             self.spacy = get_spacy_service()
 
             self._initialized = True

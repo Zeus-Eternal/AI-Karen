@@ -32,8 +32,8 @@ from ai_karen_engine.models.shared_types import (
     FlowOutput,
     FlowType,
 )
-from ai_karen_engine.services.ai_orchestrator.decision_engine import DecisionEngine
-from ai_karen_engine.services.ai_orchestrator.flow_manager import FlowManager
+from ai_karen_engine.core.langgraph_orchestrator import DecisionEngine
+from ai_karen_engine.ai_orchestrator.flow_manager import FlowManager
 from ai_karen_engine.memory.small_language_model_service import (
     SmallLanguageModelService,
 )

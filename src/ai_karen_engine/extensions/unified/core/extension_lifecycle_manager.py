@@ -13,8 +13,8 @@ from datetime import datetime, timezone
 from enum import Enum
 import uuid
 
-from .database_models import ExtensionModel, ExtensionState
-from ..platform.core.host.lifecycle_manager import LifecycleState, LifecycleEvent
+from ..database_models import ExtensionModel, ExtensionState
+
 
 logger = logging.getLogger(__name__)
 

@@ -13,12 +13,12 @@ import logging
 import sys
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Set, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
-from .manifest import ExtensionManifest
-from .database_models import ExtensionModel, ExtensionState
-from ..platform.core.host.loader import ExtensionContext
+from ..manifest import ExtensionManifest
+from ..database_models import ExtensionModel, ExtensionState
+from ...platform.core.host.loader import ExtensionContext
 
 logger = logging.getLogger(__name__)
 

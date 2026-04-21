@@ -2,8 +2,8 @@ from typing import Any, Dict, List, Optional
 import logging
 import asyncio
 
-from ..contracts.runtime_request import MedusaRuntimeRequest
-from ..contracts.runtime_response import MedusaRuntimeResponse, ResponseStatus
+from ..contracts.runtime_request import RuntimeRequest
+from ..contracts.runtime_response import RuntimeResponse, ResponseStatus
 from ..contracts.deep_execution_plan import DeepExecutionPlan, PlanStep, StepStatus
 from ..planning.medusa_planner import MedusaPlanner
 from ..specialists.analyst_specialist import AnalystSpecialist
@@ -30,7 +30,7 @@ class MedusaCoordinator:
         self.extension_adapter = ExtensionRuntimeAdapter()
         self.memory_adapter = MemoryRuntimeAdapter()
 
-    async def handle_request(self, request: MedusaRuntimeRequest) -> MedusaRuntimeResponse:
+    async def handle_request(self, request: RuntimeRequest) -> RuntimeResponse:
         """Main entry point: Creates a plan, executes it via specialists, and returns a response"""
         logger.info(f"Medusa Coordinator -> Handling request {request.request_id}")
         
@@ -56,7 +56,7 @@ class MedusaCoordinator:
             # Extract final answer from context (simplified)
             final_content = "Medusa execution complete. Final synthesis placeholder."
             
-            return MedusaRuntimeResponse(
+            return RuntimeResponse(
                 request_id=request.request_id,
                 status=ResponseStatus.SUCCESS,
                 content=final_content,
@@ -65,13 +65,13 @@ class MedusaCoordinator:
             
         except Exception as e:
             logger.error(f"Medusa Coordinator Error: {str(e)}", exc_info=True)
-            return MedusaRuntimeResponse(
+            return RuntimeResponse(
                 request_id=request.request_id,
                 status=ResponseStatus.ERROR,
                 content=f"An error occurred during execution: {str(e)}"
             )
 
-    async def _execute_step(self, step: PlanStep, plan: DeepExecutionPlan, request: MedusaRuntimeRequest):
+    async def _execute_step(self, step: PlanStep, plan: DeepExecutionPlan, request: RuntimeRequest):
         """Dispatches a step to a specialist agent and handles the result"""
         logger.info(f"Medusa Coordinator -> Executing Step: {step.description} via {step.agent_specialist}")
         step.status = StepStatus.RUNNING

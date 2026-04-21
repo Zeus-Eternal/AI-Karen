@@ -40,10 +40,10 @@ def _get_service_classes():
         logger.info("🔍 DEBUG: Attempting to import service classes...")
         try:
             classes["AIOrchestrator"] = __import__(
-                "ai_karen_engine.ai_orchestrator.ai_orchestrator",
-                fromlist=["AIOrchestrator"],
-            ).AIOrchestrator
-            logger.info("✅ AIOrchestrator imported successfully")
+                "ai_karen_engine.core.langgraph_orchestrator",
+                fromlist=["LangGraphOrchestrator"],
+            ).LangGraphOrchestrator
+            logger.info("✅ AIOrchestrator (LangGraph) imported successfully")
         except Exception as e:
             logger.warning(f"AIOrchestrator import failed: {e}")
             classes["AIOrchestrator"] = None
@@ -88,7 +88,7 @@ def _get_service_classes():
 
         try:
             classes["ToolService"] = __import__(
-                "ai_karen_engine.memory.tool_service", fromlist=["ToolService"]
+                "ai_karen_engine.services.tool_service", fromlist=["ToolService"]
             ).ToolService
             logger.info("✅ ToolService imported successfully")
         except Exception as e:
@@ -97,7 +97,7 @@ def _get_service_classes():
 
         try:
             classes["AnalyticsService"] = __import__(
-                "ai_karen_engine.memory.analytics_service",
+                "ai_karen_engine.services.analytics_service",
                 fromlist=["AnalyticsService"],
             ).AnalyticsService
             logger.info("✅ AnalyticsService imported successfully")

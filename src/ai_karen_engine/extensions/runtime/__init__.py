@@ -12,7 +12,7 @@ Contains engine-facing runtime behavior for extensions including:
 - service_recovery: Extension service recovery
 """
 
-from .extension_registry import ExtensionRegistry
+from ..unified.core.extension_registry import ExtensionRegistry
 from .extension_loader import ExtensionLoader
 from .extension_executor import ExtensionExecutor
 from .extension_monitor import ExtensionMonitor

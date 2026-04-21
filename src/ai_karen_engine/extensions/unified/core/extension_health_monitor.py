@@ -15,8 +15,8 @@ from enum import Enum
 import threading
 import psutil
 
-from .database_models import ExtensionModel, ExtensionHealth
-from ..platform.core.registry.health_dashboard import HealthDashboard
+from ..database_models import ExtensionModel, ExtensionHealth
+from ...platform.core.registry.health_dashboard import HealthDashboardService
 
 logger = logging.getLogger(__name__)
 

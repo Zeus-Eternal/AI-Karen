@@ -143,11 +143,10 @@ async def get_conversation_service() -> Any:
     """Discovery for Conversation service with complex legacy mapping support."""
 
     async def factory():
-        from ai_karen_engine.chat.factory import get_chat_service_factory
         from ai_karen_engine.memory.conversation_service import ConversationService
         from ai_karen_engine.memory.memory_service import WebUIMemoryService
 
-        factory_inst = get_chat_service_factory()
+        factory_inst = None
         base_manager = factory_inst.create_conversation_manager()
         memory_service = factory_inst.create_memory_service() or WebUIMemoryService()
 

@@ -1,0 +1,185 @@
+{
+  "active_profile": "default",
+  "profiles": [
+    {
+      "name": "default",
+      "description": "Balanced profile for general use with good performance and privacy",
+      "router_policy": {
+        "privacy_level": "standard",
+        "performance_preference": "balanced",
+        "cost_preference": "balanced",
+        "context_awareness": true,
+        "fallback_strategy": "graceful"
+      },
+      "guardrails": {
+        "content_filtering": true,
+        "pii_detection": true,
+        "toxicity_filtering": true,
+        "code_execution_safety": true,
+        "max_tokens_per_request": 4096,
+        "rate_limit_per_minute": 60,
+        "allowed_capabilities": [
+          "code",
+          "reasoning",
+          "text"
+        ]
+      },
+      "memory_budget": {
+        "max_context_length": 8192,
+        "max_concurrent_requests": 5,
+        "memory_limit_mb": 2048,
+        "gpu_memory_fraction": 0.8,
+        "enable_kv_cache": true,
+        "cache_size_mb": 512
+      },
+      "provider_preferences": {
+        "chat": "openai",
+        "code": "deepseek",
+        "reasoning": "openai",
+        "embedding": "openai",
+        "vision": "gemini",
+        "local_fallback": "local",
+        "privacy_tasks": "local"
+      },
+      "created_at": 1776753649.1095526,
+      "updated_at": 1776753649.1095529,
+      "is_active": true,
+      "is_system": true
+    },
+    {
+      "name": "privacy",
+      "description": "Privacy-focused profile using local models when possible",
+      "router_policy": {
+        "privacy_level": "high",
+        "performance_preference": "balanced",
+        "cost_preference": "low",
+        "context_awareness": true,
+        "fallback_strategy": "graceful"
+      },
+      "guardrails": {
+        "content_filtering": true,
+        "pii_detection": true,
+        "toxicity_filtering": true,
+        "code_execution_safety": true,
+        "max_tokens_per_request": 4096,
+        "rate_limit_per_minute": 60,
+        "allowed_capabilities": [
+          "code",
+          "reasoning",
+          "text"
+        ]
+      },
+      "memory_budget": {
+        "max_context_length": 8192,
+        "max_concurrent_requests": 5,
+        "memory_limit_mb": 2048,
+        "gpu_memory_fraction": 0.8,
+        "enable_kv_cache": true,
+        "cache_size_mb": 512
+      },
+      "provider_preferences": {
+        "chat": "local",
+        "code": "local",
+        "reasoning": "local",
+        "embedding": "local",
+        "vision": "local",
+        "local_fallback": "local",
+        "privacy_tasks": "local"
+      },
+      "created_at": 1776753649.1095562,
+      "updated_at": 1776753649.1095562,
+      "is_active": false,
+      "is_system": true
+    },
+    {
+      "name": "performance",
+      "description": "High-performance profile optimized for speed and quality",
+      "router_policy": {
+        "privacy_level": "low",
+        "performance_preference": "quality",
+        "cost_preference": "high",
+        "context_awareness": true,
+        "fallback_strategy": "graceful"
+      },
+      "guardrails": {
+        "content_filtering": true,
+        "pii_detection": true,
+        "toxicity_filtering": true,
+        "code_execution_safety": true,
+        "max_tokens_per_request": 4096,
+        "rate_limit_per_minute": 60,
+        "allowed_capabilities": [
+          "code",
+          "reasoning",
+          "text"
+        ]
+      },
+      "memory_budget": {
+        "max_context_length": 16384,
+        "max_concurrent_requests": 10,
+        "memory_limit_mb": 4096,
+        "gpu_memory_fraction": 0.8,
+        "enable_kv_cache": true,
+        "cache_size_mb": 512
+      },
+      "provider_preferences": {
+        "chat": "openai",
+        "code": "deepseek",
+        "reasoning": "openai",
+        "embedding": "openai",
+        "vision": "gemini",
+        "local_fallback": "openai",
+        "privacy_tasks": "openai"
+      },
+      "created_at": 1776753649.1095593,
+      "updated_at": 1776753649.1095593,
+      "is_active": false,
+      "is_system": true
+    },
+    {
+      "name": "cost-optimized",
+      "description": "Cost-optimized profile using efficient models and local execution",
+      "router_policy": {
+        "privacy_level": "standard",
+        "performance_preference": "speed",
+        "cost_preference": "low",
+        "context_awareness": true,
+        "fallback_strategy": "graceful"
+      },
+      "guardrails": {
+        "content_filtering": true,
+        "pii_detection": true,
+        "toxicity_filtering": true,
+        "code_execution_safety": true,
+        "max_tokens_per_request": 2048,
+        "rate_limit_per_minute": 30,
+        "allowed_capabilities": [
+          "code",
+          "reasoning",
+          "text"
+        ]
+      },
+      "memory_budget": {
+        "max_context_length": 4096,
+        "max_concurrent_requests": 5,
+        "memory_limit_mb": 1024,
+        "gpu_memory_fraction": 0.8,
+        "enable_kv_cache": true,
+        "cache_size_mb": 512
+      },
+      "provider_preferences": {
+        "chat": "local",
+        "code": "local",
+        "reasoning": "local",
+        "embedding": "huggingface",
+        "vision": "local",
+        "local_fallback": "local",
+        "privacy_tasks": "local"
+      },
+      "created_at": 1776753649.1095634,
+      "updated_at": 1776753649.1095634,
+      "is_active": false,
+      "is_system": true
+    }
+  ]
+}

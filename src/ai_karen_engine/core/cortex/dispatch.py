@@ -24,7 +24,7 @@ from ai_karen_engine.core.plugin_metrics import (
 )
 from ai_karen_engine.core.cortex.errors import CortexDispatchError, UnsupportedIntentError
 from ai_karen_engine.core.predictors import predictor_registry, run_predictor
-from ai_karen_engine.plugins.manager import get_plugin_manager
+from ai_karen_engine.extensions.platform.core.integration.manager import get_plugin_manager
 
 # Import RBAC validator (Phase 2 - architectural compliance)
 try:

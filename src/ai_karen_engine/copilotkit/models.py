@@ -149,7 +149,6 @@ class AgentTask:
     context: Dict[str, Any] = field(default_factory=dict)
     task_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     thread_id: Optional[str] = None
-    execution_mode: ExecutionMode = ExecutionMode.LANGGRAPH
     priority: int = 5
     timeout_seconds: Optional[int] = None
     created_at: datetime = field(default_factory=_utcnow)
@@ -171,9 +170,6 @@ class AgentTask:
         if isinstance(self.task_type, str):
             self.task_type = TaskType(self.task_type)
 
-        if isinstance(self.execution_mode, str):
-            self.execution_mode = ExecutionMode(self.execution_mode)
-
         if isinstance(self.status, str):
             self.status = TaskStatus(self.status)
 
@@ -194,7 +190,6 @@ class SendMessageRequest:
     content: str
     task_type: TaskType = TaskType.CONVERSATION
     context: Dict[str, Any] = field(default_factory=dict)
-    execution_mode: ExecutionMode = ExecutionMode.AUTO
     user_id: Optional[str] = None
     tenant_id: Optional[str] = None
 
@@ -208,9 +203,6 @@ class SendMessageRequest:
 
         if isinstance(self.task_type, str):
             self.task_type = TaskType(self.task_type)
-
-        if isinstance(self.execution_mode, str):
-            self.execution_mode = ExecutionMode(self.execution_mode)
 
     def model_dump(self, **kwargs: Any) -> Dict[str, Any]:
         return asdict(self)
@@ -226,14 +218,9 @@ class SendMessageResponse:
     success: bool = True
     task_id: Optional[str] = None
     content: str = ""
-    execution_mode: ExecutionMode = ExecutionMode.LANGGRAPH
     execution_metadata: Dict[str, Any] = field(default_factory=dict)
     thread_id: Optional[str] = None
     timestamp: datetime = field(default_factory=_utcnow)
-
-    def __post_init__(self) -> None:
-        if isinstance(self.execution_mode, str):
-            self.execution_mode = ExecutionMode(self.execution_mode)
 
     def model_dump(self, **kwargs: Any) -> Dict[str, Any]:
         return asdict(self)
@@ -395,7 +382,9 @@ class GetTaskProgressResponse:
                 elif isinstance(step, dict):
                     normalized_steps.append(TaskStep(**step))
                 else:
-                    raise ValueError("steps must contain TaskStep objects or dictionaries")
+                    raise ValueError(
+                        "steps must contain TaskStep objects or dictionaries"
+                    )
             self.steps = normalized_steps
 
     def model_dump(self, **kwargs: Any) -> Dict[str, Any]:

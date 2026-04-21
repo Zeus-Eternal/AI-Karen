@@ -6,21 +6,17 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from ai_karen_engine.chat.code_execution_service import (
+from ai_karen_engine.services.code_execution_service import (
     CodeExecutionRequest,
     CodeExecutionResponse,
     CodeExecutionService,
     CodeLanguage,
     SecurityLevel,
-)
-from ai_karen_engine.chat.dependencies import (
     get_code_execution_service,
-    get_tool_integration_service,
-)
-from ai_karen_engine.chat.tool_integration_service import (
+    ToolIntegrationService,
     ToolExecutionContext,
     ToolExecutionResult,
-    ToolIntegrationService,
+    get_tool_integration_service,
 )
 from ai_karen_engine.core.dependencies import bypass_user_context_func
 from ai_karen_engine.core.logging import get_logger

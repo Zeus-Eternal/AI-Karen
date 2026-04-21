@@ -1,7 +1,7 @@
 from typing import Dict, Any, List
 import logging
 from .coordinator.medusa_coordinator import MedusaCoordinator
-from .contracts.runtime_request import MedusaRuntimeRequest
+from .contracts.runtime_request import RuntimeRequest
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ async def medusa_node(state: Dict[str, Any]) -> Dict[str, Any]:
     if messages:
         query = messages[-1].content if hasattr(messages[-1], "content") else str(messages[-1])
         
-    request = MedusaRuntimeRequest(
+    request = RuntimeRequest(
         query=query,
         session_id=state.get("session_id", "unknown"),
         user_id=state.get("user_id"),

@@ -10,9 +10,9 @@ The Agent UI Service acts as the bridge between the CoPilot UI and the agent arc
 
 ### Core Models (`models.py`)
 
-- **AgentTask**: Core task model with properties like session_id, thread_id, task_type, content, context, execution_mode
+- **AgentTask**: Core task model with properties like session_id, thread_id, task_type, content, context, priority
 - **Request/Response Models**: SendMessageRequest/Response, CreateDeepTaskRequest/Response, GetTaskProgressRequest/Response, CancelTaskRequest/Response
-- **Enums**: ExecutionMode, TaskType, TaskStatus
+- **Enums**: TaskType, TaskStatus
 - **TaskStep**: Model for individual task execution steps
 - **AgentUIServiceError**: Error model for service operations
 
@@ -20,7 +20,7 @@ The Agent UI Service acts as the bridge between the CoPilot UI and the agent arc
 
 Main service class that:
 - Translates UI interactions to AgentTask objects
-- Determines appropriate execution mode (Native, LangGraph, DeepAgents)
+- Routes all tasks to unified runtime (LangGraph/ChatOrchestrator)
 - Executes tasks and manages progress
 - Handles task cancellation
 - Provides task history and active task management
@@ -78,12 +78,9 @@ response = await agent_ui_service.send_message(
 
 ## Features
 
-### Execution Modes
+### Runtime Routing
 
-1. **Native Mode**: For simple tasks like text transformation and basic conversations
-2. **LangGraph Mode**: For multi-step workflows requiring state management
-3. **DeepAgents Mode**: For complex tasks requiring planning and subagent orchestration
-4. **Auto Mode**: Automatically determines the best mode based on task complexity
+All tasks are routed to the unified runtime (LangGraph/ChatOrchestrator) without mode selection. The system acts as a thin boundary layer between UI and runtime.
 
 ### Task Types
 

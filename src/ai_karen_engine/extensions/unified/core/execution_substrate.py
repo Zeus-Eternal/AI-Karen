@@ -24,7 +24,7 @@ from concurrent.futures import (
     TimeoutError as ConcurrentTimeoutError,
 )
 
-from .database_models import ExtensionModel
+from ..database_models import ExtensionModel
 
 logger = logging.getLogger(__name__)
 

@@ -161,6 +161,14 @@ class AIProcessingError(KarenError):
             self.details["prompt"] = prompt[:100] + "..." if len(prompt) > 100 else prompt
 
 
+class LLMResponseVerificationError(AIProcessingError):
+    """Exception raised when an LLM response fails validation or is empty."""
+    
+    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+        super().__init__(message, details=details)
+        self.metadata = details or {}
+
+
 class RateLimitError(KarenError):
     """Raised when rate limits are exceeded."""
     

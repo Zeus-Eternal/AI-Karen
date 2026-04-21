@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from ai_karen_engine.services.ai_orchestrator.ai_orchestrator import (
+from ai_karen_engine.ai_orchestrator.ai_orchestrator import (
     FlowInput,
     FlowOutput,
 )

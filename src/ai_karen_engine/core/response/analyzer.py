@@ -44,7 +44,7 @@ except Exception:  # pragma: no cover
     def retry_if_exception_type(*_): return None
 
 from ai_karen_engine.core.response.protocols import Analyzer
-from ai_karen_engine.services.spacy_service import SpacyService, ParsedMessage
+from ai_karen_engine.memory.spacy_service import SpacyService, ParsedMessage
 from ai_karen_engine.models.persona_models import SYSTEM_PERSONAS
 
 logger = logging.getLogger(__name__)

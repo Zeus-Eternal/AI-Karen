@@ -664,6 +664,29 @@ def create_nlp_service_factory():
     return factory
 
 
+def create_chat_orchestrator_factory():
+    """Factory for Chat orchestrator service (LangGraph-based)."""
+
+    def factory():
+        logger.info("🔍 DEBUG: Creating Chat orchestrator factory instance...")
+        try:
+            from ai_karen_engine.core.langgraph_orchestrator import (
+                get_default_orchestrator,
+            )
+
+            service = get_default_orchestrator()
+            logger.info("✅ Chat orchestrator factory created successfully")
+            return service
+        except Exception as e:
+            logger.error(
+                f"❌ Failed to create Chat orchestrator factory: {e}", exc_info=True
+            )
+            # Re-use AI orchestrator factory logic if it fails or return mock
+            return create_ai_orchestrator_factory()()
+
+    return factory
+
+
 def create_ai_orchestrator_factory():
     """Factory for AI orchestrator service."""
 
@@ -671,11 +694,11 @@ def create_ai_orchestrator_factory():
         logger.info("🔍 DEBUG: Creating AI orchestrator factory instance...")
         try:
             from ai_karen_engine.core.services.base import ServiceConfig
-            from ai_karen_engine.ai_orchestrator.ai_orchestrator import (
-                AIOrchestrator,
+            from ai_karen_engine.core.langgraph_orchestrator import (
+                LangGraphOrchestrator,
             )
 
-            service = AIOrchestrator(
+            service = LangGraphOrchestrator(
                 ServiceConfig(name="ai_orchestrator", dependencies=[], config={})
             )
             logger.info("✅ AI orchestrator factory created successfully")
@@ -718,15 +741,19 @@ def create_memory_service_factory():
 def create_conversation_service_factory():
     async def factory():
         from ai_karen_engine.memory.conversation_service import ConversationService
-        from ai_karen_engine.chat.factory import get_chat_service_factory
+        from ai_karen_engine.database.conversation_manager import ConversationManager
+        from ai_karen_engine.database.client import MultiTenantPostgresClient
 
-        factory = get_chat_service_factory()
-        base_manager = await factory.create_conversation_manager()
-        memory_service = (
-            factory.get_service("memory_service") or factory.create_memory_service()
-        )
+        # Get memory service from lazy registry
+        memory_service = await lazy_registry.get_service_instance("memory_service")
+
+        # Create database client and conversation manager
+        db_client = MultiTenantPostgresClient()
+        conversation_manager = ConversationManager(db_client=db_client)
+
         return ConversationService(
-            base_conversation_manager=base_manager, memory_service=memory_service
+            base_conversation_manager=conversation_manager,
+            memory_service=memory_service,
         )
 
     return factory
@@ -872,11 +899,11 @@ class LazyServiceManager:
             return NLPServiceManager()
         elif name == "ai_orchestrator":
             from ai_karen_engine.core.services.base import ServiceConfig
-            from ai_karen_engine.ai_orchestrator.ai_orchestrator import (
-                AIOrchestrator,
+            from ai_karen_engine.core.langgraph_orchestrator import (
+                LangGraphOrchestrator,
             )
 
-            return AIOrchestrator(
+            return LangGraphOrchestrator(
                 ServiceConfig(name="ai_orchestrator", dependencies=[], config={})
             )
         elif name == "analytics_service":

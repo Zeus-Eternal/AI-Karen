@@ -40,7 +40,9 @@ from ai_karen_engine.models.web_api_error_responses import (
 )
 from ai_karen_engine.database.schema_validator import validate_and_migrate_schema
 from ai_karen_engine.memory.internal.web_ui_api import WebUITransformationService
-from ai_karen_engine.ai_orchestrator.ai_orchestrator import AIOrchestrator
+from ai_karen_engine.core.langgraph_orchestrator import (
+    LangGraphOrchestrator as AIOrchestrator,
+)
 from ai_karen_engine.memory.memory_service import (
     WebUIMemoryService,
     UISource,

@@ -1,7 +1,7 @@
 from typing import Any, Dict, Optional
 import logging
-from ...auth.auth_service import AuthService # Verify path
-from ...auth.session import SessionManager # Verify path
+# from ...auth.auth_service import AuthService # Verify path
+# from ...auth.session import SessionManager # Verify path
 
 logger = logging.getLogger(__name__)
 

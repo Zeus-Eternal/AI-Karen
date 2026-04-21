@@ -24,9 +24,11 @@ from ai_karen_engine.core.chat_runtime_control_plane import (
 )
 from ai_karen_engine.core.degraded_mode import generate_degraded_mode_response
 from ai_karen_engine.core.dependencies import bypass_user_context_func
-from ai_karen_engine.chat.ChatOrchestrator import (
-    ChatRequest,
-    ChatResponse,
+from ai_karen_engine.models.shared_types import (
+    CanonicalChatRequest,
+    CanonicalChatResponse,
+)
+from ai_karen_engine.utils.chat_helpers import (
     normalize_session_id as _normalize_session_id,
     resolve_user_context as _resolve_user_context,
     json_safe as _json_safe,
@@ -550,22 +552,24 @@ def _build_degraded_assist_response(
     )
 
 
-from ai_karen_engine.chat.ChatOrchestrator import (
-    ChatRequest,
-    ChatResponse,
-    normalize_session_id as _normalize_session_id,
-    resolve_user_context as _resolve_user_context,
-    json_safe as _json_safe,
-    is_production_env as _is_production_env,
+from ai_karen_engine.models.shared_types import (
+    CanonicalChatRequest,
+    CanonicalChatResponse,
+)
+from ai_karen_engine.utils.chat_helpers import (
+    normalize_session_id,
+    resolve_user_context,
+    json_safe,
+    is_production_env,
 )
 
 
 async def _get_chat_orchestrator():
-    """Return the ChatOrchestrator for processing chat requests."""
+    """Return the LangGraphOrchestrator for processing chat requests."""
     try:
-        from ai_karen_engine.chat.factory import get_chat_orchestrator
+        from ai_karen_engine.core.langgraph_orchestrator import get_default_orchestrator
 
-        orchestrator = await get_chat_orchestrator()
+        orchestrator = await get_default_orchestrator()
         logger.info(
             "Successfully retrieved ChatOrchestrator", extra={"correlation_id": "debug"}
         )

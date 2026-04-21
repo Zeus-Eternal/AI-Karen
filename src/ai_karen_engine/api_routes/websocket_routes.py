@@ -27,11 +27,10 @@ from fastapi import (
 )
 from fastapi.responses import StreamingResponse
 
-from ai_karen_engine.chat.chat_orchestrator import ChatOrchestrator, ChatRequest
-from ai_karen_engine.chat.stream_processor import (
-    AsyncStreamProcessor as StreamProcessor,
-)
-from ai_karen_engine.chat.websocket_gateway import WebSocketGateway
+from ai_karen_engine.core.langgraph_orchestrator import LangGraphOrchestrator
+from ai_karen_engine.models.shared_types import CanonicalChatRequest
+from ai_karen_engine.services.streaming.stream_processor import AsyncStreamProcessor
+from ai_karen_engine.services.streaming.websocket_gateway import WebSocketGateway
 from ai_karen_engine.core.chat_runtime_control_plane import (
     get_chat_runtime_control_plane,
     RuntimeMode,
@@ -59,7 +58,7 @@ logger = logging.getLogger(__name__)
 
 # Global instances (will be initialized by dependency injection)
 websocket_gateway: Optional[WebSocketGateway] = None
-stream_processor: Optional[StreamProcessor] = None
+stream_processor: Optional[AsyncStreamProcessor] = None
 chat_orchestrator: Optional[ChatOrchestrator] = None
 
 router = APIRouter(tags=["websocket"])
@@ -135,13 +134,11 @@ class StreamMetricsResponse(BaseModel):
 
 # Dependency injection functions
 @lru_cache
-async def get_chat_orchestrator() -> ChatOrchestrator:
+async def get_chat_orchestrator() -> LangGraphOrchestrator:
     """Create or return the chat orchestrator instance."""
-    from ai_karen_engine.chat.factory import (
-        get_chat_orchestrator as get_factory_chat_orchestrator,
-    )
+    from ai_karen_engine.core.langgraph_orchestrator import get_default_orchestrator
 
-    return await get_factory_chat_orchestrator()
+    return await get_default_orchestrator()
 
 
 @lru_cache
@@ -151,9 +148,9 @@ def get_websocket_gateway() -> WebSocketGateway:
 
 
 @lru_cache
-def get_stream_processor() -> StreamProcessor:
+def get_stream_processor() -> AsyncStreamProcessor:
     """Get stream processor instance."""
-    return StreamProcessor()
+    return AsyncStreamProcessor()
 
 
 async def get_current_user_websocket(websocket: WebSocket) -> Dict[str, Any]:
@@ -423,7 +420,7 @@ async def websocket_model_events_endpoint(
 async def stream_chat_sse(
     request: StreamChatRequest,
     http_request: Request,
-    processor: StreamProcessor = Depends(get_stream_processor),
+    processor: AsyncStreamProcessor = Depends(get_stream_processor),
 ) -> EventSourceResponse:
     """
     Server-Sent Events endpoint for streaming chat responses.
@@ -576,7 +573,7 @@ async def model_events_sse(
 async def stream_chat_http(
     request: StreamChatRequest,
     http_request: Request,
-    processor: StreamProcessor = Depends(get_stream_processor),
+    processor: AsyncStreamProcessor = Depends(get_stream_processor),
 ) -> StreamingResponse:
     """
     HTTP streaming endpoint for streaming chat responses.
@@ -608,7 +605,7 @@ async def stream_chat_http(
 # Stream management endpoints
 @router.get("/stream/{session_id}/status", response_model=StreamStatusResponse)
 async def get_stream_status(
-    session_id: str, processor: StreamProcessor = Depends(get_stream_processor)
+    session_id: str, processor: AsyncStreamProcessor = Depends(get_stream_processor)
 ):
     """Get status information for a streaming session."""
     status = await processor.get_stream_status(session_id)
@@ -621,7 +618,7 @@ async def get_stream_status(
 
 @router.post("/stream/{session_id}/pause")
 async def pause_stream(
-    session_id: str, processor: StreamProcessor = Depends(get_stream_processor)
+    session_id: str, processor: AsyncStreamProcessor = Depends(get_stream_processor)
 ):
     """Pause a streaming session."""
     success = await processor.pause_stream(session_id)
@@ -634,7 +631,7 @@ async def pause_stream(
 
 @router.post("/stream/{session_id}/resume")
 async def resume_stream(
-    session_id: str, processor: StreamProcessor = Depends(get_stream_processor)
+    session_id: str, processor: AsyncStreamProcessor = Depends(get_stream_processor)
 ):
     """Resume a paused streaming session."""
     success = await processor.resume_stream(session_id)
@@ -647,7 +644,7 @@ async def resume_stream(
 
 @router.post("/stream/{session_id}/cancel")
 async def cancel_stream(
-    session_id: str, processor: StreamProcessor = Depends(get_stream_processor)
+    session_id: str, processor: AsyncStreamProcessor = Depends(get_stream_processor)
 ):
     """Cancel a streaming session."""
     success = await processor.cancel_stream(session_id)
@@ -664,7 +661,7 @@ async def recover_stream(
     from_sequence: Optional[int] = Query(
         None, description="Sequence number to resume from"
     ),
-    processor: StreamProcessor = Depends(get_stream_processor),
+    processor: AsyncStreamProcessor = Depends(get_stream_processor),
 ):
     """Recover an interrupted streaming session."""
     success = await processor.recover_stream(session_id, from_sequence)
@@ -689,7 +686,7 @@ async def get_websocket_stats(
 
 @router.get("/stream/metrics", response_model=StreamMetricsResponse)
 async def get_stream_metrics(
-    processor: StreamProcessor = Depends(get_stream_processor),
+    processor: AsyncStreamProcessor = Depends(get_stream_processor),
 ):
     """Get streaming performance metrics."""
     metrics = processor.get_performance_metrics()
@@ -708,7 +705,7 @@ async def get_stream_metrics(
 
 @router.get("/stream/active")
 async def list_active_streams(
-    processor: StreamProcessor = Depends(get_stream_processor),
+    processor: AsyncStreamProcessor = Depends(get_stream_processor),
 ):
     """List all active streaming sessions."""
     active_streams = await processor.list_active_streams()
@@ -810,7 +807,7 @@ async def get_conversation_connections(
 @router.get("/health")
 async def websocket_health_check(
     gateway: WebSocketGateway = Depends(get_websocket_gateway),
-    processor: StreamProcessor = Depends(get_stream_processor),
+    processor: AsyncStreamProcessor = Depends(get_stream_processor),
 ):
     """Health check for WebSocket services."""
     try:

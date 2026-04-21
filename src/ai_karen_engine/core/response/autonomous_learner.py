@@ -20,7 +20,7 @@ import tempfile
 import shutil
 
 from ai_karen_engine.core.response.analyzer import SpacyAnalyzer
-from ai_karen_engine.services.spacy_service import SpacyService, ParsedMessage
+from ai_karen_engine.memory.spacy_service import SpacyService, ParsedMessage
 from ai_karen_engine.memory.memory_service import WebUIMemoryService
 from ai_karen_engine.memory.unified_memory_service import MemoryCommitRequest, MemoryQueryRequest
 
