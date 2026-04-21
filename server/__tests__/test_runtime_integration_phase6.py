@@ -3,7 +3,7 @@ Runtime Integration Tests - Phase 6.
 
 Tests for runtime integration between CopilotKit and various runtime systems:
 1. LangGraph orchestrator integration
-2. LangGraphOrchestrator integration
+2. ChatOrchestrator integration
 3. Unified runtime adapter pattern validation
 """
 
@@ -19,7 +19,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 from ai_karen_engine.copilotkit.agent_ui_service import AgentUIService
 from ai_karen_engine.copilotkit.models import SendMessageRequest, TaskType
 from ai_karen_engine.agents.adapters.langgraph_adapter import LangGraphAdapter
-from ai_karen_engine.core.langgraph_orchestrator import LangGraphOrchestrator
+from ai_karen_engine.core.langgraph_orchestrator.langgraph_orchestrator import ChatOrchestrator
 
 
 class TestLangGraphOrchestratorIntegration:
@@ -133,16 +133,16 @@ class TestLangGraphOrchestratorIntegration:
         assert "State persistence test" in response.content
 
 
-class TestLangGraphOrchestratorIntegration:
-    """Test integration with LangGraphOrchestrator."""
+class TestChatOrchestratorIntegration:
+    """Test integration with ChatOrchestrator."""
 
     @pytest.fixture
     def mock_chat_orchestrator(self):
-        """Mock LangGraphOrchestrator for testing."""
-        orchestrator = Mock(spec=LangGraphOrchestrator)
+        """Mock ChatOrchestrator for testing."""
+        orchestrator = Mock(spec=ChatOrchestrator)
         orchestrator.process_message = AsyncMock(
             return_value={
-                "content": "LangGraphOrchestrator result",
+                "content": "ChatOrchestrator result",
                 "metadata": {"runtime": "chat_orchestrator", "processed": True},
             }
         )
@@ -150,33 +150,33 @@ class TestLangGraphOrchestratorIntegration:
 
     @pytest.fixture
     def agent_ui_service_with_chat_orchestrator(self, mock_chat_orchestrator):
-        """Agent UI service with LangGraphOrchestrator adapter."""
+        """Agent UI service with ChatOrchestrator adapter."""
         return AgentUIService(runtime_adapter=mock_chat_orchestrator)
 
     async def test_chat_orchestrator_execution(
         self, agent_ui_service_with_chat_orchestrator, mock_chat_orchestrator
     ):
-        """Test that tasks are executed through LangGraphOrchestrator."""
+        """Test that tasks are executed through ChatOrchestrator."""
         request = SendMessageRequest(
             session_id="test_session",
-            content="Process through LangGraphOrchestrator",
+            content="Process through ChatOrchestrator",
             task_type=TaskType.CONVERSATION,
         )
 
         response = await agent_ui_service_with_chat_orchestrator.send_message(request)
 
-        # Verify LangGraphOrchestrator was called
+        # Verify ChatOrchestrator was called
         mock_chat_orchestrator.process_message.assert_called_once()
 
-        # Verify response contains LangGraphOrchestrator metadata
+        # Verify response contains ChatOrchestrator metadata
         assert response.success == True
-        assert "LangGraphOrchestrator result" in response.content
+        assert "ChatOrchestrator result" in response.content
         assert response.execution_metadata["runtime"] == "chat_orchestrator"
 
     async def test_chat_orchestrator_context_handling(
         self, agent_ui_service_with_chat_orchestrator, mock_chat_orchestrator
     ):
-        """Test context handling with LangGraphOrchestrator."""
+        """Test context handling with ChatOrchestrator."""
         request = SendMessageRequest(
             session_id="test_session",
             content="Context test",
@@ -194,10 +194,10 @@ class TestLangGraphOrchestratorIntegration:
     async def test_chat_orchestrator_error_handling(
         self, agent_ui_service_with_chat_orchestrator, mock_chat_orchestrator
     ):
-        """Test error handling when LangGraphOrchestrator fails."""
-        # Mock LangGraphOrchestrator to raise an error
+        """Test error handling when ChatOrchestrator fails."""
+        # Mock ChatOrchestrator to raise an error
         mock_chat_orchestrator.process_message = AsyncMock(
-            side_effect=Exception("LangGraphOrchestrator error")
+            side_effect=Exception("ChatOrchestrator error")
         )
 
         request = SendMessageRequest(
@@ -210,7 +210,7 @@ class TestLangGraphOrchestratorIntegration:
 
         # Verify error is handled gracefully
         assert response.success == False
-        assert "LangGraphOrchestrator error" in response.content
+        assert "ChatOrchestrator error" in response.content
 
 
 class TestUnifiedRuntimeAdapterPattern:
@@ -358,7 +358,7 @@ class TestRuntimeCompatibility:
         chat_orchestrator = Mock()
         chat_orchestrator.process_message = AsyncMock(
             return_value={
-                "content": "LangGraphOrchestrator result",
+                "content": "ChatOrchestrator result",
                 "metadata": {"runtime": "chat_orchestrator"},
             }
         )

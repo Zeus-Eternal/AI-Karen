@@ -1,106 +1,44 @@
-"""
-Context Manager Adapter
+from typing import Optional, Any
+import logging
+from ai_karen_engine.memory.memory_service import WebUIMemoryService
+from .context_manager import ContextManager
 
-Provides interfaces and data models for context management in the LangGraph orchestrator.
-"""
+logger = logging.getLogger(__name__)
 
-from typing import Optional, Any, Dict, List
-from enum import Enum
-from dataclasses import dataclass, field
-from datetime import datetime
+async def resolve_memory_service(orchestrator_instance: Any) -> Optional[Any]:
+    """Resolve the shared memory service via the service registry if possible."""
 
+    if (getattr(orchestrator_instance, "_memory_service", None) is not None or 
+        getattr(orchestrator_instance, "_memory_resolution_failed", False)):
+        return orchestrator_instance._memory_service
 
-class ContextErrorType(str, Enum):
-    """Context error types."""
+    try:
+        from ai_karen_engine.core.service_registry import (
+            get_memory_service,
+        )  # Lazy import
 
-    NOT_FOUND = "not_found"
-    VALIDATION_ERROR = "validation_error"
-    INTEGRATION_ERROR = "integration_error"
-    PERMISSION_DENIED = "permission_denied"
+        orchestrator_instance._memory_service = await get_memory_service()
+    except Exception as exc:  # pragma: no cover - optional dependency
+        if not getattr(orchestrator_instance, "_memory_resolution_failed", False):
+            logger.warning("Memory service unavailable: %s", exc)
+        try:
+            orchestrator_instance._memory_service = WebUIMemoryService()
+            logger.info("Fell back to direct WebUIMemoryService initialization")
+        except Exception as fallback_exc:  # pragma: no cover - optional dependency
+            logger.warning(
+                "Direct memory service fallback unavailable: %s", fallback_exc
+            )
+            orchestrator_instance._memory_resolution_failed = True
+            orchestrator_instance._memory_service = None
 
+    return orchestrator_instance._memory_service
 
-class ContextError(Exception):
-    """Context management error."""
+async def ensure_context_manager(orchestrator_instance: Any) -> ContextManager:
+    """Return a context manager bound to the configured memory service."""
 
-    def __init__(
-        self,
-        message: str,
-        error_type: ContextErrorType,
-        context_id: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None,
-    ):
-        super().__init__(message)
-        self.message = message
-        self.error_type = error_type
-        self.context_id = context_id
-        self.details = details or {}
+    if getattr(orchestrator_instance, "_context_manager", None) is not None:
+        return orchestrator_instance._context_manager
 
-
-@dataclass
-class ContextFile:
-    """Context file data model."""
-
-    file_id: str
-    filename: str
-    file_type: str
-    file_size: int
-    mime_type: str
-    content_hash: str
-    upload_status: "FileUploadStatus"
-    upload_timestamp: datetime
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    storage_path: Optional[str] = None
-
-
-class FileUploadStatus(str, Enum):
-    """File upload status enumeration."""
-
-    PENDING = "pending"
-    PROCESSING = "processing"
-    COMPLETED = "completed"
-    FAILED = "failed"
-
-
-@dataclass
-class ContextData:
-    """Context data container."""
-
-    context_id: str
-    files: List[ContextFile] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass
-class ContextResponse:
-    """Response from context operations."""
-
-    success: bool
-    context_data: Optional[ContextData] = None
-    error_message: Optional[str] = None
-
-
-@dataclass
-class ContextUpdateRequest:
-    """Request to update context."""
-
-    files: Optional[List[ContextFile]] = None
-    metadata: Optional[Dict[str, Any]] = None
-
-
-class ContextManager:
-    """Context management interface."""
-
-    def __init__(self, memory_service: Optional[Any] = None):
-        self.memory_service = memory_service
-
-    async def get_context(self, context_id: str) -> ContextResponse:
-        """Get context by ID."""
-        # TODO: Implement based on memory service
-        return ContextResponse(success=False, error_message="Not implemented")
-
-    async def update_context(
-        self, context_id: str, request: ContextUpdateRequest
-    ) -> ContextResponse:
-        """Update context."""
-        # TODO: Implement based on memory service
-        return ContextResponse(success=False, error_message="Not implemented")
+    memory_service = await resolve_memory_service(orchestrator_instance)
+    orchestrator_instance._context_manager = ContextManager(memory_service)
+    return orchestrator_instance._context_manager
