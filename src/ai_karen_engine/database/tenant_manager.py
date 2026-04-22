@@ -22,8 +22,8 @@ from ai_karen_engine.database.models import (
     TenantConversation,
     TenantMemoryEntry,
 )
-from ai_karen_engine.core.milvus_client import MilvusClient
-from ai_karen_engine.core.embedding_manager import EmbeddingManager
+from ai_karen_engine.core.model_runtime.milvus_client import MilvusClient
+from ai_karen_engine.core.model_runtime.embedding_manager import EmbeddingManager
 
 logger = logging.getLogger(__name__)
 

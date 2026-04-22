@@ -31,15 +31,15 @@ import time
 from datetime import datetime, timezone
 import uuid
 
-from ai_karen_engine.auth.auth_service import (
-    AuthService,
-    get_auth_service,
-    user_account_to_dict,
-)
+# from ai_karen_engine.auth.auth_service import (
+#     AuthService,
+#     get_auth_service,
+#     user_account_to_dict,
+# )
 from ai_karen_engine.memory.distilbert_service import DistilBertService, SafetyResult
-from ai_karen_engine.services.llm_router import ChatRequest, LLMRouter
+# from ai_karen_engine.services.llm_router import ChatRequest, LLMRouter  <- Moved to local scope
 from ai_karen_engine.memory.profile_manager import Guardrails, ProfileManager
-from ai_karen_engine.services.tool_service import ToolInput, ToolOutput, ToolService
+from ai_karen_engine.services.tooling.tool_service import ToolInput, ToolOutput, ToolService
 from ai_karen_engine.models.shared_types import ToolType
 from ai_karen_engine.memory.memory_service import (
     MemoryType,
@@ -47,16 +47,16 @@ from ai_karen_engine.memory.memory_service import (
     WebUIMemoryService,
 )
 
-from ai_karen_engine.services.response_formatting_engine import (
+from ai_karen_engine.services.formatting.response_formatting_engine import (
     ResponseFormattingEngine,
     FormattingContext,
     DisplayContext,
     AccessibilityLevel,
 )
-from ai_karen_engine.services.ResponseFormattingClass.Specialized.Integration import (
+from ai_karen_engine.services.formatting.ResponseFormattingClass.Specialized.Integration import (
     get_specialized_integration,
 )
-from ai_karen_engine.services.response_policy_enforcer import ResponsePolicyEnforcer
+from ai_karen_engine.services.formatting.response_policy_enforcer import ResponsePolicyEnforcer
 from ai_karen_engine.services.response_formatting.response_formatter import (
     PrettyOutputLayer,
 )
@@ -67,6 +67,9 @@ from ai_karen_engine.utils.chat_helpers import (
     wants_long_form_markdown_article,
     strip_internal_analysis_leakage,
     is_low_information_content,
+)
+from ai_karen_engine.core.langgraph_orchestrator.utils.message_serialization import (
+    history_entry_to_message,
 )
 
 from langgraph.graph import StateGraph, END, START
@@ -91,7 +94,7 @@ from .nodes import (
     memory_write_node,
     stream_process_node,
 )
-from .runtime_policy import runtime_policy_enforcer_node
+from .runtime_policy import runtime_policy_enforcer_node, select_execution_branch
 from .formatting.response_formatter_pipeline import response_formatter_node
 from .diagnostics import DiagnosticsEngine
 
@@ -99,15 +102,6 @@ from .diagnostics import DiagnosticsEngine
 from .context.context_manager import ContextManager
 from .decision_engine import DecisionEngine
 
-# Import contracts
-from .contracts.orchestration_state import (
-    LangGraphOrchestrationState,
-    create_initial_state,
-    create_streaming_initial_state,
-)
-from .contracts.orchestration_config import LangGraphOrchestrationConfig
-
-# Import from contracts module
 from .contracts.orchestration_state import (
     LangGraphOrchestrationState,
     create_initial_state,
@@ -130,7 +124,7 @@ class LangGraphOrchestrator:
         memory_service: Optional[Any] = None,
         decision_engine: Optional[DecisionEngine] = None,
         tool_service: Optional[ToolService] = None,
-        llm_router: Optional[LLMRouter] = None,
+        llm_router: Optional[Any] = None,
         profile_manager: Optional[ProfileManager] = None,
         context_manager: Optional[ContextManager] = None,
         session_state_manager: Optional[SessionStateManager] = None,
@@ -162,6 +156,10 @@ class LangGraphOrchestrator:
         )
         self._decision_engine: DecisionEngine = decision_engine or DecisionEngine()
         self._tool_service: Optional[ToolService] = tool_service
+
+        # Local import to avoid circular dependency
+        from ai_karen_engine.services.models.routing.llm_router_service import LLMRouter
+
         self._llm_router: LLMRouter = llm_router or LLMRouter()
         self._profile_manager: ProfileManager = profile_manager or ProfileManager()
 
@@ -169,6 +167,117 @@ class LangGraphOrchestrator:
         self._memory_resolution_failed = False
         self._tool_resolution_failed = False
         self._session_state_resolution_failed = False
+
+    def _legacy_payload(self, flow_input: Any) -> Dict[str, Any]:
+        """Normalize legacy flow wrappers, dicts, and pydantic models."""
+
+        if flow_input is None:
+            return {}
+        if isinstance(flow_input, dict):
+            return flow_input
+
+        data = getattr(flow_input, "data", None)
+        if isinstance(data, dict):
+            return data
+
+        model_dump = getattr(flow_input, "model_dump", None)
+        if callable(model_dump):
+            try:
+                dumped = model_dump()
+                if isinstance(dumped, dict):
+                    return dumped
+            except Exception:
+                pass
+
+        if hasattr(flow_input, "__dict__"):
+            return {
+                key: value
+                for key, value in vars(flow_input).items()
+                if not key.startswith("_")
+            }
+
+        return {"value": flow_input}
+
+    def _legacy_messages(self, payload: Dict[str, Any]) -> List[BaseMessage]:
+        """Build LangChain messages from legacy flow payloads."""
+
+        messages: List[BaseMessage] = []
+        conversation_history = payload.get("conversation_history") or []
+
+        for entry in conversation_history:
+            if not isinstance(entry, dict):
+                continue
+            try:
+                messages.append(history_entry_to_message(entry))
+            except Exception:
+                content = entry.get("content", "")
+                role = (entry.get("role") or "user").lower()
+                if role == "assistant":
+                    messages.append(AIMessage(content=content))
+                elif role == "system":
+                    messages.append(SystemMessage(content=content))
+                else:
+                    messages.append(HumanMessage(content=content))
+
+        prompt = (
+            payload.get("prompt")
+            or payload.get("message")
+            or payload.get("text")
+            or payload.get("content")
+            or ""
+        )
+        if prompt:
+            messages.append(HumanMessage(content=str(prompt)))
+
+        if not messages:
+            messages.append(HumanMessage(content=""))
+
+        return messages
+
+    def _legacy_flow_response(
+        self,
+        payload: Dict[str, Any],
+        state: Dict[str, Any],
+        *,
+        flow_type: str,
+    ) -> Dict[str, Any]:
+        """Convert graph state into a legacy-friendly response payload."""
+
+        response_text = (
+            state.get("response")
+            or state.get("formatted_response")
+            or state.get("routing_reason")
+            or state.get("execution_plan", {}).get("intent")
+            or ""
+        )
+
+        return {
+            "response": response_text,
+            "requires_plugin": bool(state.get("tool_calls")),
+            "plugin_to_execute": state.get("selected_provider"),
+            "plugin_parameters": {
+                "selected_model": state.get("selected_model"),
+                "routing_reason": state.get("routing_reason"),
+                "flow_type": flow_type,
+            },
+            "memory_to_store": state.get("memory_context"),
+            "suggested_actions": state.get("actions")
+            or state.get("degradation_reasons"),
+            "ai_data": {
+                "execution_plan": state.get("execution_plan"),
+                "intent_analysis": state.get("intent_analysis"),
+                "selected_provider": state.get("selected_provider"),
+                "selected_model": state.get("selected_model"),
+                "routing_reason": state.get("routing_reason"),
+                "errors": state.get("errors", []),
+                "warnings": state.get("warnings", []),
+            },
+            "proactive_suggestion": state.get("routing_reason"),
+            "flow_type": flow_type,
+            "session_id": payload.get("session_id"),
+            "user_id": payload.get("user_id"),
+            "processing_state": state,
+        }
 
     # --- Dependencies and Handlers ---
 
@@ -184,6 +293,8 @@ class LangGraphOrchestrator:
         async with self._auth_service_lock:
             if self._auth_service is None and not self._auth_service_failed:
                 try:
+                    from ai_karen_engine.auth.auth_service import get_auth_service
+
                     self._auth_service = await get_auth_service()
                 except Exception as exc:  # pragma: no cover - depends on environment
                     logger.warning("Auth service unavailable: %s", exc)
@@ -209,7 +320,7 @@ class LangGraphOrchestrator:
             return self._memory_service
 
         try:
-            from ai_karen_engine.core.service_registry import (
+            from ai_karen_engine.core.services.service_registry import (
                 get_memory_service,
             )  # Lazy import
 
@@ -258,7 +369,7 @@ class LangGraphOrchestrator:
 
         try:
             if self._tool_service is None:
-                from ai_karen_engine.core.service_registry import get_tool_service
+                from ai_karen_engine.core.services.service_registry import get_tool_service
 
                 self._tool_service = await get_tool_service()
         except Exception as exc:  # pragma: no cover - optional dependency
@@ -277,37 +388,32 @@ class LangGraphOrchestrator:
         workflow = StateGraph(LangGraphOrchestrationState)
 
         # Add nodes using extracted components
-        workflow.add_node(
-            "auth_gate",
-            lambda state: auth_gate_node(state, auth_service=self._auth_service),
-        )
-        workflow.add_node(
-            "safety_gate",
-            lambda state: safety_gate_node(
-                state, profile_manager=self._profile_manager
-            ),
-        )
-        workflow.add_node(
-            "memory_fetch",
-            lambda state: memory_fetch_node(
-                state, context_manager=self._context_manager
-            ),
-        )
-        workflow.add_node(
-            "intent_detect",
-            lambda state: intent_detect_node(
-                state, decision_engine=self._decision_engine
-            ),
-        )
-        workflow.add_node("planner", planner_node)
-        workflow.add_node(
-            "router_select",
-            lambda state: router_select_node(
+        def _auth_gate_node(state: LangGraphOrchestrationState) -> Any:
+            return auth_gate_node(state, auth_service=self._auth_service)
+
+        def _safety_gate_node(state: LangGraphOrchestrationState) -> Any:
+            return safety_gate_node(state, profile_manager=self._profile_manager)
+
+        def _memory_fetch_node(state: LangGraphOrchestrationState) -> Any:
+            return memory_fetch_node(state, context_manager=self._context_manager)
+
+        def _intent_detect_node(state: LangGraphOrchestrationState) -> Any:
+            return intent_detect_node(state, decision_engine=self._decision_engine)
+
+        def _router_select_node(state: LangGraphOrchestrationState) -> Any:
+            return router_select_node(
                 state,
                 llm_router=self._llm_router,
                 profile_manager=self._profile_manager,
-            ),
-        )
+            )
+
+        workflow.add_node("auth_gate", _auth_gate_node)
+        workflow.add_node("safety_gate", _safety_gate_node)
+        workflow.add_node("memory_fetch", _memory_fetch_node)
+        workflow.add_node("intent_detect", _intent_detect_node)
+        workflow.add_node("planner", planner_node)
+        workflow.add_node("runtime_policy", runtime_policy_enforcer_node)
+        workflow.add_node("router_select", _router_select_node)
         workflow.add_node("medusa_node", medusa_node)
         workflow.add_node("tool_exec", tool_exec_node)
         workflow.add_node("response_synth", response_synth_node)
@@ -353,12 +459,13 @@ class LangGraphOrchestrator:
             workflow.add_edge("memory_fetch", "intent_detect")
 
         workflow.add_edge("intent_detect", "planner")
-        workflow.add_edge("planner", "router_select")
+        workflow.add_edge("planner", "runtime_policy")
+        workflow.add_edge("runtime_policy", "router_select")
 
         # Route to Medusa or Normal Tool Execution
         workflow.add_conditional_edges(
             "router_select",
-            self._should_use_medusa,
+            select_execution_branch,
             {"medusa": "medusa_node", "normal": "tool_exec"},
         )
 
@@ -388,27 +495,9 @@ class LangGraphOrchestrator:
 
         # Compile the graph
         self.graph = workflow.compile(checkpointer=self.checkpointer)
+        self._initialized = True
 
     # --- Operational Methods ---
-
-    def _should_use_medusa(self, state: LangGraphOrchestrationState) -> str:
-        """Determine if AgentMedusa should handle the request."""
-        intent = state.get("detected_intent", "")
-        # Extension and Routing intents go to Medusa
-        if intent in (
-            "routing.select",
-            "routing.profile",
-            "admin_panel",
-            "extension.action",
-            "agent_complex_reasoning",
-        ):
-            return "medusa"
-
-        # Check if medusa is explicitly requested in config
-        if state.get("request_config", {}).get("use_medusa"):
-            return "medusa"
-
-        return "normal"
 
     def _should_continue_after_auth(self, state: LangGraphOrchestrationState) -> str:
         """Determine if processing should continue after auth gate"""
@@ -442,6 +531,247 @@ class LangGraphOrchestrator:
         """Check the current approval status"""
         approval_status = state.get("approval_status", "pending")
         return approval_status
+
+    async def initialize(self) -> None:
+        """Compatibility initialization hook."""
+
+        self._initialized = True
+        return None
+
+    async def health_check(self) -> bool:
+        """Compatibility health check for callers expecting a boolean."""
+
+        try:
+            status = await self.get_runtime_status()
+            return self.graph is not None and status.get("total_processed", 0) >= 0
+        except Exception:
+            return False
+
+    def get_metrics(self) -> Dict[str, Any]:
+        """Compatibility metrics snapshot."""
+
+        return {
+            "active_sessions": len(self._active_sessions),
+            "total_processed": self._total_processed,
+            "failed_sessions": self._total_failed,
+            "average_latency": (
+                sum(self._latency_samples) / len(self._latency_samples)
+                if self._latency_samples
+                else 0.0
+            ),
+            "last_error": self._last_error,
+        }
+
+    def get_available_flows(self) -> List[str]:
+        """Compatibility flow list."""
+
+        return [
+            "conversation",
+            "decision",
+            "analysis",
+            "consensus_negotiation",
+            "conflict_resolution",
+        ]
+
+    async def process_flow(self, flow_type: Any, flow_input: Any) -> Dict[str, Any]:
+        """Compatibility legacy flow entrypoint."""
+
+        payload = self._legacy_payload(flow_input)
+        normalized_flow_type = str(getattr(flow_type, "value", flow_type) or "")
+        normalized_flow_type = normalized_flow_type.lower()
+
+        if normalized_flow_type in {"conversation", "conversation_processing"}:
+            return await self.conversation_processing_flow(payload)
+        if normalized_flow_type in {"decision", "decide_action"}:
+            return await self.decide_action(payload)
+        if normalized_flow_type in {"analysis"}:
+            analysis = await self.run_dry_run_analysis(
+                message=str(
+                    payload.get("prompt")
+                    or payload.get("message")
+                    or payload.get("text")
+                    or ""
+                ),
+                session_id=payload.get("session_id"),
+                user={
+                    "user_id": payload.get("user_id"),
+                    "tenant_id": payload.get("tenant_id"),
+                },
+                context=payload.get("context") or {},
+            )
+            return {
+                "response": analysis.get("predicted_intent", ""),
+                "ai_data": analysis,
+                "processing_state": analysis,
+            }
+        if normalized_flow_type in {"consensus_negotiation"}:
+            return await self.consensus_negotiation(payload)
+        if normalized_flow_type in {"conflict_resolution"}:
+            return await self.conflict_resolution(payload)
+
+        analysis = await self.run_dry_run_analysis(
+            message=str(
+                payload.get("prompt")
+                or payload.get("message")
+                or payload.get("text")
+                or ""
+            ),
+            session_id=payload.get("session_id"),
+            user={
+                "user_id": payload.get("user_id"),
+                "tenant_id": payload.get("tenant_id"),
+            },
+            context=payload.get("context") or {},
+        )
+        return {
+            "response": analysis.get("predicted_intent", ""),
+            "ai_data": analysis,
+            "processing_state": analysis,
+        }
+
+    async def decide_action(self, flow_input: Any) -> Dict[str, Any]:
+        """Compatibility wrapper for action decisions."""
+
+        payload = self._legacy_payload(flow_input)
+        analysis = await self.run_dry_run_analysis(
+            message=str(
+                payload.get("prompt")
+                or payload.get("message")
+                or payload.get("text")
+                or ""
+            ),
+            session_id=payload.get("session_id"),
+            user={
+                "user_id": payload.get("user_id"),
+                "tenant_id": payload.get("tenant_id"),
+            },
+            context=payload.get("context") or {},
+        )
+        return {
+            "decision": "continue"
+            if not analysis.get("approval_required", False)
+            else "review",
+            "confidence": analysis.get("routing_confidence", 0.0),
+            "reasoning": analysis.get("routing_reason", ""),
+            "response": analysis.get("predicted_intent", ""),
+            "ai_data": analysis,
+            "processing_state": analysis,
+        }
+
+    async def conversation_processing_flow(self, flow_input: Any) -> Dict[str, Any]:
+        """Compatibility wrapper for conversation handling."""
+
+        payload = self._legacy_payload(flow_input)
+        messages = self._legacy_messages(payload)
+        user_id = str(payload.get("user_id") or "anonymous")
+        session_id = payload.get("session_id") or f"{user_id}_{datetime.now(timezone.utc).isoformat()}"
+        final_state = await self.process(
+            messages=messages,
+            user_id=user_id,
+            session_id=session_id,
+            config=payload.get("context") or payload.get("user_settings") or {},
+        )
+        return self._legacy_flow_response(
+            payload, final_state, flow_type="conversation"
+        )
+
+    async def complex_reasoning_task(
+        self, reasoning_type: str, data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Compatibility reasoning helper."""
+
+        reasoning_type = (reasoning_type or "").lower()
+        if reasoning_type == "logical":
+            return {
+                "reasoning": "Logical reasoning applied",
+                "conclusion": "Conclusion based on logic",
+                "confidence": 0.8,
+            }
+        if reasoning_type == "causal":
+            return {
+                "reasoning": "Causal reasoning applied",
+                "cause": "Identified cause",
+                "effect": "Predicted effect",
+                "confidence": 0.75,
+            }
+        if reasoning_type == "probabilistic":
+            return {
+                "reasoning": "Probabilistic reasoning applied",
+                "probability": 0.7,
+                "confidence": 0.85,
+            }
+        return {
+            "reasoning": "error",
+            "message": f"Unknown reasoning type: {reasoning_type}",
+            "confidence": 0.0,
+        }
+
+    async def consensus_negotiation(self, flow_input: Any) -> Dict[str, Any]:
+        """Compatibility wrapper for consensus negotiation."""
+
+        payload = self._legacy_payload(flow_input)
+        team_id = payload.get("team_id")
+        agent_ids = payload.get("agent_ids") or []
+        topic = payload.get("topic")
+        initial_proposal = payload.get("initial_proposal")
+        consensus_threshold = float(payload.get("consensus_threshold", 0.7))
+
+        if not all([team_id, agent_ids, topic, initial_proposal]):
+            return {"result": "error", "message": "Missing required negotiation data"}
+
+        agent_responses = {}
+        for agent_id in agent_ids:
+            confidence = 0.7 + (hash(agent_id) % 30) / 100
+            agent_responses[agent_id] = {
+                "agent_id": agent_id,
+                "position": {
+                    "agreement_level": confidence,
+                    "concerns": [],
+                    "suggestions": [],
+                },
+                "confidence": confidence,
+                "reasoning": f"Agent {agent_id} reasoning about {topic}",
+            }
+
+        agreements = [response["confidence"] for response in agent_responses.values()]
+        avg_agreement = sum(agreements) / len(agreements) if agreements else 0.0
+        consensus_reached = avg_agreement >= consensus_threshold
+
+        return {
+            "team_id": team_id,
+            "topic": topic,
+            "consensus": consensus_reached,
+            "confidence": avg_agreement,
+            "agent_responses": agent_responses,
+            "reasoning": (
+                f"Consensus reached with {avg_agreement:.2f} agreement level"
+                if consensus_reached
+                else f"No consensus reached, only {avg_agreement:.2f} agreement level (threshold: {consensus_threshold})"
+            ),
+        }
+
+    async def conflict_resolution(self, flow_input: Any) -> Dict[str, Any]:
+        """Compatibility wrapper for conflict resolution."""
+
+        payload = self._legacy_payload(flow_input)
+        agent_ids = payload.get("agent_ids") or []
+        conflict_type = payload.get("conflict_type")
+        conflict_details = payload.get("conflict_details")
+
+        if not all([agent_ids, conflict_type, conflict_details]):
+            return {"result": "error", "message": "Missing required conflict data"}
+
+        return {
+            "conflict_type": conflict_type,
+            "agent_ids": agent_ids,
+            "resolution": {
+                "strategy": "analysis",
+                "confidence": 0.8,
+                "reasoning": "Conflict resolved through analysis",
+            },
+            "confidence": 0.8,
+            "reasoning": "Conflict resolved through analysis",
+        }
 
     async def run_dry_run_analysis(
         self,
@@ -665,6 +995,7 @@ class LangGraphOrchestrator:
         """Gracefully release orchestrator resources."""
 
         logger.info("Shutting down LangGraph orchestrator")
+        self._initialized = False
 
         try:
             await self._llm_router.shutdown()

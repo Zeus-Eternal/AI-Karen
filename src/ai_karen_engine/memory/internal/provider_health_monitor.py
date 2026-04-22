@@ -13,8 +13,8 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict
 from enum import Enum
 
-from ai_karen_engine.services.llm_router import ProviderHealth
-from ai_karen_engine.core.cache import get_provider_cache
+from ai_karen_engine.services.models.routing.llm_router_service import ProviderHealth
+from ai_karen_engine.core.services.cache import get_provider_cache
 
 logger = logging.getLogger(__name__)
 

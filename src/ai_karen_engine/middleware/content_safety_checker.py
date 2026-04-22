@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from dataclasses import dataclass, field
 from enum import Enum
 
-from ai_karen_engine.services.agent_safety_types import (
+from ai_karen_engine.services.safety.agent_safety_types import (
     SafetyLevel, RiskLevel, ValidationResult, ContentType
 )
 

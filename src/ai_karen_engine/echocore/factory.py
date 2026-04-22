@@ -11,6 +11,11 @@ from functools import lru_cache
 from ai_karen_engine.echocore.enhanced_echo_vault import EnhancedEchoVault
 from ai_karen_engine.echocore.enhanced_dark_tracker import EnhancedDarkTracker, PrivacyLevel
 from ai_karen_engine.echocore.production_fine_tuner import ProductionFineTuner, TrainingConfig
+from ai_karen_engine.echocore.bridge import DefaultRuntimeToEchoBridge
+from ai_karen_engine.echocore.contracts import (
+    DefaultEchoCoreManager,
+    EchoPolicyEngine,
+)
 from ai_karen_engine.echocore.echo_components import (
     EchoAnalyzer,
     EchoSynthesizer,
@@ -361,6 +366,42 @@ class EchoCoreFactory:
 
         return self._components[user_id]["telemetry_manager"]
 
+    def create_runtime_to_echo_bridge(self, user_id: str) -> DefaultRuntimeToEchoBridge:
+        """Create a bridge that converts runtime memory write results into EchoCore artifacts."""
+        if user_id not in self._components:
+            self._components[user_id] = {}
+
+        if "echo_bridge" not in self._components[user_id]:
+            self._components[user_id]["echo_bridge"] = DefaultRuntimeToEchoBridge()
+            logger.info(f"Created EchoCore bridge for user {user_id}")
+
+        return self._components[user_id]["echo_bridge"]
+
+    def create_echo_manager(self, user_id: str) -> DefaultEchoCoreManager:
+        """Create the downstream EchoCore ingest manager for a user."""
+        if user_id not in self._components:
+            self._components[user_id] = {}
+
+        if "echo_manager" not in self._components[user_id]:
+            vault = self.create_vault(user_id)
+            tracker = self.create_tracker(user_id)
+            fine_tuner = self.create_fine_tuner(user_id)
+            persistent_memory = self.create_memory_manager(user_id).persistent
+            metadata_collector = self.create_metadata_collector(user_id, persistent_memory)
+            telemetry = self.create_telemetry_manager(user_id)
+
+            self._components[user_id]["echo_manager"] = DefaultEchoCoreManager(
+                policy_engine=EchoPolicyEngine(),
+                echo_vault=vault,
+                metadata_collector=metadata_collector,
+                fine_tuner=fine_tuner,
+                dark_tracker=tracker,
+                telemetry_manager=telemetry,
+            )
+            logger.info(f"Created EchoCore ingest manager for user {user_id}")
+
+        return self._components[user_id]["echo_manager"]
+
     def create_all_for_user(self, user_id: str, **db_clients) -> Dict[str, Any]:
         """
         Create all EchoCore components for a user.
@@ -399,7 +440,10 @@ class EchoCoreFactory:
             # New memory components
             "memory_manager": memory_manager,
             "metadata_collector": self.create_metadata_collector(user_id, persistent_memory),
-            "telemetry_manager": self.create_telemetry_manager(user_id)
+            "telemetry_manager": self.create_telemetry_manager(user_id),
+            # EchoCore downstream ingest components
+            "echo_bridge": self.create_runtime_to_echo_bridge(user_id),
+            "echo_manager": self.create_echo_manager(user_id),
         }
 
     def get_components(self, user_id: str) -> Optional[Dict[str, Any]]:

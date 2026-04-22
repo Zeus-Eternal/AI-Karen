@@ -69,12 +69,13 @@ from ai_karen_engine.capsules.initialization import (
     get_system_status,
 )
 
-# Legacy Capsules (will be migrated to BaseCapsule pattern)
+from ai_karen_engine.capsules.runtime_common import CapsuleSecurityError
+
+# Production capsule modules
 from ai_karen_engine.capsules.devops import (
     DevOpsCapsule,
     get_capsule_handler as get_devops_handler,
     handler as devops_handler,
-    CapsuleSecurityError,
 )
 
 from ai_karen_engine.capsules.security import (
@@ -113,7 +114,7 @@ __all__ = [
     # Initialization
     "initialize_capsule_system",
     "get_system_status",
-    # Legacy Capsules
+    # Capsule modules
     "DevOpsCapsule",
     "get_devops_handler",
     "devops_handler",

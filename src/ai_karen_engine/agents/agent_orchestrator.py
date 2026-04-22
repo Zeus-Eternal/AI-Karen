@@ -25,12 +25,6 @@ from .internal import agent_metrics
 from .agent_memory import MemoryAccessLevel, MemorySharingPolicy
 from .agent_reasoning import ReasoningType, ReasoningStrategy, ReasoningConfidence
 from .agent_tool_broker import ToolStatus, AccessDecision
-from ai_karen_engine.ai_orchestrator.ai_orchestrator import (
-    FlowType,
-    FlowInput,
-    FlowOutput,
-)
-
 logger = logging.getLogger(__name__)
 
 
@@ -69,7 +63,7 @@ class AgentOrchestrator(BaseService):
         self._validation_service: Optional[agent_validation.AgentValidation] = None
         self._metrics_service: Optional[agent_metrics.AgentMetrics] = None
         self._memory_service: Optional[Any] = None  # UnifiedMemoryService
-        self._ai_orchestrator: Optional[Any] = None  # AIOrchestrator
+        self._langgraph_orchestrator: Optional[Any] = None  # AIOrchestrator
         self._model_orchestrator: Optional[Any] = None  # ModelOrchestratorService
         self._default_model: str = "gpt-3.5-turbo"  # Default model for agent operations
         self._model_preferences: Dict[str, str] = {}  # agent_id -> model_id mapping
@@ -126,6 +120,18 @@ class AgentOrchestrator(BaseService):
         self._tasks_lock = asyncio.Lock()
         self._sessions_lock = asyncio.Lock()
         self._messages_lock = asyncio.Lock()
+
+    @staticmethod
+    def _flow_result_data(result: Any) -> Dict[str, Any]:
+        """Normalize flow results to a dictionary."""
+        if result is None:
+            return {}
+        if isinstance(result, dict):
+            return result
+        data = getattr(result, "data", None)
+        if isinstance(data, dict):
+            return data
+        return {"result": result}
 
     async def _load_configuration(self) -> None:
         """Load configuration for Karen's system integration settings."""
@@ -191,7 +197,7 @@ class AgentOrchestrator(BaseService):
             await self._initialize_memory_services()
 
             # Initialize AI orchestrator if available
-            await self._initialize_ai_orchestrator()
+            await self._initialize_langgraph_orchestrator()
 
             # Initialize model orchestrator if available
             await self._initialize_model_orchestrator()
@@ -307,20 +313,20 @@ class AgentOrchestrator(BaseService):
 
         # Attempt to recover based on service type
         recovery_success = False
-        if service_name == "ai_orchestrator":
-            # Try to reinitialize AI orchestrator
+        if service_name == "langgraph_orchestrator":
+            # Try to reinitialize the LangGraph orchestrator
             try:
                 logger.info(
-                    f"Attempting to recover AI orchestrator after error in {operation} (ID: {error_id})"
+                    f"Attempting to recover LangGraph orchestrator after error in {operation} (ID: {error_id})"
                 )
-                await self._initialize_ai_orchestrator()
+                await self._initialize_langgraph_orchestrator()
                 recovery_success = True
                 logger.info(
-                    f"Successfully recovered AI orchestrator after error in {operation}"
+                    f"Successfully recovered LangGraph orchestrator after error in {operation}"
                 )
             except Exception as recovery_error:
                 logger.error(
-                    f"Failed to recover AI orchestrator (ID: {error_id}): {recovery_error}"
+                    f"Failed to recover LangGraph orchestrator (ID: {error_id}): {recovery_error}"
                 )
                 # Increment recovery attempts
                 if service_name in self._degraded_services:
@@ -441,7 +447,7 @@ class AgentOrchestrator(BaseService):
         service = None
 
         try:
-            if service_name == "ai_orchestrator":
+            if service_name == "langgraph_orchestrator":
                 try:
                     from ai_karen_engine.core.langgraph_orchestrator import (
                         LangGraphOrchestrator,
@@ -451,7 +457,7 @@ class AgentOrchestrator(BaseService):
                     await service.initialize()
                 except ImportError:
                     logger.warning(
-                        "AI Orchestrator service not available for discovery"
+                        "LangGraph Orchestrator service not available for discovery"
                     )
                     return None
 
@@ -484,8 +490,8 @@ class AgentOrchestrator(BaseService):
                     from ai_karen_engine.memory.unified_memory_service import (
                         UnifiedMemoryService,
                     )
-                    from ai_karen_engine.core.embedding_manager import EmbeddingManager
-                    from ai_karen_engine.core.milvus_client import MilvusClient
+                    from ai_karen_engine.core.model_runtime.embedding_manager import EmbeddingManager
+                    from ai_karen_engine.core.model_runtime.milvus_client import MilvusClient
                     from ai_karen_engine.database.client import (
                         MultiTenantPostgresClient,
                     )
@@ -608,23 +614,23 @@ class AgentOrchestrator(BaseService):
             "timestamp": datetime.utcnow().isoformat(),
         }
 
-        # Check AI orchestrator health
-        if self._ai_orchestrator:
+        # Check LangGraph orchestrator health
+        if self._langgraph_orchestrator:
             try:
-                ai_health = await self._ai_orchestrator.health_check()
-                health_status["ai_orchestrator"] = {
+                ai_health = await self._langgraph_orchestrator.health_check()
+                health_status["langgraph_orchestrator"] = {
                     "status": "healthy" if ai_health else "unhealthy",
                     "initialized": True,
                 }
             except Exception as e:
-                logger.error(f"Error checking AI orchestrator health: {e}")
-                health_status["ai_orchestrator"] = {
+                logger.error(f"Error checking LangGraph orchestrator health: {e}")
+                health_status["langgraph_orchestrator"] = {
                     "status": "error",
                     "error": str(e),
                     "initialized": True,
                 }
         else:
-            health_status["ai_orchestrator"] = {
+            health_status["langgraph_orchestrator"] = {
                 "status": "not_available",
                 "initialized": False,
             }
@@ -754,17 +760,17 @@ class AgentOrchestrator(BaseService):
         except Exception as e:
             logger.error(f"Failed to initialize memory services: {e}")
 
-    async def _initialize_ai_orchestrator(self) -> None:
-        """Initialize AI orchestrator if available."""
+    async def _initialize_langgraph_orchestrator(self) -> None:
+        """Initialize LangGraph orchestrator if available."""
         try:
-            # Use service discovery to get AI orchestrator
-            self._ai_orchestrator = await self._get_service("ai_orchestrator")
-            if self._ai_orchestrator:
-                logger.info("AI Orchestrator initialized via service discovery")
+            # Use service discovery to get LangGraph orchestrator
+            self._langgraph_orchestrator = await self._get_service("langgraph_orchestrator")
+            if self._langgraph_orchestrator:
+                logger.info("LangGraph Orchestrator initialized via service discovery")
             else:
-                logger.warning("AI Orchestrator not available via service discovery")
+                logger.warning("LangGraph Orchestrator not available via service discovery")
         except Exception as e:
-            logger.error(f"Failed to initialize AI Orchestrator: {e}")
+            logger.error(f"Failed to initialize LangGraph Orchestrator: {e}")
 
     async def _initialize_model_orchestrator(self) -> None:
         """Initialize model orchestrator if available."""
@@ -1404,11 +1410,7 @@ class AgentOrchestrator(BaseService):
             # For now, we'll simulate task execution
 
             # Use AI orchestrator if available for reasoning
-            if self._ai_orchestrator:
-                from ai_karen_engine.ai_orchestrator.ai_orchestrator import (
-                    FlowInput,
-                )
-
+            if self._langgraph_orchestrator:
                 # Determine the appropriate flow type based on task type
                 flow_type = "decision"  # Default flow type
                 if task.task_type in ["reasoning", "learning", "problem_solving"]:
@@ -1416,33 +1418,33 @@ class AgentOrchestrator(BaseService):
                 elif task.task_type in ["conversation", "communication"]:
                     flow_type = "conversation"
 
-                flow_input = FlowInput(
-                    {
-                        "task_type": task.task_type,
-                        "task_data": task.input_data,
-                        "agent_id": task.agent_id,
-                        "agent_capabilities": agent_instance.get("capabilities", []),
-                        "context": {
-                            "agent_status": agent_instance.get("status", "unknown"),
-                            "agent_resources": agent_instance.get("resources", {}),
-                        },
-                    }
-                )
+                flow_input = {
+                    "task_type": task.task_type,
+                    "task_data": task.input_data,
+                    "agent_id": task.agent_id,
+                    "agent_capabilities": agent_instance.get("capabilities", []),
+                    "context": {
+                        "agent_status": agent_instance.get("status", "unknown"),
+                        "agent_resources": agent_instance.get("resources", {}),
+                    },
+                }
 
                 # Process the task using the appropriate flow
-                flow_output = await self._ai_orchestrator.process_flow(
+                flow_output = await self._langgraph_orchestrator.process_flow(
                     flow_type, flow_input
                 )
 
-                if flow_output and flow_output.data.get("result") == "error":
+                flow_output_data = self._flow_result_data(flow_output)
+
+                if flow_output_data.get("result") == "error":
                     logger.error(
-                        f"Flow processing failed for task {task.task_id}: {flow_output.data.get('message', 'Unknown error')}"
+                        f"Flow processing failed for task {task.task_id}: {flow_output_data.get('message', 'Unknown error')}"
                     )
                     raise Exception(
-                        flow_output.data.get("message", "Flow processing failed")
+                        flow_output_data.get("message", "Flow processing failed")
                     )
 
-                result = flow_output.data
+                result = flow_output_data
 
                 # If the flow returned a decision, use it
                 if flow_type == "decision" and "decision" in result:
@@ -2729,31 +2731,26 @@ class AgentOrchestrator(BaseService):
                 )
 
             # Initialize team reasoning context if AI orchestrator is available
-            if self._ai_orchestrator:
+            if self._langgraph_orchestrator:
                 try:
-                    from ai_karen_engine.ai_orchestrator.ai_orchestrator import (
-                        FlowInput,
-                    )
-
                     # Create team reasoning context
-                    reasoning_context = FlowInput(
-                        {
-                            "team_id": team_id,
-                            "team_name": name,
-                            "team_description": description,
-                            "agent_ids": agent_ids,
-                            "team_config": team_config or {},
-                            "created_at": datetime.utcnow().isoformat(),
-                        }
-                    )
+                    reasoning_context = {
+                        "team_id": team_id,
+                        "team_name": name,
+                        "team_description": description,
+                        "agent_ids": agent_ids,
+                        "team_config": team_config or {},
+                        "created_at": datetime.utcnow().isoformat(),
+                    }
 
                     # Initialize team reasoning with AI orchestrator
-                    reasoning_result = await self._ai_orchestrator.process_flow(
+                    reasoning_result = await self._langgraph_orchestrator.process_flow(
                         "team_reasoning", reasoning_context
                     )
 
-                    if reasoning_result and reasoning_result.success:
-                        team_info["reasoning_context"] = reasoning_result.data
+                    reasoning_result_data = self._flow_result_data(reasoning_result)
+                    if reasoning_result_data:
+                        team_info["reasoning_context"] = reasoning_result_data
                         logger.info(f"Initialized reasoning context for team {team_id}")
                     else:
                         logger.warning(
@@ -3032,16 +3029,12 @@ class AgentOrchestrator(BaseService):
                 "timeout_at": (
                     datetime.utcnow() + timedelta(seconds=timeout_seconds)
                 ).isoformat(),
-                "ai_orchestrator_used": False,
+                "langgraph_orchestrator_used": False,
             }
 
             # Use AI Orchestrator for consensus negotiation if available
-            if self._ai_orchestrator:
+            if self._langgraph_orchestrator:
                 try:
-                    from ai_karen_engine.ai_orchestrator.ai_orchestrator import (
-                        FlowInput,
-                    )
-
                     # Prepare negotiation context with team information
                     negotiation_context = {
                         "team_id": team_id,
@@ -3067,15 +3060,15 @@ class AgentOrchestrator(BaseService):
                                 "memories", []
                             )
 
-                    flow_input = FlowInput(negotiation_context)
+                    flow_input = negotiation_context
 
                     # Use AI Orchestrator for consensus negotiation
-                    consensus_flow = await self._ai_orchestrator.process_flow(
+                    consensus_flow = await self._langgraph_orchestrator.process_flow(
                         "consensus_negotiation", flow_input
                     )
 
-                    if consensus_flow and consensus_flow.success:
-                        consensus_result = consensus_flow.data
+                    consensus_result = self._flow_result_data(consensus_flow)
+                    if consensus_result:
 
                         # Extract consensus information from AI Orchestrator
                         negotiation["consensus"] = consensus_result.get("consensus")
@@ -3084,7 +3077,7 @@ class AgentOrchestrator(BaseService):
                             if consensus_result.get("consensus")
                             else "no_consensus"
                         )
-                        negotiation["ai_orchestrator_used"] = True
+                        negotiation["langgraph_orchestrator_used"] = True
                         negotiation["ai_confidence"] = consensus_result.get(
                             "confidence", 0.0
                         )
@@ -3114,7 +3107,7 @@ class AgentOrchestrator(BaseService):
                                 metadata={
                                     "team_id": team_id,
                                     "negotiation_id": negotiation_id,
-                                    "ai_orchestrator_used": True,
+                                    "langgraph_orchestrator_used": True,
                                     "consensus_threshold": team.get(
                                         "consensus_threshold", 0.7
                                     ),
@@ -3150,24 +3143,24 @@ class AgentOrchestrator(BaseService):
                             "team_id": team_id,
                             "status": negotiation["status"],
                             "consensus": negotiation["consensus"],
-                            "ai_orchestrator_used": True,
+                            "langgraph_orchestrator_used": True,
                             "confidence": negotiation["ai_confidence"],
                             "reasoning": negotiation["ai_reasoning"],
                             "response_count": len(team["agent_ids"]),
                         }
                     else:
                         logger.warning(
-                            f"AI Orchestrator consensus negotiation failed: {consensus_flow.data.get('message', 'Unknown error')}"
+                            f"AI Orchestrator consensus negotiation failed: {consensus_result.get('message', 'Unknown error')}"
                         )
                         # Fall back to manual negotiation
-                        negotiation["ai_orchestrator_used"] = False
+                        negotiation["langgraph_orchestrator_used"] = False
 
                 except Exception as e:
                     logger.error(
                         f"Error using AI Orchestrator for consensus negotiation: {e}"
                     )
                     # Fall back to manual negotiation
-                    negotiation["ai_orchestrator_used"] = False
+                    negotiation["langgraph_orchestrator_used"] = False
 
             # Fallback: Manual consensus negotiation process
             # Send negotiation request to all agents
@@ -3234,7 +3227,7 @@ class AgentOrchestrator(BaseService):
                     metadata={
                         "team_id": team_id,
                         "negotiation_id": negotiation_id,
-                        "ai_orchestrator_used": False,
+                        "langgraph_orchestrator_used": False,
                     },
                     permission_level=agent_schemas.PermissionLevel.WRITE,
                 )
@@ -3254,7 +3247,7 @@ class AgentOrchestrator(BaseService):
                 "team_id": team_id,
                 "status": negotiation["status"],
                 "consensus": negotiation.get("consensus"),
-                "ai_orchestrator_used": negotiation["ai_orchestrator_used"],
+                "langgraph_orchestrator_used": negotiation["langgraph_orchestrator_used"],
                 "response_count": len(negotiation["responses"]),
             }
 
@@ -3507,12 +3500,8 @@ class AgentOrchestrator(BaseService):
                     break
 
             # Use AI orchestrator for conflict resolution if available
-            if self._ai_orchestrator:
+            if self._langgraph_orchestrator:
                 try:
-                    from ai_karen_engine.ai_orchestrator.ai_orchestrator import (
-                        FlowInput,
-                    )
-
                     # Prepare conflict context with team information if available
                     conflict_context = {
                         "conflict_type": conflict_type,
@@ -3531,18 +3520,18 @@ class AgentOrchestrator(BaseService):
                             }
                         )
 
-                    flow_input = FlowInput(conflict_context)
+                    flow_input = conflict_context
 
-                    flow_output = await self._ai_orchestrator.process_flow(
+                    flow_output = await self._langgraph_orchestrator.process_flow(
                         "conflict_resolution", flow_input
                     )
 
-                    if flow_output and flow_output.success:
-                        resolution_data = flow_output.data
+                    resolution_data = self._flow_result_data(flow_output)
+                    if resolution_data:
                         resolution["resolution"] = resolution_data
                         resolution["status"] = "resolved"
                         resolution["resolved_at"] = datetime.utcnow().isoformat()
-                        resolution["ai_orchestrator_used"] = True
+                        resolution["langgraph_orchestrator_used"] = True
 
                         logger.info(
                             f"Resolved conflict {resolution_id} using AI orchestrator"
@@ -3564,7 +3553,7 @@ class AgentOrchestrator(BaseService):
                                 metadata={
                                     "team_id": team_id,
                                     "resolution_id": resolution_id,
-                                    "ai_orchestrator_used": True,
+                                    "langgraph_orchestrator_used": True,
                                 },
                                 permission_level=PermissionLevel.WRITE,
                             )
@@ -3594,11 +3583,11 @@ class AgentOrchestrator(BaseService):
                             "conflict_type": conflict_type,
                             "resolution": resolution_data,
                             "team_id": team_id,
-                            "ai_orchestrator_used": True,
+                            "langgraph_orchestrator_used": True,
                         }
                     else:
                         logger.warning(
-                            f"AI Orchestrator conflict resolution failed: {flow_output.data.get('message', 'Unknown error')}"
+                            f"AI Orchestrator conflict resolution failed: {self._flow_result_data(flow_output).get('message', 'Unknown error')}"
                         )
                         # Fall back to manual resolution
 
@@ -3631,7 +3620,7 @@ class AgentOrchestrator(BaseService):
 
             # Fallback: simple voting mechanism
             resolution["status"] = "pending_agent_input"
-            resolution["ai_orchestrator_used"] = False
+            resolution["langgraph_orchestrator_used"] = False
 
             # Store conflict resolution in team shared memory if available
             if team_id and team_info and team_info.get("shared_memory_id"):
@@ -3649,7 +3638,7 @@ class AgentOrchestrator(BaseService):
                     metadata={
                         "team_id": team_id,
                         "resolution_id": resolution_id,
-                        "ai_orchestrator_used": False,
+                        "langgraph_orchestrator_used": False,
                     },
                     permission_level=PermissionLevel.WRITE,
                 )
@@ -3670,7 +3659,7 @@ class AgentOrchestrator(BaseService):
                 "status": "pending_agent_input",
                 "team_id": team_id,
                 "agent_count": len(agent_ids),
-                "ai_orchestrator_used": False,
+                "langgraph_orchestrator_used": False,
             }
 
         except Exception as e:
@@ -3708,7 +3697,7 @@ class AgentOrchestrator(BaseService):
 
         try:
             # Check if AI orchestrator is available
-            if not self._ai_orchestrator:
+            if not self._langgraph_orchestrator:
                 return {"success": False, "error": "AI orchestrator not available"}
 
             # Select appropriate model for reasoning task
@@ -3760,7 +3749,7 @@ class AgentOrchestrator(BaseService):
 
                         # Use AI orchestrator to process the model output
                         reasoning_result = (
-                            await self._ai_orchestrator.complex_reasoning_task(
+                            await self._langgraph_orchestrator.complex_reasoning_task(
                                 reasoning_type=reasoning_type,
                                 data={
                                     "agent_id": agent_id,
@@ -3907,7 +3896,7 @@ class AgentOrchestrator(BaseService):
                     pass
 
             # Fallback: Use AI orchestrator directly without model
-            reasoning_result = await self._ai_orchestrator.complex_reasoning_task(
+            reasoning_result = await self._langgraph_orchestrator.complex_reasoning_task(
                 reasoning_type=reasoning_type,
                 data={
                     "agent_id": agent_id,
@@ -4052,42 +4041,38 @@ class AgentOrchestrator(BaseService):
 
         try:
             # Check if AI orchestrator is available
-            if not self._ai_orchestrator:
+            if not self._langgraph_orchestrator:
                 return {"success": False, "error": "AI orchestrator not available"}
 
             # Use AI orchestrator's decide_action method for decision-making
             try:
-                from ai_karen_engine.ai_orchestrator.ai_orchestrator import (
-                    FlowInput,
-                )
-
                 # Create decision input for AI orchestrator
-                decision_input = FlowInput(
-                    {
-                        "agent_id": agent_id,
-                        "decision_type": decision_type,
-                        "options": options,
-                        "criteria": criteria or {},
-                        "context": {
-                            "timestamp": datetime.utcnow().isoformat(),
-                            "agent_capabilities": self._agents[agent_id].config.get(
-                                "capabilities", []
-                            ),
-                        },
-                    }
-                )
+                decision_input = {
+                    "agent_id": agent_id,
+                    "decision_type": decision_type,
+                    "options": options,
+                    "criteria": criteria or {},
+                    "context": {
+                        "timestamp": datetime.utcnow().isoformat(),
+                        "agent_capabilities": self._agents[agent_id].config.get(
+                            "capabilities", []
+                        ),
+                    },
+                }
 
                 # Use AI orchestrator to make the decision
-                decision_result = await self._ai_orchestrator.decide_action(
+                decision_result = await self._langgraph_orchestrator.decide_action(
                     decision_input
                 )
 
-                if decision_result and decision_result.success:
-                    selected_option = decision_result.data.get(
+                decision_result_data = self._flow_result_data(decision_result)
+
+                if decision_result_data:
+                    selected_option = decision_result_data.get(
                         "selected_option"
-                    ) or decision_result.data.get("action")
-                    decision_confidence = decision_result.data.get("confidence", 0.0)
-                    decision_reasoning = decision_result.data.get("reasoning", "")
+                    ) or decision_result_data.get("action")
+                    decision_confidence = decision_result_data.get("confidence", 0.0)
+                    decision_reasoning = decision_result_data.get("reasoning", "")
 
                     logger.info(
                         f"AI orchestrator made decision for agent {agent_id} with confidence {decision_confidence}"
@@ -4108,7 +4093,7 @@ class AgentOrchestrator(BaseService):
                         },
                         metadata={
                             "decision_confidence": decision_confidence,
-                            "ai_orchestrator_used": True,
+                            "langgraph_orchestrator_used": True,
                         },
                         permission_level=agent_schemas.PermissionLevel.READ,
                     )
@@ -4122,13 +4107,11 @@ class AgentOrchestrator(BaseService):
                     }
                 else:
                     logger.error(
-                        f"AI orchestrator decision-making failed: {decision_result.data.get('message', 'Unknown error')}"
+                        f"AI orchestrator decision-making failed: {decision_result_data.get('message', 'Unknown error')}"
                     )
                     return {
                         "success": False,
-                        "error": decision_result.data.get(
-                            "message", "Decision-making failed"
-                        ),
+                        "error": decision_result_data.get("message", "Decision-making failed"),
                     }
 
             except Exception as e:
@@ -4176,7 +4159,7 @@ class AgentOrchestrator(BaseService):
                             "criteria": criteria,
                             "timestamp": datetime.utcnow().isoformat(),
                         },
-                        metadata={"task_id": task_id, "ai_orchestrator_used": False},
+                        metadata={"task_id": task_id, "langgraph_orchestrator_used": False},
                         permission_level=agent_schemas.PermissionLevel.READ,
                     )
 
@@ -4230,7 +4213,7 @@ class AgentOrchestrator(BaseService):
 
         try:
             # Check if AI orchestrator is available
-            if not self._ai_orchestrator:
+            if not self._langgraph_orchestrator:
                 return {"success": False, "error": "AI orchestrator not available"}
 
             # Create learning task
@@ -4327,7 +4310,7 @@ class AgentOrchestrator(BaseService):
 
         try:
             # Check if AI orchestrator is available
-            if not self._ai_orchestrator:
+            if not self._langgraph_orchestrator:
                 return {"success": False, "error": "AI orchestrator not available"}
 
             # Create problem-solving task
@@ -4680,7 +4663,7 @@ class AgentOrchestrator(BaseService):
 
         try:
             # Check if AI orchestrator is available
-            if not self._ai_orchestrator:
+            if not self._langgraph_orchestrator:
                 return {"success": False, "error": "AI orchestrator not available"}
 
             # Create planning task

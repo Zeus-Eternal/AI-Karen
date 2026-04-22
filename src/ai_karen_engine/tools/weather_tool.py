@@ -11,7 +11,7 @@ import logging
 import os
 from typing import Any, Dict, Optional
 
-from ai_karen_engine.services.tool_service import (
+from ai_karen_engine.services.tooling.tool_service import (
     BaseTool,
     ToolMetadata,
     ToolParameter,

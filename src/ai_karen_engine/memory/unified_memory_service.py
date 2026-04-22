@@ -16,15 +16,15 @@ try:
 except ImportError:
     from ai_karen_engine.pydantic_stub import Field
 
-from ai_karen_engine.core.memory.curated_recall import (
+from ai_karen_engine.core.memory.retrieval.curated_recall import (
     CURATED_MEMORY_KIND,
     DEFAULT_CURATED_MEMORY_CLASSES,
     build_curated_metadata_filter,
     filter_curated_memories,
     is_curated_memory_metadata,
 )
-from ai_karen_engine.core.embedding_manager import EmbeddingManager
-from ai_karen_engine.core.milvus_client import MilvusClient
+from ai_karen_engine.core.model_runtime.embedding_manager import EmbeddingManager
+from ai_karen_engine.core.model_runtime.milvus_client import MilvusClient
 from ai_karen_engine.database.client import MultiTenantPostgresClient
 from ai_karen_engine.database.memory_manager import (
     MemoryEntry,

@@ -16,26 +16,20 @@ Version: 1.0.0 (Unified Architecture - Phase 1)
 """
 
 # ===================================
-# EXISTING MEMORY SYSTEM (Backward Compatibility)
+# EXISTING MEMORY SYSTEM (Runtime Support)
 # ===================================
 
-from ai_karen_engine.core.memory.ag_ui_manager import (
-    AGUIMemoryManager,
-    MemoryAnalytics,
-    MemoryGridRow,
-    MemoryNetworkEdge,
-    MemoryNetworkNode,
-)
-from ai_karen_engine.core.memory.manager import (
+from ai_karen_engine.core.memory.memory_runtime_manager import (
     _METRICS,
     get_metrics,
     init_memory,
+    export_promoted_artifacts,
     recall_context,
     update_memory,
 )
-from ai_karen_engine.core.memory.session_buffer import SessionBuffer
+from ai_karen_engine.core.memory.stm.session_buffer import SessionBuffer
 
-from ai_karen_engine.core.memory.np_memory import (
+from ai_karen_engine.core.memory.retrieval.np_memory import (
     load_jsonl,
     extract_pairs,
     embed_texts,
@@ -51,15 +45,22 @@ from ai_karen_engine.core.memory.types import (
     # Enums
     MemoryType,
     MemoryNamespace,
+    ArtifactType,
+    ArtifactSourceTier,
+    ArtifactPrivacyTag,
+    ArtifactTrainingEligibility,
     MemoryStatus,
     MemoryPriority,
     MemoryVisibility,
     ImportanceLevel,
     # Types
     EmbeddingVector,
+    ArtifactImportanceScore,
+    ArtifactRetentionScore,
     JSONLike,
     # Data structures
     MemoryMetadata,
+    RuntimeMemoryArtifact,
     MemoryEntry,
     MemoryQuery,
     MemoryQueryResult,
@@ -102,21 +103,15 @@ from ai_karen_engine.core.memory.protocols import (
 
 __all__ = [
     # ===================================
-    # EXISTING SYSTEM (Backward Compatibility)
+    # RUNTIME SUPPORT
     # ===================================
-    # Original memory system
     "recall_context",
     "update_memory",
     "get_metrics",
     "_METRICS",
     "init_memory",
+    "export_promoted_artifacts",
     "SessionBuffer",
-    # AG-UI enhanced memory system
-    "AGUIMemoryManager",
-    "MemoryGridRow",
-    "MemoryNetworkNode",
-    "MemoryNetworkEdge",
-    "MemoryAnalytics",
     # Neuro-recall memory utilities
     "load_jsonl",
     "extract_pairs",
@@ -128,15 +123,22 @@ __all__ = [
     # Enums
     "MemoryType",
     "MemoryNamespace",
+    "ArtifactType",
+    "ArtifactSourceTier",
+    "ArtifactPrivacyTag",
+    "ArtifactTrainingEligibility",
     "MemoryStatus",
     "MemoryPriority",
     "MemoryVisibility",
     "ImportanceLevel",
     # Types
     "EmbeddingVector",
+    "ArtifactImportanceScore",
+    "ArtifactRetentionScore",
     "JSONLike",
     # Data structures
     "MemoryMetadata",
+    "RuntimeMemoryArtifact",
     "MemoryEntry",
     "MemoryQuery",
     "MemoryQueryResult",

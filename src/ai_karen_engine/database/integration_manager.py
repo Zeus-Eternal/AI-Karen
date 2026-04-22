@@ -16,8 +16,8 @@ from ai_karen_engine.database.client import MultiTenantPostgresClient
 from ai_karen_engine.database.tenant_manager import TenantManager, TenantConfig
 from ai_karen_engine.database.memory_manager import MemoryManager, MemoryQuery
 from ai_karen_engine.database.conversation_manager import ConversationManager, MessageRole
-from ai_karen_engine.core.milvus_client import MilvusClient
-from ai_karen_engine.core.embedding_manager import EmbeddingManager
+from ai_karen_engine.core.model_runtime.milvus_client import MilvusClient
+from ai_karen_engine.core.model_runtime.embedding_manager import EmbeddingManager
 
 logger = logging.getLogger(__name__)
 

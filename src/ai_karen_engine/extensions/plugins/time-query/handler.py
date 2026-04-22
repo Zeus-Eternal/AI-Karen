@@ -1,6 +1,11 @@
 import logging
 from typing import Any, Dict, Optional
-from ai_karen_engine.extensions.platform.core.host.base import ExtensionBase, ExtensionContext
+from ai_karen_engine.extensions.platform.core.host.base import (
+    ExtensionBase,
+    ExtensionContext,
+    HookContext,
+    HookPoint,
+)
 
 from .handlers import (
     handle_current_time,
@@ -24,6 +29,30 @@ class TimeQueryExtension(ExtensionBase):
     
     def __init__(self, manifest, context: ExtensionContext):
         super().__init__(manifest, context)
+
+    async def initialize(self) -> None:
+        """Initialize the extension."""
+        self.logger.info(f"Initializing {self.manifest.name} extension")
+
+    async def shutdown(self) -> None:
+        """Shutdown the extension."""
+        self.logger.info(f"Shutting down {self.manifest.name} extension")
+
+    def get_status(self) -> Dict[str, Any]:
+        """Return the current status of the extension."""
+        return {
+            "status": "healthy",
+            "initialized": True,
+            "version": self.manifest.version,
+        }
+
+    async def execute_hook(
+        self, hook_point: HookPoint, context: HookContext
+    ) -> Dict[str, Any]:
+        """Execute a hook point."""
+        # Simple implementation for time query hooks
+        params = context.data if hasattr(context, "data") else {}
+        return await self.run(params)
 
     async def run(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """Provide time features based on mode requests."""

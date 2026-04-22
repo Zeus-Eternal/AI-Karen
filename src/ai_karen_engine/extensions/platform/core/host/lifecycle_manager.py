@@ -53,7 +53,7 @@ class PluginLifecycleManager:
 
     def __init__(
         self,
-        extensions_dir: str = "src/extensions",
+        extensions_dir: str = "src/ai_karen_engine/extensions/plugins",
         auto_update: bool = False,
         backup_before_update: bool = True,
     ):
@@ -626,7 +626,7 @@ _lifecycle_manager_instance: Optional[PluginLifecycleManager] = None
 
 
 def get_lifecycle_manager(
-    extensions_dir: str = "src/extensions",
+    extensions_dir: str = "src/ai_karen_engine/extensions/plugins",
     auto_update: bool = False,
     backup_before_update: bool = True,
 ) -> PluginLifecycleManager:

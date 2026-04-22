@@ -21,7 +21,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from ai_karen_engine.integrations.registry import get_registry, ModelMetadata
 from ai_karen_engine.integrations.llm_router import RoutingRequest, RouteDecision, PrivacyLevel, TaskType
-from ai_karen_engine.core.degraded_mode import get_degraded_mode_manager, DegradedModeReason
+from ai_karen_engine.core.runtime.degraded_mode import get_degraded_mode_manager, DegradedModeReason
 
 
 class FallbackReason(Enum):

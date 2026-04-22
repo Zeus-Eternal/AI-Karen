@@ -19,9 +19,9 @@ except ImportError:
     SQLALCHEMY_AVAILABLE = False
 
 try:
-    from ai_karen_engine.services.audit_logging import get_audit_logger
+    from ai_karen_engine.services.audit.audit_logging import get_audit_logger
 except ImportError:
-    from ai_karen_engine.services.audit_logger import get_audit_logger
+    from ai_karen_engine.services.audit.audit_logger import get_audit_logger
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,7 @@ def _build_audit_metadata(
 
 
 async def _get_memory_service() -> Any:
-    from ai_karen_engine.core.dependencies import get_memory_service
+    from ai_karen_engine.core.services.dependencies import get_memory_service
 
     return await get_memory_service()
 

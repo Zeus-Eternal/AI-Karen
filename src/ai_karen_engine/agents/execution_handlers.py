@@ -316,27 +316,49 @@ class LangGraphExecutionHandler(BaseExecutionHandler):
             self.logger.info(f"Starting LangGraph stream: {request.request_id}")
             
             # Import here to avoid circular imports
-            from ..core.streaming_integration import get_streaming_manager
-            
-            # Get streaming manager
-            streamer = get_streaming_manager()
-            
-            # Stream the response
-            async for chunk in streamer.stream_for_copilotkit(
-                message=request.message,
+            from langchain_core.messages import HumanMessage
+            from ..core.langgraph_orchestrator import get_default_orchestrator
+
+            orchestrator = get_default_orchestrator()
+            messages = [HumanMessage(content=request.message)]
+
+            async for chunk in orchestrator.stream_process(
+                messages=messages,
                 user_id=request.user_id or "anonymous",
                 session_id=request.session_id,
-                context=request.context
+                config=request.config.custom_config if request.config else {},
             ):
+                chunk_type = "text"
+                content = ""
+                metadata = {}
+
                 if isinstance(chunk, dict):
-                    chunk_type = chunk.get("type", "text")
-                    content = chunk.get("content", "")
-                    metadata = chunk.get("data", {})
-                    
+                    for state_update in chunk.values():
+                        if not isinstance(state_update, dict):
+                            continue
+                        if "formatted_response" in state_update:
+                            content = str(state_update.get("formatted_response") or "")
+                            metadata = state_update.get("response_metadata") or {}
+                        elif "llm_response" in state_update:
+                            content = str(state_update.get("llm_response") or "")
+                            metadata = state_update.get("response_metadata") or {}
+                        elif "error" in state_update:
+                            chunk_type = "error"
+                            content = str(state_update.get("error") or "")
+                            metadata = {"error": state_update.get("error")}
+                elif hasattr(chunk, "content"):
+                    content = str(getattr(chunk, "content") or "")
+                    metadata = getattr(chunk, "metadata") or {}
+                elif isinstance(chunk, str):
+                    content = chunk
+
+                if content or metadata:
+                    if metadata.get("status") and not content:
+                        chunk_type = "metadata"
                     yield StreamChunk(
                         content=content,
                         chunk_type=chunk_type,
-                        metadata=metadata
+                        metadata=metadata,
                     )
             
             # Send final chunk
@@ -394,7 +416,7 @@ class DeepAgentsExecutionHandler(BaseExecutionHandler):
             self.logger.info(f"Executing DeepAgents request: {request.request_id}")
             
             # Import here to avoid circular imports
-            from ai_karen_engine.services.orchestration_agent import get_orchestration_agent, OrchestrationInput
+            from ai_karen_engine.services.orchestration.orchestration_agent import get_orchestration_agent, OrchestrationInput
             
             # Get orchestration agent
             agent = get_orchestration_agent()

@@ -25,7 +25,7 @@ def _get_auth_middleware():
 
 
 async def _authenticate_request(request: Request) -> Dict[str, Any]:
-    from ai_karen_engine.core.auth_config import auth_config
+    from ai_karen_engine.core.security.auth_config import auth_config
 
     if auth_config.should_bypass_auth():
         logger.debug("Auth bypass active in session helper")

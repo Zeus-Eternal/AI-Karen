@@ -68,12 +68,6 @@ from ai_karen_engine.core.reasoning.synthesis import (
     CognitiveState,
     ReasoningStrategy,
     PerformanceMetrics,
-    CognitiveOrchestrator,
-    CognitiveConfig,
-    CognitiveTask,
-    CognitiveResponse,
-    CognitiveMode,
-    create_cognitive_orchestrator,
 )
 
 # Retrieval adapters
@@ -159,13 +153,6 @@ __all__ = [
     "CognitiveState",
     "ReasoningStrategy",
     "PerformanceMetrics",
-    "CognitiveOrchestrator",
-    "CognitiveConfig",
-    "CognitiveTask",
-    "CognitiveResponse",
-    "CognitiveMode",
-    "create_cognitive_orchestrator",
-
     # Retrieval
     "SRRetriever",
     "SRCompositeRetriever",

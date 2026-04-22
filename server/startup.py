@@ -98,7 +98,7 @@ def register_startup_tasks(app: FastAPI) -> None:
 
         try:
             from .config import Settings
-            from src.extensions.core.registry.database_service import (
+            from ai_karen_engine.extensions.platform.core.registry.database_service import (
                 initialize_database_service,
             )
 
@@ -204,7 +204,7 @@ def register_startup_tasks(app: FastAPI) -> None:
             logger.info("Warming local chat stack for provider: %s", active_provider)
 
             def _warm() -> None:
-                from ai_karen_engine.api_routes.copilot_routes import (
+                from ai_karen_engine.api_routes.chat.copilot import (
                     get_langgraph_orchestrator,
                 )
                 from ai_karen_engine.llm_orchestrator import get_orchestrator

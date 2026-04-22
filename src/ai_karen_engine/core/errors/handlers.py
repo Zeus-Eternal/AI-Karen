@@ -2,6 +2,7 @@
 Error handlers and response formatting for AI Karen engine.
 """
 
+from fastapi.responses import JSONResponse
 from typing import Any, Dict, Optional
 from enum import Enum
 from datetime import datetime
@@ -268,3 +269,13 @@ def set_error_handler(handler: ErrorHandler) -> None:
     """Set the global error handler instance."""
     global _error_handler
     _error_handler = handler
+
+
+def handle_api_exception(error: Exception, user_message: str | None = None) -> JSONResponse:
+    """Convert exceptions to standardized JSON responses for API routes."""
+    handler = get_error_handler()
+    error_response = handler.handle_exception(error)
+    if user_message:
+        error_response.message = user_message
+    status_code = handler.get_http_status_code(error_response.error_code)
+    return JSONResponse(status_code=status_code, content=error_response.model_dump(mode="json"))

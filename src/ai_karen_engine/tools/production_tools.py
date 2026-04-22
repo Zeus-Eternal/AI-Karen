@@ -6,7 +6,7 @@ Tool plugins following the BaseTool pattern for integration with the existing to
 import asyncio
 import logging
 from typing import Any, Dict, List, Optional
-from ai_karen_engine.services.tool_service import (
+from ai_karen_engine.services.tooling.tool_service import (
     BaseTool,
     ToolMetadata,
     ToolCategory,

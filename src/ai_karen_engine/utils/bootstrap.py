@@ -11,7 +11,7 @@ try:
         MemoryCommitRequest,
         MemoryQueryRequest,
     )
-    from ai_karen_engine.core.default_models import load_default_models
+    from ai_karen_engine.core.model_runtime.default_models import load_default_models
 except ImportError:
     # Define dummy classes if imports fail
     class WebUIMemoryService:

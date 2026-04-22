@@ -20,7 +20,7 @@ from pymilvus import (
     utility,
 )
 
-from ai_karen_engine.core.embedding_manager import record_metric
+from ai_karen_engine.core.model_runtime.embedding_manager import record_metric
 
 logger = logging.getLogger(__name__)
 

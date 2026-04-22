@@ -46,10 +46,10 @@ __all__ = [
 
 def __getattr__(name: str):
     if name == "ExtensionManager":
-        return import_module("extensions.core.host.manager").ExtensionManager
+        return import_module("ai_karen_engine.extensions.platform.core.host.manager").ExtensionManager
     if name == "ExtensionRunner":
-        return import_module("extensions.core.host.runner").ExtensionRunner
+        return import_module("ai_karen_engine.extensions.platform.core.host.runner").ExtensionRunner
     if name in {"ExtensionRegistry", "get_registry"}:
-        registry_module = import_module("extensions.core.host.registry")
+        registry_module = import_module("ai_karen_engine.extensions.platform.core.host.registry")
         return getattr(registry_module, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

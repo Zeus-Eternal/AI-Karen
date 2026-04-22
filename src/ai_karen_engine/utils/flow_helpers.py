@@ -1,20 +1,14 @@
 """Utility helpers for building flow inputs and formatting flow responses.
 
 These functions encapsulate common patterns used by the API routes
-when interacting with the :class:`AIOrchestrator`.  They centralize the
-construction of :class:`FlowInput` objects and the formatting of
-:class:`FlowOutput` results into response payloads.
+when interacting with the orchestration runtime. They centralize the
+construction of flow payloads and the formatting of flow results into
+response payloads.
 """
 
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
-
-from ai_karen_engine.ai_orchestrator.ai_orchestrator import (
-    FlowInput,
-    FlowOutput,
-)
-
 
 def build_flow_input(
     *,
@@ -24,29 +18,26 @@ def build_flow_input(
     context: Optional[Dict[str, Any]],
     session_id: Optional[str],
     user_id: str = "anonymous",
-) -> FlowInput:
-    """Create a :class:`FlowInput` instance from request data."""
-    return FlowInput(
-        {
-            "prompt": prompt,
-            "conversation_history": conversation_history,
-            "user_settings": user_settings,
-            "context": context,
-            "user_id": user_id,
-            "session_id": session_id,
-        }
-    )
+) -> Dict[str, Any]:
+    """Create a flow payload from request data."""
+    return {
+        "prompt": prompt,
+        "conversation_history": conversation_history,
+        "user_settings": user_settings,
+        "context": context,
+        "user_id": user_id,
+        "session_id": session_id,
+    }
 
 
-def format_flow_response(result: FlowOutput | Dict[str, Any], processing_time_ms: int) -> Dict[str, Any]:
-    """Convert a :class:`FlowOutput` or dict into a serializable response payload."""
-    # Extract data from result - handle both FlowOutput objects and plain dicts
-    if hasattr(result, "data"):
-        # FlowOutput object with .data attribute
-        data = result.data
-    else:
-        # Plain dict - use it directly
+def format_flow_response(result: Any, processing_time_ms: int) -> Dict[str, Any]:
+    """Convert a flow result into a serializable response payload."""
+    if isinstance(result, dict):
         data = result
+    else:
+        data = getattr(result, "data", result)
+        if not isinstance(data, dict):
+            data = {}
 
     return {
         "response": data.get("response", ""),

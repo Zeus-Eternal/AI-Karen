@@ -24,7 +24,7 @@ class PluginRouter:
     Back-ends into ExtensionLoader for loading and ExtensionRunner for execution.
     """
 
-    def __init__(self, extensions_dir: str = "src/extensions"):
+    def __init__(self, extensions_dir: str = "src/ai_karen_engine/extensions/plugins"):
         self.registry = get_registry()
         self.loader = ExtensionLoader(extensions_dir)
         # ExtensionRunner needs an ExtensionRegistry (legacy type).

@@ -70,7 +70,7 @@ class ProviderRegistryService:
         self.base_registry = get_provider_registry()
 
         # Use the new LLMRouter's health monitoring instead of the old health monitor
-        from ai_karen_engine.services.llm_router import LLMRouter
+        from ai_karen_engine.services.models.routing.llm_router_service import LLMRouter
 
         self.llm_router = LLMRouter()
         self.health_monitor = None  # Deprecated - using LLMRouter health

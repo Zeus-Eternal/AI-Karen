@@ -10,6 +10,9 @@ import time
 from typing import Any, Dict, List, Optional
 from datetime import datetime
 from collections import defaultdict
+from dataclasses import asdict, is_dataclass
+
+from ai_karen_engine.echocore.contracts import EchoIngestResult
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +54,7 @@ class TelemetryManager:
         self._total_searches = 0
         self._total_stores = 0
         self._total_errors = 0
+        self._echo_ingest_events: List[Dict[str, Any]] = []
 
         # Timing
         self._operation_times = []
@@ -308,6 +312,18 @@ class TelemetryManager:
 
         logger.error(f"Recorded error in {component}: {error_type} - {error_message}")
 
+    def emit_ingest(self, result: EchoIngestResult) -> None:
+        """Record an EchoCore ingest event."""
+        payload = asdict(result) if is_dataclass(result) else dict(result)  # type: ignore[arg-type]
+        payload["timestamp"] = datetime.utcnow().isoformat()
+        self._echo_ingest_events.append(payload)
+        self._memory_metrics["echo_ingest"].append(payload)
+        logger.debug(
+            "Echo ingest recorded for %s: %s",
+            result.artifact_id,
+            result.decision.action.value,
+        )
+
     def get_statistics(self) -> Dict[str, Any]:
         """
         Get comprehensive telemetry statistics.
@@ -338,6 +354,7 @@ class TelemetryManager:
         stats["recent_memory_operations"] = len(self._memory_metrics)
         stats["recent_model_trainings"] = len(self._model_metrics.get("training", []))
         stats["recent_health_checks"] = len(self._health_metrics)
+        stats["recent_echo_ingests"] = len(self._echo_ingest_events)
 
         return stats
 

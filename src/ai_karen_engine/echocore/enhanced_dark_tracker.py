@@ -15,6 +15,8 @@ from enum import Enum
 import asyncio
 import aiofiles
 
+from ai_karen_engine.echocore.contracts import EchoShadowRecord
+
 logger = logging.getLogger(__name__)
 
 
@@ -203,6 +205,19 @@ class EnhancedDarkTracker:
         await self._check_rotation()
 
         return True
+
+    async def store_shadow(self, record: EchoShadowRecord) -> None:
+        """Store a restricted shadow record without exposing it to normal recall."""
+        payload = {
+            "shadow_record": {
+                "artifact_id": record.artifact_id,
+                "user_id": record.user_id,
+                "tenant_id": record.tenant_id,
+                "restricted": record.restricted,
+                "shadow_signals": record.shadow_signals,
+            }
+        }
+        await self.capture(payload, severity=EventSeverity.WARNING)
 
     async def _check_rotation(self) -> None:
         """Check if log rotation is needed and perform if necessary."""

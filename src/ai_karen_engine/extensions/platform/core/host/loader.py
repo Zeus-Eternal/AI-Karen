@@ -38,10 +38,9 @@ class ExtensionLoader:
     - Instantiation of extension classes
     - Error isolation during loading
     """
-
     def __init__(
         self,
-        extensions_dir: str = "src/extensions",
+        extensions_dir: str = "src/ai_karen_engine/extensions/plugins",
         config_manager: Optional[ExtensionConfigManager] = None,
     ):
         """
@@ -264,12 +263,22 @@ class ExtensionLoader:
             )
 
         try:
-            # Add the extension directory to Python path
-            sys.path.insert(0, str(extension_dir))
+            # Calculate the package name if possible
+            # Extensions are expected to be in src/ai_karen_engine/extensions/plugins/<name>
+            # which maps to package ai_karen_engine.extensions.plugins.<name>
+            
+            try:
+                rel_path = handler_file.relative_to(Path("src").absolute() if Path("src").is_absolute() else Path("src"))
+                package_parts = list(rel_path.parent.parts)
+                package_name = ".".join(package_parts)
+                module_fullname = f"{package_name}.handler"
+            except ValueError:
+                # Fallback if not in src/
+                module_fullname = f"{extension_name}_handler"
 
             # Load the module
             spec = importlib.util.spec_from_file_location(
-                f"{extension_name}_handler", handler_file
+                module_fullname, handler_file
             )
             if spec is None or spec.loader is None:
                 raise ExtensionLoadError(
@@ -277,6 +286,8 @@ class ExtensionLoader:
                 )
 
             module = importlib.util.module_from_spec(spec)
+            # Ensure __package__ is set for relative imports
+            module.__package__ = ".".join(module_fullname.split(".")[:-1])
             spec.loader.exec_module(module)
 
             # Get the extension class

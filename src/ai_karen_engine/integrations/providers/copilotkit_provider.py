@@ -16,7 +16,7 @@ except ImportError:
     COPILOTKIT_AVAILABLE = False
     # Check if we should attempt to install CopilotKit
     try:
-        from ai_karen_engine.core.initialization import initialize_system
+        from ai_karen_engine.core.runtime.initialization import initialize_system
         import asyncio
         import os
         

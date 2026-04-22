@@ -11,6 +11,11 @@ from dataclasses import dataclass, asdict
 from datetime import datetime
 from enum import Enum
 
+from ai_karen_engine.echocore.contracts import (
+    EchoMetadataRecord,
+    RuntimeMemoryArtifact,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -108,6 +113,32 @@ class MetadataCollector:
                 user_id=self.user_id,
                 created_at=datetime.utcnow().isoformat()
             )
+
+    def collect(self, artifact: RuntimeMemoryArtifact) -> EchoMetadataRecord:
+        """Collect structured metadata from a promoted runtime artifact."""
+        signals = {
+            "artifact_type": artifact.artifact_type.value,
+            "source_tier": artifact.source_tier.value,
+            "importance_score": artifact.importance_score,
+            "retention_score": artifact.retention_score,
+            "privacy_tags": list(artifact.privacy_tags),
+            "content_keys": sorted(list(artifact.content.keys())),
+        }
+        signals.update(artifact.metadata or {})
+
+        tags = list(dict.fromkeys([
+            artifact.artifact_type.value,
+            artifact.source_tier.value,
+            *(artifact.privacy_tags or []),
+        ]))
+
+        return EchoMetadataRecord(
+            artifact_id=artifact.artifact_id,
+            user_id=artifact.user_id,
+            tenant_id=artifact.tenant_id,
+            signals=signals,
+            tags=tags,
+        )
 
     async def collect_basic_info(
         self,

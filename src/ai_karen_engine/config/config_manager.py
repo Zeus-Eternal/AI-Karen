@@ -131,7 +131,7 @@ class LLMConfig:
 class ServiceConfig:
     """Service-specific configuration."""
 
-    ai_orchestrator: Dict[str, Any] = field(default_factory=dict)
+    langgraph_orchestrator: Dict[str, Any] = field(default_factory=dict)
     memory_service: Dict[str, Any] = field(default_factory=dict)
     conversation_service: Dict[str, Any] = field(default_factory=dict)
     plugin_service: Dict[str, Any] = field(default_factory=dict)

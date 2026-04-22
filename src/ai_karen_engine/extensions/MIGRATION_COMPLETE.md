@@ -66,11 +66,11 @@ src/ai_karen_engine/extensions/
 All imports have been updated to use the canonical paths:
 
 ### Old Paths (removed)
-- `from extensions.core` → `from extensions.core`
-- `from extensions.core.host` → `from extensions.core.host`
-- `from extensions.core.registry` → `from extensions.core.registry`
-- `from extensions.core.integration` → `from extensions.core.integration`
-- `from extensions.core.manager` → `from extensions.core.manager`
+- `from extensions.core` → `from ai_karen_engine.extensions.platform.core`
+- `from extensions.core.host` → `from ai_karen_engine.extensions.platform.core.host`
+- `from extensions.core.registry` → `from ai_karen_engine.extensions.platform.core.registry`
+- `from extensions.core.integration` → `from ai_karen_engine.extensions.platform.core.integration`
+- `from extensions.core.manager` → `from ai_karen_engine.extensions.platform.core.manager`
 - `from extensions` → `from extensions`
 
 ### New Canonical Paths

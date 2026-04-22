@@ -1,42 +1,333 @@
-"""
-Kari CORTEX Dispatch Core
-- Central intent/command dispatcher for Kari AI
-- Local-first, plugin/routing/intent aware
-- Handles: prediction, memory, action, plugins, error capture
-- 100% backend: no UI, no distractions, no mercy
+"""CORTEX decision layer.
 
-ARCHITECTURAL COMPLIANCE:
-- RBAC validation before plugin execution (Phase 2)
-- Plugin permissions checked against Postgres (cached in Redis)
+CORTEX owns pre-runtime intelligence only:
+- intent normalization
+- predictor scoring
+- KIRE reasoning preparation
+- routing decisioning
+- RBAC pre-checks
+
+It does not execute tools, memory writes, LangGraph nodes, or plugins.
 """
+
+from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional, List
+from dataclasses import asdict
+from typing import Any, Dict, List, Optional, Tuple
+
+from ai_karen_engine.core.cortex.contracts import (
+    CorrelationIdFactory,
+    CortexOutput,
+    ExecutionMode,
+    IntentSignal,
+    KireSignal,
+    OrchestrationInput,
+    PredictorSignal,
+    ReasoningDepth,
+    ReasoningRequest,
+    RouteFamily,
+    RoutingDecision,
+    RuntimeRequest,
+    UserContext,
+)
+from ai_karen_engine.core.cortex.errors import CortexDispatchError
+from ai_karen_engine.core.cortex.intent import resolve_intent as resolve_base_intent
+from ai_karen_engine.core.cortex.routing_intents import (
+    extract_routing_parameters,
+    resolve_routing_intent as resolve_intent,
+)
 
 logger = logging.getLogger(__name__)
-# Prefer routing-aware resolver which defers to base intent if no routing match
-from ai_karen_engine.core.cortex.routing_intents import resolve_routing_intent as resolve_intent
-from ai_karen_engine.core.plugin_registry import plugin_registry
-from ai_karen_engine.core.memory.manager import recall_context, update_memory
-from ai_karen_engine.core.plugin_metrics import (
-    record_plugin_call,
-    record_memory_write,
-)
-from ai_karen_engine.core.cortex.errors import CortexDispatchError, UnsupportedIntentError
-from ai_karen_engine.core.predictors import predictor_registry, run_predictor
-from ai_karen_engine.extensions.platform.core.integration.manager import get_plugin_manager
 
-# Import RBAC validator (Phase 2 - architectural compliance)
 try:
     from ai_karen_engine.core.cortex.rbac_validator import (
-        validate_plugin_permission,
         PermissionDeniedError,
-        RBACValidationError
+        RBACValidationError,
+        validate_plugin_permission,
     )
+
     RBAC_AVAILABLE = True
 except ImportError:
     RBAC_AVAILABLE = False
-    logger.warning("[CORTEX] RBAC validator not available, plugin execution will not be validated")
+    logger.warning("[CORTEX] RBAC validator not available; routing permission checks disabled")
+
+
+def _build_runtime_request(
+    user_ctx: Dict[str, Any],
+    query: str,
+    context: Optional[Dict[str, Any]] = None,
+) -> RuntimeRequest:
+    context = dict(context or {})
+    user = UserContext(
+        user_id=str(user_ctx.get("user_id", "anonymous")),
+        tenant_id=user_ctx.get("tenant_id"),
+        roles=list(user_ctx.get("roles", [])),
+        session_id=context.get("session_id") or user_ctx.get("session_id"),
+        thread_id=context.get("thread_id") or user_ctx.get("thread_id"),
+    )
+    return RuntimeRequest(message=query, user=user, metadata=context)
+
+
+def _classify_predictors(intent: str, query: str, context: Dict[str, Any]) -> PredictorSignal:
+    q = query.lower()
+    route_hint = extract_routing_parameters(query)
+
+    tool_likelihood = 0.0
+    if route_hint.get("requested_provider") or route_hint.get("requested_model"):
+        tool_likelihood += 0.15
+    if any(token in q for token in ("tool", "execute", "run", "call", "plugin")):
+        tool_likelihood += 0.5
+    if any(token in q for token in ("memory", "remember", "recall", "context")):
+        tool_likelihood += 0.2
+
+    complexity = 0.1
+    if any(token in q for token in ("plan", "step", "multi-step", "workflow", "design", "architecture")):
+        complexity += 0.5
+    if intent.startswith("routing.") or intent.startswith("reasoning."):
+        complexity += 0.3
+
+    ambiguity = 0.1
+    if len(query.split()) < 5:
+        ambiguity += 0.4
+    if "?" not in query and len(query.split()) < 8:
+        ambiguity += 0.2
+
+    memory_relevance = 0.0
+    if any(token in q for token in ("previous", "again", "that", "this", "memory", "remember")):
+        memory_relevance += 0.3
+    if context.get("memory_hint"):
+        memory_relevance += 0.3
+
+    multi_step = 0.0
+    if complexity > 0.5:
+        multi_step += 0.4
+    if any(token in q for token in ("and then", "after", "before", "first", "next")):
+        multi_step += 0.4
+
+    degraded_risk = 0.0
+    if any(token in q for token in ("error", "fail", "degraded", "fallback", "unavailable")):
+        degraded_risk += 0.5
+
+    return PredictorSignal(
+        ambiguity_score=min(1.0, ambiguity),
+        complexity_score=min(1.0, complexity),
+        tool_likelihood=min(1.0, tool_likelihood),
+        memory_relevance=min(1.0, memory_relevance),
+        multi_step_likelihood=min(1.0, multi_step),
+        degraded_risk=min(1.0, degraded_risk),
+    )
+
+
+def _infer_route_family(intent: str, predictors: PredictorSignal) -> RouteFamily:
+    if intent.startswith("routing.") or intent.startswith("admin"):
+        return RouteFamily.ADMIN
+    if intent.startswith("memory"):
+        return RouteFamily.MEMORY
+    if intent.startswith("reasoning") or predictors.complexity_score >= 0.7:
+        return RouteFamily.REASONING
+    if predictors.tool_likelihood >= 0.5:
+        return RouteFamily.TOOL
+    if "search" in intent:
+        return RouteFamily.SEARCH
+    return RouteFamily.CHAT
+
+
+def _build_kire_signal(
+    intent: str,
+    predictors: PredictorSignal,
+    route_family: RouteFamily,
+) -> KireSignal:
+    requires_reasoning = (
+        route_family == RouteFamily.REASONING
+        or predictors.complexity_score >= 0.7
+        or predictors.multi_step_likelihood >= 0.6
+    )
+
+    if predictors.degraded_risk >= 0.5:
+        depth = ReasoningDepth.LIGHT
+    elif predictors.complexity_score >= 0.8 or route_family == RouteFamily.REASONING:
+        depth = ReasoningDepth.DEEP
+    elif predictors.complexity_score >= 0.4:
+        depth = ReasoningDepth.STANDARD
+    else:
+        depth = ReasoningDepth.NONE
+
+    return KireSignal(
+        requires_reasoning=requires_reasoning,
+        reasoning_depth=depth,
+        reasoning_modes=[route_family.value],
+        strategy_hint=intent,
+        should_use_memory=predictors.memory_relevance >= 0.1,
+        should_use_tools=predictors.tool_likelihood >= 0.4,
+        should_use_retrieval_reasoning=requires_reasoning and predictors.memory_relevance >= 0.2,
+        should_use_causal_reasoning=route_family == RouteFamily.REASONING,
+        should_use_graph_reasoning=route_family == RouteFamily.REASONING,
+        should_self_refine=predictors.complexity_score >= 0.6,
+        should_verify=predictors.complexity_score >= 0.5 or predictors.ambiguity_score >= 0.5,
+    )
+
+
+def _build_routing_decision(
+    intent: str,
+    predictors: PredictorSignal,
+    kire: KireSignal,
+    route_family: RouteFamily,
+) -> RoutingDecision:
+    execution_mode = (
+        ExecutionMode.DEGRADED
+        if predictors.degraded_risk >= 0.7
+        else ExecutionMode.LANGGRAPH
+    )
+    target_graph = "default_reasoning_graph" if route_family == RouteFamily.REASONING else "default_chat_graph"
+    return RoutingDecision(
+        route_family=route_family,
+        execution_mode=execution_mode,
+        target_graph=target_graph,
+        target_service="kro_orchestrator" if route_family == RouteFamily.REASONING else None,
+        target_plugin=None,
+        target_agent=None,
+        allow_reasoning=kire.requires_reasoning,
+        allow_tools=kire.should_use_tools,
+        allow_memory_read=True,
+        allow_memory_write=True,
+        require_approval_gate=kire.should_use_tools or route_family == RouteFamily.ADMIN,
+    )
+
+
+def _build_cortex_output(
+    *,
+    intent: IntentSignal,
+    predictors: PredictorSignal,
+    kire: KireSignal,
+    routing: RoutingDecision,
+    runtime_request: RuntimeRequest,
+) -> CortexOutput:
+    correlation_id = CorrelationIdFactory().create(runtime_request)
+    return CortexOutput(
+        intent=intent,
+        predictors=predictors,
+        kire=kire,
+        routing=routing,
+        correlation_id=correlation_id,
+        audit_tags=[
+            f"intent:{intent.primary_intent}",
+            f"route:{routing.route_family.value}",
+            f"mode:{routing.execution_mode.value}",
+            f"reasoning:{kire.reasoning_depth.value}",
+        ],
+    )
+
+
+def build_orchestration_input(
+    request: RuntimeRequest,
+    cortex: CortexOutput,
+) -> OrchestrationInput:
+    """Construct the LangGraph runtime entry contract."""
+    return OrchestrationInput(
+        message=request.message,
+        user=request.user,
+        metadata=dict(request.metadata),
+        cortex=cortex,
+    )
+
+
+def build_reasoning_request(
+    request: RuntimeRequest,
+    cortex: CortexOutput,
+    *,
+    memory_context: Optional[Dict[str, Any]] = None,
+    tool_context: Optional[Dict[str, Any]] = None,
+) -> ReasoningRequest:
+    """Construct the KRO entry contract."""
+    return ReasoningRequest(
+        message=request.message,
+        user=request.user,
+        memory_context=dict(memory_context or {}),
+        tool_context=dict(tool_context or {}),
+        intent=cortex.intent,
+        predictors=cortex.predictors,
+        kire=cortex.kire,
+        metadata=dict(request.metadata),
+    )
+
+
+async def evaluate_cortex(
+    user_ctx: Dict[str, Any],
+    query: str,
+    mode: str = "auto",
+    context: Optional[Dict[str, Any]] = None,
+    trace: Optional[List[Dict[str, Any]]] = None,
+) -> CortexOutput:
+    """Build a Cortex output contract without executing runtime actions."""
+    if trace is None:
+        trace = []
+    runtime_request = _build_runtime_request(user_ctx, query, context)
+
+    intent, intent_meta = resolve_intent(query, user_ctx)
+    if intent == "unknown":
+        fallback_intent, fallback_meta = resolve_base_intent(query, user_ctx)
+        if fallback_intent != "unknown":
+            intent, intent_meta = fallback_intent, fallback_meta
+
+    trace.append({"stage": "intent_resolved", "intent": intent, "meta": intent_meta})
+
+    predictors = _classify_predictors(intent, query, dict(context or {}))
+    trace.append({"stage": "predictors_scored", "predictors": asdict(predictors)})
+
+    route_family = _infer_route_family(intent, predictors)
+    kire = _build_kire_signal(intent, predictors, route_family)
+    routing = _build_routing_decision(intent, predictors, kire, route_family)
+    trace.append(
+        {
+            "stage": "routing_decided",
+            "route_family": route_family.value,
+            "execution_mode": routing.execution_mode.value,
+        }
+    )
+
+    if RBAC_AVAILABLE:
+        try:
+            await validate_plugin_permission(
+                user_ctx,
+                routing.target_plugin or routing.target_service or intent,
+            )
+            trace.append({"stage": "rbac_validated", "route_family": route_family.value})
+        except PermissionDeniedError as pde:
+            trace.append({"stage": "rbac_denied", "error": str(pde)})
+            raise CortexDispatchError(str(pde)) from pde
+        except RBACValidationError as rve:
+            trace.append({"stage": "rbac_error", "error": str(rve)})
+            raise CortexDispatchError(str(rve)) from rve
+
+    cortex = _build_cortex_output(
+        intent=IntentSignal(
+            primary_intent=intent,
+            secondary_intents=list(intent_meta.get("secondary_intents", [])),
+            entities=list(intent_meta.get("entities", [])),
+            confidence=float(intent_meta.get("confidence", 0.6)),
+            category=str(intent_meta.get("category", "general")),
+            requested_modality=str(intent_meta.get("requested_modality", "text")),
+        ),
+        predictors=predictors,
+        kire=kire,
+        routing=routing,
+        runtime_request=runtime_request,
+    )
+
+    trace.append({"stage": "cortex_output_built", "correlation_id": cortex.correlation_id})
+    return cortex
+
+
+def _normalize(value: Any) -> Any:
+    if hasattr(value, "value"):
+        return value.value
+    if isinstance(value, dict):
+        return {k: _normalize(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_normalize(v) for v in value]
+    return value
+
 
 async def dispatch(
     user_ctx: Dict[str, Any],
@@ -46,138 +337,27 @@ async def dispatch(
     memory_enabled: bool = True,
     plugin_enabled: bool = True,
     predictor_enabled: bool = True,
-    trace: Optional[List[Dict[str, Any]]] = None
+    trace: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
-    """
-    CORTEX unified entrypoint: routes query to correct module (plugin, ML, memory, etc).
-    Args:
-        user_ctx: User/session context.
-        query: User's raw request or message.
-        mode: 'auto' | 'plugin' | 'predictor' | 'memory' | 'manual'
-        context: Optional preloaded context for dispatch.
-        memory_enabled: If True, recalls context and writes to memory.
-        plugin_enabled: If True, allows plugin execution.
-        predictor_enabled: If True, allows ML/LLM predictors.
-        trace: Optional trace/debug output (appends steps).
-    Returns:
-        Dict with result, intent, and metadata.
-    Raises:
-        CortexDispatchError for any system error.
-    """
-    trace = trace or []
+    """Backward-compatible wrapper that returns a serialized Cortex decision package."""
+    if trace is None:
+        trace = []
     try:
-        # 1. Resolve intent
-        intent, intent_meta = resolve_intent(query, user_ctx)
-        trace.append({"stage": "intent_resolved", "intent": intent, "meta": intent_meta})
-
-        # 2. Recall recent context (if enabled)
-        memory_ctx = None
-        if memory_enabled:
-            memory_ctx = recall_context(
-                user_ctx,
-                query,
-                limit=10,
-                tenant_id=user_ctx.get("tenant_id"),
-            )
-            trace.append({"stage": "memory_recalled", "context_len": len(memory_ctx or [])})
-
-        # 3. Dispatch by mode or plugin/predictor logic
-        result = None
-        handler = None
-
-        # Prefer explicit mode if set
-        if mode == "plugin" or (plugin_enabled and intent in plugin_registry):
-            handler = plugin_registry.get(intent)
-            if handler is None:
-                raise UnsupportedIntentError(
-                    f"No plugin registered for intent '{intent}'"
-                )
-
-            # PHASE 2: RBAC validation before plugin execution
-            if RBAC_AVAILABLE:
-                try:
-                    await validate_plugin_permission(user_ctx, intent)
-                    trace.append({"stage": "rbac_validated", "plugin": intent, "result": "permitted"})
-                except PermissionDeniedError as pde:
-                    logger.warning(f"[CORTEX] Permission denied for plugin '{intent}': {pde}")
-                    result = {"error": f"Permission denied: {str(pde)}", "error_type": "permission_denied"}
-                    trace.append({"stage": "rbac_denied", "plugin": intent, "error": str(pde)})
-                    record_plugin_call(intent, success=False)
-                    return {
-                        "result": result,
-                        "intent": intent,
-                        "intent_meta": intent_meta,
-                        "trace": trace,
-                    }
-                except RBACValidationError as rve:
-                    logger.error(f"[CORTEX] RBAC validation failed for plugin '{intent}': {rve}")
-                    result = {"error": f"RBAC validation failed: {str(rve)}", "error_type": "rbac_error"}
-                    trace.append({"stage": "rbac_error", "plugin": intent, "error": str(rve)})
-                    record_plugin_call(intent, success=False)
-                    return {
-                        "result": result,
-                        "intent": intent,
-                        "intent_meta": intent_meta,
-                        "trace": trace,
-                    }
-            else:
-                logger.warning(f"[CORTEX] RBAC validation not available, executing plugin '{intent}' without permission check")
-                trace.append({"stage": "rbac_skipped", "plugin": intent, "reason": "rbac_not_available"})
-
-            try:
-                plugin_result, out, err = await get_plugin_manager().run_plugin(
-                    intent,
-                    {"prompt": query, "context": context or memory_ctx},
-                    user_ctx,
-                )
-                result = plugin_result
-                if out:
-                    trace.append({"stage": "plugin_stdout", "data": out.strip()})
-                if err:
-                    trace.append({"stage": "plugin_stderr", "data": err.strip()})
-                trace.append({"stage": "plugin_executed", "plugin": intent})
-                success = True
-            except Exception as ex:  # pragma: no cover - plugin error path
-                logger.warning(f"Plugin '{intent}' execution failed: {ex}", exc_info=True)
-                result = {"error": str(ex)}
-                trace.append({"stage": "plugin_error", "error": str(ex)})
-                success = False
-            record_plugin_call(intent, success)
-
-        elif mode == "predictor" or (predictor_enabled and intent in predictor_registry):
-            handler = predictor_registry.get(intent)
-            if handler is None:
-                raise UnsupportedIntentError(f"No predictor registered for intent '{intent}'")
-            result = await run_predictor(handler, user_ctx, query, context or memory_ctx)
-            trace.append({"stage": "predictor_executed", "predictor": intent})
-
-        elif mode == "memory" or memory_ctx:
-            # Fallback to memory/contextual recall
-            result = {
-                "type": "memory",
-                "context": memory_ctx,
-                "message": "Result sourced from memory/context recall.",
-            }
-            trace.append({"stage": "memory_fallback"})
-
-        else:
-            raise UnsupportedIntentError(f"No handler for intent: {intent}")
-
-        # 4. Optionally update memory
-        if memory_enabled and result:
-            mem_ok = update_memory(
-                user_ctx,
-                query,
-                result,
-                tenant_id=user_ctx.get("tenant_id"),
-            )
-            record_memory_write(intent, mem_ok)
-            trace.append({"stage": "memory_updated"})
+        cortex = await evaluate_cortex(
+            user_ctx=user_ctx,
+            query=query,
+            mode=mode,
+            context=context,
+            trace=trace,
+        )
 
         return {
-            "result": result,
-            "intent": intent,
-            "intent_meta": intent_meta,
+            "intent": cortex.intent.primary_intent,
+            "confidence": cortex.intent.confidence,
+            "route_family": cortex.routing.route_family.value,
+            "execution_mode": cortex.routing.execution_mode.value,
+            "requires_reasoning": cortex.kire.requires_reasoning,
+            "cortex": _normalize(asdict(cortex)),
             "trace": trace,
         }
 
@@ -185,4 +365,11 @@ async def dispatch(
         trace.append({"stage": "dispatch_error", "error": str(ex)})
         raise CortexDispatchError(f"CORTEX dispatch failed: {ex}") from ex
 
-__all__ = ["dispatch", "CortexDispatchError"]
+
+__all__ = [
+    "build_orchestration_input",
+    "build_reasoning_request",
+    "dispatch",
+    "evaluate_cortex",
+    "CortexDispatchError",
+]

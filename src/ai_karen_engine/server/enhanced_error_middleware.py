@@ -21,10 +21,9 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
-from ai_karen_engine.llm_orchestrator import get_orchestrator
 from ai_karen_engine.hooks import get_hook_manager
 from ai_karen_engine.server.http_validator import HTTPRequestValidator
-from ai_karen_engine.core.auth_config import auth_config
+from ai_karen_engine.core.security.auth_config import auth_config
 
 logger = logging.getLogger(__name__)
 
@@ -148,7 +147,12 @@ class EnhancedErrorHandler:
         self.config = config or ErrorRecoveryConfig()
         self.circuit_breakers: Dict[str, CircuitBreakerState] = {}
         self.error_cache: Dict[str, Dict[str, Any]] = {}
-        self.llm_orchestrator = get_orchestrator()
+        try:
+            from ai_karen_engine.llm_orchestrator import get_orchestrator
+
+            self.llm_orchestrator = get_orchestrator()
+        except Exception:
+            self.llm_orchestrator = None
         self.hook_manager = get_hook_manager()
         
         # Initialize circuit breakers for different components
@@ -355,6 +359,9 @@ class EnhancedErrorHandler:
     async def _fallback_to_llm_providers(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """Fallback to regular LLM providers when CopilotKit fails."""
         try:
+            if self.llm_orchestrator is None:
+                return self._create_cached_response(context)
+
             prompt = context.get("prompt", "")
             if not prompt:
                 return self._create_cached_response(context)
@@ -378,6 +385,9 @@ class EnhancedErrorHandler:
     async def _handle_context_too_large(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """Handle context too large error by truncating context."""
         try:
+            if self.llm_orchestrator is None:
+                return self._create_cached_response(context)
+
             # Truncate context to manageable size
             truncated_context = self._truncate_context(context)
             
@@ -397,6 +407,9 @@ class EnhancedErrorHandler:
     async def _fallback_to_alternative_models(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """Fallback to alternative models when primary model unavailable."""
         try:
+            if self.llm_orchestrator is None:
+                return self._create_cached_response(context)
+
             # Try different model configurations
             alternative_models = ["gpt-3.5-turbo", "claude-3-haiku", "llama-3.1-8b"]
             
@@ -426,7 +439,10 @@ class EnhancedErrorHandler:
         """Handle rate limit with exponential backoff."""
         max_retries = 3
         base_delay = 1.0
-        
+
+        if self.llm_orchestrator is None:
+            return self._create_cached_response(context)
+
         for attempt in range(max_retries):
             delay = base_delay * (2 ** attempt)
             await asyncio.sleep(delay)
@@ -481,6 +497,9 @@ class EnhancedErrorHandler:
     
     async def _try_fallback_providers(self, failed_provider: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """Try fallback LLM providers."""
+        if self.llm_orchestrator is None:
+            return self._create_cached_response(context)
+
         # Get list of available providers excluding the failed one
         available_providers = ["openai", "anthropic", "llama-cpp", "huggingface"]
         if failed_provider in available_providers:

@@ -14,7 +14,7 @@ from typing import Dict, List, Optional, Callable, Any, Tuple
 from contextlib import asynccontextmanager
 import psutil
 
-from ai_karen_engine.services.model_discovery_engine import ModelInfo
+from ai_karen_engine.services.models.discovery.model_discovery_engine import ModelInfo
 
 
 @dataclass

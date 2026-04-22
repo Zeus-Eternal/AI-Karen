@@ -13,20 +13,21 @@ from datetime import datetime, timezone
 from ..contracts.orchestration_state import LangGraphOrchestrationState
 from ai_karen_engine.utils.chat_helpers import (
     strip_internal_analysis_leakage,
+    finalize_user_visible_text,
 )
-from ai_karen_engine.services.response_formatting_engine import (
+from ai_karen_engine.services.formatting.response_formatting_engine import (
     ResponseFormattingEngine,
     FormattingContext,
     DisplayContext,
     AccessibilityLevel,
 )
-from ai_karen_engine.services.response_policy_enforcer import ResponsePolicyEnforcer
+from ai_karen_engine.services.formatting.response_policy_enforcer import ResponsePolicyEnforcer
 from ai_karen_engine.services.response_formatting.response_formatter import (
     PrettyOutputLayer,
 )
 
 try:
-    from ai_karen_engine.services.ResponseFormattingClass.Specialized.Integration import (
+    from ai_karen_engine.services.formatting.ResponseFormattingClass.Specialized.Integration import (
         get_specialized_integration,
     )
 except ImportError:
@@ -99,8 +100,9 @@ class ResponseFormatterPipeline:
         state: LangGraphOrchestrationState,
     ) -> tuple[str, Dict[str, Any]]:
         """Run the full formatting and policy enforcement pipeline"""
-        # 1. Strip leakage
-        cleaned_text = strip_internal_analysis_leakage(response_text)
+        # 1. Initial cleanup
+        user_message = state.get("message", "")
+        cleaned_text = finalize_user_visible_text(response_text, user_message)
 
         # 2. Build context
         formatting_ctx = self._build_formatting_context(state)
@@ -124,6 +126,9 @@ class ResponseFormatterPipeline:
                 "sentiment": state.get("intent_analysis", {}).get("sentiment"),
             },
         )
+        
+        # Final pass after all rendering to ensure structure is still clean
+        final_text = finalize_user_visible_text(final_text, user_message)
 
         # 6. Extract specialized payload (for UI components)
         formatting_payload = {}
@@ -186,6 +191,30 @@ class ResponseFormatterPipeline:
             return ResponseEnvelope(
                 status="error", errors=[f"Response formatting error: {str(e)}"]
             )
+
+    def build_response_envelope(
+        self,
+        final_text: str,
+        provider: str,
+        model: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        suggestions: Optional[List[str]] = None,
+        alerts: Optional[List[Dict[str, Any]]] = None,
+        status: str = "ok",
+    ) -> Dict[str, Any]:
+        """Build a standard envelope using the LangGraph-owned formatter path."""
+        meta = dict(metadata or {})
+        meta.setdefault("provider", provider)
+        meta.setdefault("model", model)
+        meta.setdefault("timestamp", datetime.now(timezone.utc).isoformat())
+
+        return {
+            "final": finalize_user_visible_text(final_text, ""),
+            "status": status,
+            "meta": meta,
+            "suggestions": list(suggestions or []),
+            "alerts": list(alerts or []),
+        }
 
     def _extract_raw_response(
         self, state: LangGraphOrchestrationState

@@ -61,7 +61,7 @@ def list_llama_cpp_models(models_dir=None):
             # Trigger system initialization if models directory doesn't exist
             logger.info(f"[llama-cpp] Models directory not found, initializing system...")
             try:
-                from ai_karen_engine.core.initialization import initialize_system
+                from ai_karen_engine.core.runtime.initialization import initialize_system
                 import asyncio
                 
                 # Try to initialize in background

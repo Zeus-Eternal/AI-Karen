@@ -10,7 +10,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Dict, List, Optional, Any, Union, cast
 
-from ai_karen_engine.services.audit_logging import get_audit_logger
+from ai_karen_engine.services.audit.audit_logging import get_audit_logger
 from ai_karen_engine.memory.memory_service import (
     WebUIMemoryEntry,
     WebUIMemoryQuery,

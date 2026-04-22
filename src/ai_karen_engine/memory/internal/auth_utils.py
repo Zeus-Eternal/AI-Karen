@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 from fastapi import HTTPException, Request, Response, status
 
-from ai_karen_engine.core.chat_memory_config import settings
+from ai_karen_engine.core.memory.chat_memory_config import settings
 # REMOVED: Complex auth service - replaced with simple auth
 # REMOVED: Complex cookie manager - using simple auth
 

@@ -24,7 +24,7 @@ else:
     except ImportError:
         from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict, Field
 
-from ai_karen_engine.services.analytics_service import (
+from ai_karen_engine.services.monitoring.analytics_service import (
     AnalyticsService,
     get_analytics_service,
     Metric,
@@ -740,8 +740,8 @@ class AnalyticsDashboard:
 
             # Get performance summary (placeholder)
             performance_summary = {
-                "ai_orchestrator": self.analytics_service.get_service_performance(
-                    "ai_orchestrator", hours=1
+                "langgraph_orchestrator": self.analytics_service.get_service_performance(
+                    "langgraph_orchestrator", hours=1
                 ),
                 "memory_service": self.analytics_service.get_service_performance(
                     "memory_service", hours=1
@@ -818,7 +818,7 @@ class AnalyticsDashboard:
             "system.disk.percent",
             "user.events.login",
             "user.events.logout",
-            "service.ai_orchestrator.duration",
+            "service.langgraph_orchestrator.duration",
             "service.memory_service.duration",
             "service.plugin_service.duration",
         ]

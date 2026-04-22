@@ -48,14 +48,6 @@ from ai_karen_engine.core.reasoning.synthesis.metacognition import (
     ReasoningStrategy,
     PerformanceMetrics,
 )
-from ai_karen_engine.core.reasoning.synthesis.cognitive_orchestrator import (
-    CognitiveOrchestrator,
-    CognitiveConfig,
-    CognitiveTask,
-    CognitiveResponse,
-    CognitiveMode,
-    create_cognitive_orchestrator,
-)
 
 # Alias for backward compatibility
 KariICEWrapper = PremiumICEWrapper
@@ -87,10 +79,4 @@ __all__ = [
     "CognitiveState",
     "ReasoningStrategy",
     "PerformanceMetrics",
-    "CognitiveOrchestrator",
-    "CognitiveConfig",
-    "CognitiveTask",
-    "CognitiveResponse",
-    "CognitiveMode",
-    "create_cognitive_orchestrator",
 ]

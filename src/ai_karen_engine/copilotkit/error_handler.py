@@ -13,8 +13,6 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from ai_karen_engine.llm_orchestrator import get_orchestrator
-
 logger = logging.getLogger(__name__)
 
 
@@ -40,7 +38,12 @@ class CopilotKitFallbackHandler:
     MAX_CACHE_ENTRIES = 256
 
     def __init__(self) -> None:
-        self.llm_orchestrator = get_orchestrator()
+        try:
+            from ai_karen_engine.llm_orchestrator import get_orchestrator
+
+            self.llm_orchestrator = get_orchestrator()
+        except Exception:
+            self.llm_orchestrator = None
         self.fallback_cache: Dict[str, Dict[str, Any]] = {}
         self.error_counts: Dict[str, int] = {}
         self.last_error_time: Dict[str, float] = {}

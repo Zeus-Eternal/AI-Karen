@@ -55,7 +55,7 @@ async def initialize_production_system(
     try:
         # Step 1: Import and configure integration
         logger.info("\n[1/5] Importing KIRE-KRO integration module...")
-        from ai_karen_engine.core.kire_kro_integration import (
+        from ai_karen_engine.core.cortex.kire_kro_integration import (
             IntegrationConfig,
             initialize_integration,
         )
@@ -148,7 +148,7 @@ async def test_system():
     logger.info("=" * 60)
 
     try:
-        from ai_karen_engine.core.kire_kro_integration import process_request
+        from ai_karen_engine.core.cortex.kire_kro_integration import process_request
 
         # Test request
         test_input = "What is the capital of France?"

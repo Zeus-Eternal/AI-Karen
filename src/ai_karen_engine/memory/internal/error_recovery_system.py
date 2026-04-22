@@ -16,7 +16,7 @@ from contextlib import asynccontextmanager
 import psutil
 import traceback
 
-from ai_karen_engine.services.model_discovery_engine import (
+from ai_karen_engine.services.models.discovery.model_discovery_engine import (
     ModelInfo,
     Modality,
     ModalityType,

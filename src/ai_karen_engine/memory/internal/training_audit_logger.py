@@ -16,7 +16,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 from dataclasses import dataclass, field, asdict
 
-from ai_karen_engine.services.audit_logging import (
+from ai_karen_engine.services.audit.audit_logging import (
     get_audit_logger,
     AuditEventType,
     AuditSeverity,

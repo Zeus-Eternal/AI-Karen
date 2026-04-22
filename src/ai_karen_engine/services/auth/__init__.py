@@ -1,3 +1,70 @@
 """Canonical auth services package boundary."""
 
-from ..auth_service import *  # noqa: F401,F403
+from .auth_service import AuthConfig, AuthService, Session, UserAccount, UserRole, UserStatus
+from .authorization_service import AuthorizationConfig, AuthorizationService, Policy, PolicyEnforcementResult, PolicyType
+from .data_protection_service import (
+    DataProtectionConfig,
+    DataProtectionPolicy,
+    DataProtectionResult,
+    DataProtectionService,
+    DataSensitivity,
+    EncryptionAlgorithm,
+    EncryptionKey,
+    RetentionPolicy,
+)
+from .user_service import UserAlreadyExistsError, UserNotFoundError, TenantNotFoundError, UserService, UserServiceError
+from .tenant_isolation import (
+    CrossTenantAccessError,
+    SecurityIncident,
+    SecurityIncidentLogger,
+    SecurityIncidentType,
+    TenantAccessLevel,
+    TenantContext,
+    TenantIsolationError,
+    TenantIsolationService,
+    TenantValidator,
+    VectorStoreTenantFilter,
+    create_tenant_context,
+    get_tenant_isolation_service,
+    validate_tenant_access,
+)
+
+__all__ = [
+    "AuthConfig",
+    "AuthService",
+    "Session",
+    "UserAccount",
+    "UserRole",
+    "UserStatus",
+    "UserService",
+    "UserServiceError",
+    "UserNotFoundError",
+    "TenantNotFoundError",
+    "UserAlreadyExistsError",
+    "AuthorizationConfig",
+    "AuthorizationService",
+    "Policy",
+    "PolicyEnforcementResult",
+    "PolicyType",
+    "DataProtectionConfig",
+    "DataProtectionPolicy",
+    "DataProtectionResult",
+    "DataProtectionService",
+    "DataSensitivity",
+    "EncryptionAlgorithm",
+    "EncryptionKey",
+    "RetentionPolicy",
+    "CrossTenantAccessError",
+    "SecurityIncident",
+    "SecurityIncidentLogger",
+    "SecurityIncidentType",
+    "TenantAccessLevel",
+    "TenantContext",
+    "TenantIsolationError",
+    "TenantIsolationService",
+    "TenantValidator",
+    "VectorStoreTenantFilter",
+    "create_tenant_context",
+    "get_tenant_isolation_service",
+    "validate_tenant_access",
+]

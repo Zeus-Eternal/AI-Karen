@@ -15,7 +15,7 @@ from ai_karen_engine.core.reasoning.soft_reasoning.engine import (
 )
 from ai_karen_engine.core.reasoning.graph.capsule import CapsuleGraph
 from ai_karen_engine.integrations.llm_utils import LLMUtils
-from ai_karen_engine.integrations.llm_registry import registry as llm_registry
+from ai_karen_engine.integrations.llm_registry import get_registry
 
 logger = logging.getLogger("ai_karen.reasoning.graph")
 
@@ -48,7 +48,7 @@ class ReasoningGraph:
                 max_len_chars=5000,
             ),
         )
-        self.llm = llm or (llm_registry.get_active() or LLMUtils())  # type: ignore[attr-defined]
+        self.llm = llm or (get_registry().get_active() or LLMUtils())  # type: ignore[attr-defined]
         self.policy = policy or ICEWritebackPolicy()
         self._ice = PremiumICEWrapper(sr=None, subengine=None, llm=self.llm, policy=self.policy)
 

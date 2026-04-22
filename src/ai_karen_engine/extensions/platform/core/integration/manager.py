@@ -13,7 +13,7 @@ class PluginManager:
     - PluginRouter: AI Orchestration and Dispatch
     """
 
-    def __init__(self, extensions_dir: str = "src/extensions"):
+    def __init__(self, extensions_dir: str = "src/ai_karen_engine/extensions/plugins"):
         from .permissions_manager import PermissionsManager
         from .sandbox_manager import SandboxManager
         from ..host.router import get_plugin_router

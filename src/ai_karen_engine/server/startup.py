@@ -50,7 +50,7 @@ async def init_ai_services(settings: Any) -> None:
             logger.info("⚡ Using ultra-optimized lazy loading startup")
 
             # Use the new optimized startup system
-            from ai_karen_engine.core.optimized_startup import (
+            from ai_karen_engine.core.runtime.optimized_startup import (
                 optimized_startup_sequence,
             )
 
@@ -98,7 +98,9 @@ async def init_ai_services(settings: Any) -> None:
             logger.info("📦 Using standard service initialization")
 
             # Standard initialization path
-            from ai_karen_engine.core.memory import manager as memory_manager
+            from ai_karen_engine.core.memory import (
+                memory_runtime_manager as memory_manager,
+            )
 
             memory_manager.init_memory()
             load_plugins(settings.plugin_dir)
@@ -125,7 +127,7 @@ async def init_ai_services(settings: Any) -> None:
             sync_registry()
 
             # Initialize the service registry and all services
-            from ai_karen_engine.core.service_registry import initialize_services
+            from ai_karen_engine.core.services.service_registry import initialize_services
 
             await initialize_services()
 
@@ -140,7 +142,7 @@ async def init_ai_services(settings: Any) -> None:
             try:
                 logger.info("⚡ Using minimal fallback initialization")
 
-                from ai_karen_engine.core.optimized_startup import MinimalStartupMode
+                from ai_karen_engine.core.runtime.optimized_startup import MinimalStartupMode
 
                 startup_report = await MinimalStartupMode.initialize(settings)
 
@@ -153,7 +155,9 @@ async def init_ai_services(settings: Any) -> None:
                 logger.error("Minimal fallback also failed: %s", str(fallback_error))
                 # Last resort: basic initialization
                 logger.info("🔄 Last resort: basic initialization")
-                from ai_karen_engine.core.memory import manager as memory_manager
+                from ai_karen_engine.core.memory import (
+                    memory_runtime_manager as memory_manager,
+                )
 
                 memory_manager.init_memory()
                 logger.info("Basic initialization completed")
@@ -174,13 +178,13 @@ async def cleanup_ai_services() -> None:
 
         if lazy_loading_enabled:
             logger.info("🧹 Cleaning up lazy services")
-            from ai_karen_engine.core.lazy_loading import cleanup_lazy_services
+            from ai_karen_engine.core.runtime.lazy_loading import cleanup_lazy_services
 
             await cleanup_lazy_services()
 
         # Standard cleanup
         try:
-            from ai_karen_engine.core.service_registry import get_service_registry
+            from ai_karen_engine.core.services.service_registry import get_service_registry
 
             registry = get_service_registry()
             await registry.shutdown()
@@ -192,7 +196,9 @@ async def cleanup_ai_services() -> None:
     except Exception as e:
         logger.error(f"Error during AI services cleanup: {e}")
 
-        from ai_karen_engine.core.memory import manager as memory_manager
+        from ai_karen_engine.core.memory import (
+            memory_runtime_manager as memory_manager,
+        )
 
         await memory_manager.close()
 
@@ -494,7 +500,7 @@ async def warm_local_llm_stack(app: FastAPI) -> None:
         return
 
     try:
-        from ai_karen_engine.services.settings_manager import get_settings_manager
+        from ai_karen_engine.services.formatting.settings_manager import get_settings_manager
 
         settings_manager = get_settings_manager()
         active_provider = (
@@ -510,7 +516,7 @@ async def warm_local_llm_stack(app: FastAPI) -> None:
         logger.info("Warming local chat stack for provider: %s", active_provider)
 
         def _warm() -> None:
-            from ai_karen_engine.api_routes.copilot_routes import (
+            from ai_karen_engine.api_routes.chat.copilot import (
                 get_langgraph_orchestrator,
             )
             from ai_karen_engine.llm_orchestrator import get_orchestrator
@@ -611,7 +617,7 @@ async def init_extensions_for_production(
 ) -> bool:
     """Initialize extensions for production environment."""
     try:
-        from ai_karen_engine.extensions.core.host.factory import (
+        from ai_karen_engine.extensions.platform.core.host.factory import (
             initialize_extensions_for_production as initialize_extensions,
         )
 
@@ -625,7 +631,7 @@ async def init_extensions_for_production(
     except ImportError as canonical_error:
         try:
             # Temporary fallback for migration compatibility.
-            from extensions.core.host.factory import (  # type: ignore
+            from ai_karen_engine.extensions.platform.core.host.factory import (  # type: ignore
                 initialize_extensions_for_production as initialize_extensions,
             )
 
@@ -870,7 +876,7 @@ def register_startup_tasks(app: FastAPI) -> None:
             ).lower() in ("1", "true", "yes")
 
             if enable_memory:
-                from ai_karen_engine.core.service_registry import initialize_services
+                from ai_karen_engine.core.services.service_registry import initialize_services
 
                 if fast:
                     logger.info(

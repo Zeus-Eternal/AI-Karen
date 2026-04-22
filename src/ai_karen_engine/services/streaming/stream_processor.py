@@ -22,7 +22,7 @@ import weakref
 
 from ai_karen_engine.config.config_manager import get_config_manager
 from ai_karen_engine.core.logging.logger import get_structured_logger
-from ai_karen_engine.core.metrics_manager import get_metrics_manager
+from ai_karen_engine.core.operations.metrics_manager import get_metrics_manager
 from ai_karen_engine.services.response_formatting.response_formatter import (
     PrettyOutputLayer,
 )
@@ -31,10 +31,10 @@ from ai_karen_engine.services.response_formatting.response_formatting_models imp
     DisplayContext,
     AccessibilityLevel,
 )
-from ai_karen_engine.services.ResponseFormattingClass.Specialized.Integration import (
+from ai_karen_engine.services.formatting.ResponseFormattingClass.Specialized.Integration import (
     get_specialized_integration,
 )
-from ai_karen_engine.services.response_policy_enforcer import ResponsePolicyEnforcer
+from ai_karen_engine.services.formatting.response_policy_enforcer import ResponsePolicyEnforcer
 
 logger = logging.getLogger(__name__)
 
@@ -477,7 +477,7 @@ class AsyncStreamProcessor:
                 rich_engine = getattr(self, "rich_formatting_engine", None)
                 rich_metadata = {}
                 formatted_intermediate = full_response
-                from .ResponseFormattingClass.Enums import FormatType
+                from ..formatting.ResponseFormattingClass.Enums import FormatType
 
                 rich_specialized = False
                 if rich_engine:
@@ -1051,7 +1051,7 @@ class AsyncStreamProcessor:
                     ).strip()
 
                     try:
-                        from .ResponseFormattingClass.Enums import (
+                        from ..formatting.ResponseFormattingClass.Enums import (
                             DisplayContext,
                             AccessibilityLevel,
                         )
@@ -1062,7 +1062,7 @@ class AsyncStreamProcessor:
                         display_context = DisplayContext.DESKTOP
                         accessibility_level = AccessibilityLevel.BASIC
 
-                    from .services.response_formatting_engine import FormattingContext
+                    from ..formatting.response_formatting_engine import FormattingContext
 
                     formatting_context = FormattingContext(
                         display_context=display_context,

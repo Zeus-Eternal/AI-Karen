@@ -20,8 +20,8 @@ except Exception:  # pragma: no cover
         def observe(self, *_): pass
     M_SR_LAT = M_SR_INGEST = M_SR_RESULTS = _Noop()
 
-from ai_karen_engine.core.embedding_manager import EmbeddingManager
-from ai_karen_engine.core.milvus_client import MilvusClient
+from ai_karen_engine.core.model_runtime.embedding_manager import EmbeddingManager
+from ai_karen_engine.core.model_runtime.milvus_client import MilvusClient
 from ai_karen_engine.core.reasoning.retrieval.vector_stores import VectorStore, MilvusClientAdapter, Result
 
 

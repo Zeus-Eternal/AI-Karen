@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from ai_karen_engine.extensions.platform.core.host.loader import ExtensionLoader
-from ai_karen_engine.extensions.platform.core.manifest import ExtensionRecord, ExtensionStatus
+from ai_karen_engine.extensions.platform.core.host.models import ExtensionRecord, ExtensionStatus
 from ai_karen_engine.extensions.platform.core.registry.plugin_registry import get_registry
 
 
@@ -16,7 +16,7 @@ class ExtensionManager:
 
     def __init__(
         self,
-        extension_root: Path | str = "src/extensions",
+        extension_root: Path | str = "src/ai_karen_engine/extensions/plugins",
         plugin_router: Any = None,
         db_session: Any = None,
         app_instance: Any = None,
@@ -29,6 +29,10 @@ class ExtensionManager:
         self.use_new_architecture = use_new_architecture
         self.loader = ExtensionLoader(str(self.extension_root))
         self.registry = get_registry()
+
+    def get_extension_by_name(self, name: str) -> Optional[ExtensionRecord]:
+        """Get an extension record by its name."""
+        return self.registry.get_extension(name)
 
     async def discover_extensions(self) -> Dict[str, Any]:
         await self.registry.refresh()

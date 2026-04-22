@@ -18,11 +18,11 @@ def __getattr__(name):
 
         return _NT
     if name == "ModelManager":
-        from ai_karen_engine.core.model_manager import ModelManager as _MM
+        from ai_karen_engine.core.model_runtime.model_manager import ModelManager as _MM
 
         return _MM
     if name == "EchoCore":
-        from ai_karen_engine.core.echo_core import EchoCore as _EC
+        from ai_karen_engine.learning.echo_core import EchoCore as _EC
 
         return _EC
     if name == "LNMClient":

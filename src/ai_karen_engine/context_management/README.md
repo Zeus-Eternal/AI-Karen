@@ -2,6 +2,13 @@
 
 A comprehensive context management system for the CoPilot AI assistant that handles context persistence, file uploads, and context retrieval for agent interactions.
 
+## Boundary
+
+This package is the persistent context domain. It owns stored contexts,
+sharing, versioning, file lifecycle, search, and scoring over saved records.
+The LangGraph runtime context layer should consume it through adapters and
+remain the live request-time context authority.
+
 ## Features
 
 ### Core Functionality

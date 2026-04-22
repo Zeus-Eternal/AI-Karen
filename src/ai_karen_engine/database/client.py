@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 
 import os
-from ai_karen_engine.core.chat_memory_config import settings
+from ai_karen_engine.core.memory.chat_memory_config import settings
 from ai_karen_engine.database.models import Base
 from ai_karen_engine.core.logging import get_logger
 

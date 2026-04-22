@@ -13,7 +13,7 @@ from enum import Enum
 from typing import Dict, List, Optional, Set, Tuple, Any
 from collections import defaultdict
 
-from ai_karen_engine.services.model_discovery_engine import (
+from ai_karen_engine.services.models.discovery.model_discovery_engine import (
     ModelInfo,
     Modality,
     ModalityType,

@@ -25,7 +25,7 @@ from ai_karen_engine.models.shared_types import (
     MemoryContext,
     PluginInfo,
 )
-from ai_karen_engine.api_routes.ai_orchestrator_routes import (
+from ai_karen_engine.api_routes.models.orchestrator import (
     ConversationProcessingRequest,
     FlowResponse,
 )

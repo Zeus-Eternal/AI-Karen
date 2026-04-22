@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy import text
 
-from ai_karen_engine.core.chat_memory_config import settings
+from ai_karen_engine.core.memory.chat_memory_config import settings
 from ai_karen_engine.database.client import MultiTenantPostgresClient
 from ai_karen_engine.database.models import Tenant
 

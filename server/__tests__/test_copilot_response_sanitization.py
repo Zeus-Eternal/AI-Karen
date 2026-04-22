@@ -1,4 +1,4 @@
-from ai_karen_engine.api_routes.copilot_routes import (
+from ai_karen_engine.api_routes.chat.copilot import (
     _is_placeholder_response,
     _sanitize_user_visible_text,
 )

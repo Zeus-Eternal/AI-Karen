@@ -22,7 +22,7 @@ from ai_karen_engine.monitoring.structured_logging_service import (
     clear_context,
     LogCategory,
 )
-from ai_karen_engine.services.error_aggregation_service import (
+from ai_karen_engine.services.monitoring.error_aggregation_service import (
     get_error_aggregation_service,
 )
 

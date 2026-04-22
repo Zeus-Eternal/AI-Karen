@@ -3,6 +3,11 @@ Context Management System for CoPilot
 
 Provides comprehensive context persistence, file uploads, and context retrieval
 for agent interactions with proper indexing, versioning, and access control.
+
+This package is the persistent context domain. It owns stored contexts,
+sharing, version history, file lifecycle, and search/scoring over saved
+context records. Runtime orchestration should consume it through adapters,
+not take ownership of it.
 """
 
 from typing import TYPE_CHECKING

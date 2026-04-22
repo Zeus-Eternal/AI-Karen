@@ -340,7 +340,7 @@ class ProfileManager:
         """Log profile change for audit purposes."""
         try:
             # Import here to avoid circular imports
-            from ai_karen_engine.services.audit_logger import get_audit_logger
+            from ai_karen_engine.services.audit.audit_logger import get_audit_logger
 
             audit_logger = get_audit_logger()
             if audit_logger:

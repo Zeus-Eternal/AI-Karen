@@ -37,7 +37,7 @@ from ai_karen_engine.extensions.platform.core.host.dependency_resolver import De
 from ai_karen_engine.extensions.platform.core.host.resource_monitor import ResourceMonitor, ExtensionHealthChecker
 from ai_karen_engine.hooks.hook_types import HookTypes
 from ai_karen_engine.database.client import get_db_session_context
-from ai_karen_engine.database.models import Extension, ExtensionUsage, ExtensionHealth, ExtensionDependency
+from ai_karen_engine.database.models import Extension
 
 
 class ExtensionLifecycleState(Enum):
@@ -519,6 +519,7 @@ class ExtensionLifecycleManager:
             
             # Update state to active
             self.extension_states[extension_name] = ExtensionLifecycleState.ACTIVE
+            record.status = ExtensionStatus.ACTIVE
             
             await self._emit_lifecycle_event(
                 extension_id=extension_name,
@@ -768,6 +769,9 @@ class ExtensionLifecycleManager:
             **kwargs: Arguments for ExtensionLifecycleEvent
         """
         try:
+            if "timestamp" not in kwargs:
+                kwargs["timestamp"] = datetime.utcnow()
+                
             event = ExtensionLifecycleEvent(**kwargs)
             self.lifecycle_events.append(event)
             
@@ -936,20 +940,9 @@ class ExtensionLifecycleManager:
                 with get_db_session_context() as session:
                     existing = session.get(Extension, extension_name)
                     if existing:
-                        # Update or create health record
-                        health_record = session.get(ExtensionHealth, extension_name)
-                        
-                        if health_record:
-                            health_record.status = health_status.value
-                            health_record.checked_at = datetime.utcnow()
-                        else:
-                            health_record = ExtensionHealth(
-                                name=extension_name,
-                                status=health_status.value,
-                                checked_at=datetime.utcnow()
-                            )
-                            session.add(health_record)
-                        
+                        # Update extension status
+                        existing.status = health_status.value
+                        existing.updated_at = datetime.utcnow()
                         session.commit()
                         
         except Exception as e:

@@ -67,6 +67,15 @@ class WebSearchDispatcher(ExtensionBase):
         )
         self._handlers.clear()
 
+    def get_status(self) -> Dict[str, Any]:
+        """Return the current status of the extension."""
+        return {
+            "status": "healthy",
+            "initialized": True,
+            "version": getattr(self.manifest, "version", "unknown"),
+            "handler_count": len(self._handlers),
+        }
+
     async def execute_hook(
         self,
         hook_point: HookPoint,

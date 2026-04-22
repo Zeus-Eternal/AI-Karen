@@ -2,7 +2,7 @@ import logging
 from typing import Dict, Any, Optional
 from dataclasses import asdict
 
-from ai_karen_engine.services.llm_router import ChatRequest
+# from ai_karen_engine.services.llm_router import ChatRequest  <- Moved to local scope
 from ai_karen_engine.memory.profile_manager import ProfileManager
 from ..contracts.orchestration_state import LangGraphOrchestrationState
 from ..utils.message_serialization import message_to_history_entry
@@ -24,6 +24,9 @@ class RouterSelectNode:
         logger.info("Router selection processing")
 
         try:
+            # Local import to avoid circular dependency
+            from ai_karen_engine.services.models.routing.llm_router_service import ChatRequest
+
             messages = state.get("messages", [])
             if not messages:
                 state["selected_provider"] = "fallback"

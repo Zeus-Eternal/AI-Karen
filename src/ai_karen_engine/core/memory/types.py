@@ -56,6 +56,42 @@ class MemoryNamespace(str, Enum):
     EPHEMERAL = "ephemeral"        # Temporary (current session only)
 
 
+class ArtifactType(str, Enum):
+    """Artifact classification for downstream EchoCore export."""
+    EPISODIC_EVENT = "episodic_event"
+    LONG_TERM_FACT = "long_term_fact"
+    USER_PREFERENCE = "user_preference"
+    PROJECT_MEMORY = "project_memory"
+    TRAINING_CANDIDATE = "training_candidate"
+    ARCHIVAL_RECORD = "archival_record"
+    SHADOW_SIGNAL = "shadow_signal"
+    METADATA_SIGNAL = "metadata_signal"
+
+
+class ArtifactSourceTier(str, Enum):
+    """Source tier for promoted artifacts."""
+    STM = "stm"
+    EPISODIC = "episodic"
+    LTM = "ltm"
+
+
+class ArtifactPrivacyTag(str, Enum):
+    """Privacy tags attached to runtime-exported artifacts."""
+    PUBLIC = "public"
+    INTERNAL = "internal"
+    SENSITIVE = "sensitive"
+    RESTRICTED = "restricted"
+    NO_TRAINING = "no_training"
+    NO_EXPORT = "no_export"
+
+
+class ArtifactTrainingEligibility(str, Enum):
+    """Training eligibility state for runtime artifacts."""
+    ELIGIBLE = "eligible"
+    REVIEW = "review"
+    INELIGIBLE = "ineligible"
+
+
 class MemoryStatus(str, Enum):
     """Memory lifecycle status."""
     ACTIVE = "active"              # Currently accessible
@@ -110,6 +146,8 @@ class ImportanceLevel(Enum):
 
 # Embedding vector (typically 384, 768, or 1536 dimensions)
 EmbeddingVector = List[float]
+ArtifactImportanceScore = float
+ArtifactRetentionScore = float
 
 # JSON-like metadata
 JSONLike = Union[Dict[str, Any], List[Any], str, int, float, bool, None]
@@ -146,6 +184,24 @@ class MemoryMetadata:
 
     # Additional metadata
     custom: Dict[str, Any] = field(default_factory=dict)  # Extensible custom fields
+
+
+@dataclass
+class RuntimeMemoryArtifact:
+    """Normalized artifact exported from runtime memory to EchoCore."""
+    artifact_id: str
+    artifact_type: ArtifactType
+    source_tier: ArtifactSourceTier
+    user_id: str
+    tenant_id: Optional[str]
+    session_id: Optional[str]
+    thread_id: Optional[str]
+    content: Dict[str, Any]
+    importance_score: ArtifactImportanceScore = 0.0
+    retention_score: ArtifactRetentionScore = 0.0
+    privacy_tags: List[ArtifactPrivacyTag] = field(default_factory=list)
+    training_eligibility: ArtifactTrainingEligibility = ArtifactTrainingEligibility.REVIEW
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 # ===================================
@@ -451,15 +507,22 @@ __all__ = [
     # Enums
     "MemoryType",
     "MemoryNamespace",
+    "ArtifactType",
+    "ArtifactSourceTier",
+    "ArtifactPrivacyTag",
+    "ArtifactTrainingEligibility",
     "MemoryStatus",
     "MemoryPriority",
     "MemoryVisibility",
     "ImportanceLevel",
     # Types
     "EmbeddingVector",
+    "ArtifactImportanceScore",
+    "ArtifactRetentionScore",
     "JSONLike",
     # Data structures
     "MemoryMetadata",
+    "RuntimeMemoryArtifact",
     "MemoryEntry",
     "MemoryQuery",
     "MemoryQueryResult",

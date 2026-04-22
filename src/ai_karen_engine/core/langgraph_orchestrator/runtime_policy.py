@@ -328,6 +328,26 @@ async def runtime_policy_enforcer_node(
     return state
 
 
+def select_execution_branch(state: LangGraphOrchestrationState) -> str:
+    """Select the execution branch for the LangGraph chat turn."""
+    intent = str(state.get("detected_intent") or "").strip()
+    request_config = state.get("request_config") or {}
+
+    if isinstance(request_config, dict) and request_config.get("use_medusa"):
+        return "medusa"
+
+    if intent in (
+        "routing.select",
+        "routing.profile",
+        "admin_panel",
+        "extension.action",
+        "agent_complex_reasoning",
+    ):
+        return "medusa"
+
+    return "normal"
+
+
 # Graph edge policy functions
 
 

@@ -3,10 +3,10 @@ import logging
 from datetime import datetime, timezone
 from langchain_core.messages import HumanMessage
 
-from ai_karen_engine.auth.auth_service import (
-    get_auth_service,
-    user_account_to_dict,
-)
+# from ai_karen_engine.auth.auth_service import (
+#     get_auth_service,
+#     user_account_to_dict,
+# )
 from ..contracts.orchestration_state import LangGraphOrchestrationState
 from ..utils.message_serialization import extract_last_user_content
 
@@ -20,6 +20,8 @@ def serialize_user_account(user: Any) -> Optional[Dict[str, Any]]:
     if isinstance(user, dict):
         return user
     try:
+        from ai_karen_engine.auth.auth_service import user_account_to_dict
+
         return user_account_to_dict(user)
     except Exception:
         if hasattr(user, "__dict__"):
@@ -57,6 +59,8 @@ class AuthGateNode:
             return self._auth_service
 
         try:
+            from ai_karen_engine.auth.auth_service import get_auth_service
+
             self._auth_service = await get_auth_service()
         except Exception as exc:
             logger.warning("Auth service unavailable: %s", exc)

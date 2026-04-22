@@ -7,9 +7,9 @@ Provides preflight simulation and analysis without side effects.
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Any as AnyType
 
-from ai_karen_engine.services.llm_router import ChatRequest
+# from ai_karen_engine.services.llm_router import ChatRequest, LLMRouter  <- Moved to local scope
 from ai_karen_engine.memory.distilbert_service import DistilBertService, SafetyResult
 from ai_karen_engine.memory.profile_manager import ProfileManager
 
@@ -26,10 +26,10 @@ class DiagnosticsEngine:
 
     def __init__(
         self,
-        decision_engine: DecisionEngine = None,
-        context_manager: ContextManager = None,
-        llm_router=None,
-        profile_manager=None,
+        decision_engine: Optional[DecisionEngine] = None,
+        context_manager: Optional[ContextManager] = None,
+        llm_router: Optional[Any] = None,
+        profile_manager: Optional[ProfileManager] = None,
     ):
         self._decision_engine = decision_engine or DecisionEngine()
         self._context_manager = context_manager

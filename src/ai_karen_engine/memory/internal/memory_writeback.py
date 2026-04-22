@@ -18,7 +18,7 @@ try:
 except ImportError:
     from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict, Field
 
-from ai_karen_engine.core.memory.curated_recall import (
+from ai_karen_engine.core.memory.retrieval.curated_recall import (
     DEFAULT_CURATED_MEMORY_CLASSES,
     is_curated_memory_metadata,
 )

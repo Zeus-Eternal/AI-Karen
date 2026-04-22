@@ -31,6 +31,8 @@ class LangGraphOrchestrationState(TypedDict):
 
     # Memory & Context
     memory_context: Optional[Dict[str, Any]]
+    context_sources: Optional[Dict[str, Any]]
+    saved_contexts: Optional[List[Dict[str, Any]]]
     conversation_history: Optional[List[Dict[str, Any]]]
 
     # Intent & Planning
@@ -107,6 +109,8 @@ def create_initial_state(
         "safety_flags": None,
         "safety_evaluation": None,
         "memory_context": None,
+        "context_sources": None,
+        "saved_contexts": None,
         "conversation_history": None,
         "detected_intent": None,
         "intent_confidence": None,

@@ -58,7 +58,7 @@ except ImportError:
 
 # Import NeuroVault
 try:
-    from ai_karen_engine.core.memory.offline_mode import get_offline_mode
+    from ai_karen_engine.core.memory.resilience.offline_mode import get_offline_mode
     OFFLINE_MODE_AVAILABLE = True
 except ImportError:
     OFFLINE_MODE_AVAILABLE = False

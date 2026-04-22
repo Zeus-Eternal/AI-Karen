@@ -706,7 +706,7 @@ def create_app() -> FastAPI:
         """Compatibility proxy that forwards to the canonical health router."""
 
         try:
-            from ai_karen_engine.api_routes.health import (
+            from ai_karen_engine.api_routes.monitoring.health import (
                 degraded_mode_status_compat,
             )
 

@@ -22,7 +22,7 @@ from ai_karen_engine.memory.memory_service import (
     WebUIMemoryQuery as ServiceWebUIMemoryQuery,
     UISource,
 )
-from ai_karen_engine.api_routes.memory_routes import (
+from ai_karen_engine.api_routes.memory.memory import (
     MemQuery,
     MemCommit,
     ContextHit,

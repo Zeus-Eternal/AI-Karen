@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from .llm_router import IntelligentLLMRouter, RoutingRequest, RouteDecision, PrivacyLevel, TaskType, PerformanceRequirement
 from ..config.profile_manager import get_profile_manager
-from ai_karen_engine.services.settings_manager import get_settings_manager
+from ai_karen_engine.services.formatting.settings_manager import get_settings_manager
 
 logger = logging.getLogger(__name__)
 

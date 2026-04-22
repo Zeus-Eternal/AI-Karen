@@ -1,15 +1,20 @@
+from __future__ import annotations
+
 from typing import Optional, Any, Dict, List
 import logging
 import asyncio
 from datetime import datetime, timezone
 
-from ai_karen_engine.memory.memory_service import (
-    MemoryType,
-    UISource,
-    WebUIMemoryService,
+from .context_manager import (
+    ContextData,
+    ContextError,
+    ContextErrorType,
+    ContextFile,
+    ContextManager,
+    ContextResponse,
+    ContextUpdateRequest,
+    FileUploadStatus,
 )
-from ai_karen_engine.copilotkit.session_state_manager import SessionStateManager
-from .context_manager import ContextManager
 from ..utils.message_serialization import (
     message_to_history_entry,
     history_entry_to_message,
@@ -27,7 +32,7 @@ async def resolve_memory_service(orchestrator_instance: Any) -> Optional[Any]:
         return orchestrator_instance._memory_service
 
     try:
-        from ai_karen_engine.core.service_registry import (
+        from ai_karen_engine.core.services.service_registry import (
             get_memory_service,
         )  # Lazy import
 
@@ -36,6 +41,8 @@ async def resolve_memory_service(orchestrator_instance: Any) -> Optional[Any]:
         if not getattr(orchestrator_instance, "_memory_resolution_failed", False):
             logger.warning("Memory service unavailable: %s", exc)
         try:
+            from ai_karen_engine.memory.memory_service import WebUIMemoryService
+
             orchestrator_instance._memory_service = WebUIMemoryService()
             logger.info("Fell back to direct WebUIMemoryService initialization")
         except Exception as fallback_exc:  # pragma: no cover - optional dependency
@@ -71,6 +78,10 @@ async def ensure_session_state_manager(
         return orchestrator_instance._session_state_manager
 
     try:
+        from ai_karen_engine.copilotkit.session_state_manager import (
+            SessionStateManager,
+        )
+
         memory_service = await resolve_memory_service(orchestrator_instance)
         orchestrator_instance._session_state_manager = SessionStateManager(
             memory_service=memory_service
@@ -92,25 +103,53 @@ async def build_runtime_context(
 ) -> Dict[str, Any]:
     """Build complete runtime context from state"""
     context = {}
+    context_sources: Dict[str, Any] = {}
 
     # Add conversation history
     if "messages" in state:
-        context["conversation_history"] = [
+        conversation_history = [
             message_to_history_entry(msg) for msg in state["messages"]
         ]
+        context["conversation_history"] = conversation_history
+        context_sources["runtime_context"] = {
+            "source": "runtime_context",
+            "messages": len(conversation_history),
+        }
 
     # Add user info
     if "user_profile" in state:
         context["user_profile"] = state["user_profile"]
         context["user_settings"] = state["user_profile"].get("preferences", {})
+        context_sources["user_profile"] = {
+            "source": "runtime_context",
+            "present": True,
+        }
 
     # Add memory context
     if "memory_context" in state:
         context["memory_context"] = state["memory_context"]
+        context_sources["memory_context"] = {
+            "source": "memory_context",
+            "present": state["memory_context"] is not None,
+        }
+
+    if "saved_contexts" in state:
+        context["saved_contexts"] = state["saved_contexts"]
+        context_sources["saved_contexts"] = {
+            "source": "saved_context",
+            "present": bool(state["saved_contexts"]),
+        }
 
     # Add file context
     if "file_context" in state:
         context["file_context"] = state["file_context"]
+        context_sources["file_context"] = {
+            "source": "file_context",
+            "present": state["file_context"] is not None,
+        }
+
+    if context_sources:
+        context["context_sources"] = context_sources
 
     return context
 
@@ -190,7 +229,3 @@ def extract_last_user_content(messages: List[Any]) -> Optional[str]:
         if msg.__class__.__name__ == "HumanMessage":
             return msg.content
     return None
-
-    memory_service = await resolve_memory_service(orchestrator_instance)
-    orchestrator_instance._context_manager = ContextManager(memory_service)
-    return orchestrator_instance._context_manager

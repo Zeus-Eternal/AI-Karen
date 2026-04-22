@@ -11,6 +11,8 @@ from datetime import datetime
 from dataclasses import dataclass, asdict
 import asyncio
 
+from ai_karen_engine.echocore.contracts import EchoTrainingCandidate
+
 logger = logging.getLogger(__name__)
 
 
@@ -102,6 +104,7 @@ class ProductionFineTuner:
         # Training state
         self.current_run: Optional[TrainingRun] = None
         self.metrics_history: List[TrainingMetrics] = []
+        self._candidate_queue: List[Dict[str, Any]] = []
 
     def _load_logs(self) -> List[Dict[str, Any]]:
         """Load and parse log files."""
@@ -163,6 +166,29 @@ class ProductionFineTuner:
         )
 
         return train_texts, val_texts
+
+    def queue_candidate(self, candidate: EchoTrainingCandidate) -> None:
+        """Queue a training candidate for later dataset preparation."""
+        record = {
+            "artifact_id": candidate.artifact_id,
+            "user_id": candidate.user_id,
+            "tenant_id": candidate.tenant_id,
+            "input_payload": candidate.input_payload,
+            "labels": candidate.labels,
+            "quality_score": candidate.quality_score,
+            "queued_at": datetime.utcnow().isoformat(),
+        }
+        self._candidate_queue.append(record)
+
+        queue_file = self.experiments_dir / "candidate_queue.jsonl"
+        with open(queue_file, "a", encoding="utf-8") as f:
+            f.write(json.dumps(record) + "\n")
+
+        self.logger.info(
+            "Queued training candidate for artifact %s (quality=%.3f)",
+            candidate.artifact_id,
+            candidate.quality_score,
+        )
 
     async def fine_tune(
         self,

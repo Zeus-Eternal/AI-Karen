@@ -89,7 +89,7 @@ class CompatibilityImportManager:
         # Define all migration paths
         self.import_mappings = {
             # Core system mappings
-            "ai_karen_engine.plugin_manager": "extensions.core.manager",
+            "ai_karen_engine.plugin_manager": "ai_karen_engine.extensions.platform.core.manager",
             "ai_karen_engine.plugin_router": "ai_karen_engine.plugins.router",
             
             # Plugin mappings organized by category
@@ -98,11 +98,11 @@ class CompatibilityImportManager:
                 "ai_karen_engine.plugins.sandbox_fail": "ai_karen_engine.plugins.router",
             },
             "integrations": {
-                "ai_karen_engine.plugins.llm_manager": "ai_karen_engine.services.llm_router",
+                "ai_karen_engine.plugins.llm_manager": "ai_karen_engine.services.models.routing.llm_router_service",
                 "ai_karen_engine.plugins.weather_query": "ai_karen_engine.tools.weather_tool",
             },
             "ai": {
-                "ai_karen_engine.plugins.llm_services": "ai_karen_engine.services.llm_router",
+                "ai_karen_engine.plugins.llm_services": "ai_karen_engine.services.models.routing.llm_router_service",
             }
         }
     

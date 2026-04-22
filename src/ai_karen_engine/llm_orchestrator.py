@@ -1782,7 +1782,7 @@ class LLMOrchestrator:
         """
         try:
             # Import response formatting integration from new core services path
-            from ai_karen_engine.services.ResponseFormattingClass.Specialized.Integration import get_specialized_integration
+            from ai_karen_engine.services.formatting.ResponseFormattingClass.Specialized.Integration import get_specialized_integration
             import asyncio
             
             integration = get_specialized_integration()

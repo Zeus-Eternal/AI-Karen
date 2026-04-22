@@ -26,7 +26,7 @@ from fastapi.security import HTTPBearer
 
 from ai_karen_engine.config.config_manager import get_config_manager
 from ai_karen_engine.core.logging.logger import get_structured_logger
-from ai_karen_engine.core.metrics_manager import get_metrics_manager
+from ai_karen_engine.core.operations.metrics_manager import get_metrics_manager
 
 logger = logging.getLogger(__name__)
 security = HTTPBearer()

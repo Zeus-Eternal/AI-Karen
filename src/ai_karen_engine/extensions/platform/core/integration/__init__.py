@@ -19,13 +19,13 @@ __all__ = [
 
 def __getattr__(name: str):
     if name == "PluginManager":
-        return import_module("extensions.core.integration.manager").PluginManager
+        return import_module("ai_karen_engine.extensions.platform.core.integration.manager").PluginManager
     if name == "get_plugin_manager":
-        return import_module("extensions.core.integration.manager").get_plugin_manager
+        return import_module("ai_karen_engine.extensions.platform.core.integration.manager").get_plugin_manager
     if name == "extension_api_router":
-        return import_module("extensions.core.integration.api").router
+        return import_module("ai_karen_engine.extensions.platform.core.integration.api").router
     if name == "ExtensionIntegrationManager":
-        return import_module("extensions.core.integration.manager").PluginManager
+        return import_module("ai_karen_engine.extensions.platform.core.integration.manager").PluginManager
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
@@ -37,4 +37,4 @@ def set_integration_manager(manager):
 def get_integration_manager():
     if _integration_manager is not None:
         return _integration_manager
-    return import_module("extensions.core.integration.manager").get_plugin_manager()
+    return import_module("ai_karen_engine.extensions.platform.core.integration.manager").get_plugin_manager()

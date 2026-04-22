@@ -33,7 +33,7 @@ class PluginPackageManager:
     - Validating plugin packages
     """
 
-    def __init__(self, extensions_dir: str = "src/extensions"):
+    def __init__(self, extensions_dir: str = "src/ai_karen_engine/extensions/plugins"):
         self.extensions_dir = Path(extensions_dir)
         self.temp_dir = Path(tempfile.gettempdir()) / "kari_plugins"
         self.temp_dir.mkdir(exist_ok=True)
@@ -550,7 +550,7 @@ class PluginPackageManager:
 _package_manager: Optional[PluginPackageManager] = None
 
 
-def get_package_manager(extensions_dir: str = "src/extensions") -> PluginPackageManager:
+def get_package_manager(extensions_dir: str = "src/ai_karen_engine/extensions/plugins") -> PluginPackageManager:
     """Get the singleton plugin package manager instance."""
     global _package_manager
     if _package_manager is None:

@@ -36,8 +36,8 @@ class ExtensionServiceConfig:
         auto_discover_on_init: bool = True,
         auto_load_extensions: bool = False,
     ):
-        # Points to src/extensions/ (parent.parent of this file)
-        self.extension_root = extension_root or (Path(__file__).parent.parent.parent / "extensions")
+        # Points to src/ai_karen_engine/extensions/plugins/ (relative to this file)
+        self.extension_root = extension_root or (Path(__file__).parent.parent.parent.parent / "plugins")
 
         self.enable_marketplace = enable_marketplace
         self.enable_resource_monitoring = enable_resource_monitoring
@@ -87,7 +87,7 @@ class ExtensionServiceFactory:
                 logger.warning(f"Plugin registry not available: {e}")
 
             try:
-                from ai_karen_engine.core.service_registry import get_service_registry
+                from ai_karen_engine.core.services.service_registry import get_service_registry
                 service_registry = get_service_registry()
             except Exception as e:
                 logger.warning(f"Service registry not available: {e}")

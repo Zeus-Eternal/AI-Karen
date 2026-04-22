@@ -205,7 +205,7 @@ def get_registry() -> ServiceRegistry:
 
 
 # Clear aliases for the DI/discovery registry to distinguish it from the
-# runtime service registry in ai_karen_engine.core.service_registry.
+# runtime service registry in ai_karen_engine.core.services.service_registry.
 ServiceMetadataRegistry = ServiceRegistry
 
 

@@ -155,7 +155,7 @@ def configure_logging() -> None:
                     "level": _dev_warn_level,
                     "propagate": False,
                 },
-                "ai_karen_engine.api_routes.memory_routes": {
+                "ai_karen_engine.api_routes.memory.memory": {
                     "handlers": ["console", "file"],
                     "level": _dev_warn_level,
                     "propagate": False,

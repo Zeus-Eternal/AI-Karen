@@ -15,6 +15,8 @@ import aiofiles
 from dataclasses import dataclass, asdict
 from enum import Enum
 
+from ai_karen_engine.echocore.contracts import EchoArchiveRecord
+
 logger = logging.getLogger(__name__)
 
 
@@ -70,6 +72,10 @@ class EnhancedEchoVault:
         self.current_file = self.vault_dir / "current.json"
         self.snapshots_dir = self.vault_dir / "snapshots"
         self.snapshots_dir.mkdir(exist_ok=True)
+        self.archive_dir = self.vault_dir / "archives"
+        self.archive_dir.mkdir(exist_ok=True)
+        self.backup_dir = self.vault_dir / "backups"
+        self.backup_dir.mkdir(exist_ok=True)
 
         self.enable_encryption = enable_encryption
         self.enable_compression = enable_compression
@@ -91,6 +97,32 @@ class EnhancedEchoVault:
     def _decompress_data(self, data: bytes) -> bytes:
         """Decompress gzip data."""
         return gzip.decompress(data)
+
+    def _serialize_structured_record(self, record: EchoArchiveRecord) -> bytes:
+        payload = {
+            "record_id": record.record_id,
+            "artifact_id": record.artifact_id,
+            "user_id": record.user_id,
+            "tenant_id": record.tenant_id,
+            "record_type": record.record_type,
+            "payload": record.payload,
+            "metadata": record.metadata,
+            "stored_at": datetime.utcnow().isoformat(),
+        }
+        return json.dumps(payload, indent=2).encode("utf-8")
+
+    async def _write_structured_record(self, target_file: Path, record: EchoArchiveRecord) -> str:
+        data_bytes = self._serialize_structured_record(record)
+
+        if self.enable_compression:
+            data_bytes = self._compress_data(data_bytes)
+        if self.enable_encryption:
+            data_bytes = self._encrypt_data(data_bytes)
+
+        async with aiofiles.open(target_file, "wb") as f:
+            await f.write(data_bytes)
+
+        return record.record_id
 
     def _encrypt_data(self, data: bytes) -> bytes:
         """Encrypt data using AES."""
@@ -193,6 +225,16 @@ class EnhancedEchoVault:
         )
 
         return snapshot
+
+    async def store_archive(self, record: EchoArchiveRecord) -> str:
+        """Store a structured archive record in the archival vault."""
+        archive_file = self.archive_dir / f"{record.record_id}.json"
+        return await self._write_structured_record(archive_file, record)
+
+    async def store_backup_copy(self, record: EchoArchiveRecord) -> str:
+        """Store a backup copy of a structured archive record."""
+        backup_file = self.backup_dir / f"{record.record_id}.json"
+        return await self._write_structured_record(backup_file, record)
 
     async def restore(self) -> Dict[str, Any]:
         """

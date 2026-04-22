@@ -1,5 +1,5 @@
 """System time query plugin."""
 
-from ai_karen_engine.plugins.time_query.handler import run
+from .handler import TimeQueryExtension
 
-__all__ = ["run"]
+__all__ = ["TimeQueryExtension"]

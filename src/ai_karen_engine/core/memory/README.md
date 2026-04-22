@@ -1,16 +1,64 @@
 # Unified Memory System - AI-Karen
 
-**Version**: 1.0.0 (Phase 1)  
-**Status**: Foundation implemented, migration in progress
+**Version**: 2.0.0  
+**Status**: Tiered memory architecture in progress
 
 ## Overview
 
-This module provides a unified memory architecture consolidating **4 separate memory systems**:
+This package now uses a tiered memory layout under `core/memory/`:
 
-1. **Original memory system** - manager.py, AG-UI integration
-2. **RecallManager** - from `recalls/` module
-3. **NeuroVault** - from `neuro_vault/` tri-partite memory
-4. **NeuroRecall** - from `neuro_recall/` hierarchical agents
+1. **STM** - `stm/session_buffer.py`
+2. **Episodic** - reserved for event journaling and promotion policy
+3. **LTM** - reserved for durable semantic storage and curators
+4. **Retrieval** - `retrieval/curated_recall.py`, `retrieval/np_memory.py`
+5. **Adapters** - `adapters/zvec_api_service.py`, `adapters/zvec_neurovault_adapter.py`
+6. **Resilience** - `resilience/offline_mode.py`
+7. **Runtime authority** - `memory_runtime_manager.py`
+
+## Target Topology
+
+The intended package boundary is:
+
+```text
+src/ai_karen_engine/core/memory/
+├── __init__.py
+├── memory_runtime_manager.py
+├── chat_memory_config.py
+├── concurrency_manager.py
+├── protocols.py
+├── sync_protocol.py
+├── types.py
+├── stm/
+│   └── session_buffer.py
+├── episodic/
+│   ├── event_store.py
+│   ├── event_types.py
+│   └── promotion.py
+├── ltm/
+│   ├── semantic_store.py
+│   ├── curator.py
+│   └── vault_adapter.py
+├── retrieval/
+│   ├── curated_recall.py
+│   ├── np_memory.py
+│   └── ranking.py
+├── adapters/
+│   ├── zvec_api_service.py
+│   └── zvec_neurovault_adapter.py
+└── resilience/
+    └── offline_mode.py
+```
+
+## Authority Model
+
+- `memory_runtime_manager.py` is the sole runtime authority.
+- `stm/` owns live session state and short-horizon continuity.
+- `episodic/` owns journaling, event modeling, and STM to episodic promotion.
+- `ltm/` owns durable semantic storage and episodic to LTM curation.
+- `retrieval/` owns recall assembly, scoring, and ranking.
+- `adapters/` owns backend translation and persistence gateways.
+- `resilience/` owns degraded mode and recovery behavior.
+- `chat_memory_config.py`, `concurrency_manager.py`, `protocols.py`, `sync_protocol.py`, and `types.py` remain cross-cutting contracts.
 
 ## Research Paper Alignment
 
@@ -18,9 +66,9 @@ Our architecture implements concepts from recent research:
 
 | Paper | Concept | Implementation |
 |-------|---------|----------------|
-| **LongMem** (Wang et al., 2023) | Decoupled memory bank | `vault/` storage layer |
-| **HippoRAG** (Gutierrez et al., 2024) | Hippocampal consolidation | `consolidation/` module |
-| **Think-in-Memory** (Liu et al., 2023) | Recall + post-thinking | `agents/` with reflection |
+| **LongMem** (Wang et al., 2023) | Decoupled memory bank | `ltm/` and durable adapters |
+| **HippoRAG** (Gutierrez et al., 2024) | Hippocampal consolidation | episodic promotion and curator logic |
+| **Think-in-Memory** (Liu et al., 2023) | Recall + post-thinking | retrieval and runtime orchestration |
 
 References:
 - LongMem: https://arxiv.org/abs/2306.07174
@@ -50,20 +98,11 @@ print(f"Created memory: {memory.id}")
 
 ## Architecture
 
-### Phase 1 (Current): Foundation
+### Current focus
 - ✅ Unified types (`types.py`)
 - ✅ Unified protocols (`protocols.py`)
-- ✅ Backward compatibility maintained
-
-### Phase 2-4: Migration
-- Migrate `neuro_vault/` → `memory/vault/`
-- Migrate `recalls/` → `memory/recall/`
-- Migrate `neuro_recall/` → `memory/agents/`
-
-### Phase 5-6: New Capabilities
-- Memory consolidation (episodic → semantic)
-- Cognitive-memory integration
-- Causal-memory integration
+- ✅ Tiered runtime organization
+- 🔄 Episodic / LTM subpackages still being populated from legacy sources
 
 ## Unified Types
 
@@ -117,18 +156,15 @@ class EmbeddingProvider(Protocol):
     def embed_batch(self, texts: List[str]) -> List[List[float]]: ...
 ```
 
-## Backward Compatibility
+## Import Surface
 
-All existing imports continue to work:
+Prefer the new tiered modules directly:
 
 ```python
-# OLD (still works)
-from ai_karen_engine.core.memory import recall_context, update_memory
-from ai_karen_engine.core.memory import AGUIMemoryManager
-
-# NEW (Phase 1)
-from ai_karen_engine.core.memory import MemoryEntry, MemoryType
-from ai_karen_engine.core.memory import StorageBackend, EmbeddingProvider
+from ai_karen_engine.core.memory.memory_runtime_manager import recall_context, update_memory
+from ai_karen_engine.core.memory.stm.session_buffer import SessionBuffer
+from ai_karen_engine.core.memory.retrieval.curated_recall import filter_curated_memories
+from ai_karen_engine.core.memory.retrieval.np_memory import retrieve
 ```
 
 ## Migration Status

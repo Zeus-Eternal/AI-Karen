@@ -23,7 +23,7 @@ from ai_karen_engine.core.reasoning.retrieval.adapters import SRRetriever
 from ai_karen_engine.core.reasoning.synthesis.subengines import SynthesisSubEngine
 from ai_karen_engine.core.reasoning.soft_reasoning.engine import SoftReasoningEngine
 from ai_karen_engine.integrations.llm_utils import LLMUtils
-from ai_karen_engine.integrations.llm_registry import registry as llm_registry
+from ai_karen_engine.integrations.llm_registry import get_registry
 
 # Optional memory_hub for cross-modal retrieval
 try:
@@ -213,7 +213,7 @@ class PremiumICEWrapper:
         self._engine = SoftReasoningEngine()
         self.sr = sr or _SoftEngineAdapter(self._engine)
         self.subengine = subengine  # optional
-        self.llm = llm or (llm_registry.get_active() or LLMUtils())  # type: ignore[attr-defined]
+        self.llm = llm or (get_registry().get_active() or LLMUtils())  # type: ignore[attr-defined]
         self.policy = policy or ICEWritebackPolicy()
         self.recall_strategy = recall_strategy
 

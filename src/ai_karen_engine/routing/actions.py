@@ -14,7 +14,7 @@ import time
 from collections import deque
 from typing import Any, Deque, Dict, Optional
 
-from ai_karen_engine.core.predictors import register_predictor
+from ai_karen_engine.core.cortex.predictors import register_predictor
 from ai_karen_engine.routing.kire_router import KIRERouter
 from ai_karen_engine.routing.types import RouteRequest
 from ai_karen_engine.integrations.llm_registry import get_registry

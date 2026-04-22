@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 async def test_api_endpoint():
     """Test the /api/extensions/list endpoint."""
     try:
-        from ai_karen_engine.api_routes.extensions import list_extensions
+        from ai_karen_engine.api_routes.extensions.extensions import list_extensions
 
         print("Testing /api/extensions/list endpoint...")
 

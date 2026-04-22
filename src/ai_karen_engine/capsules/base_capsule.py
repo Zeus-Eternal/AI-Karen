@@ -14,7 +14,7 @@ import time
 import logging
 import threading
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import yaml
 
 from ai_karen_engine.capsules.schemas import (

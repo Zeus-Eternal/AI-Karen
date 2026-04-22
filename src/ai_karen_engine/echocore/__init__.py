@@ -126,6 +126,26 @@ from ai_karen_engine.echocore.metadata_collector import (
 # Telemetry
 from ai_karen_engine.echocore.telemetry_manager import TelemetryManager
 
+# EchoCore ingest contracts and bridge
+from ai_karen_engine.echocore.contracts import (
+    MemoryTier as EchoMemoryTier,
+    EchoArtifactType,
+    EchoIngestAction,
+    RuntimeMemoryArtifact,
+    EchoPolicyDecision,
+    EchoArchiveRecord,
+    EchoMetadataRecord,
+    EchoTrainingCandidate,
+    EchoShadowRecord,
+    EchoIngestResult,
+    EchoPolicyEngine,
+    DefaultEchoCoreManager,
+)
+from ai_karen_engine.echocore.bridge import (
+    RuntimeToEchoBridge,
+    DefaultRuntimeToEchoBridge,
+)
+
 __all__ = [
     # Legacy compatibility (simple, synchronous)
     "LegacyEchoVault",
@@ -180,4 +200,19 @@ __all__ = [
     "ConsentLevel",
     # Telemetry
     "TelemetryManager",
+    # EchoCore ingest contracts and bridge
+    "EchoMemoryTier",
+    "EchoArtifactType",
+    "EchoIngestAction",
+    "RuntimeMemoryArtifact",
+    "EchoPolicyDecision",
+    "EchoArchiveRecord",
+    "EchoMetadataRecord",
+    "EchoTrainingCandidate",
+    "EchoShadowRecord",
+    "EchoIngestResult",
+    "EchoPolicyEngine",
+    "DefaultEchoCoreManager",
+    "RuntimeToEchoBridge",
+    "DefaultRuntimeToEchoBridge",
 ]

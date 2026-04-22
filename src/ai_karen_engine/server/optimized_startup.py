@@ -15,13 +15,13 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI
 
-from ai_karen_engine.core.service_lifecycle_manager import ServiceLifecycleManager
-from ai_karen_engine.core.lazy_loading_controller import LazyLoadingController
-from ai_karen_engine.core.async_task_orchestrator import AsyncTaskOrchestrator
-from ai_karen_engine.core.gpu_compute_offloader import GPUComputeOffloader
-from ai_karen_engine.core.resource_monitor import ResourceMonitor
-from ai_karen_engine.core.performance_metrics import PerformanceMetrics
-from ai_karen_engine.core.classified_service_registry import ClassifiedServiceRegistry
+from ai_karen_engine.core.services.service_lifecycle_manager import ServiceLifecycleManager
+from ai_karen_engine.core.runtime.lazy_loading_controller import LazyLoadingController
+from ai_karen_engine.core.runtime.async_task_orchestrator import AsyncTaskOrchestrator
+from ai_karen_engine.core.runtime.gpu_compute_offloader import GPUComputeOffloader
+from ai_karen_engine.core.runtime.resource_monitor import ResourceMonitor
+from ai_karen_engine.core.operations.performance_metrics import PerformanceMetrics
+from ai_karen_engine.core.services.classified_service_registry import ClassifiedServiceRegistry
 from ai_karen_engine.audit.performance_auditor import PerformanceAuditor
 from ai_karen_engine.config.deployment_config_manager import DeploymentConfigManager
 from ai_karen_engine.server.plugin_loader import load_plugins

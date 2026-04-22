@@ -45,7 +45,7 @@ class PersonaService:
     def _create_default_nlp_analyzer(self):
         """Create a default NLP analyzer for style detection."""
         try:
-            from ai_karen_engine.services.nlp_style_analyzer import NLPStyleAnalyzer
+            from ai_karen_engine.services.formatting.nlp_style_analyzer import NLPStyleAnalyzer
 
             return NLPStyleAnalyzer()
         except ImportError:

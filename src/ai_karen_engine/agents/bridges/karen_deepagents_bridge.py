@@ -92,7 +92,7 @@ class KarenDeepAgentsBridge:
     3. Execute DeepAgents with Karen's system integration
     4. Handle memory synchronization between Karen's system and DeepAgents
     5. Handle tool integration between Karen's system and DeepAgents
-    6. Handle model selection and execution through Karen's AI Orchestrator
+    6. Handle model selection and execution through Karen's LangGraph Orchestrator
     
     Example usage:
         ```python
@@ -116,7 +116,7 @@ class KarenDeepAgentsBridge:
         config: Optional[Dict[str, Any]] = None,
         agent_memory: Optional[EnhancedAgentMemory] = None,
         tool_broker: Optional[AgentToolBroker] = None,
-        ai_orchestrator: Optional[Any] = None
+        langgraph_orchestrator: Optional[Any] = None
     ):
         """
         Initialize the Karen-DeepAgents bridge.
@@ -125,7 +125,7 @@ class KarenDeepAgentsBridge:
             config: Configuration dictionary for the bridge
             agent_memory: Karen's EnhancedAgentMemory service instance
             tool_broker: Karen's AgentToolBroker service instance
-            ai_orchestrator: Karen's AI Orchestrator service instance
+            langgraph_orchestrator: Karen's LangGraph Orchestrator service instance
             
         Raises:
             ImportError: If DeepAgents is not installed
@@ -137,7 +137,7 @@ class KarenDeepAgentsBridge:
         self.config = config or {}
         self.agent_memory = agent_memory
         self.tool_broker = tool_broker
-        self.ai_orchestrator = ai_orchestrator
+        self.langgraph_orchestrator = langgraph_orchestrator
         
         # Initialize DeepAgents adapter
         self.adapter = DeepAgentsAdapter(
@@ -375,7 +375,7 @@ class KarenDeepAgentsBridge:
     
     async def integrate_with_karen_models(self, agent_id: str, model_id: str) -> bool:
         """
-        Connect DeepAgents with Karen's AI Orchestrator.
+        Connect DeepAgents with Karen's LangGraph Orchestrator.
         
         Args:
             agent_id: ID of the agent to integrate

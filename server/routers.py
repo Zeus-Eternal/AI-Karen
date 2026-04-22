@@ -38,8 +38,8 @@ def _http_exception_response(exc: HTTPException) -> FastAPIResponse:
 logger = logging.getLogger("kari")
 
 # Original route imports
-from ai_karen_engine.api_routes.ai_orchestrator_routes import router as ai_router
-from ai_karen_engine.api_routes.audit import router as audit_router
+from ai_karen_engine.api_routes.agents.orchestration import router as ai_router
+from ai_karen_engine.api_routes.monitoring.audit import router as audit_router
 # DEPRECATED: Complex auth system - replaced with simple auth
 # from ai_karen_engine.api_routes.auth import router as auth_router
 # from ai_karen_engine.api_routes.auth_session_routes import router as auth_session_router
@@ -60,7 +60,7 @@ class _FallbackAuthenticationError(Exception):
 
 
 try:
-    from ai_karen_engine.api_routes.auth_routes import router as auth_router
+    from ai_karen_engine.api_routes.auth.auth import router as auth_router
     from ai_karen_engine.auth.auth_middleware import (
         AuthenticationError,
         get_auth_middleware,
@@ -75,94 +75,87 @@ except ImportError as e:
     get_auth_middleware = None
     AuthMiddlewareAuthenticationError = _FallbackAuthenticationError
     logger.warning(f"🚫 Auth system not available - auth routes disabled: {e}")
-from ai_karen_engine.api_routes.code_execution_routes import (
+from ai_karen_engine.api_routes.tools.code_execution import (
     router as code_execution_router,
 )
-from ai_karen_engine.api_routes.conversation_routes import router as conversation_router
-from ai_karen_engine.api_routes.communications_center_routes import (
+from ai_karen_engine.api_routes.chat.conversation import router as conversation_router
+from ai_karen_engine.api_routes.content.communications import (
     router as communications_center_router,
 )
 
-from ai_karen_engine.api_routes.copilot_routes import router as copilot_router
-from ai_karen_engine.api_routes.events import router as events_router
-from ai_karen_engine.api_routes.extensions import router as extensions_router
-from ai_karen_engine.api_routes.plugin_management import (
+from ai_karen_engine.api_routes.chat.copilot import router as copilot_router
+from ai_karen_engine.api_routes.system.events import router as events_router
+from ai_karen_engine.api_routes.extensions.extensions import router as extensions_router
+from ai_karen_engine.api_routes.plugins.management import (
     router as plugin_management_router,
 )
-from ai_karen_engine.api_routes.file_attachment_routes import (
+from ai_karen_engine.api_routes.content.attachments import (
     router as file_attachment_router,
 )
-from ai_karen_engine.api_routes.memory_routes import router as memory_router
-from ai_karen_engine.api_routes.plugin_routes import router as plugin_router
-from ai_karen_engine.api_routes.plugin_routes import (
+from ai_karen_engine.api_routes.memory.memory import router as memory_router
+from ai_karen_engine.api_routes.plugins.plugins import router as plugin_router
+from ai_karen_engine.api_routes.plugins.plugins import (
     public_router as plugin_public_router,
 )
-from ai_karen_engine.api_routes.tool_routes import router as tool_router
-from ai_karen_engine.api_routes.web_api_compatibility import router as web_api_router
-from ai_karen_engine.api_routes.websocket_routes import router as websocket_router
-from ai_karen_engine.api_routes.chat_runtime import router as chat_runtime_router
-from ai_karen_engine.api_routes.llm_routes import router as llm_router
-from ai_karen_engine.api_routes.provider_routes import router as provider_router
-from ai_karen_engine.api_routes.provider_routes import (
+from ai_karen_engine.api_routes.tools.tools import router as tool_router
+from ai_karen_engine.api_routes.chat.websocket import router as websocket_router
+from ai_karen_engine.api_routes.chat.runtime import router as chat_runtime_router
+from ai_karen_engine.api_routes.models.llm import router as llm_router
+from ai_karen_engine.api_routes.models.providers import router as provider_router
+from ai_karen_engine.api_routes.models.providers import (
     public_router as provider_public_router,
 )
-from ai_karen_engine.api_routes.profile_routes import router as profile_router
-from ai_karen_engine.api_routes.settings_routes import router as settings_router
-from ai_karen_engine.api_routes.model_settings_routes import (
+from ai_karen_engine.api_routes.users.profile import router as profile_router
+from ai_karen_engine.api_routes.system.settings import router as settings_router
+from ai_karen_engine.api_routes.models.settings import (
     router as model_settings_router,
 )
-from ai_karen_engine.api_routes.error_response_routes import (
+from ai_karen_engine.api_routes.shared.error_response import (
     router as error_response_router,
 )
-from ai_karen_engine.api_routes.analytics_routes import router as analytics_router
-from ai_karen_engine.api_routes.agent_integration_routes import (
+from ai_karen_engine.api_routes.monitoring.analytics import router as analytics_router
+from ai_karen_engine.api_routes.agents.integration import (
     router as agent_integration_router,
 )
-from ai_karen_engine.api_routes.tasks_routes import router as tasks_router
-from ai_karen_engine.api_routes.automation_jobs_routes import (
+from ai_karen_engine.api_routes.automation.tasks import router as tasks_router
+from ai_karen_engine.api_routes.automation.jobs import (
     router as automation_jobs_router,
 )
-from ai_karen_engine.api_routes.health import router as health_router
-from ai_karen_engine.api_routes.model_management_routes import (
+from ai_karen_engine.api_routes.monitoring.health import router as health_router
+from ai_karen_engine.api_routes.models.management import (
     router as model_management_router,
 )
-from ai_karen_engine.api_routes.huggingface_routes import (
+from ai_karen_engine.api_routes.models.huggingface import (
     router as enhanced_huggingface_router,
 )
-from ai_karen_engine.api_routes.response_core_routes import (
-    router as response_core_router,
-)
-from ai_karen_engine.api_routes.scheduler_routes import router as scheduler_router
-from ai_karen_engine.api_routes.public_routes import router as public_router
-from ai_karen_engine.api_routes.model_library_routes import (
+from ai_karen_engine.api_routes.automation.scheduler import router as scheduler_router
+from ai_karen_engine.api_routes.public.public import router as public_router
+from ai_karen_engine.api_routes.models.library import (
     router as model_library_router,
 )
-from ai_karen_engine.api_routes.model_library_routes import (
+from ai_karen_engine.api_routes.models.library import (
     public_router as model_library_public_router,
 )
-from ai_karen_engine.api_routes.provider_compatibility_routes import (
-    router as provider_compatibility_router,
-)
-from ai_karen_engine.api_routes.model_orchestrator_routes import (
+from ai_karen_engine.api_routes.models.model_orchestrator import (
     router as model_orchestrator_router,
 )
-from ai_karen_engine.api_routes.validation_metrics_routes import (
+from ai_karen_engine.api_routes.monitoring.validation import (
     router as validation_metrics_router,
 )
-from ai_karen_engine.api_routes.performance_routes import router as performance_routes
-from ai_karen_engine.api_routes.persona_routes import router as persona_router
-from ai_karen_engine.api_routes.model_organization_routes import (
+from ai_karen_engine.api_routes.monitoring.performance import router as performance_routes
+from ai_karen_engine.api_routes.users.persona import router as persona_router
+from ai_karen_engine.api_routes.models.organization import (
     router as model_organization_router,
 )
-from ai_karen_engine.api_routes.user_preferences_routes import (
+from ai_karen_engine.api_routes.users.preferences import (
     router as user_preferences_router,
 )
-from ai_karen_engine.api_routes.user_data_routes import router as user_data_router
-from ai_karen_engine.api_routes.users import router as users_router
+from ai_karen_engine.api_routes.users.data import router as user_data_router
+from ai_karen_engine.api_routes.users.users import router as users_router
 
 training_data_router: Optional[APIRouter] = None
 try:
-    from ai_karen_engine.api_routes.training_data_routes import (
+    from ai_karen_engine.api_routes.training.data import (
         router as training_data_router,
     )
 
@@ -171,8 +164,8 @@ except ImportError as e:
     training_data_router = None
     TRAINING_DATA_AVAILABLE = False
     logger.warning(f"🚫 Training data routes not available: {e}")
-from ai_karen_engine.api_routes.privacy_routes import router as privacy_router
-from ai_karen_engine.api_routes.runtime_admin_routes import router as maintenance_router
+from ai_karen_engine.api_routes.auth.privacy import router as privacy_router
+from ai_karen_engine.api_routes.admin.runtime import router as maintenance_router
 from ai_karen_engine.extensions.platform.api_routes.ui_materialization_routes import (
     router as ui_materialization_router,
 )
@@ -184,8 +177,8 @@ ai_enhancement_router: Optional[Any] = None
 MULTIMODAL_AVAILABLE = False
 
 try:
-    from ai_karen_engine.api_routes.multimodal_routes import router as multimodal_router
-    from ai_karen_engine.api_routes.ai_routes import router as ai_enhancement_router
+    from ai_karen_engine.api_routes.content.multimodal import router as multimodal_router
+    from ai_karen_engine.api_routes.models.ai import router as ai_enhancement_router
 
     MULTIMODAL_AVAILABLE = True
     logger.info("✅ Multi-modal and AI enhancement routers imported successfully")
@@ -271,7 +264,7 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
         @app.middleware("http")
         async def auth_middleware_handler(request, call_next):
             # Check for development bypass mode first
-            from ai_karen_engine.core.auth_config import auth_config
+            from ai_karen_engine.core.security.auth_config import auth_config
 
             auth_bypass = auth_config.should_bypass_auth()
 
@@ -387,7 +380,6 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
     # Core API routers
     app.include_router(events_router, prefix="/api/events", tags=["events"])
     app.include_router(websocket_router, prefix="/api/ws", tags=["websocket"])
-    app.include_router(web_api_router, prefix="/api/web", tags=["web-api"])
     app.include_router(analytics_router, prefix="/api/analytics", tags=["analytics"])
     app.include_router(
         communications_center_router,
@@ -460,12 +452,10 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
     app.include_router(
         enhanced_huggingface_router, prefix="/api", tags=["enhanced-huggingface"]
     )
-    app.include_router(response_core_router, tags=["response-core"])
     app.include_router(scheduler_router, tags=["scheduler"])
     app.include_router(public_router, tags=["public"])
     app.include_router(model_library_router, tags=["model-library"])
     app.include_router(model_library_public_router, tags=["model-library-public"])
-    app.include_router(provider_compatibility_router, tags=["provider-compatibility"])
     app.include_router(model_orchestrator_router, tags=["model-orchestrator"])
     app.include_router(validation_metrics_router, tags=["validation-metrics"])
     app.include_router(performance_routes, tags=["performance"])

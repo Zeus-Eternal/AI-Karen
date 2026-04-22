@@ -6,7 +6,7 @@ import os
 # Mock paths
 sys.path.append("/app/src")
 
-from ai_karen_engine.api_routes.extensions import list_extensions_root, list_extensions
+from ai_karen_engine.api_routes.extensions.extensions import list_extensions_root, list_extensions
 
 async def check():
     print("Checking extensions API...")

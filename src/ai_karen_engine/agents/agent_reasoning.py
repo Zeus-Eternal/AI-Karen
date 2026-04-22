@@ -24,16 +24,16 @@ except ImportError:
 
 from ai_karen_engine.core.services.base import BaseService, ServiceConfig
 
-# Try to import AI Orchestrator
+# Try to import LangGraph Orchestrator
 try:
     from ai_karen_engine.core.langgraph_orchestrator import (
-        LangGraphOrchestrator as AIOrchestrator,
+        LangGraphOrchestrator as LangGraphOrchestrator,
     )
 
     HAS_AI_ORCHESTRATOR = True
 except ImportError:
     HAS_AI_ORCHESTRATOR = False
-    AIOrchestrator = None
+    LangGraphOrchestrator = None
 
 logger = logging.getLogger(__name__)
 
@@ -537,7 +537,7 @@ class AgentReasoning(BaseService):
         self._lock = asyncio.Lock()
 
         # Core services
-        self._ai_orchestrator = None
+        self._langgraph_orchestrator = None
 
         # Reasoning engines
         self._reasoning_engines = {
@@ -577,16 +577,16 @@ class AgentReasoning(BaseService):
         try:
             self.logger.info("Initializing Agent Reasoning service")
 
-            # Initialize with AI Orchestrator if available
-            if HAS_AI_ORCHESTRATOR and AIOrchestrator:
-                self._ai_orchestrator = AIOrchestrator(
-                    config=ServiceConfig(name="ai_orchestrator")
+            # Initialize with LangGraph Orchestrator if available
+            if HAS_AI_ORCHESTRATOR and LangGraphOrchestrator:
+                self._langgraph_orchestrator = LangGraphOrchestrator(
+                    config=ServiceConfig(name="langgraph_orchestrator")
                 )
-                await self._ai_orchestrator.initialize()
+                await self._langgraph_orchestrator.initialize()
             else:
-                self._ai_orchestrator = None
+                self._langgraph_orchestrator = None
                 self.logger.info(
-                    "AI Orchestrator not available, running in standalone mode"
+                    "LangGraph orchestrator not available, running in standalone mode"
                 )
 
             self._initialized = True

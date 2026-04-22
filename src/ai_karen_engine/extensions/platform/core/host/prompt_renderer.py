@@ -267,7 +267,7 @@ class PromptRenderer:
     - Context management
     """
 
-    def __init__(self, extensions_dir: str = "src/extensions"):
+    def __init__(self, extensions_dir: str = "src/ai_karen_engine/extensions/plugins"):
         """
         Initialize the prompt renderer.
 
@@ -492,7 +492,7 @@ class PromptRenderer:
 _renderer_instance: Optional[PromptRenderer] = None
 
 
-def get_prompt_renderer(extensions_dir: str = "src/extensions") -> PromptRenderer:
+def get_prompt_renderer(extensions_dir: str = "src/ai_karen_engine/extensions/plugins") -> PromptRenderer:
     """Get the singleton prompt renderer instance."""
     global _renderer_instance
     if _renderer_instance is None:

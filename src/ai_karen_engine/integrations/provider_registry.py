@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Type
 
-from ai_karen_engine.integrations.llm_registry import get_registry
+# from ai_karen_engine.integrations.llm_registry import get_registry  <- Moved to local scope
 
 
 @dataclass
@@ -148,6 +148,7 @@ class _LegacyLLMProviderRegistry(ProviderRegistry):
         return raw if raw else "unknown"
 
     def register_provider(self, name: str, provider_class: Type[Any], **kwargs: Any) -> None:
+        from ai_karen_engine.integrations.llm_registry import get_registry
         registry = get_registry()
         registration_kwargs = dict(kwargs)
         registration_kwargs.pop("models", None)
@@ -157,6 +158,7 @@ class _LegacyLLMProviderRegistry(ProviderRegistry):
     def list_providers(
         self, category: Optional[str] = None, healthy_only: bool = False
     ) -> List[str]:
+        from ai_karen_engine.integrations.llm_registry import get_registry
         registry = get_registry()
         providers = registry.list_providers()
         if category is None and not healthy_only:
@@ -172,8 +174,10 @@ class _LegacyLLMProviderRegistry(ProviderRegistry):
             filtered.append(name)
         return filtered
 
-    def get_provider_info(self, name: str) -> Optional[ProviderRegistration]:
+    def get_provider_info(self, name: str) -> ProviderRegistration:
+        from ai_karen_engine.integrations.llm_registry import get_registry
         info = get_registry().get_provider_info(name)
+
         if not info:
             return None
         return ProviderRegistration(
@@ -190,8 +194,10 @@ class _LegacyLLMProviderRegistry(ProviderRegistry):
             metadata=dict(info),
         )
 
-    def get_provider(self, name: str, **init_kwargs: Any) -> Optional[Any]:
+    def get_provider(self, name: str, **init_kwargs: Any) -> Any:
+        from ai_karen_engine.integrations.llm_registry import get_registry
         return get_registry().get_provider(name, **init_kwargs)
+
 
 
 _legacy_provider_registry: Optional[_LegacyLLMProviderRegistry] = None

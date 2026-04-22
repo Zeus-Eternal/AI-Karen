@@ -16,8 +16,8 @@ from fastapi import Request, Response, HTTPException, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from ai_karen_engine.services.agent_safety import AgentSafety
-from ai_karen_engine.services.agent_safety_types import (
+from ai_karen_engine.services.safety.agent_safety import AgentSafety
+from ai_karen_engine.services.safety.agent_safety_types import (
     SafetyConfig,
     SafetyLevel,
     RiskLevel,
@@ -165,7 +165,7 @@ class SafetyMiddleware(BaseHTTPMiddleware):
     def _should_skip_safety_check(self, request: Request) -> bool:
         """Determines if the safety check should be skipped for this request."""
         # Respect development bypass
-        from ai_karen_engine.core.auth_config import auth_config
+        from ai_karen_engine.core.security.auth_config import auth_config
 
         if auth_config.should_bypass_auth():
             return True

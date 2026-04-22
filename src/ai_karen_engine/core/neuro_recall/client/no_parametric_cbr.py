@@ -49,7 +49,7 @@ from ai_karen_engine.core.reasoning.synthesis.ice_wrapper import (
     PremiumICEWrapper,
     ICEWritebackPolicy,
 )
-from ai_karen_engine.integrations.llm_registry import registry as llm_registry
+from ai_karen_engine.integrations.llm_registry import get_registry
 from ai_karen_engine.integrations.llm_utils import LLMUtils
 
 # ---- Optional OpenAI-compatible client for gated externals (Ollama/vLLM/etc) ----
@@ -181,7 +181,7 @@ class KariLLMBackend:
     def __init__(self, model_alias: str, role: str):
         self.model_alias = model_alias
         self.role = role
-        self.kari_llm: LLMUtils = llm_registry.get_active() or LLMUtils()  # type: ignore[assignment,attr-defined]
+        self.kari_llm: LLMUtils = get_registry().get_active() or LLMUtils()  # type: ignore[assignment,attr-defined]
         self.direct: Optional[AsyncOpenAI] = None
         if ENABLE_EXTERNAL_WORKFLOWS:
             self.direct = AsyncOpenAI(base_url=OPENAI_BASE_URL, api_key=OPENAI_API_KEY)
@@ -520,7 +520,7 @@ class HierarchicalClient:
 class Judge:
     def __init__(self, model_alias: str):
         self.alias = model_alias
-        self.kari_llm: LLMUtils = llm_registry.get_active() or LLMUtils()  # type: ignore[assignment,attr-defined]
+        self.kari_llm: LLMUtils = get_registry().get_active() or LLMUtils()  # type: ignore[assignment,attr-defined]
         self.direct: Optional[AsyncOpenAI] = None
         if ENABLE_EXTERNAL_WORKFLOWS:
             self.direct = AsyncOpenAI(base_url=OPENAI_BASE_URL, api_key=OPENAI_API_KEY)

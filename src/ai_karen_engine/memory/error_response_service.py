@@ -21,14 +21,14 @@ except ImportError:
     from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict, Field
 
 from ai_karen_engine.models.web_api_error_responses import WebAPIErrorCode
-from ai_karen_engine.services.llm_router import ProviderHealth
+from ai_karen_engine.services.models.routing.llm_router_service import ProviderHealth
 from ai_karen_engine.memory.internal.provider_health_monitor import (
     get_health_monitor,
     ProviderHealthInfo,
     HealthStatus,
 )
-from ai_karen_engine.core.cache import get_response_cache, get_request_deduplicator
-from ai_karen_engine.services.audit_logging import get_audit_logger
+from ai_karen_engine.core.services.cache import get_response_cache, get_request_deduplicator
+from ai_karen_engine.services.audit.audit_logging import get_audit_logger
 
 logger = logging.getLogger(__name__)
 
@@ -169,7 +169,7 @@ class ErrorResponseService:
         self.classification_rules = self._initialize_classification_rules()
         self._provider_health_cache: Dict[str, ProviderHealth] = {}
         self._cache_ttl = 300  # 5 minutes
-        self._ai_orchestrator = None  # Lazy initialization to avoid circular imports
+        self._langgraph_orchestrator = None  # Lazy initialization to avoid circular imports
         self._llm_router = None  # Lazy initialization
         self._llm_utils = None  # Lazy initialization
         self._response_cache = get_response_cache()
@@ -177,23 +177,23 @@ class ErrorResponseService:
         self.logger = logging.getLogger(__name__)
         self._audit_logger = get_audit_logger()
 
-    def _get_ai_orchestrator(self):
+    def _get_langgraph_orchestrator(self):
         """Lazily initialize AI orchestrator to avoid circular imports."""
-        if self._ai_orchestrator is None:
+        if self._langgraph_orchestrator is None:
             try:
                 from ai_karen_engine.core.langgraph_orchestrator import (
                     LangGraphOrchestrator,
                 )
                 from ai_karen_engine.core.services.base import ServiceConfig
 
-                config = ServiceConfig(name="error_response_ai_orchestrator")
-                self._ai_orchestrator = LangGraphOrchestrator(config)
+                config = ServiceConfig(name="error_response_langgraph_orchestrator")
+                self._langgraph_orchestrator = LangGraphOrchestrator(config)
                 # Initialize without full startup to avoid dependencies
-                self._ai_orchestrator._initialized = True
+                self._langgraph_orchestrator._initialized = True
             except Exception as e:
                 self.logger.warning(f"Failed to initialize AI orchestrator: {e}")
-                self._ai_orchestrator = None
-        return self._ai_orchestrator
+                self._langgraph_orchestrator = None
+        return self._langgraph_orchestrator
 
     def is_ai_available(self) -> bool:
         """Check if AI analysis is available for error response generation"""
@@ -1556,7 +1556,7 @@ Respond with only the JSON object, no additional text."""
         # This would be implemented with actual metrics collection
         return {
             "ai_analysis_enabled": self._get_llm_router() is not None,
-            "ai_orchestrator_available": self._get_ai_orchestrator() is not None,
+            "langgraph_orchestrator_available": self._get_langgraph_orchestrator() is not None,
             "llm_utils_available": self._get_llm_utils() is not None,
             "ai_available": self.is_ai_available(),
             "total_classification_rules": len(self.classification_rules),

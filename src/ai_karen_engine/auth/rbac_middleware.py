@@ -15,7 +15,7 @@ from fastapi import Depends, HTTPException, Request, status
 
 from .models import UserData
 from .session import get_current_user as resolve_current_user
-from ai_karen_engine.services.audit_logging import (  # type: ignore
+from ai_karen_engine.services.audit.audit_logging import (  # type: ignore
     get_audit_logger as resolve_audit_logger,
     AuditEvent,
     AuditEventType,

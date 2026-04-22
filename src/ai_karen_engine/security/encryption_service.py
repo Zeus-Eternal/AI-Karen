@@ -30,7 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ai_karen_engine.core.services.base import BaseService, ServiceConfig
 from ai_karen_engine.core.logging import get_logger
-from ai_karen_engine.services.audit_logging import (
+from ai_karen_engine.services.audit.audit_logging import (
     AuditEvent,
     AuditEventType,
     AuditSeverity,
@@ -499,7 +499,6 @@ class EncryptionService(BaseService):
                         success=False,
                         error_message=f"Key not found: {key_id}"
                     )
-            else:
                 if key.status != KeyStatus.ACTIVE:
                     return EncryptionResult(
                         success=False,

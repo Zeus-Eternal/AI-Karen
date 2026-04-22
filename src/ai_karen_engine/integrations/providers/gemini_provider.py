@@ -680,7 +680,7 @@ class GeminiProvider(LLMProviderBase):
 
             # Add Model Library compatibility check
             try:
-                from ai_karen_engine.services.provider_model_compatibility import (
+                from ai_karen_engine.services.models.compatibility.provider_model_compatibility import (
                     ProviderModelCompatibilityService,
                 )
 

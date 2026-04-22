@@ -25,8 +25,10 @@ class ExtensionHostConfig(BaseModel):
         extra="ignore",
     )
     
-    extensions_dir: str = "src/extensions"
+    extensions_dir: str = "src/ai_karen_engine/extensions/plugins"
     timeout_seconds: float = 30.0
+    health_check_interval: float = 60.0
+    max_recovery_attempts: int = 3
     max_concurrent_extensions: int = 10
     enable_metrics: bool = True
     enable_observation: bool = True
@@ -118,6 +120,8 @@ class ExtensionConfigManager:
         env_mapping = {
             "KARI_EXTENSION_EXTENSIONS_DIR": ("extensions_dir", str),
             "KARI_EXTENSION_TIMEOUT_SECONDS": ("timeout_seconds", float),
+            "KARI_EXTENSION_HEALTH_CHECK_INTERVAL": ("health_check_interval", float),
+            "KARI_EXTENSION_MAX_RECOVERY_ATTEMPTS": ("max_recovery_attempts", int),
             "KARI_EXTENSION_MAX_CONCURRENT_EXTENSIONS": ("max_concurrent_extensions", int),
             "KARI_EXTENSION_ENABLE_METRICS": ("enable_metrics", lambda x: x.lower() == "true"),
             "KARI_EXTENSION_ENABLE_OBSERVATION": ("enable_observation", lambda x: x.lower() == "true"),

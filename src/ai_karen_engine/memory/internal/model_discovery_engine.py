@@ -9,7 +9,7 @@ This module serves as an abstraction layer for internal components that need
 access to model discovery functionality.
 """
 
-from ai_karen_engine.services.model_discovery_engine import (
+from ai_karen_engine.services.models.discovery.model_discovery_engine import (
     ModelDiscoveryEngine,
     ModelInfo,
     ModelType,

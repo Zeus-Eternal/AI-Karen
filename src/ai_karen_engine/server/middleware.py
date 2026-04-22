@@ -402,7 +402,7 @@ def configure_middleware(
         request.state.request_id = request_id
 
         # Skip validation in dev/bypass mode
-        from ai_karen_engine.core.auth_config import auth_config
+        from ai_karen_engine.core.security.auth_config import auth_config
 
         if auth_config.should_bypass_auth():
             start_time = datetime.now(timezone.utc)

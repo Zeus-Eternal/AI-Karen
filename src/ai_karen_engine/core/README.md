@@ -1,242 +1,133 @@
-# AI Karen Engine - Core Infrastructure
+# AI Karen Engine - Core Domains
 
-The core infrastructure provides the foundational components for the AI Karen engine, including service architecture, error handling, logging, and the FastAPI gateway.
+`ai_karen_engine.core` is now a package marker and domain namespace, not a public umbrella API.
 
-## Components
+The old root-level re-export surface has been removed. Import concrete functionality from the preserved subpackages directly.
 
-### Service Infrastructure (`services/`)
+## Current domain map
 
-Provides dependency injection and service management:
+### `core/langgraph_orchestrator/`
+Live chat execution authority.
 
-- **BaseService**: Abstract base class for all services
-- **ServiceContainer**: Dependency injection container
-- **ServiceRegistry**: Service discovery and registration
-- **ServiceConfig**: Configuration management for services
+Owns:
+- orchestration lifecycle
+- runtime policy
+- decision flow
+- response synthesis
+- formatting pipeline
+- LangGraph nodes, contracts, and context helpers
 
-#### Usage Example
-```python
-from ai_karen_engine.core import BaseService, service, inject
+### `core/runtime/`
+Runtime environment and lifecycle support.
 
-@service
-class MyService(BaseService):
-    def __init__(self, config: ServiceConfig):
-        super().__init__(config)
-    
-    async def process(self, data: str) -> str:
-        return f"Processed: {data}"
+Owns:
+- startup / initialization
+- degraded mode policy
+- lazy loading
+- resource monitoring
+- async task orchestration
+- runtime control plane helpers
 
-# Inject service into other components
-@inject
-async def my_handler(service: MyService):
-    return await service.process("test data")
-```
+### `core/operations/`
+Operational support and observability.
 
-### Error Handling (`errors/`)
+Owns:
+- health checks
+- health monitoring
+- metrics
+- migration tooling
+- routing decision persistence
 
-Comprehensive error handling system:
+### `core/services/`
+Service governance and service plumbing.
 
-- **KarenError**: Base exception class
-- **Specialized Exceptions**: ValidationError, AuthenticationError, etc.
-- **ErrorHandler**: Centralized error processing
-- **ErrorMiddleware**: FastAPI middleware for error handling
+Owns:
+- service registry
+- service classification
+- lifecycle management
+- dependency resolution
+- plugin registry
+- cache helpers
+- user preference helpers
 
-#### Error Types
-- `ValidationError`: Input validation failures
-- `AuthenticationError`: Authentication failures
-- `AuthorizationError`: Permission denied errors
-- `NotFoundError`: Resource not found
-- `ServiceError`: Service-level errors
-- `PluginError`: Plugin execution errors
-- `MemoryError`: Memory system errors
-- `AIProcessingError`: AI operation failures
+### `core/model_runtime/`
+Model selection and model-default support.
 
-### Logging (`logging/`)
+Owns:
+- model defaults
+- model selection
+- embedding manager
+- Milvus client wrapper
 
-Structured logging with multiple output formats:
+### `core/memory/`
+Memory and memory-adjacent support.
 
-- **KarenLogger**: Enhanced logger with context
-- **StructuredFormatter**: Structured log formatting
-- **JSONFormatter**: JSON log output
-- **LoggingMiddleware**: Request/response logging
+Owns:
+- memory manager
+- memory types and protocols
+- session buffering
+- Zvec API service
+- memory config
 
-#### Configuration
-```python
-from ai_karen_engine.core import configure_logging, LogLevel
+### `core/cortex/`
+Routing and intent intelligence.
 
-configure_logging(
-    level=LogLevel.INFO,
-    format=LogFormat.JSON,
-    output_file="/var/log/karen/app.log"
-)
-```
+Owns:
+- intent resolution
+- predictor registry
+- routing intent helpers
+- KIRE/KRO integration
+- RBAC validation for CORTEX dispatch
 
-### Gateway (`gateway/`)
+### `core/reasoning/`
+Specialist reasoning infrastructure.
 
-FastAPI application setup and middleware:
+Owns:
+- soft reasoning
+- causal reasoning
+- graph reasoning
+- retrieval adapters
+- synthesis helpers and ICE integration
 
-- **KarenApp**: Enhanced FastAPI application
-- **Middleware Setup**: Security, logging, error handling
-- **Route Registration**: Automatic API route discovery
+### `core/security/`
+Security-specific configuration and helpers.
 
-#### Application Setup
-```python
-from ai_karen_engine.core import create_app
+### `core/errors/`
+Error taxonomy and error handling.
 
-app = create_app(
-    title="AI Karen API",
-    version="1.0.0",
-    enable_docs=True
-)
-```
+### `core/gateway/`
+FastAPI gateway setup and middleware wiring.
 
-## Key Features
+### `core/logging/`
+Structured logging helpers and formatters.
 
-### Dependency Injection
+## Import guidance
 
-The service container provides automatic dependency resolution:
+Use the concrete module paths instead of `ai_karen_engine.core` re-exports.
 
-```python
-from ai_karen_engine.core import get_container
-
-container = get_container()
-service = container.get(MyService)
-```
-
-### Error Propagation
-
-Errors are automatically caught and formatted:
-
-```python
-from ai_karen_engine.core import KarenError
-
-class CustomError(KarenError):
-    error_code = "CUSTOM_001"
-    message = "Custom error occurred"
-
-raise CustomError(details={"field": "value"})
-```
-
-### Structured Logging
-
-All components use structured logging:
+Examples:
 
 ```python
-from ai_karen_engine.core import get_logger
-
-logger = get_logger(__name__)
-logger.info("Operation completed", extra={
-    "user_id": "123",
-    "operation": "data_processing",
-    "duration": 1.5
-})
+from ai_karen_engine.core.model_runtime.default_models import load_default_models
+from ai_karen_engine.core.services.service_registry import get_service_registry
+from ai_karen_engine.core.runtime.chat_runtime_control_plane import ChatRuntimeControlPlane
+from ai_karen_engine.core.langgraph_orchestrator import LangGraphOrchestrator
 ```
 
-## Advanced Components
+Avoid imports like:
 
-### Memory Management (`memory/`)
-
-Core memory system components:
-- Memory managers for different storage backends
-- Context management and retrieval
-- Multi-tenant memory isolation
-
-### Reasoning Engine (`reasoning/`)
-
-AI reasoning and decision-making:
-- Soft reasoning engine for fuzzy logic
-- Mesh planner for complex task orchestration
-- Intent engine for user intent recognition
-
-### Neuro Vault (`neuro_vault/`)
-
-Advanced neural network storage and management:
-- Model versioning and storage
-- Neural network optimization
-- Performance monitoring
-
-## Configuration
-
-Core components are configured through:
-
-### Environment Variables
-- `KAREN_LOG_LEVEL`: Logging level (DEBUG, INFO, WARN, ERROR)
-- `KAREN_LOG_FORMAT`: Log format (TEXT, JSON, STRUCTURED)
-- `KAREN_SERVICE_TIMEOUT`: Service operation timeout
-- `KAREN_MAX_WORKERS`: Maximum worker threads
-
-### Service Configuration
 ```python
-from ai_karen_engine.core import ServiceConfig
-
-config = ServiceConfig(
-    name="my-service",
-    timeout=30,
-    max_retries=3,
-    health_check_interval=60
-)
+from ai_karen_engine.core import default_models
+from ai_karen_engine.core import BaseService
 ```
 
-## Monitoring
+Those compatibility exports were removed to keep authority boundaries clear.
 
-Core infrastructure provides monitoring through:
+## Architecture rule
 
-### Health Checks
-```python
-from ai_karen_engine.core.health_monitor import HealthMonitor
+The top-level `core/` package should not become a second runtime.
 
-monitor = HealthMonitor()
-status = await monitor.check_all_services()
-```
+If a responsibility is part of live chat execution, it belongs in:
+- `core/langgraph_orchestrator/`
 
-### Metrics Collection
-- Service performance metrics
-- Error rate tracking
-- Resource utilization monitoring
-
-## Extension Points
-
-The core infrastructure provides several extension points:
-
-### Custom Services
-Implement `BaseService` to create new services that integrate with the dependency injection system.
-
-### Custom Error Types
-Extend `KarenError` to create domain-specific error types with proper error codes and handling.
-
-### Custom Middleware
-Add FastAPI middleware for cross-cutting concerns like authentication, rate limiting, etc.
-
-### Custom Formatters
-Implement custom log formatters for specialized logging requirements.
-
-## Best Practices
-
-1. **Service Design**: Keep services focused and follow single responsibility principle
-2. **Error Handling**: Use specific error types and provide meaningful error messages
-3. **Logging**: Include relevant context in log messages for debugging
-4. **Configuration**: Use environment variables for runtime configuration
-5. **Testing**: Write comprehensive tests for all core components
-
-## Testing
-
-Core infrastructure includes extensive test coverage:
-
-```bash
-# Run core infrastructure tests
-pytest tests/core/
-
-# Run specific component tests
-pytest tests/core/test_services.py
-pytest tests/core/test_errors.py
-pytest tests/core/test_logging.py
-```
-
-## Contributing
-
-When extending core infrastructure:
-
-1. Follow established patterns and interfaces
-2. Include comprehensive error handling
-3. Add appropriate logging and monitoring
-4. Write thorough tests and documentation
-5. Consider backward compatibility
+If it is support infrastructure, it belongs in the most specific preserved domain folder.

@@ -17,7 +17,7 @@ from ..manifest import ExtensionManifest, NAME_PATTERN
 
 # Import unified validation utilities
 try:
-    from ai_karen_engine.api_routes.unified_schemas import (
+    from ai_karen_engine.api_routes.shared.schemas import (
         ValidationUtils,
         FieldError,
         ErrorType,

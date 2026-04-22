@@ -10,8 +10,8 @@ try:
 except Exception:  # pragma: no cover - optional
     spacy = None
 
-from ai_karen_engine.core.embedding_manager import EmbeddingManager, record_metric
-from ai_karen_engine.core.milvus_client import MilvusClient
+from ai_karen_engine.core.model_runtime.embedding_manager import EmbeddingManager, record_metric
+from ai_karen_engine.core.model_runtime.milvus_client import MilvusClient
 from ai_karen_engine.clients.database.postgres_client import PostgresClient
 
 try:

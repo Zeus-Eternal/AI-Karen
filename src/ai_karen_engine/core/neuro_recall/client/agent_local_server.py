@@ -69,7 +69,7 @@ from ai_karen_engine.core.reasoning.soft_reasoning.engine import (
 from ai_karen_engine.core.reasoning.synthesis.ice_wrapper import (
     PremiumICEWrapper, ICEWritebackPolicy
 )
-from ai_karen_engine.integrations.llm_registry import registry as llm_registry
+from ai_karen_engine.integrations.llm_registry import get_registry
 from ai_karen_engine.integrations.llm_utils import LLMUtils
 
 # ----- Local/Direct model backends (optional) -----
@@ -151,7 +151,7 @@ class KariLLMBackend:
         self.role = role
         self.model_alias = model_alias
         # Try Kari registry first
-        self.kari_llm: Optional[LLMUtils] = llm_registry.get_active() or LLMUtils()  # type: ignore[assignment,attr-defined]
+        self.kari_llm: Optional[LLMUtils] = get_registry().get_active() or LLMUtils()  # type: ignore[assignment,attr-defined]
         self.direct_client: Optional[AsyncOpenAI] = None
 
         if ENABLE_EXTERNAL_WORKFLOWS:

@@ -25,8 +25,8 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple, Un
 import numpy as np
 from sqlalchemy import delete, select, text
 
-from ai_karen_engine.core.embedding_manager import EmbeddingManager  # Required
-from ai_karen_engine.core.milvus_client import MilvusClient  # Optional at runtime
+from ai_karen_engine.core.model_runtime.embedding_manager import EmbeddingManager  # Required
+from ai_karen_engine.core.model_runtime.milvus_client import MilvusClient  # Optional at runtime
 from ai_karen_engine.database.models import TenantMemoryItem
 
 # Optional metrics
@@ -488,7 +488,7 @@ class MemoryManager:
         if getattr(self, "embedding_manager", None) is not None:
             return
         try:
-            from ai_karen_engine.core import default_models
+            from ai_karen_engine.core.model_runtime import default_models
             try:
                 # Idempotent init of global defaults
                 await default_models.load_default_models()

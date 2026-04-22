@@ -78,7 +78,7 @@ def setup_health_routes(app: FastAPI, service_container: ServiceContainer) -> No
                 service["status"] in ["running", "ready"]
                 for service_name, service in service_health.items()
                 if service_name
-                in ["ai_orchestrator", "memory_service"]  # Define critical services
+                in ["langgraph_orchestrator", "memory_service"]  # Define critical services
             )
 
             if critical_services_ready:
@@ -176,18 +176,21 @@ def discover_and_mount_api_routes(app: FastAPI) -> None:
     try:
         from ai_karen_engine import api_routes
 
-        # Iterate through all modules in api_routes
+        # Iterate through all modules and packages in api_routes recursively.
         logger.info(f"Discovering API routes from {api_routes.__path__}")
-        for loader, name, is_pkg in pkgutil.iter_modules(api_routes.__path__):
-            logger.info(f"Found module: {name}")
+        for _, full_name, _ in pkgutil.walk_packages(
+            api_routes.__path__, prefix="ai_karen_engine.api_routes."
+        ):
+            name = full_name.rsplit(".", 1)[-1]
+            logger.info(f"Found module: {full_name}")
             try:
-                module = importlib.import_module(f"ai_karen_engine.api_routes.{name}")
+                module = importlib.import_module(full_name)
 
                 # Look for router in the module
                 router = getattr(module, "router", None)
-                logger.info(f"Module {name} has router: {router is not None}")
+                logger.info(f"Module {full_name} has router: {router is not None}")
                 if isinstance(router, APIRouter) and hasattr(router, "routes"):
-                    logger.info(f"Router {name} has {len(router.routes)} routes")
+                    logger.info(f"Router {full_name} has {len(router.routes)} routes")
                     router_prefix = getattr(router, "prefix", "")
 
                     if router_prefix:
@@ -196,11 +199,9 @@ def discover_and_mount_api_routes(app: FastAPI) -> None:
                             # Router prefix already includes /api/, mount directly
                             route_prefix = ""
                             logger.info(
-                                f"Router {name} has /api/ prefix, mounting directly: {router_prefix}"
+                                f"Router {full_name} has /api/ prefix, mounting directly: {router_prefix}"
                             )
-                        elif (
-                            name == "plugin_management" and router_prefix == "/plugins"
-                        ):
+                        elif name == "management" and router_prefix == "/plugins":
                             # Special case for plugin management - mount as /api/plugins
                             route_prefix = "/api"
                             # Keep router_prefix as "/plugins"
@@ -211,7 +212,7 @@ def discover_and_mount_api_routes(app: FastAPI) -> None:
                             # Router has a relative prefix, mount under /api
                             route_prefix = "/api"
                             logger.info(
-                                f"Router {name} has prefix {router_prefix}, mounting under /api"
+                                f"Router {full_name} has prefix {router_prefix}, mounting under /api"
                             )
                     else:
                         # No prefix, derive one from module name
@@ -231,15 +232,13 @@ def discover_and_mount_api_routes(app: FastAPI) -> None:
                             base_name = f"{base_name}s"
 
                         route_prefix = f"/api/{base_name}"
-                        logger.info(
-                            f"Auto-assigning prefix {route_prefix} to router from {name}"
-                        )
+                        logger.info(f"Auto-assigning prefix {route_prefix} to router from {full_name}")
 
                     app.include_router(router, prefix=route_prefix, tags=[name])
                     final_prefix = (
                         route_prefix + router_prefix if route_prefix else router_prefix
                     )
-                    logger.info(f"Mounted API router: {final_prefix} (from {name})")
+                    logger.info(f"Mounted API router: {final_prefix} (from {full_name})")
                     # Log individual routes for debugging
                     for route in router.routes:
                         route_path = getattr(route, "path", "unknown")
@@ -260,16 +259,14 @@ def discover_and_mount_api_routes(app: FastAPI) -> None:
                             prefix="/api/public/providers",
                             tags=["public-providers"],
                         )
-                        logger.info(
-                            "Mounted public provider router: /api/public/providers"
-                        )
+                        logger.info("Mounted public provider router: /api/public/providers")
                     else:
                         # Fallback: mount under /api/public/<module>
                         app.include_router(public_router, prefix=f"/api/public/{name}")
                         logger.info(f"Mounted public router: /api/public/{name}")
 
             except Exception as e:
-                logger.error(f"Failed to mount API router {name}: {e}")
+                logger.error(f"Failed to mount API router {full_name}: {e}")
 
     except ImportError:
         logger.warning("No api_routes package found")
@@ -396,7 +393,7 @@ def setup_routing(app: FastAPI, service_container: ServiceContainer) -> None:
 
     # Manual registration of memory routes as fallback
     try:
-        from ai_karen_engine.api_routes.memory_routes import router as memory_router
+        from ai_karen_engine.api_routes.memory.memory import router as memory_router
 
         app.include_router(memory_router, prefix="/api", tags=["memory"])
         logger.info("✓ Manually registered memory routes at /api/memory")

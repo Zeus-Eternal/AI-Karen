@@ -1,9 +1,5 @@
 """Integration utilities for CoPilot."""
 
-from ai_karen_engine.copilotkit.error_handler import (
-    CopilotKitErrorType,
-    CopilotKitFallbackHandler,
-)
 from ai_karen_engine.copilotkit.models import (
     AgentTask,
     SendMessageRequest,
@@ -28,8 +24,6 @@ from ai_karen_engine.copilotkit.safety_middleware import (
 )
 
 __all__ = [
-    "CopilotKitErrorType",
-    "CopilotKitFallbackHandler",
     "AgentTask",
     "SendMessageRequest",
     "SendMessageResponse",

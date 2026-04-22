@@ -56,7 +56,7 @@ logger = logging.getLogger("kari")
 
 # Extension system integration
 try:
-    from ai_karen_engine.extensions.core.host.factory import (
+    from ai_karen_engine.extensions.platform.core.host.factory import (
         initialize_extensions_for_production as initialize_extensions,
     )
 
@@ -64,7 +64,7 @@ try:
 except ImportError as canonical_error:
     try:
         # Temporary fallback for migration compatibility.
-        from extensions.core.host.factory import (  # type: ignore
+        from ai_karen_engine.extensions.platform.core.host.factory import (  # type: ignore
             initialize_extensions_for_production as initialize_extensions,
         )
 
@@ -193,7 +193,7 @@ def create_app() -> FastAPI:
             # Check service registry status
             service_status = {}
             try:
-                from ai_karen_engine.core.service_registry import ServiceRegistry
+                from ai_karen_engine.core.services.service_registry import ServiceRegistry
 
                 registry = ServiceRegistry()
                 report = registry.get_initialization_report()
@@ -464,7 +464,7 @@ def create_app() -> FastAPI:
         """Compatibility proxy that forwards to the canonical health router."""
 
         try:
-            from ai_karen_engine.api_routes.health import (
+            from ai_karen_engine.api_routes.monitoring.health import (
                 degraded_mode_status_compat,
             )
 
