@@ -34,12 +34,12 @@ from ai_karen_engine.core.memory.manager import (
     update_memory,
 )
 from ai_karen_engine.core.memory.session_buffer import SessionBuffer
-from ai_karen_engine.core.memory.session_state_manager import SessionStateManager
+
 from ai_karen_engine.core.memory.np_memory import (
     load_jsonl,
     extract_pairs,
     embed_texts,
-    retrieve
+    retrieve,
 )
 
 # ===================================
@@ -104,7 +104,6 @@ __all__ = [
     # ===================================
     # EXISTING SYSTEM (Backward Compatibility)
     # ===================================
-
     # Original memory system
     "recall_context",
     "update_memory",
@@ -112,25 +111,20 @@ __all__ = [
     "_METRICS",
     "init_memory",
     "SessionBuffer",
-    "SessionStateManager",
-
     # AG-UI enhanced memory system
     "AGUIMemoryManager",
     "MemoryGridRow",
     "MemoryNetworkNode",
     "MemoryNetworkEdge",
     "MemoryAnalytics",
-
     # Neuro-recall memory utilities
     "load_jsonl",
     "extract_pairs",
     "embed_texts",
     "retrieve",
-
     # ===================================
     # UNIFIED MEMORY ARCHITECTURE (Phase 1)
     # ===================================
-
     # Enums
     "MemoryType",
     "MemoryNamespace",
@@ -138,17 +132,14 @@ __all__ = [
     "MemoryPriority",
     "MemoryVisibility",
     "ImportanceLevel",
-
     # Types
     "EmbeddingVector",
     "JSONLike",
-
     # Data structures
     "MemoryMetadata",
     "MemoryEntry",
     "MemoryQuery",
     "MemoryQueryResult",
-
     # Protocols
     "StorageBackend",
     "EmbeddingProvider",
@@ -158,7 +149,6 @@ __all__ = [
     "MemoryManager",
     "StorageResult",
     "SearchResult",
-
     # Helper functions
     "make_memory_id",
     "clamp",
@@ -166,7 +156,6 @@ __all__ = [
     "ttl_to_expires",
     "now_utc",
     "create_memory_entry",
-
     # Constants
     "DEFAULT_DECAY_LAMBDA",
     "DEFAULT_TOP_K",

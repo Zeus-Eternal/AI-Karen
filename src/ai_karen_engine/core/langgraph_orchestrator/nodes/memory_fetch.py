@@ -1,91 +1,112 @@
 import logging
+from typing import List, Dict, Any
 from ..contracts.orchestration_state import LangGraphOrchestrationState
-from ..context.context_manager_adapter import ensure_context_manager
+from ..context.context_manager_adapter import (
+    ensure_context_manager,
+    ensure_session_state_manager,
+    save_session_continuity,
+)
 from ..utils.message_serialization import message_to_history_entry
 from ai_karen_engine.utils.chat_helpers import (
     build_structured_context_sections,
     wants_long_form_markdown_article,
 )
-from .memory_write import _ensure_session_state_manager
 
 logger = logging.getLogger(__name__)
 
-async def memory_fetch_node(self, state: LangGraphOrchestrationState) -> LangGraphOrchestrationState:
+
+class MemoryFetchNode:
     """Memory and context fetching with salvaged session state retrieval."""
-    logger.info("Memory fetch processing")
 
-    try:
-        errors = state.setdefault("errors", [])
-        warnings = state.setdefault("warnings", [])
-        messages = state.get("messages", [])
-        conversation_history = [
-            message_to_history_entry(message) for message in messages
-        ]
+    def __init__(self):
+        pass
 
-        state["conversation_history"] = conversation_history
+    async def __call__(
+        self, state: LangGraphOrchestrationState
+    ) -> LangGraphOrchestrationState:
+        """Memory and context fetching with salvaged session state retrieval."""
+        logger.info("Memory fetch processing")
 
-        if not messages:
-            state["memory_context"] = {
-                "conversation_history": [],
-                "context_summary": "No prior context",
-                "memories": [],
-            }
-            return state
+        try:
+            errors = state.setdefault("errors", [])
+            warnings = state.setdefault("warnings", [])
+            messages = state.get("messages", [])
+            conversation_history = [
+                message_to_history_entry(message) for message in messages
+            ]
 
-        context_manager = await ensure_context_manager(self)
+            state["conversation_history"] = conversation_history
 
-        user_profile = state.get("user_profile") or {}
-        user_settings = user_profile.get("preferences", {})
-        prompt = conversation_history[-1]["content"]
+            if not messages:
+                state["memory_context"] = {
+                    "conversation_history": [],
+                    "context_summary": "No prior context",
+                    "memories": [],
+                }
+                return state
 
-        context = await context_manager.build_context(
-            user_id=state.get("user_id"),
-            session_id=state.get("session_id"),
-            prompt=prompt,
-            conversation_history=conversation_history,
-            user_settings=user_settings,
-            memories=None,
-        )
+            context_manager = await ensure_context_manager(self)
 
-        state["memory_context"] = context
+            user_profile = state.get("user_profile") or {}
+            user_settings = user_profile.get("preferences", {})
+            prompt = conversation_history[-1]["content"]
 
-        # Salvaged: Retrieve session state for continuity
-        session_state_manager = await _ensure_session_state_manager(self)
-        session_id = state.get("session_id")
-        if session_state_manager and session_id:
-            session_state = await session_state_manager.load_session_state(
-                session_id
+            context = await context_manager.build_context(
+                user_id=state.get("user_id"),
+                session_id=state.get("session_id"),
+                prompt=prompt,
+                conversation_history=conversation_history,
+                user_settings=user_settings,
+                memories=None,
             )
-            if session_state:
-                state["memory_context"]["session_state"] = session_state
-                warnings.append(
-                    f"Retrieved salvaged session state for {session_id}"
+
+            state["memory_context"] = context
+
+            # Salvaged: Retrieve session state for continuity
+            session_state_manager = await ensure_session_state_manager(self)
+            session_id = state.get("session_id")
+            if session_state_manager and session_id:
+                from ..context.context_manager_adapter import load_session_continuity
+
+                session_state = await load_session_continuity(self, session_id)
+                if session_state:
+                    state["memory_context"]["session_state"] = session_state
+                    warnings.append(
+                        f"Retrieved salvaged session state for {session_id}"
+                    )
+
+            # Salvaged: Build structured context sections for system prompt
+            if isinstance(context, dict):
+                structured_sections = build_structured_context_sections(
+                    request_context=state.get("request_config", {}),
+                    integrated_context=context,
+                )
+                state["memory_context"]["structured_sections"] = structured_sections
+
+                # Identify if long-form article is requested
+                if conversation_history:
+                    is_long_form = wants_long_form_markdown_article(
+                        current_user_message=conversation_history[-1]["content"],
+                        recent_messages=conversation_history,
+                    )
+                    state["memory_context"]["is_long_form_requested"] = is_long_form
+
+            if isinstance(context, dict) and context.get("memories"):
+                state.setdefault("warnings", []).append(
+                    f"Loaded {len(context['memories'])} contextual memories"
                 )
 
-        # Salvaged: Build structured context sections for the system prompt
-        if isinstance(context, dict):
-            structured_sections = build_structured_context_sections(
-                request_context=state.get("request_config", {}),
-                integrated_context=context,
-            )
-            state["memory_context"]["structured_sections"] = structured_sections
+        except Exception as e:
+            logger.error(f"Memory fetch error: {e}")
+            errors = state.setdefault("errors", [])
+            errors.append(f"Memory fetch error: {str(e)}")
 
-            # Identify if long-form article is requested
-            if conversation_history:
-                is_long_form = wants_long_form_markdown_article(
-                    current_user_message=conversation_history[-1]["content"],
-                    recent_messages=conversation_history,
-                )
-                state["memory_context"]["is_long_form_requested"] = is_long_form
+        return state
 
-        if isinstance(context, dict) and context.get("memories"):
-            state.setdefault("warnings", []).append(
-                f"Loaded {len(context['memories'])} contextual memories"
-            )
 
-    except Exception as e:
-        logger.error(f"Memory fetch error: {e}")
-        errors = state.setdefault("errors", [])
-        errors.append(f"Memory fetch error: {str(e)}")
-
-    return state
+async def memory_fetch_node(
+    state: LangGraphOrchestrationState,
+) -> LangGraphOrchestrationState:
+    """Convenience wrapper for MemoryFetchNode"""
+    node = MemoryFetchNode()
+    return await node(state)

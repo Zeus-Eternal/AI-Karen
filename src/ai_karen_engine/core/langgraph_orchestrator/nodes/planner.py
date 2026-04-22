@@ -4,13 +4,14 @@ from ..contracts.orchestration_state import LangGraphOrchestrationState
 
 logger = logging.getLogger(__name__)
 
+
 def _compose_execution_plan(
     intent: str,
     analysis: Optional[Dict[str, Any]],
     tool_calls: List[Dict[str, Any]],
     safety_status: str,
 ) -> Dict[str, Any]:
-    """Create a structured execution plan used by the planner and dry-run analysis."""
+    """Create a structured execution plan used by planner and dry-run analysis."""
 
     analysis = analysis or {}
     execution_plan: Dict[str, Any] = {
@@ -55,26 +56,43 @@ def _compose_execution_plan(
 
     return execution_plan
 
-async def planner_node(self, state: LangGraphOrchestrationState) -> LangGraphOrchestrationState:
+
+class PlannerNode:
     """Execution planning based on intent"""
-    logger.info("Planning processing")
 
-    try:
-        intent = state.get("detected_intent", "general_chat") or "general_chat"
-        analysis = state.get("intent_analysis") or {}
-        tool_calls = state.get("tool_calls") or []
-        safety_status = state.get("safety_status", "safe")
+    def __init__(self):
+        pass
 
-        execution_plan = _compose_execution_plan(
-            intent,
-            analysis,
-            tool_calls,
-            safety_status,
-        )
-        state["execution_plan"] = execution_plan
+    async def __call__(
+        self, state: LangGraphOrchestrationState
+    ) -> LangGraphOrchestrationState:
+        """Execution planning based on intent"""
+        logger.info("Planning processing")
 
-    except Exception as e:
-        logger.error(f"Planning error: {e}")
-        state.setdefault("errors", []).append(f"Planning error: {str(e)}")
+        try:
+            intent = state.get("detected_intent", "general_chat") or "general_chat"
+            analysis = state.get("intent_analysis") or {}
+            tool_calls = state.get("tool_calls") or []
+            safety_status = state.get("safety_status", "safe")
 
-    return state
+            execution_plan = _compose_execution_plan(
+                intent,
+                analysis,
+                tool_calls,
+                safety_status,
+            )
+            state["execution_plan"] = execution_plan
+
+        except Exception as e:
+            logger.error(f"Planning error: {e}")
+            state.setdefault("errors", []).append(f"Planning error: {str(e)}")
+
+        return state
+
+
+async def planner_node(
+    state: LangGraphOrchestrationState,
+) -> LangGraphOrchestrationState:
+    """Convenience wrapper for PlannerNode"""
+    node = PlannerNode()
+    return await node(state)

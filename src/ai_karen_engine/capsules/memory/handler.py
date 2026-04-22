@@ -51,8 +51,13 @@ logger.setLevel(logging.INFO)
 # === Observability (Prometheus, fallback safe) ===
 try:
     from prometheus_client import Counter
-    CAPSULE_SUCCESS = Counter("capsule_memory_success_total", "Successful memory capsule executions")
-    CAPSULE_FAILURE = Counter("capsule_memory_failure_total", "Failed memory capsule executions")
+
+    CAPSULE_SUCCESS = Counter(
+        "capsule_memory_success_total", "Successful memory capsule executions"
+    )
+    CAPSULE_FAILURE = Counter(
+        "capsule_memory_failure_total", "Failed memory capsule executions"
+    )
 except ImportError:
     CAPSULE_SUCCESS = CAPSULE_FAILURE = lambda: None
 
@@ -61,6 +66,7 @@ class MemoryCapsule:
     """
     Zero-trust memory maintenance capsule for NeuroVault operations.
     """
+
     _instance = None
     _lock = threading.Lock()
 
@@ -107,7 +113,9 @@ class MemoryCapsule:
             user_roles = set(user_ctx.get("roles", []))
             required_roles = set(self.manifest["required_roles"])
             if not user_roles.issuperset(required_roles):
-                raise CapsuleSecurityError("Insufficient privileges for memory operations")
+                raise CapsuleSecurityError(
+                    "Insufficient privileges for memory operations"
+                )
 
             # Phase 3: Input Sanitization (Zero-Trust)
             try:
@@ -125,34 +133,39 @@ class MemoryCapsule:
                     "action": "memory_task",
                     "timestamp": int(time.time()),
                     "correlation_id": correlation_id,
-                    "capsule": "memory"
+                    "capsule": "memory",
                 }
                 audit_payload["signature"] = _sign_payload(audit_payload)
 
                 try:
                     # Lazy-import to avoid circulars
-                    from ai_karen_engine.core.prompt_router import render_prompt
+                    from ai_karen_engine.services.plugin_router import render_prompt
                     from ai_karen_engine.integrations.llm_registry import registry
 
                     # Render prompt with sanitized input
-                    prompt = render_prompt(self.prompt_template, context={
-                        "user_ctx": user_ctx,
-                        "request": sanitized_request,
-                        "audit_payload": audit_payload
-                    })
+                    prompt = render_prompt(
+                        self.prompt_template,
+                        context={
+                            "user_ctx": user_ctx,
+                            "request": sanitized_request,
+                            "audit_payload": audit_payload,
+                        },
+                    )
 
                     # Validate prompt safety
                     validate_prompt_safety(prompt)
 
                     # Validate tool access
-                    validate_allowed_tools("llm.generate_text", self.manifest.get("allowed_tools", []))
+                    validate_allowed_tools(
+                        "llm.generate_text", self.manifest.get("allowed_tools", [])
+                    )
 
                     # Execute LLM generation
                     llm = registry.get_active()
                     result = llm.generate_text(
                         prompt,
                         max_tokens=self.manifest.get("max_tokens", 384),
-                        temperature=self.manifest.get("temperature", 0.5)
+                        temperature=self.manifest.get("temperature", 0.5),
                     )
 
                     # Metrics: Success
@@ -163,10 +176,12 @@ class MemoryCapsule:
                         "result": result,
                         "audit": audit_payload,
                         "security": {
-                            "integrity_check": _sign_payload({"result": result, "cid": correlation_id}),
+                            "integrity_check": _sign_payload(
+                                {"result": result, "cid": correlation_id}
+                            ),
                             "model_used": str(type(llm).__name__),
-                            "correlation_id": correlation_id
-                        }
+                            "correlation_id": correlation_id,
+                        },
                     }
                 except PromptSecurityError as pse:
                     CAPSULE_FAILURE()

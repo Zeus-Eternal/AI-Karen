@@ -46,11 +46,11 @@ LOG_DIR = Path("/secure/logs/kari")
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - [%(correlation_id)s] - %(name)s - %(levelname)s - %(message)s',
+    format="%(asctime)s - [%(correlation_id)s] - %(name)s - %(levelname)s - %(message)s",
     handlers=[
         logging.FileHandler(LOG_DIR / "devops_capsule.log"),
-        logging.StreamHandler()
-    ]
+        logging.StreamHandler(),
+    ],
 )
 logger = logging.getLogger("devops.capsule")
 logger.setLevel(logging.INFO)
@@ -58,16 +58,23 @@ logger.setLevel(logging.INFO)
 # === Observability (Prometheus, fallback safe) ===
 try:
     from prometheus_client import Counter
-    CAPSULE_SUCCESS = Counter("capsule_devops_success_total", "Successful devops capsule executions")
-    CAPSULE_FAILURE = Counter("capsule_devops_failure_total", "Failed devops capsule executions")
+
+    CAPSULE_SUCCESS = Counter(
+        "capsule_devops_success_total", "Successful devops capsule executions"
+    )
+    CAPSULE_FAILURE = Counter(
+        "capsule_devops_failure_total", "Failed devops capsule executions"
+    )
 except ImportError:
     CAPSULE_SUCCESS = CAPSULE_FAILURE = lambda: None
+
 
 # === Hardware Isolation/Control ===
 def _set_hardware_affinity():
     """Set CPU affinity or process priority as isolation primitive (NUMA-free)."""
     try:
         import psutil
+
         p = psutil.Process(os.getpid())
         system = platform.system()
         if system == "Linux":
@@ -76,27 +83,38 @@ def _set_hardware_affinity():
             # Evil Twin: Use only the last CPU (least likely to collide in prod)
             if len(cpus) > 1:
                 p.cpu_affinity([cpus[-1]])
-                logger.info(f"Set CPU affinity to core {cpus[-1]}", extra={"correlation_id": "affinity"})
+                logger.info(
+                    f"Set CPU affinity to core {cpus[-1]}",
+                    extra={"correlation_id": "affinity"},
+                )
         elif system == "Windows":
             p.nice(psutil.HIGH_PRIORITY_CLASS)
-            logger.info("Set process to HIGH priority (Windows)", extra={"correlation_id": "affinity"})
+            logger.info(
+                "Set process to HIGH priority (Windows)",
+                extra={"correlation_id": "affinity"},
+            )
         elif system == "Darwin":  # Mac
             os.nice(-10)  # Raise priority (not strict CPU pin)
-            logger.info("Set process priority up (Darwin/Mac)", extra={"correlation_id": "affinity"})
+            logger.info(
+                "Set process priority up (Darwin/Mac)",
+                extra={"correlation_id": "affinity"},
+            )
     except Exception as e:
-        logger.warning(f"Hardware affinity/isolation not enforced: {e}", extra={"correlation_id": "affinity"})
+        logger.warning(
+            f"Hardware affinity/isolation not enforced: {e}",
+            extra={"correlation_id": "affinity"},
+        )
+
 
 class CapsuleSecurityError(Exception):
     """Base class for all capsule security violations"""
+
     pass
+
 
 def _verify_capsule_integrity():
     """Validate capsule files haven't been tampered with"""
-    capsule_files = [
-        "handler.py",
-        "manifest.yaml",
-        "prompt.txt"
-    ]
+    capsule_files = ["handler.py", "manifest.yaml", "prompt.txt"]
     for file in capsule_files:
         file_path = Path(__file__).parent / file
         if not file_path.exists():
@@ -107,30 +125,36 @@ def _verify_capsule_integrity():
         if stored_hash and expected_hash != stored_hash:
             raise CapsuleSecurityError(f"Integrity check failed for {file}")
 
+
 # Verify capsule integrity on import
 _verify_capsule_integrity()
+
 
 def _sign_payload(payload: Dict[str, Any]) -> str:
     """Generate HMAC signature for audit trails"""
     msg = str(sorted(payload.items())).encode()
     return hmac.new(CAPSULE_SIGNING_KEY.encode(), msg, hashlib.sha512).hexdigest()
 
+
 def validate_jwt(token: str) -> Dict[str, Any]:
     """Validate JWT with zero-trust principles"""
     try:
         import jwt
+
         return jwt.decode(
             token,
             CAPSULE_SIGNING_KEY,
             algorithms=[JWT_ALGORITHM],
-            options={"verify_exp": True}
+            options={"verify_exp": True},
         )
     except Exception as e:
         raise CapsuleSecurityError(f"JWT validation failed: {str(e)}")
 
+
 def get_correlation_id() -> str:
     """Generate a correlation ID for traceability (per request)"""
     return str(uuid.uuid4())
+
 
 class DevOpsCapsule:
     """
@@ -141,6 +165,7 @@ class DevOpsCapsule:
     - Quantum-resistant audit logs
     - Observability-ready logging
     """
+
     _instance = None
     _lock = threading.Lock()
 
@@ -156,7 +181,10 @@ class DevOpsCapsule:
         self.manifest = self._load_manifest()
         self.prompt_template = self._load_prompt()
         self.execution_lock = threading.Lock()
-        logger.info("DevOps capsule initialized in secure mode", extra={"correlation_id": "init"})
+        logger.info(
+            "DevOps capsule initialized in secure mode",
+            extra={"correlation_id": "init"},
+        )
 
     def _load_manifest(self) -> Dict[str, Any]:
         """Load and validate manifest with cryptographic checks"""
@@ -215,70 +243,78 @@ class DevOpsCapsule:
                     "action": "devops_task",
                     "timestamp": int(time.time()),
                     "correlation_id": correlation_id,
-                    "capsule": "devops"
+                    "capsule": "devops",
                 }
                 audit_payload["signature"] = _sign_payload(audit_payload)
 
                 try:
                     # Lazy-import to avoid circulars and keep plugin load atomic
-                    from ai_karen_engine.core.prompt_router import render_prompt
+                    from ai_karen_engine.services.plugin_router import render_prompt
                     from ai_karen_engine.integrations.llm_registry import registry
 
                     # Render prompt with sanitized input
-                    prompt = render_prompt(self.prompt_template, context={
-                        "user_ctx": user_ctx,
-                        "request": sanitized_request,
-                        "audit_payload": audit_payload
-                    })
+                    prompt = render_prompt(
+                        self.prompt_template,
+                        context={
+                            "user_ctx": user_ctx,
+                            "request": sanitized_request,
+                            "audit_payload": audit_payload,
+                        },
+                    )
 
                     # Validate prompt safety (banned tokens check)
                     validate_prompt_safety(prompt)
 
                     # Validate tool access
-                    validate_allowed_tools("llm.generate_text", self.manifest.get("allowed_tools", []))
+                    validate_allowed_tools(
+                        "llm.generate_text", self.manifest.get("allowed_tools", [])
+                    )
 
                     # Execute LLM generation
                     llm = registry.get_active()
                     result = llm.generate_text(
                         prompt,
                         max_tokens=self.manifest.get("max_tokens", 256),
-                        temperature=self.manifest.get("temperature", 0.7)
+                        temperature=self.manifest.get("temperature", 0.7),
                     )
 
                     # Metrics: Success
                     CAPSULE_SUCCESS()
                     logger.info(
                         f"Task succeeded for user {user_ctx.get('sub')}",
-                        extra={"correlation_id": correlation_id}
+                        extra={"correlation_id": correlation_id},
                     )
 
                     return {
                         "result": result,
                         "audit": audit_payload,
                         "security": {
-                            "integrity_check": _sign_payload({"result": result, "cid": correlation_id}),
+                            "integrity_check": _sign_payload(
+                                {"result": result, "cid": correlation_id}
+                            ),
                             "model_used": str(type(llm).__name__),
-                            "correlation_id": correlation_id
-                        }
+                            "correlation_id": correlation_id,
+                        },
                     }
                 except PromptSecurityError as pse:
                     CAPSULE_FAILURE()
                     logger.error(
                         f"Prompt security violation: {str(pse)}",
-                        extra={"correlation_id": correlation_id}
+                        extra={"correlation_id": correlation_id},
                     )
                     raise CapsuleSecurityError(f"Prompt security violation: {str(pse)}")
                 except Exception as e:
                     CAPSULE_FAILURE()
                     logger.error(
                         f"Secure execution failed: {str(e)}",
-                        extra={"correlation_id": correlation_id}
+                        extra={"correlation_id": correlation_id},
                     )
                     raise CapsuleSecurityError("Execution aborted by security policy")
 
         except CapsuleSecurityError as sec_e:
             logger.warning(str(sec_e), extra={"correlation_id": correlation_id})
             raise
+
 
 # === Secure Singleton Access ===
 def get_capsule_handler():
@@ -287,6 +323,7 @@ def get_capsule_handler():
             if DevOpsCapsule._instance is None:
                 DevOpsCapsule._instance = DevOpsCapsule()
     return DevOpsCapsule._instance
+
 
 # === Plugin Interface ===
 def handler(request: Dict[str, Any], jwt_token: str) -> Dict[str, Any]:

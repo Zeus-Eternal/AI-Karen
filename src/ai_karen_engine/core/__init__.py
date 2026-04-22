@@ -133,7 +133,7 @@ __all__ += [
 ]
 from ai_karen_engine.core.degraded_mode import generate_degraded_mode_response
 from ai_karen_engine.core.health_checker import HealthChecker, ProviderStatus
-from ai_karen_engine.core.response_envelope import build_response_envelope
+from ai_karen_engine.core.response.response_envelope import build_response_envelope
 
 __all__ += [
     "HealthChecker",

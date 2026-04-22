@@ -51,12 +51,13 @@ from ai_karen_engine.config.llm_provider_config import (
 logger = logging.getLogger("kari.llm_registry")
 
 try:
-    from ai_karen_engine.integrations.kire_router import KIRERouter as KIREAdapter
+    from ai_karen_engine.routing.kire_router import KIRERouter as KIREAdapter
 
     _KIRE_IMPORT_ERROR: Optional[Exception] = None
 except Exception as kire_import_error:  # pragma: no cover - optional dependency path
     KIREAdapter = None  # type: ignore[assignment]
     _KIRE_IMPORT_ERROR = kire_import_error
+
 
 @dataclass
 class ProviderRegistration:
@@ -1330,9 +1331,7 @@ class LLMRegistry:
         if provider:
             try:
                 provider_info_fn = getattr(provider, "get_provider_info", None)
-                provider_info = (
-                    provider_info_fn() if callable(provider_info_fn) else {}
-                )
+                provider_info = provider_info_fn() if callable(provider_info_fn) else {}
                 if isinstance(provider_info, dict):
                     info.update(provider_info)
             except Exception as ex:
@@ -1372,9 +1371,7 @@ class LLMRegistry:
             # Add model validation for providers with installed models (requirement 2.5)
             provider_library = self._get_library_for_provider(resolved_name)
             provider_models: Dict[str, ModelEntry] = (
-                self.get_models_by_library(provider_library)
-                if provider_library
-                else {}
+                self.get_models_by_library(provider_library) if provider_library else {}
             )
 
             if provider_models:
@@ -1818,7 +1815,9 @@ class LLMRegistry:
                             }
                 elif entry.library == "transformers":
                     # For transformers models, load from directory
-                    load_model_by_path_fn = getattr(provider, "load_model_by_path", None)
+                    load_model_by_path_fn = getattr(
+                        provider, "load_model_by_path", None
+                    )
                     if callable(load_model_by_path_fn):
                         success = bool(load_model_by_path_fn(str(model_path)))
                         if not success:
@@ -1863,9 +1862,7 @@ class LLMRegistry:
             else:
                 # Provider doesn't support generation - just check if it loads
                 provider_info_fn = getattr(provider, "get_provider_info", None)
-                provider_info = (
-                    provider_info_fn() if callable(provider_info_fn) else {}
-                )
+                provider_info = provider_info_fn() if callable(provider_info_fn) else {}
                 return {
                     "status": "healthy",
                     "message": "Model loads successfully",
@@ -1972,7 +1969,10 @@ class LLMRegistry:
             if self._llm_settings_schema:
                 try:
                     if validate is None:
-                        return {"status": "error", "error": "JSON schema validator unavailable"}
+                        return {
+                            "status": "error",
+                            "error": "JSON schema validator unavailable",
+                        }
                     validate(instance=new_settings, schema=self._llm_settings_schema)
                 except ValidationError as ex:
                     return {

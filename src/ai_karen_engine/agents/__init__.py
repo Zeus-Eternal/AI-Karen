@@ -21,13 +21,13 @@ from .models import (
     AgentConfig,
     StreamChunk,
     AgentError,
-    AgentLifecycleEvent
+    AgentLifecycleEvent,
 )
 from .execution_handlers import (
     NativeExecutionHandler,
     LangGraphExecutionHandler,
     DeepAgentsExecutionHandler,
-    get_execution_handler
+    get_execution_handler,
 )
 from .lifecycle_manager import AgentLifecycleManager
 from .capability_router import AgentCapabilityRouter
@@ -83,7 +83,12 @@ from .safety import (
 )
 
 try:
-    from .agent_tool_broker import AgentToolBroker, ToolStatus, AccessDecision, SecurityContext
+    from .agent_tool_broker import (
+        AgentToolBroker,
+        ToolStatus,
+        AccessDecision,
+        SecurityContext,
+    )
 except Exception:  # Optional dependency chain
     AgentToolBroker = None
     ToolStatus = None
@@ -100,32 +105,7 @@ except Exception:  # Optional dependency chain
     AgentRegistry = None
     AgentHealthStatus = None
     AgentRegistryLifecycleEvent = None
-from .thread_manager import ThreadManager
-from .thread_manager_models import (
-    ThreadStatus,
-    ThreadType,
-    ThreadMetadata,
-    Thread,
-    SessionThreadMapping,
-    CreateThreadRequest,
-    CreateThreadResponse,
-    GetThreadRequest,
-    GetThreadResponse,
-    UpdateThreadRequest,
-    UpdateThreadResponse,
-    DeleteThreadRequest,
-    DeleteThreadResponse,
-    ListThreadsRequest,
-    ListThreadsResponse,
-    GetSessionThreadsRequest,
-    GetSessionThreadsResponse,
-    SetPrimaryThreadRequest,
-    SetPrimaryThreadResponse,
-    ThreadManagerConfig,
-    ThreadManagerStatus,
-    ThreadManagerMetrics,
-    ThreadManagerError,
-)
+
 
 __all__ = [
     "AgentIntegrationService",
@@ -148,7 +128,6 @@ __all__ = [
     "get_execution_handler",
     "AgentLifecycleManager",
     "AgentCapabilityRouter",
-    "ThreadManager",
     "ExecutionMode",
     "UIComponentType",
     "ContentType",
@@ -218,16 +197,20 @@ __all__ = [
 ]
 
 if AgentToolBroker is not None:
-    __all__.extend([
-        "AgentToolBroker",
-        "ToolStatus",
-        "AccessDecision",
-        "SecurityContext",
-    ])
+    __all__.extend(
+        [
+            "AgentToolBroker",
+            "ToolStatus",
+            "AccessDecision",
+            "SecurityContext",
+        ]
+    )
 
 if AgentRegistry is not None:
-    __all__.extend([
-        "AgentRegistry",
-        "AgentHealthStatus",
-        "AgentRegistryLifecycleEvent",
-    ])
+    __all__.extend(
+        [
+            "AgentRegistry",
+            "AgentHealthStatus",
+            "AgentRegistryLifecycleEvent",
+        ]
+    )
