@@ -22,14 +22,14 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from ai_karen_engine.core.services.dependencies import bypass_user_context_func
 from ai_karen_engine.core.logging import get_logger
-from ai_karen_engine.memory.error_response_service import (
+from ai_karen_engine.services.error_response_service import (
     ErrorResponseService,
     IntelligentErrorResponse,
     ErrorContext,
     ErrorCategory,
     ErrorSeverity,
 )
-from ai_karen_engine.memory.internal.provider_health_monitor import get_health_monitor
+from ai_karen_engine.core.model_runtime.provider_health_monitor import get_health_monitor
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["error-response"], prefix="/error-response")

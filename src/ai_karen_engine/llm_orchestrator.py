@@ -844,7 +844,7 @@ class LLMOrchestrator:
             
             # First, register the SmallLanguageModelService if enabled
             try:
-                from ai_karen_engine.memory.small_language_model_service import SmallLanguageModelService
+                from ai_karen_engine.core.reasoning.synthesis.small_language_model_service import SmallLanguageModelService
 
                 logger.info("Initializing SmallLanguageModelService")
 

@@ -87,6 +87,40 @@ def _finalize_runtime_payload_text(
     return updated
 
 
+async def _retry_orchestrator_without_preferred_provider(
+    *,
+    orchestrator,
+    user_message: str,
+    user_id: str,
+    session_id: str,
+    correlation_id: str,
+    request_config: Dict[str, Any],
+):
+    """Retry orchestration once without a pinned provider/model.
+
+    This keeps the response live when the requested provider is unavailable
+    but other healthy providers still exist.
+    """
+    from langchain_core.messages import HumanMessage
+
+    retry_config = dict(request_config or {})
+    retry_config.pop("preferred_llm_provider", None)
+    retry_config.pop("preferred_model", None)
+
+    retry_state = await orchestrator.process(
+        messages=[HumanMessage(content=user_message)],
+        user_id=user_id,
+        session_id=session_id,
+        config={
+            "streaming_enabled": False,
+            "correlation_id": correlation_id,
+            "request_config": retry_config,
+        },
+    )
+    retry_text = _extract_response_text_from_state(retry_state)
+    return retry_state, retry_text
+
+
 def _build_degraded_sse_events(
     payload: Dict[str, Any], correlation_id: str
 ) -> List[Dict[str, Any]]:
@@ -640,8 +674,33 @@ async def copilot_assist(
             },
         )
         response_text = _extract_response_text_from_state(final_state)
-        if not response_text and degraded_continuation_response is not None:
-            response_text = degraded_continuation_response.message
+        should_retry_without_preferred = (
+            not response_text or _is_placeholder_response(response_text)
+        )
+        if should_retry_without_preferred:
+            request_config = {
+                "surface": "copilot",
+                "top_k": request.top_k,
+                "context": _json_safe(request.context or {}),
+                "preferred_llm_provider": request.preferred_llm_provider,
+                "preferred_model": request.preferred_model,
+            }
+            retry_state, retry_text = await _retry_orchestrator_without_preferred_provider(
+                orchestrator=orchestrator,
+                user_message=request.message,
+                user_id=request.user_id,
+                session_id=conversation_id,
+                correlation_id=correlation_id,
+                request_config=request_config,
+            )
+            if retry_text and not _is_placeholder_response(retry_text):
+                final_state = retry_state
+                response_text = retry_text
+            elif retry_text and not response_text:
+                final_state = retry_state
+                response_text = retry_text
+            elif degraded_continuation_response is not None:
+                response_text = degraded_continuation_response.message
         response_metadata: Dict[str, Any] = _json_safe(final_state.get("telemetry") or {})
         response_metadata.update(_json_safe(final_state.get("response_metadata") or {}))
         response_metadata.setdefault("status", "success")

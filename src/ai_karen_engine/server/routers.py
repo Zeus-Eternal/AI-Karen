@@ -105,7 +105,6 @@ from ai_karen_engine.api_routes.models.providers import router as provider_route
 from ai_karen_engine.api_routes.models.providers import (
     public_router as provider_public_router,
 )
-from ai_karen_engine.api_routes.users.users.profile import router as profile_router
 from ai_karen_engine.api_routes.system.settings import router as settings_router
 from ai_karen_engine.api_routes.models.settings import (
     router as model_settings_router,
@@ -121,6 +120,7 @@ from ai_karen_engine.api_routes.automation.tasks import router as tasks_router
 from ai_karen_engine.api_routes.automation.jobs import (
     router as automation_jobs_router,
 )
+from ai_karen_engine.api_routes.automation.cron import router as automation_cron_router
 from ai_karen_engine.api_routes.monitoring.health import router as health_router
 from ai_karen_engine.api_routes.models.management import (
     router as model_management_router,
@@ -143,15 +143,16 @@ from ai_karen_engine.api_routes.monitoring.validation import (
     router as validation_metrics_router,
 )
 from ai_karen_engine.api_routes.monitoring.performance import router as performance_routes
-from ai_karen_engine.api_routes.users.users.persona import router as persona_router
 from ai_karen_engine.api_routes.models.organization import (
     router as model_organization_router,
 )
-from ai_karen_engine.api_routes.users.users.preferences import (
+from ai_karen_engine.api_routes.users.profile import router as user_profile_router
+from ai_karen_engine.api_routes.users.persona import router as user_persona_router
+from ai_karen_engine.api_routes.users.preferences import (
     router as user_preferences_router,
 )
-from ai_karen_engine.api_routes.users.users.data import router as user_data_router
-from ai_karen_engine.api_routes.users.users.users import router as users_router
+from ai_karen_engine.api_routes.users.data import router as user_data_router
+from ai_karen_engine.api_routes.users.users import router as users_router
 
 training_data_router: Optional[APIRouter] = None
 try:
@@ -404,8 +405,9 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
     app.include_router(agent_integration_router, tags=["agents"])
     app.include_router(tasks_router, tags=["tasks"])
     app.include_router(automation_jobs_router, prefix="/api", tags=["automation-jobs"])
+    app.include_router(automation_cron_router, prefix="/api", tags=["automation-cron"])
     app.include_router(memory_router, prefix="/api/memory", tags=["memory"])
-    app.include_router(persona_router, prefix="/api/personas", tags=["personas"])
+    app.include_router(user_persona_router, prefix="/api/personas", tags=["personas"])
 
     # Align copilot routes under /api to match frontend expectations
     app.include_router(copilot_router, prefix="/api/copilot", tags=["copilot"])
@@ -442,7 +444,7 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
         prefix="/api/public/providers",
         tags=["public-providers"],
     )
-    app.include_router(profile_router, prefix="/api/profiles", tags=["profiles"])
+    app.include_router(user_profile_router, prefix="/api/profiles", tags=["profiles"])
     app.include_router(users_router, prefix="/api", tags=["users"])
     app.include_router(error_response_router, prefix="/api", tags=["error-response"])
     # Health router already defines a "/health" prefix, so mount it at the API root
@@ -460,7 +462,7 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
     app.include_router(validation_metrics_router, tags=["validation-metrics"])
     app.include_router(performance_routes, tags=["performance"])
     app.include_router(model_organization_router, tags=["model-organization"])
-    app.include_router(user_preferences_router, tags=["user-preferences"])
+    app.include_router(user_preferences_router)
     app.include_router(user_data_router, prefix="/api", tags=["user-data"])
     app.include_router(settings_router)
     app.include_router(model_settings_router, prefix="/api", tags=["model-settings"])

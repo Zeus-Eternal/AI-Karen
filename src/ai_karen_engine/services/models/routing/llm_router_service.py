@@ -751,6 +751,7 @@ class LLMRouter:
         if not isinstance(provider_info, dict):
             return False
 
+        provider_type = str(provider_info.get("provider_type") or "").strip().lower()
         if provider_info.get(
             "requires_api_key", False
         ) and not self._is_api_key_configured(provider_name, provider_info):
@@ -762,6 +763,9 @@ class LLMRouter:
         has_available_models = (
             isinstance(available_models, list) and len(available_models) > 0
         )
+        if provider_type == "local" or provider_info.get("requires_api_key") is False:
+            return has_available_models
+
         return has_api_key and api_key_valid and has_available_models
 
     def _health_allows_attempt(self, provider_name: str) -> bool:
@@ -882,7 +886,14 @@ class LLMRouter:
         for provider_name in self.registry.list_providers():
             if provider_name in NON_CHAT_PROVIDERS:
                 continue
-            if not await self._is_provider_healthy(provider_name):
+            provider_info = self.registry.get_provider_info(provider_name)
+
+            is_healthy = await self._is_provider_healthy(provider_name)
+            has_runtime_readiness = (
+                self._health_allows_attempt(provider_name)
+                and self._provider_has_runtime_readiness(provider_name, provider_info)
+            )
+            if not is_healthy and not has_runtime_readiness:
                 continue
             priority = self.provider_priorities.get(
                 provider_name, ProviderPriority.FALLBACK
@@ -2402,6 +2413,12 @@ class LLMRouter:
 
     def is_provider_healthy_and_authenticated(self, provider_name: str) -> bool:
         """Check if provider is both healthy and authenticated"""
+        provider_info = self.registry.get_provider_info(provider_name)
+        if isinstance(provider_info, dict):
+            provider_type = str(provider_info.get("provider_type") or "").strip().lower()
+            if provider_type == "local" or provider_info.get("requires_api_key") is False:
+                return True
+
         health = self.provider_health.get(provider_name)
         if not health or not health.is_healthy:
             return False
@@ -2422,9 +2439,19 @@ class LLMRouter:
                 continue
 
             # Check if provider is healthy and authenticated
-            is_available = health.is_healthy and self._provider_authentication.get(
-                provider_name, False
-            )
+            provider_info = self.registry.get_provider_info(provider_name)
+            if isinstance(provider_info, dict):
+                provider_type = str(provider_info.get("provider_type") or "").strip().lower()
+                auth_required = provider_info.get("requires_api_key", False) is True
+                is_available = health.is_healthy and (
+                    provider_type == "local"
+                    or not auth_required
+                    or self._provider_authentication.get(provider_name, False)
+                )
+            else:
+                is_available = health.is_healthy and self._provider_authentication.get(
+                    provider_name, False
+                )
 
             available[provider_name] = {
                 "healthy": health.is_healthy,

@@ -33,7 +33,15 @@ async def _authenticate_request(request: Request) -> Dict[str, Any]:
             "user_id": "dev-user",
             "email": "dev-user@localhost",
             "user_type": "developer",
-            "permissions": ["extension:*", "chat:*", "admin:*"],
+            "roles": ["admin", "user"],
+            "permissions": [
+                "extension:*",
+                "chat:*",
+                "admin:*",
+                "agent:*",
+                "tasks:*",
+                "scheduler:*",
+            ],
             "token_id": "dev-token-id",
         }
 

@@ -139,22 +139,41 @@ class DatabaseServiceFactory:
             return None
 
     def create_memory_manager(self):
-        """Create and configure memory manager."""
+        """Create and configure the next-gen memory runtime manager and profile service."""
         if not self.config.enable_memory_manager:
             logger.info("Memory manager disabled by configuration")
             return None
 
         try:
-            from ai_karen_engine.database.memory_manager import MemoryManager
+            from ai_karen_engine.core.memory import get_memory_manager
+            from ai_karen_engine.core.memory.profile_synthesis import get_profile_service
 
-            # Get database client
+            # Get database client to retrieve session factory
             db_client = self.get_service("database_client")
             if not db_client:
                 db_client = self.create_database_client()
 
-            manager = MemoryManager(db_client=db_client)
+            # Initialize Next-Gen Memory Runtime Manager (Singleton)
+            manager = get_memory_manager()
+            if hasattr(db_client, "get_async_session"):
+                manager.set_db_session_factory(db_client.get_async_session)
+                
+            # Initialize Profile Service (Singleton)
+            profile_svc = get_profile_service()
+            if hasattr(db_client, "get_async_session"):
+                profile_svc.set_db_session_factory(db_client.get_async_session)
+
             self._services["memory_manager"] = manager
-            logger.info("Memory manager created successfully")
+            self._services["profile_service"] = profile_svc
+            
+            # Initialize EchoCore Sleep-Cycle Engine (Offline Consolidation)
+            from ai_karen_engine.echocore.sleep_cycle import get_sleep_cycle_engine
+            echo_engine = get_sleep_cycle_engine()
+            if hasattr(db_client, "get_async_session"):
+                echo_engine.set_db_session_factory(db_client.get_async_session)
+            self._services["echocore_engine"] = echo_engine
+
+            logger.info("Next-gen memory runtime, profile synthesis, and EchoCore services created successfully")
             return manager
 
         except Exception as e:
@@ -374,6 +393,18 @@ def get_tenant_manager():
     return manager
 
 
+def get_echocore_engine():
+    """Get or create global EchoCore engine."""
+    factory = get_database_service_factory()
+    engine = factory.get_service("echocore_engine")
+
+    if engine is None:
+        factory.create_memory_manager()
+        engine = factory.get_service("echocore_engine")
+
+    return engine
+
+
 def initialize_database_for_production():
     """
     Initialize database for production use.
@@ -393,5 +424,6 @@ __all__ = [
     "get_conversation_manager",
     "get_memory_manager",
     "get_tenant_manager",
+    "get_echocore_engine",
     "initialize_database_for_production",
 ]

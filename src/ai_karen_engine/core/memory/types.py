@@ -17,7 +17,6 @@ Version: 1.0.0 (Unified Architecture)
 
 from __future__ import annotations
 
-import hashlib
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -126,6 +125,20 @@ class MemoryVisibility(str, Enum):
     SYSTEM = "system"       # System-level memories
 
 
+class RecallType(str, Enum):
+    """Recall category compatible with the legacy recall system."""
+    MESSAGE = "message"
+    FACT = "fact"
+    TASK = "task"
+    INTENT = "intent"
+    PROFILE = "profile"
+    CONTEXT = "context"
+    DOCUMENT = "document"
+    SIGNAL = "signal"
+    EVENT = "event"
+    EMBEDDING = "embedding"
+
+
 class ImportanceLevel(Enum):
     """Importance scoring levels (1-10 scale)."""
     CRITICAL = 10
@@ -148,6 +161,12 @@ class ImportanceLevel(Enum):
 EmbeddingVector = List[float]
 ArtifactImportanceScore = float
 ArtifactRetentionScore = float
+
+# Legacy recall aliases used by the migration layer.
+RecallNamespace = MemoryNamespace
+RecallPriority = MemoryPriority
+RecallStatus = MemoryStatus
+RecallVisibility = MemoryVisibility
 
 # JSON-like metadata
 JSONLike = Union[Dict[str, Any], List[Any], str, int, float, bool, None]
@@ -515,6 +534,11 @@ __all__ = [
     "MemoryPriority",
     "MemoryVisibility",
     "ImportanceLevel",
+    "RecallType",
+    "RecallNamespace",
+    "RecallPriority",
+    "RecallStatus",
+    "RecallVisibility",
     # Types
     "EmbeddingVector",
     "ArtifactImportanceScore",

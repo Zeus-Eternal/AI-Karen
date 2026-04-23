@@ -22,7 +22,7 @@ from ai_karen_engine.services.formatting.response_formatting_engine import (
     AccessibilityLevel,
 )
 from ai_karen_engine.services.formatting.response_policy_enforcer import ResponsePolicyEnforcer
-from ai_karen_engine.services.response_formatting.response_formatter import (
+from ai_karen_engine.services.formatting.pretty_output_layer import (
     PrettyOutputLayer,
 )
 

@@ -372,7 +372,7 @@ async def run_data_cleanup(
 ) -> Dict[str, Any]:
     """Run data cleanup operations."""
     try:
-        from ai_karen_engine.memory.data_cleanup_service import (
+        from ai_karen_engine.core.runtime.maintenance.data_cleanup_service import (
             get_data_cleanup_service,
         )
 

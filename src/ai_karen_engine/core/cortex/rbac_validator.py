@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 # Try to import Redis manager
 try:
-    from ai_karen_engine.memory.redis_connection_manager import get_redis_manager
+    from ai_karen_engine.core.memory.redis_connection_manager import get_redis_manager
 
     REDIS_AVAILABLE = True
 except ImportError:

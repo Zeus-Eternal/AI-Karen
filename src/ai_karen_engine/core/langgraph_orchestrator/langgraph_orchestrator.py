@@ -36,12 +36,15 @@ import uuid
 #     get_auth_service,
 #     user_account_to_dict,
 # )
-from ai_karen_engine.memory.distilbert_service import DistilBertService, SafetyResult
+from ai_karen_engine.core.memory.signals.distilbert_service import DistilBertService, SafetyResult
 # from ai_karen_engine.services.llm_router import ChatRequest, LLMRouter  <- Moved to local scope
-from ai_karen_engine.memory.profile_manager import Guardrails, ProfileManager
+from ai_karen_engine.core.memory.profile_synthesis.profile_manager import (
+    Guardrails,
+    ProfileManager,
+)
 from ai_karen_engine.services.tooling.tool_service import ToolInput, ToolOutput, ToolService
 from ai_karen_engine.models.shared_types import ToolType
-from ai_karen_engine.memory.memory_service import (
+from ai_karen_engine.core.memory.memory_service import (
     MemoryType,
     UISource,
     WebUIMemoryService,
@@ -57,7 +60,7 @@ from ai_karen_engine.services.formatting.ResponseFormattingClass.Specialized.Int
     get_specialized_integration,
 )
 from ai_karen_engine.services.formatting.response_policy_enforcer import ResponsePolicyEnforcer
-from ai_karen_engine.services.response_formatting.response_formatter import (
+from ai_karen_engine.services.formatting.pretty_output_layer import (
     PrettyOutputLayer,
 )
 from ai_karen_engine.copilotkit.session_state_manager import SessionStateManager
@@ -88,6 +91,8 @@ from .nodes import (
     intent_detect_node,
     planner_node,
     router_select_node,
+    reasoning_node,
+    select_reasoning_branch,
     tool_exec_node,
     response_synth_node,
     approval_gate_node,
@@ -407,6 +412,9 @@ class LangGraphOrchestrator:
                 profile_manager=self._profile_manager,
             )
 
+        def _reasoning_node(state: LangGraphOrchestrationState) -> Any:
+            return reasoning_node(state)
+
         workflow.add_node("auth_gate", _auth_gate_node)
         workflow.add_node("safety_gate", _safety_gate_node)
         workflow.add_node("memory_fetch", _memory_fetch_node)
@@ -416,6 +424,7 @@ class LangGraphOrchestrator:
         workflow.add_node("router_select", _router_select_node)
         workflow.add_node("medusa_node", medusa_node)
         workflow.add_node("tool_exec", tool_exec_node)
+        workflow.add_node("reasoning", _reasoning_node)
         workflow.add_node("response_synth", response_synth_node)
         workflow.add_node("approval_gate", approval_gate_node)
         workflow.add_node("memory_write", memory_write_node)
@@ -469,8 +478,18 @@ class LangGraphOrchestrator:
             {"medusa": "medusa_node", "normal": "tool_exec"},
         )
 
-        workflow.add_edge("medusa_node", "response_synth")
-        workflow.add_edge("tool_exec", "response_synth")
+        workflow.add_conditional_edges(
+            "tool_exec",
+            select_reasoning_branch,
+            {"reasoning": "reasoning", "skip": "response_synth"},
+        )
+        workflow.add_conditional_edges(
+            "medusa_node",
+            select_reasoning_branch,
+            {"reasoning": "reasoning", "skip": "response_synth"},
+        )
+
+        workflow.add_edge("reasoning", "response_synth")
 
         if self.config.enable_approval_gate:
             workflow.add_conditional_edges(
@@ -681,30 +700,87 @@ class LangGraphOrchestrator:
         """Compatibility reasoning helper."""
 
         reasoning_type = (reasoning_type or "").lower()
-        if reasoning_type == "logical":
+        if reasoning_type not in {"logical", "causal", "probabilistic"}:
             return {
-                "reasoning": "Logical reasoning applied",
-                "conclusion": "Conclusion based on logic",
-                "confidence": 0.8,
+                "reasoning": "error",
+                "message": f"Unknown reasoning type: {reasoning_type}",
+                "confidence": 0.0,
             }
-        if reasoning_type == "causal":
+
+        try:
+            from ai_karen_engine.core.cortex.contracts import (
+                IntentSignal,
+                KireSignal,
+                PredictorSignal,
+                ReasoningDepth,
+                ReasoningRequest,
+                UserContext,
+            )
+            from ai_karen_engine.core.reasoning.kro_orchestrator import get_kro_orchestrator
+
+            user_ctx = UserContext(
+                user_id=str(data.get("user_id") or "anonymous"),
+                tenant_id=data.get("tenant_id"),
+                session_id=data.get("session_id"),
+            )
+            request = ReasoningRequest(
+                message=str(data.get("message") or data.get("query") or reasoning_type),
+                user=user_ctx,
+                memory_context=data.get("memory_context") or data,
+                tool_context=data.get("tool_context") or {},
+                intent=IntentSignal(
+                    primary_intent=reasoning_type,
+                    secondary_intents=[],
+                    entities=[],
+                    confidence=0.75,
+                    category="analytical",
+                    requested_modality="text",
+                ),
+                predictors=PredictorSignal(
+                    ambiguity_score=0.2 if reasoning_type == "logical" else 0.35,
+                    complexity_score=0.5,
+                    tool_likelihood=0.1,
+                    memory_relevance=0.4,
+                    multi_step_likelihood=0.3,
+                    degraded_risk=0.0,
+                ),
+                kire=KireSignal(
+                    requires_reasoning=True,
+                    reasoning_depth=ReasoningDepth.STANDARD,
+                    reasoning_modes=[reasoning_type],
+                    should_use_memory=True,
+                    should_use_tools=False,
+                    should_use_retrieval_reasoning=True,
+                    should_use_causal_reasoning=reasoning_type == "causal",
+                    should_use_graph_reasoning=reasoning_type == "logical",
+                    should_self_refine=reasoning_type != "probabilistic",
+                    should_verify=True,
+                ),
+                metadata={
+                    "conversation_history": data.get("conversation_history") or [],
+                    "ui_context": data.get("context") or {},
+                    "system_caps": data.get("system_caps") or {},
+                    "config_ui": data.get("config_ui") or {},
+                },
+            )
+            result = await get_kro_orchestrator().run(request)
             return {
-                "reasoning": "Causal reasoning applied",
-                "cause": "Identified cause",
-                "effect": "Predicted effect",
-                "confidence": 0.75,
+                "reasoning": f"{reasoning_type.capitalize()} reasoning applied",
+                "summary": result.summary,
+                "confidence": result.confidence,
+                "evidence": result.evidence,
+                "hypotheses": result.hypotheses,
+                "verification_notes": result.verification_notes,
+                "refined_answer": result.refined_answer,
+                "diagnostics": result.diagnostics,
             }
-        if reasoning_type == "probabilistic":
+        except Exception as e:
+            logger.error("Compatibility reasoning helper failed: %s", e)
             return {
-                "reasoning": "Probabilistic reasoning applied",
-                "probability": 0.7,
-                "confidence": 0.85,
+                "reasoning": "error",
+                "message": f"Reasoning helper failed: {e}",
+                "confidence": 0.0,
             }
-        return {
-            "reasoning": "error",
-            "message": f"Unknown reasoning type: {reasoning_type}",
-            "confidence": 0.0,
-        }
 
     async def consensus_negotiation(self, flow_input: Any) -> Dict[str, Any]:
         """Compatibility wrapper for consensus negotiation."""

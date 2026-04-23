@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional
 
 from ai_karen_engine.core.errors.handlers import handle_api_exception
 from ai_karen_engine.integrations.registry import get_registry
-from ai_karen_engine.memory.provider_registry import (
+from ai_karen_engine.core.model_runtime.provider_registry_service import (
     ProviderCapability,
     get_provider_registry_service,
 )

@@ -134,6 +134,15 @@ class ReasoningResult:
     verification_notes: List[str] = field(default_factory=list)
     refined_answer: Optional[str] = None
     diagnostics: Dict[str, Any] = field(default_factory=dict)
+    success: bool = True
+    degraded: bool = False
+    reasoning_type: str = "synthesis"
+    memory_ids: List[str] = field(default_factory=list)
+    graph_paths_used: List[str] = field(default_factory=list)
+    contradictions_found: List[Dict[str, Any]] = field(default_factory=list)
+    needs_human_confirmation: bool = False
+    fallback_used: Optional[str] = None
+    evidence_source_mix: Dict[str, int] = field(default_factory=dict)
 
 
 @dataclass(slots=True)

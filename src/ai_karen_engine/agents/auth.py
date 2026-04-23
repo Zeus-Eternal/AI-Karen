@@ -140,7 +140,7 @@ class AgentAuthManager:
         if additional_permissions:
             permissions.update(additional_permissions)
         
-        self.logger.debug(f"User {user.get('id')} has permissions: {permissions}")
+        self.logger.info(f"User {user.get('user_id') or user.get('id')} has permissions: {permissions}")
         return permissions
     
     def has_permission(self, user: Dict[str, Any], permission: str) -> bool:
@@ -155,7 +155,23 @@ class AgentAuthManager:
             True if user has permission, False otherwise
         """
         user_permissions = self.get_user_permissions(user)
-        return permission in user_permissions
+        
+        # Exact match
+        if permission in user_permissions:
+            return True
+            
+        # Wildcard match (e.g., "admin:*" matches "admin:view")
+        for p in user_permissions:
+            if "*" in p:
+                pattern = re.escape(p.replace("*", "")).replace("\\", "") + ".*"
+                if re.match(pattern, permission):
+                    return True
+                # Simple prefix match for common cases like "agent:*"
+                prefix = p.split(":")[0] if ":" in p else p.replace("*", "")
+                if permission.startswith(prefix):
+                    return True
+                    
+        return False
     
     def can_execute_agent(self, user: Dict[str, Any], execution_mode: AgentExecutionMode) -> bool:
         """

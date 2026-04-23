@@ -20,6 +20,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from ai_karen_engine.monitoring.kire_metrics import KRO_SPECIALIZED_PATH_TOTAL
+from ai_karen_engine.core.cortex.contracts import ReasoningRequest, ReasoningResult
 
 logger = logging.getLogger(__name__)
 
@@ -193,11 +194,11 @@ class HelperModels:
             self.default_model_provider = registry.get_provider("llamacpp")
 
             # Initialize DistilBERT for classification
-            from ai_karen_engine.memory.nlp_service_manager import nlp_service_manager
+            from ai_karen_engine.core.memory.signals.nlp_service_manager import nlp_service_manager
             self.distilbert = nlp_service_manager
 
             # Initialize spaCy for NLP
-            from ai_karen_engine.memory.spacy_service import get_spacy_service
+            from ai_karen_engine.core.memory.signals.spacy_service import get_spacy_service
             self.spacy = get_spacy_service()
 
             self._initialized = True
@@ -534,6 +535,107 @@ class KROOrchestrator:
             )
 
             return degraded_response, degraded_message
+
+    async def run(self, request: ReasoningRequest) -> ReasoningResult:
+        """Protocol-aligned entry point for runtime reasoning invocation."""
+        kro_response, ui_message = await self.process_request(
+            user_input=request.message,
+            user_id=request.user.user_id,
+            conversation_history=request.metadata.get("conversation_history") or [],
+            ui_context=request.metadata.get("ui_context"),
+            config_ui=request.metadata.get("config_ui"),
+            system_caps=request.metadata.get("system_caps") or {},
+            mem_snapshot=request.memory_context,
+            correlation_id=request.metadata.get("correlation_id"),
+        )
+
+        reasoning_modes = list(request.kire.reasoning_modes or [])
+        reasoning_type = reasoning_modes[0] if reasoning_modes else "synthesis"
+
+        evidence: List[Dict[str, Any]] = []
+        evidence_source_mix: Dict[str, int] = {}
+        memory_ids: List[str] = []
+        graph_paths_used: List[str] = []
+        contradictions_found: List[Dict[str, Any]] = []
+        for item in kro_response.evidence:
+            if isinstance(item, dict):
+                normalized = dict(item)
+            elif hasattr(item, "__dict__"):
+                normalized = dict(item.__dict__)
+            else:
+                normalized = {"value": str(item)}
+
+            evidence.append(normalized)
+
+            item_id = normalized.get("id")
+            if item_id is not None:
+                memory_ids.append(str(item_id))
+
+            payload = normalized.get("payload") or {}
+            if isinstance(payload, dict):
+                metadata = payload.get("metadata") or {}
+                if isinstance(metadata, dict):
+                    source = str(
+                        metadata.get("store")
+                        or metadata.get("source")
+                        or metadata.get("context_type")
+                        or "unknown"
+                    ).lower()
+                    evidence_source_mix[source] = evidence_source_mix.get(source, 0) + 1
+                    graph_path = metadata.get("graph_path") or metadata.get("path")
+                    if graph_path:
+                        graph_paths_used.append(str(graph_path))
+                    if metadata.get("relationship") in {"contradiction", "conflict"}:
+                        contradictions_found.append(normalized)
+
+        hypotheses: List[str] = []
+        keywords = getattr(kro_response.classification, "keywords", "")
+        if keywords:
+            hypotheses.extend([part.strip() for part in str(keywords).split("|") if part.strip()])
+        if not hypotheses:
+            hypotheses.extend([step.action for step in kro_response.plan[:5] if getattr(step, "action", None)])
+
+        verification_notes = list(kro_response.telemetry.errors)
+        if kro_response.meta.degraded_mode:
+            verification_notes.append("KRO degraded mode active")
+
+        degraded = bool(kro_response.meta.degraded_mode)
+        confidence = float(kro_response.meta.confidence)
+        needs_human_confirmation = degraded or confidence < 0.5
+
+        diagnostics = {
+            "ui_message": ui_message,
+            "classification": asdict(kro_response.classification),
+            "meta": asdict(kro_response.meta),
+            "plan_steps": len(kro_response.plan),
+            "suggestions": list(kro_response.suggestions),
+            "telemetry_notes": kro_response.telemetry.notes,
+            "degraded_mode": kro_response.meta.degraded_mode,
+            "reasoning_type": reasoning_type,
+            "reasoning_modes": reasoning_modes,
+            "memory_ids": list(memory_ids),
+            "graph_paths_used": list(graph_paths_used),
+            "evidence_source_mix": dict(evidence_source_mix),
+        }
+
+        return ReasoningResult(
+            summary=kro_response.reasoning_summary,
+            evidence=evidence,
+            hypotheses=hypotheses,
+            confidence=confidence,
+            verification_notes=verification_notes,
+            refined_answer=ui_message,
+            diagnostics=diagnostics,
+            success=True,
+            degraded=degraded,
+            reasoning_type=reasoning_type,
+            memory_ids=memory_ids,
+            graph_paths_used=graph_paths_used,
+            contradictions_found=contradictions_found,
+            needs_human_confirmation=needs_human_confirmation,
+            fallback_used="kro_degraded_mode" if degraded else None,
+            evidence_source_mix=evidence_source_mix,
+        )
 
     async def _classify_intent(
         self,

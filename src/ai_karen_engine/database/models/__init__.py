@@ -1030,3 +1030,4 @@ class ChatRuntimeEvent(Base):
 
     def __repr__(self) -> str:
         return f"<ChatRuntimeEvent(id={self.id}, type={self.event_type}, mode={self.mode})>"
+from ai_karen_engine.core.memory.ledger_models import MemoryEvent, MemoryAssertion, MemoryEpisode, ProfileFact, MemoryRelation, ReinforcementEvent, ContradictionEvent, ProjectionStatus, ConsentScope, RetentionPolicy

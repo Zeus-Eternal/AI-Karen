@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, R
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from ai_karen_engine.memory.internal.auth_utils import get_current_user
+from ai_karen_engine.auth.auth_utils import get_current_user
 from ai_karen_engine.agents import (
     get_agent_integration_service,
     AgentExecutionMode,
@@ -21,8 +21,11 @@ from ai_karen_engine.agents import (
     AgentRequest,
     AgentConfig,
 )
+from ai_karen_engine.agents.auth import AgentAuthManager, AgentPermission
+from ai_karen_engine.agents.lifecycle_manager import get_lifecycle_manager
 
 logger = logging.getLogger(__name__)
+_AGENT_AUTH = AgentAuthManager()
 
 router = APIRouter(prefix="/api/agents", tags=["agent-integration"])
 
@@ -139,6 +142,27 @@ def _convert_agent_response_to_api_response(response) -> AgentExecuteResponse:
     )
 
 
+def _user_payload(user: Dict[str, Any]) -> Dict[str, Any]:
+    if hasattr(user, "to_dict"):
+        return user.to_dict()
+    return dict(user or {})
+
+
+def _has_agent_permission(user: Dict[str, Any], permission: str) -> bool:
+    return _AGENT_AUTH.has_permission(_user_payload(user), permission)
+
+
+async def _get_live_agents_from_runtime() -> List[Any]:
+    """Fallback path that reads the live lifecycle manager directly."""
+    lifecycle_manager = get_lifecycle_manager()
+    try:
+        return await lifecycle_manager.get_all_agents()
+    except Exception as e:
+        logger.warning(f"Lifecycle manager agent lookup failed: {e}")
+        return []
+
+
+
 # API Endpoints
 @router.post("/execute", response_model=AgentExecuteResponse)
 async def execute_agent(
@@ -182,8 +206,15 @@ async def execute_agent(
             capabilities_required=capabilities,
             enable_streaming=request.enable_streaming,
             timeout_seconds=request.timeout_seconds,
-            config=AgentConfig(**request.config) if request.config else None,
+            config=integration_service._build_agent_config(
+                request.execution_mode, request.config
+            )
+            if request.config
+            else None,
         )
+
+        if not _AGENT_AUTH.can_execute_request(_user_payload(current_user), agent_request):
+            raise HTTPException(status_code=403, detail="Agent execution permission denied")
 
         # Execute request
         response = await integration_service.execute_request(agent_request)
@@ -236,8 +267,15 @@ async def execute_agent_stream(
             capabilities_required=capabilities,
             enable_streaming=True,
             timeout_seconds=request.timeout_seconds,
-            config=AgentConfig(**request.config) if request.config else None,
+            config=integration_service._build_agent_config(
+                request.execution_mode, request.config
+            )
+            if request.config
+            else None,
         )
+
+        if not _AGENT_AUTH.can_execute_request(_user_payload(current_user), agent_request):
+            raise HTTPException(status_code=403, detail="Agent execution permission denied")
 
         async def generate_stream():
             """Generate streaming response."""
@@ -327,25 +365,34 @@ async def get_all_agents(
         List of agent information
     """
     try:
-        # Get integration service
-        integration_service = get_agent_integration_service()
+        agents: List[Any] = []
+        try:
+            integration_service = get_agent_integration_service()
+            await integration_service.initialize()
 
-        # Get agents
-        if execution_mode:
-            agents = await integration_service.get_agents_by_execution_mode(
-                execution_mode
+            if execution_mode:
+                agents = await integration_service.get_agents_by_execution_mode(
+                    execution_mode
+                )
+            elif capabilities:
+                cap_list = [
+                    AgentCapability(cap)
+                    for cap in capabilities
+                    if cap in [c.value for c in AgentCapability]
+                ]
+                agents = await integration_service.get_available_agents(
+                    capabilities=cap_list
+                )
+            else:
+                agents = await integration_service.get_all_agents()
+        except Exception as service_error:
+            logger.warning(
+                f"Agent integration service unavailable for list_agents; falling back to lifecycle data: {service_error}"
             )
-        elif capabilities:
-            cap_list = [
-                AgentCapability(cap)
-                for cap in capabilities
-                if cap in [c.value for c in AgentCapability]
-            ]
-            agents = await integration_service.get_available_agents(
-                capabilities=cap_list
-            )
-        else:
-            agents = await integration_service.get_all_agents()
+            agents = await _get_live_agents_from_runtime()
+
+        if not _has_agent_permission(current_user, AgentPermission.VIEW_AGENT):
+            raise HTTPException(status_code=403, detail="View permission required")
 
         # Filter by status if provided
         if status:
@@ -376,11 +423,20 @@ async def get_agent(
         Agent information
     """
     try:
-        # Get integration service
-        integration_service = get_agent_integration_service()
+        if not _has_agent_permission(current_user, AgentPermission.VIEW_AGENT):
+            raise HTTPException(status_code=403, detail="View permission required")
 
-        # Get agent
-        agent = await integration_service.get_agent_info(agent_id)
+        agent = None
+        try:
+            integration_service = get_agent_integration_service()
+            await integration_service.initialize()
+            agent = await integration_service.get_agent_info(agent_id)
+        except Exception as service_error:
+            logger.warning(
+                f"Agent integration service unavailable for get_agent; falling back to lifecycle data: {service_error}"
+            )
+            lifecycle_manager = get_lifecycle_manager()
+            agent = await lifecycle_manager.get_agent(agent_id)
 
         if not agent:
             raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
@@ -412,9 +468,8 @@ async def create_agent(
         Created agent information
     """
     try:
-        # Check if user has admin permissions
-        if not current_user.get("is_admin", False):
-            raise HTTPException(status_code=403, detail="Admin permissions required")
+        if not _has_agent_permission(current_user, AgentPermission.CREATE_AGENT):
+            raise HTTPException(status_code=403, detail="Create permission required")
 
         # Get integration service
         integration_service = get_agent_integration_service()
@@ -455,9 +510,8 @@ async def delete_agent(
         Success message
     """
     try:
-        # Check if user has admin permissions
-        if not current_user.get("is_admin", False):
-            raise HTTPException(status_code=403, detail="Admin permissions required")
+        if not _has_agent_permission(current_user, AgentPermission.DELETE_AGENT):
+            raise HTTPException(status_code=403, detail="Delete permission required")
 
         # Get integration service
         integration_service = get_agent_integration_service()
@@ -494,9 +548,8 @@ async def terminate_agent(
         Success message
     """
     try:
-        # Check if user has admin permissions
-        if not current_user.get("is_admin", False):
-            raise HTTPException(status_code=403, detail="Admin permissions required")
+        if not _has_agent_permission(current_user, AgentPermission.TERMINATE_AGENT):
+            raise HTTPException(status_code=403, detail="Terminate permission required")
 
         # Get integration service
         integration_service = get_agent_integration_service()
@@ -516,6 +569,63 @@ async def terminate_agent(
         raise HTTPException(status_code=500, detail=f"Terminate agent error: {str(e)}")
 
 
+@router.get("/{agent_id}/events")
+async def get_agent_events(
+    http_request: Request,
+    agent_id: str,
+    limit: int = Query(100, ge=1, le=500, description="Maximum number of events"),
+    current_user: Dict[str, Any] = Depends(_get_authenticated_user),
+):
+    """Get lifecycle events for a specific agent."""
+    try:
+        if not _has_agent_permission(current_user, AgentPermission.VIEW_LIFECYCLE_EVENTS):
+            raise HTTPException(status_code=403, detail="Lifecycle events permission required")
+
+        integration_service = get_agent_integration_service()
+        events = await integration_service.get_agent_lifecycle_events(
+            agent_id=agent_id, limit=limit
+        )
+        return events
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get agent events error: {e}")
+        raise HTTPException(status_code=500, detail=f"Get agent events error: {str(e)}")
+
+
+@router.get("/system/metrics")
+async def get_system_metrics(
+    http_request: Request,
+    current_user: Dict[str, Any] = Depends(_get_authenticated_user),
+):
+    """
+    Get system-wide metrics.
+
+    Args:
+        current_user: Current authenticated user
+
+    Returns:
+        System metrics
+    """
+    try:
+        if not _has_agent_permission(current_user, AgentPermission.VIEW_SYSTEM_METRICS):
+            raise HTTPException(status_code=403, detail="System metrics permission required")
+
+        # Get integration service
+        integration_service = get_agent_integration_service()
+
+        # Get system metrics
+        metrics = await integration_service.get_system_metrics()
+
+        return metrics
+
+    except Exception as e:
+        logger.error(f"Get system metrics error: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Get system metrics error: {str(e)}"
+        )
+
+
 @router.get("/{agent_id}/metrics")
 async def get_agent_metrics(
     http_request: Request,
@@ -533,6 +643,9 @@ async def get_agent_metrics(
         Agent metrics
     """
     try:
+        if not _has_agent_permission(current_user, AgentPermission.VIEW_METRICS):
+            raise HTTPException(status_code=403, detail="Metrics permission required")
+
         # Get integration service
         integration_service = get_agent_integration_service()
 
@@ -553,36 +666,6 @@ async def get_agent_metrics(
         )
 
 
-@router.get("/system/metrics")
-async def get_system_metrics(
-    http_request: Request,
-    current_user: Dict[str, Any] = Depends(_get_authenticated_user),
-):
-    """
-    Get system-wide metrics.
-
-    Args:
-        current_user: Current authenticated user
-
-    Returns:
-        System metrics
-    """
-    try:
-        # Get integration service
-        integration_service = get_agent_integration_service()
-
-        # Get system metrics
-        metrics = await integration_service.get_system_metrics()
-
-        return metrics
-
-    except Exception as e:
-        logger.error(f"Get system metrics error: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Get system metrics error: {str(e)}"
-        )
-
-
 @router.post("/requests/{request_id}/cancel")
 async def cancel_request(
     http_request: Request,
@@ -600,6 +683,9 @@ async def cancel_request(
         Success message
     """
     try:
+        if not _has_agent_permission(current_user, AgentPermission.CANCEL_REQUEST):
+            raise HTTPException(status_code=403, detail="Cancel request permission required")
+
         # Get integration service
         integration_service = get_agent_integration_service()
 
@@ -643,6 +729,9 @@ async def get_routing_recommendations(
         Routing recommendations
     """
     try:
+        if not _has_agent_permission(current_user, AgentPermission.VIEW_ROUTING_RECOMMENDATIONS):
+            raise HTTPException(status_code=403, detail="Routing recommendations permission required")
+
         # Convert capabilities from strings to enum
         cap_list = []
         for cap_str in capabilities:

@@ -2,8 +2,11 @@ import logging
 from dataclasses import asdict
 from typing import Optional
 
-from ai_karen_engine.memory.distilbert_service import DistilBertService, SafetyResult
-from ai_karen_engine.memory.profile_manager import ProfileManager, Guardrails
+from ai_karen_engine.core.memory.signals.distilbert_service import DistilBertService, SafetyResult
+from ai_karen_engine.core.memory.profile_synthesis.profile_manager import (
+    ProfileManager,
+    Guardrails,
+)
 from ..contracts.orchestration_state import LangGraphOrchestrationState
 
 logger = logging.getLogger(__name__)

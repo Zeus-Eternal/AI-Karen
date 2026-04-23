@@ -17,10 +17,8 @@ except ImportError:
     from ai_karen_engine.pydantic_stub import BaseModel
 
 from ai_karen_engine.core.logging import get_logger
-from ai_karen_engine.services.production_monitoring_service import (
+from ai_karen_engine.services.monitoring.production_monitoring_service import (
     get_production_monitoring_service,
-    MetricType,
-    AlertSeverity,
 )
 from ai_karen_engine.services.auth.auth_service import get_current_user
 

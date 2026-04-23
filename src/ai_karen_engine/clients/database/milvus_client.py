@@ -7,6 +7,7 @@ Updated with async contract compatibility methods and lazy loading for performan
 import queue
 import os
 import logging
+from datetime import datetime, timezone
 from contextlib import contextmanager
 from typing import Any, Dict, Iterable, List, Optional, cast
 
@@ -85,18 +86,47 @@ class MilvusClient:
     def _ensure_collection(self):
         with self._using() as alias:
             if not utility.has_collection(self.collection_name, using=alias):
-                fields = [
-                    FieldSchema(
-                        name="user_id",
-                        dtype=DataType.VARCHAR,
-                        is_primary=True,
-                        auto_id=False,
-                        max_length=64,
-                    ),
-                    FieldSchema(
-                        name="embedding", dtype=DataType.FLOAT_VECTOR, dim=self.dim
-                    ),
-                ]
+                if self.collection_name == "persona_embeddings":
+                    fields = [
+                        FieldSchema(
+                            name="user_id",
+                            dtype=DataType.VARCHAR,
+                            is_primary=True,
+                            auto_id=False,
+                            max_length=64,
+                        ),
+                        FieldSchema(
+                            name="tenant_id",
+                            dtype=DataType.VARCHAR,
+                            max_length=64,
+                        ),
+                        FieldSchema(
+                            name="embedding", dtype=DataType.FLOAT_VECTOR, dim=self.dim
+                        ),
+                        FieldSchema(name="metadata", dtype=DataType.JSON),
+                        FieldSchema(name="timestamp", dtype=DataType.INT64),
+                        FieldSchema(name="version", dtype=DataType.INT32),
+                        FieldSchema(
+                            name="persona_type",
+                            dtype=DataType.VARCHAR,
+                            max_length=32,
+                        ),
+                        FieldSchema(name="is_active", dtype=DataType.BOOL),
+                        FieldSchema(name="confidence_score", dtype=DataType.FLOAT),
+                    ]
+                else:
+                    fields = [
+                        FieldSchema(
+                            name="user_id",
+                            dtype=DataType.VARCHAR,
+                            is_primary=True,
+                            auto_id=False,
+                            max_length=64,
+                        ),
+                        FieldSchema(
+                            name="embedding", dtype=DataType.FLOAT_VECTOR, dim=self.dim
+                        ),
+                    ]
                 schema = CollectionSchema(fields, description="Persona Embeddings")
                 Collection(self.collection_name, schema, using=alias)
 
@@ -119,11 +149,49 @@ class MilvusClient:
             return vec
         return vec / norm
 
-    def upsert_persona_embedding(self, user_id, vec):
-        entities = [[user_id], [vec]]
+    def upsert_persona_embedding(
+        self,
+        user_id,
+        vec,
+        *,
+        tenant_id: str = "default",
+        metadata: Optional[Dict[str, Any]] = None,
+        persona_type: str = "custom",
+        is_active: bool = True,
+        confidence_score: float = 1.0,
+        version: int = 1,
+        timestamp: Optional[int] = None,
+    ):
+        metadata = metadata or {}
+        timestamp = timestamp or int(datetime.now(timezone.utc).timestamp())
         with self._using() as alias:
             col = Collection(self.collection_name, using=alias)
-            col.upsert(data=entities)
+            try:
+                if self.collection_name == "persona_embeddings":
+                    entities = [
+                        [user_id],
+                        [tenant_id],
+                        [vec],
+                        [metadata],
+                        [timestamp],
+                        [version],
+                        [persona_type],
+                        [is_active],
+                        [confidence_score],
+                    ]
+                else:
+                    entities = [[user_id], [vec]]
+                col.upsert(data=entities)
+            except Exception as exc:
+                if self.collection_name == "persona_embeddings":
+                    logger.warning(
+                        "Falling back to legacy persona embedding shape for %s: %s",
+                        user_id,
+                        exc,
+                    )
+                    col.upsert(data=[[user_id], [vec]])
+                else:
+                    raise
             record_metric("milvus_pool_utilization", self.pool_utilization())
 
     def get_reference_embedding(self, user_id):
@@ -175,19 +243,33 @@ class MilvusClient:
         try:
             # Use the existing upsert method for compatibility
             if data and "user_id" in data and "embedding" in data:
-                self.upsert_persona_embedding(data["user_id"], data["embedding"])
+                self.upsert_persona_embedding(
+                    data["user_id"],
+                    data["embedding"],
+                    tenant_id=str(data.get("tenant_id", kwargs.get("tenant_id", "default"))),
+                    metadata=data.get("metadata") if isinstance(data.get("metadata"), dict) else {},
+                    persona_type=str(data.get("persona_type", kwargs.get("persona_type", "custom"))),
+                    is_active=bool(data.get("is_active", kwargs.get("is_active", True))),
+                    confidence_score=float(data.get("confidence_score", kwargs.get("confidence_score", 1.0))),
+                    version=int(data.get("version", kwargs.get("version", 1))),
+                    timestamp=data.get("timestamp") or kwargs.get("timestamp"),
+                )
                 return data.get("user_id", "unknown")
             else:
                 # Fallback for generic insert operations
                 entities = []
                 if "user_id" in kwargs and "embedding" in kwargs:
-                    entities = [[kwargs["user_id"]], [kwargs["embedding"]]]
-                    with self._using() as alias:
-                        col = Collection(self.collection_name, using=alias)
-                        col.upsert(data=entities)
-                        record_metric(
-                            "milvus_pool_utilization", self.pool_utilization()
-                        )
+                    self.upsert_persona_embedding(
+                        kwargs["user_id"],
+                        kwargs["embedding"],
+                        tenant_id=str(kwargs.get("tenant_id", "default")),
+                        metadata=kwargs.get("metadata") if isinstance(kwargs.get("metadata"), dict) else {},
+                        persona_type=str(kwargs.get("persona_type", "custom")),
+                        is_active=bool(kwargs.get("is_active", True)),
+                        confidence_score=float(kwargs.get("confidence_score", 1.0)),
+                        version=int(kwargs.get("version", 1)),
+                        timestamp=kwargs.get("timestamp"),
+                    )
                     return kwargs["user_id"]
                 return None
         except Exception as e:

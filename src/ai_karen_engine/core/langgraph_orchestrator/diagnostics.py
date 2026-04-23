@@ -10,8 +10,8 @@ from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional, Any as AnyType
 
 # from ai_karen_engine.services.llm_router import ChatRequest, LLMRouter  <- Moved to local scope
-from ai_karen_engine.memory.distilbert_service import DistilBertService, SafetyResult
-from ai_karen_engine.memory.profile_manager import ProfileManager
+from ai_karen_engine.core.memory.signals.distilbert_service import DistilBertService, SafetyResult
+from ai_karen_engine.core.memory.profile_synthesis.profile_manager import ProfileManager
 
 from .contracts.orchestration_state import LangGraphOrchestrationState
 from .decision_engine import DecisionEngine

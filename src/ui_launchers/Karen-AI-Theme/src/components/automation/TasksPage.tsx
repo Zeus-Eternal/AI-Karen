@@ -25,8 +25,17 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type SubAgent = {
+  agentId?: string;
   name: string;
   instructions: string;
+};
+
+type AgentOption = {
+  agent_id: string;
+  name: string;
+  description?: string | null;
+  status?: string;
+  capabilities?: Array<{ name?: string }>;
 };
 
 type Task = {
@@ -38,8 +47,14 @@ type Task = {
   subAgents?: SubAgent[];
   primaryAgent?: string;
   primaryAgentInstructions?: string;
+  taskType?: string;
   lastRun?: string;
   status?: string;
+  created_at?: string;
+  updated_at?: string;
+  lastError?: string | null;
+  runCount?: number;
+  runtimeTaskId?: string | null;
 };
 
 /**
@@ -49,28 +64,54 @@ type Task = {
 export default function TasksPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [agents, setAgents] = useState<AgentOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAgentsLoading, setIsAgentsLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
+  const [taskName, setTaskName] = useState("");
+  const [taskDescription, setTaskDescription] = useState("");
 
-  const fetchTasks = useCallback(async () => {
+  const fetchLiveData = useCallback(async () => {
     if (!isAuthenticated) {
       setTasks([]);
+      setAgents([]);
       setErrorMsg("Sign in to manage tasks.");
       setIsLoading(false);
+      setIsAgentsLoading(false);
       return;
     }
 
     setIsLoading(true);
+    setIsAgentsLoading(true);
     setErrorMsg("");
     try {
       const { apiClient } = await import('@/lib/api');
-      const data = await apiClient.get<Task[]>('/api/tasks/');
-      setTasks(data || []);
+      const [taskResult, agentResult] = await Promise.allSettled([
+        apiClient.get<Task[]>('/api/tasks/'),
+        apiClient.get<AgentOption[]>('/api/agents'),
+      ]);
+
+      if (taskResult.status === "fulfilled") {
+        setTasks(taskResult.value || []);
+      } else {
+        console.error(taskResult.reason);
+        setTasks([]);
+        setErrorMsg(taskResult.reason instanceof Error ? taskResult.reason.message : 'Failed to fetch tasks.');
+      }
+
+      if (agentResult.status === "fulfilled") {
+        setAgents(agentResult.value || []);
+      } else {
+        console.error(agentResult.reason);
+        setAgents([]);
+        setErrorMsg((current) => current || (agentResult.reason instanceof Error ? agentResult.reason.message : 'Failed to fetch live agents.'));
+      }
     } catch (err: unknown) {
       console.error(err);
       setErrorMsg(err instanceof Error ? err.message : 'Failed to fetch tasks.');
     } finally {
       setIsLoading(false);
+      setIsAgentsLoading(false);
     }
   }, [isAuthenticated]);
 
@@ -78,11 +119,10 @@ export default function TasksPage() {
     if (isAuthLoading) {
       return;
     }
-    fetchTasks();
-  }, [isAuthenticated, isAuthLoading, fetchTasks]);
+    fetchLiveData();
+  }, [isAuthenticated, isAuthLoading, fetchLiveData]);
 
   
-  // State for the mock form
   const [newPrimaryAgent, setNewPrimaryAgent] = useState<string>("");
   const [newPrimaryAgentInstructions, setNewPrimaryAgentInstructions] = useState("");
   const [newSubAgents, setNewSubAgents] = useState<SubAgent[]>([]);
@@ -91,18 +131,25 @@ export default function TasksPage() {
   const [editingConfig, setEditingConfig] = useState<{ agentName: string; instructions: string; onSave: (newInstructions: string) => void; } | null>(null);
   const [tempInstructions, setTempInstructions] = useState("");
 
-  const availableAgents = [
-      "Social Media Agent", "Email Agent", "Data Analyst Agent", "Research Agent", "Writing Agent", "Image Agent", "PDF Generation Agent", "CMS Agent"
-  ];
-  
-  const handleAddSubAgent = (agentToAdd: string) => {
-    if (!newSubAgents.some(agent => agent.name === agentToAdd)) {
-      setNewSubAgents([...newSubAgents, { name: agentToAdd, instructions: '' }]);
+  const liveAgents = agents || [];
+  const getAgentLabel = (agentId?: string) => {
+    if (!agentId) {
+      return "Unknown";
+    }
+    return liveAgents.find((agent) => agent.agent_id === agentId)?.name || agentId;
+  };
+
+  const handleAddSubAgent = (agentToAdd: AgentOption) => {
+    if (!newSubAgents.some(agent => agent.agentId === agentToAdd.agent_id)) {
+      setNewSubAgents([
+        ...newSubAgents,
+        { agentId: agentToAdd.agent_id, name: agentToAdd.name, instructions: '' },
+      ]);
     }
   };
 
   const handleRemoveSubAgent = (agentToRemove: string) => {
-    setNewSubAgents(newSubAgents.filter(agent => agent.name !== agentToRemove));
+    setNewSubAgents(newSubAgents.filter(agent => agent.agentId !== agentToRemove));
   };
   
   const openInstructionEditor = (agentName: string, instructions: string, onSave: (newInstructions: string) => void) => {
@@ -126,7 +173,7 @@ export default function TasksPage() {
     try {
       const { apiClient } = await import('@/lib/api');
       await apiClient.delete(`/api/tasks/${taskId}`);
-      fetchTasks();
+      fetchLiveData();
     } catch (err: unknown) {
       alert("Failed to delete task: " + (err instanceof Error ? err.message : String(err)));
     }
@@ -140,7 +187,7 @@ export default function TasksPage() {
     try {
       const { apiClient } = await import('@/lib/api');
       await apiClient.post(`/api/tasks/${taskId}/execute`, {});
-      fetchTasks();
+      fetchLiveData();
     } catch (err: unknown) {
       alert("Failed to execute task: " + (err instanceof Error ? err.message : String(err)));
     }
@@ -151,6 +198,14 @@ export default function TasksPage() {
       setErrorMsg("Sign in to manage tasks.");
       return;
     }
+    if (!taskName.trim()) {
+      alert("Please enter a task name.");
+      return;
+    }
+    if (!taskDescription.trim()) {
+      alert("Please enter a task description.");
+      return;
+    }
     if (!newPrimaryAgent) {
       alert("Please select a primary agent first.");
       return;
@@ -158,13 +213,19 @@ export default function TasksPage() {
     try {
       const { apiClient } = await import('@/lib/api');
       await apiClient.post('/api/tasks/', {
-        name: "New Custom Task",
-        description: "A dynamically generated task.",
+        name: taskName.trim(),
+        description: taskDescription.trim(),
         primaryAgent: newPrimaryAgent,
         primaryAgentInstructions: newPrimaryAgentInstructions,
+        taskType: taskName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, ""),
         subAgents: newSubAgents
       });
-      fetchTasks();
+      setTaskName("");
+      setTaskDescription("");
+      setNewPrimaryAgent("");
+      setNewPrimaryAgentInstructions("");
+      setNewSubAgents([]);
+      fetchLiveData();
     } catch (err: unknown) {
       alert("Failed to create task: " + (err instanceof Error ? err.message : String(err)));
     }
@@ -204,7 +265,7 @@ export default function TasksPage() {
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Defined Tasks</h3>
-            <Button variant="outline" size="sm" onClick={fetchTasks} disabled={isAuthLoading || !isAuthenticated}>Refresh</Button>
+            <Button variant="outline" size="sm" onClick={fetchLiveData} disabled={isAuthLoading || !isAuthenticated}>Refresh</Button>
           </div>
           
           {isAuthLoading ? (
@@ -212,7 +273,7 @@ export default function TasksPage() {
           ) : isLoading ? (
             <div className="text-center p-8 text-muted-foreground animate-pulse">Loading tasks from backend...</div>
           ) : tasks.length === 0 ? (
-            <div className="p-8 text-center border rounded-xl bg-muted/20 text-muted-foreground">No tasks defined yet.</div>
+            <div className="p-8 text-center border rounded-xl bg-muted/20 text-muted-foreground">No live task definitions yet.</div>
           ) : tasks.map((task: Task, index: number) => (
             <Card key={task.id || index}>
               <CardHeader>
@@ -238,7 +299,7 @@ export default function TasksPage() {
                 <div className="flex flex-wrap items-start gap-x-6 gap-y-2">
                     <div className="flex items-center gap-2">
                         <Bot className="h-4 w-4" />
-                        <span>Primary: <strong className="font-semibold text-foreground">{task.primaryAgent}</strong></span>
+                        <span>Primary: <strong className="font-semibold text-foreground">{getAgentLabel(task.primaryAgent)}</strong></span>
                         {task.primaryAgentInstructions && (
                             <Tooltip>
                                 <TooltipTrigger asChild>
@@ -260,8 +321,13 @@ export default function TasksPage() {
                 </div>
                 <div className="flex items-center justify-between pt-1">
                     <span>Last Run: {task.lastRun || "Never"}</span>
-                    <Badge variant={task.status === "Success" ? "default" : (task.status === "Pending" ? "secondary" : "destructive")}>{task.status}</Badge>
+                    <Badge variant={task.status === "Success" ? "default" : (task.status === "Pending" ? "secondary" : (task.status === "Running" ? "outline" : "destructive"))}>{task.status}</Badge>
                 </div>
+                {task.lastError && (
+                  <div className="text-[11px] text-destructive">
+                    Last error: {task.lastError}
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -271,23 +337,37 @@ export default function TasksPage() {
         <div className="lg:col-span-1">
           <Card className="sticky top-20">
             <CardHeader>
-              <CardTitle>Create New Task</CardTitle>
-              <CardDescription>Configure an agent to perform an action.</CardDescription>
+            <CardTitle>Create New Task</CardTitle>
+              <CardDescription>Configure an agent to perform a live task.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                <div className="space-y-1.5">
                   <Label htmlFor="task-name">Task Name</Label>
-                  <Input id="task-name" placeholder="e.g., Summarize Morning News" disabled />
+                  <Input id="task-name" placeholder="e.g., Summarize Morning News" value={taskName} onChange={(e) => setTaskName(e.target.value)} />
+               </div>
+               <div className="space-y-1.5">
+                  <Label htmlFor="task-description">Task Description</Label>
+                  <Textarea
+                    id="task-description"
+                    placeholder="Describe what this task should do."
+                    value={taskDescription}
+                    onChange={(e) => setTaskDescription(e.target.value)}
+                    rows={4}
+                  />
                </div>
                <div className="space-y-1.5">
                    <Label htmlFor="task-primary-agent">Assign Primary Agent</Label>
                    <div className="flex items-center space-x-2">
-                     <Select value={newPrimaryAgent} onValueChange={setNewPrimaryAgent}>
+                      <Select value={newPrimaryAgent} onValueChange={setNewPrimaryAgent}>
                         <SelectTrigger id="task-primary-agent">
-                          <SelectValue placeholder="Select a primary agent" />
+                          <SelectValue placeholder={isAgentsLoading ? "Loading live agents..." : "Select a primary agent"} />
                         </SelectTrigger>
                         <SelectContent>
-                          {availableAgents.map(agent => <SelectItem key={agent} value={agent}>{agent}</SelectItem>)}
+                          {liveAgents.map(agent => (
+                            <SelectItem key={agent.agent_id} value={agent.agent_id}>
+                              {agent.name || agent.agent_id}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <Button 
@@ -302,11 +382,11 @@ export default function TasksPage() {
                </div>
                 <div className="space-y-1.5">
                     <Label>Assign Sub-Agents (Optional)</Label>
-                     <div className="p-3 border rounded-md h-40 overflow-y-auto space-y-2 bg-muted/30">
-                       {newSubAgents.length === 0 ? (
+                    <div className="p-3 border rounded-md h-40 overflow-y-auto space-y-2 bg-muted/30">
+                      {newSubAgents.length === 0 ? (
                             <p className="text-xs text-center text-muted-foreground py-1">No sub-agents assigned.</p>
                        ) : newSubAgents.map((agent, index) => (
-                         <div key={agent.name} className="flex items-center space-x-2 p-2 rounded-md bg-background border">
+                         <div key={agent.agentId || agent.name} className="flex items-center space-x-2 p-2 rounded-md bg-background border">
                              <Bot className="h-4 w-4 text-muted-foreground" />
                              <span className="text-sm flex-1">{agent.name}</span>
                               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openInstructionEditor(agent.name, agent.instructions, (newInstructions) => {
@@ -316,7 +396,7 @@ export default function TasksPage() {
                               })}>
                                 <Settings className="h-4 w-4 text-muted-foreground hover:text-primary"/>
                              </Button>
-                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleRemoveSubAgent(agent.name)}>
+                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleRemoveSubAgent(agent.agentId || agent.name)}>
                                 <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive"/>
                              </Button>
                          </div>
@@ -338,16 +418,19 @@ export default function TasksPage() {
                             </DialogHeader>
                             <div className="py-2 max-h-[50vh] overflow-y-auto">
                                 <div className="flex flex-col space-y-2">
-                                    {availableAgents.map(agent => (
-                                      <div key={agent} className="flex items-center justify-between p-2 rounded-md border bg-muted/40">
+                                    {liveAgents.map(agent => (
+                                      <div key={agent.agent_id} className="flex items-center justify-between p-2 rounded-md border bg-muted/40">
                                         <div className="flex items-center space-x-3">
                                           <Bot className="h-4 w-4 text-muted-foreground" />
-                                          <span className="text-sm">{agent}</span>
+                                          <div className="flex flex-col">
+                                            <span className="text-sm">{agent.name || agent.agent_id}</span>
+                                            <span className="text-[11px] text-muted-foreground">{agent.agent_id}</span>
+                                          </div>
                                         </div>
                                         <Button 
                                           size="sm"
                                           onClick={() => handleAddSubAgent(agent)}
-                                          disabled={newSubAgents.some(sa => sa.name === agent) || newPrimaryAgent === agent}
+                                          disabled={newSubAgents.some(sa => sa.agentId === agent.agent_id) || newPrimaryAgent === agent.agent_id}
                                           variant="secondary"
                                         >
                                           <PlusCircle className="mr-2 h-4 w-4" />
@@ -365,12 +448,12 @@ export default function TasksPage() {
                         </DialogContent>
                     </Dialog>
                     <p className="text-xs text-muted-foreground">
-                        Agents that the primary agent can delegate to.
+                        Agents that the primary agent can delegate to, loaded from the live agent registry.
                     </p>
                 </div>
             </CardContent>
             <CardFooter>
-              <Button className="w-full" onClick={handleCreateTask}>
+              <Button className="w-full" onClick={handleCreateTask} disabled={isAgentsLoading || liveAgents.length === 0}>
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Create Task
               </Button>
@@ -382,7 +465,7 @@ export default function TasksPage() {
         <Info className="h-4 w-4" />
         <AlertTitle>Developer Insight: Live Wiring</AlertTitle>
         <AlertDescription>
-          This dashboard is officially wired up to the AI Karen Backend `/api/tasks` endpoint. Tasks created above persist into memory and can be evaluated dynamically.
+          This dashboard is wired to the live `/api/tasks` endpoint and the live `/api/agents` registry. Tasks are created from real inputs and executed through the backend runtime.
         </AlertDescription>
       </Alert>
 

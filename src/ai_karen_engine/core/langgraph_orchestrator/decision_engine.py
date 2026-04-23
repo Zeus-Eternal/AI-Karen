@@ -25,7 +25,7 @@ from typing import Any, Dict, List, Optional, Tuple, Callable, Awaitable
 
 from ai_karen_engine.core.cortex.routing_intents import resolve_routing_intent
 from ai_karen_engine.core.reasoning.synthesis import MetacognitiveMonitor
-from ai_karen_engine.memory.distilbert_service import DistilBertService
+from ai_karen_engine.core.memory.signals.distilbert_service import DistilBertService
 
 # ---- Optional deps (Prometheus, tenacity) with safe fallbacks ----
 try:
@@ -47,7 +47,7 @@ except Exception:  # pragma: no cover
     def wait_exponential(*_, **__): return None
     def retry_if_exception_type(*_): return None
 
-from ai_karen_engine.memory.spacy_service import SpacyService, ParsedMessage
+from ai_karen_engine.core.memory.signals.spacy_service import SpacyService, ParsedMessage
 from ai_karen_engine.models.persona_models import SYSTEM_PERSONAS
 
 logger = logging.getLogger(__name__)

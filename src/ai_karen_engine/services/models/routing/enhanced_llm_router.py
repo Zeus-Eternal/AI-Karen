@@ -48,7 +48,7 @@ from ai_karen_engine.core.operations.routing_decision_persistence import (
 )
 from ai_karen_engine.integrations.llm_registry import get_registry, LLMRegistry
 from ai_karen_engine.integrations.llm_utils import LLMProviderBase
-from ai_karen_engine.core.services.cache import MemoryCache, get_request_deduplicator
+from ai_karen_engine.services.cache import MemoryCache, get_request_deduplicator
 from ai_karen_engine.core.runtime.degraded_mode import (
     get_degraded_mode_manager,
     DegradedModeReason,

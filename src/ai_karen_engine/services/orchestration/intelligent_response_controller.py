@@ -36,7 +36,7 @@ from ai_karen_engine.core.langgraph_orchestrator import (
     DecisionEngine,
     LangGraphOrchestrator,
 )
-from ai_karen_engine.memory.small_language_model_service import (
+from ai_karen_engine.core.reasoning.synthesis.small_language_model_service import (
     SmallLanguageModelService,
 )
 

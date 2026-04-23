@@ -13,12 +13,12 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List
 
 from ai_karen_engine.utils.dependency_checks import import_fastapi
-from ai_karen_engine.memory.connection_health_manager import (
+from ai_karen_engine.core.runtime.resilience.connection_health_manager import (
     ConnectionHealthManager,
     get_connection_health_manager,
 )
 from ai_karen_engine.monitoring.correlation_service import get_request_id
-from ai_karen_engine.memory.internal.structured_logging import (
+from ai_karen_engine.core.logging.structured_logging import (
     get_structured_logging_service,
 )
 import logging
@@ -481,7 +481,7 @@ async def _build_degraded_mode_status() -> Dict[str, Any]:
 
     # Redis check
     try:
-        from ai_karen_engine.infra.redis_connection_manager import get_redis_manager
+        from ai_karen_engine.core.memory.redis_connection_manager import get_redis_manager
 
         redis_manager = get_redis_manager()
         if redis_manager.is_degraded():
@@ -498,7 +498,7 @@ async def _build_degraded_mode_status() -> Dict[str, Any]:
     }
 
     try:
-        from ai_karen_engine.memory.provider_registry import (
+        from ai_karen_engine.core.model_runtime.provider_registry_service import (
             get_provider_registry_service,
         )
 
@@ -623,7 +623,7 @@ async def _build_degraded_mode_status() -> Dict[str, Any]:
 
         remote_providers_available = 0
         try:
-            from ai_karen_engine.memory.provider_registry import (
+            from ai_karen_engine.core.model_runtime.provider_registry_service import (
                 get_provider_registry_service,
             )
 

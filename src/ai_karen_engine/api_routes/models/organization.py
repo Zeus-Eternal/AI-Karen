@@ -14,7 +14,7 @@ import time
 from typing import Any, Dict, List, Optional, Union
 from pathlib import Path
 
-from ai_karen_engine.memory.model_discovery_service import (
+from ai_karen_engine.core.model_runtime.model_discovery_service import (
     get_model_discovery_service,
     ModelDiscoveryService,
     DiscoveryStatus,

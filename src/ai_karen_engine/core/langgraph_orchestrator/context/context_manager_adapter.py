@@ -41,7 +41,7 @@ async def resolve_memory_service(orchestrator_instance: Any) -> Optional[Any]:
         if not getattr(orchestrator_instance, "_memory_resolution_failed", False):
             logger.warning("Memory service unavailable: %s", exc)
         try:
-            from ai_karen_engine.memory.memory_service import WebUIMemoryService
+            from ai_karen_engine.core.memory.memory_service import WebUIMemoryService
 
             orchestrator_instance._memory_service = WebUIMemoryService()
             logger.info("Fell back to direct WebUIMemoryService initialization")

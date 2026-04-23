@@ -770,6 +770,8 @@ class LlamaCppProvider(LLMProviderBase):
         """Get provider metadata with Model Library integration."""
         info = {
             "name": "llama-cpp",
+            "provider_type": "local",
+            "requires_api_key": False,
             "model_path": self.model_path,
             "available_models": self.get_models(),
             "supports_streaming": True,

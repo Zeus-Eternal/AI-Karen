@@ -236,6 +236,7 @@ class HTTPRequestValidator:
 
             # List of trusted API endpoint patterns
             trusted_patterns = [
+                "/api/public",
                 "/api/health",
                 "/health",
                 "/api/ping",
@@ -243,6 +244,12 @@ class HTTPRequestValidator:
                 "/api/status",
                 "/status",
                 "/api/chat",
+                "/api/agents",
+                "/api/tasks",
+                "/api/automation",
+                "/api/tools",
+                "/api/users",
+                "/api/scheduler",
                 "/api/providers",
                 "/api/auth",
                 "/api/plugins",

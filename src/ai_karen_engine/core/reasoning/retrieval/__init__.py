@@ -1,34 +1,24 @@
-"""
-Retrieval Adapters Module
-
-Provides abstraction layers for vector stores and retrieval systems.
-
-Components:
-- SRRetriever: Protocol for SR retrieval adapters
-- SRCompositeRetriever: Chain multiple retrievers
-- VectorStore: Protocol for vector store backends
-- MilvusClientAdapter: Adapter for Milvus client
-- LlamaIndexVectorAdapter: Adapter for LlamaIndex
-"""
-
-from ai_karen_engine.core.reasoning.retrieval.adapters import (
-    SRRetriever,
-    SRCompositeRetriever,
-)
-from ai_karen_engine.core.reasoning.retrieval.vector_stores import (
-    VectorStore,
+from .adapters import (
+    EvidenceBundle,
+    ReasoningEvidenceAdapter,
     Result,
-    MilvusClientAdapter,
+    SRCompositeRetriever,
+    SRRetriever,
+)
+from .vector_stores import (
     LlamaIndexVectorAdapter,
-    StoreInfo,
+    MilvusClientAdapter,
+    VectorStore,
 )
 
 __all__ = [
-    "SRRetriever",
-    "SRCompositeRetriever",
-    "VectorStore",
+    "EvidenceBundle",
+    "ReasoningEvidenceAdapter",
     "Result",
-    "MilvusClientAdapter",
+    "SRCompositeRetriever",
+    "SRRetriever",
     "LlamaIndexVectorAdapter",
-    "StoreInfo",
+    "MilvusClientAdapter",
+    "VectorStore",
 ]
+

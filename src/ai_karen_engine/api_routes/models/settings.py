@@ -339,7 +339,7 @@ def _iter_ollama_base_urls(base_url: Optional[str]) -> List[str]:
 
     candidates = [normalized]
     aliases: List[str] = []
-    if hostname in {"localhost", "127.0.0.1", "::1"}:
+    if hostname in {"localhost", "127.0.0.1", "::1", "host.docker.internal"}:
         aliases.extend(["host.docker.internal", "172.17.0.1"])
     elif hostname == "ollama":
         aliases.extend(["host.docker.internal", "172.17.0.1"])

@@ -8,7 +8,7 @@ from typing import Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
-from ai_karen_engine.core.services.user_prefs import get_user_prefs, UserPrefs
+from ai_karen_engine.services.user_prefs import get_user_prefs, UserPrefs
 from ai_karen_engine.services.formatting.settings_manager import SettingsManager
 
 logger = logging.getLogger(__name__)

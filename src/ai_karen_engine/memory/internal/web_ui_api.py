@@ -25,7 +25,7 @@ from ai_karen_engine.models.web_ui_types import (
 from ai_karen_engine.models.shared_types import FlowInput, FlowOutput, HandleUserMessageResult
 from ai_karen_engine.api_routes.models.orchestrator import ConversationProcessingRequest
 from ai_karen_engine.api_routes.memory.memory import MemQuery, MemCommit, ContextHit
-from ai_karen_engine.memory.memory_service import UISource, WebUIMemoryQuery as ServiceWebUIMemoryQuery
+from ai_karen_engine.core.memory.memory_service import UISource, WebUIMemoryQuery as ServiceWebUIMemoryQuery
 
 # Import the new transformation utilities
 from ai_karen_engine.memory.internal.memory_transformation_utils import MemoryTransformationUtils

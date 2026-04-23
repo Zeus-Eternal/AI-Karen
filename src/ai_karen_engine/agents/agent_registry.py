@@ -25,7 +25,7 @@ from ai_karen_engine.integrations.auth_manager import AuthenticationManager as A
 
 # Try to import UnifiedMemoryService, but handle if it's not available
 try:
-    from ai_karen_engine.memory.unified_memory_service import UnifiedMemoryService
+    from ai_karen_engine.core.memory.unified_memory_service import UnifiedMemoryService
     HAS_MEMORY_SERVICE = True
 except ImportError:
     HAS_MEMORY_SERVICE = False
@@ -272,7 +272,15 @@ class AgentRegistry(BaseService):
             
             # Initialize memory service if available
             if HAS_MEMORY_SERVICE and UnifiedMemoryService is not None:
-                self._memory_service = UnifiedMemoryService(config=ServiceConfig(name="memory_service"))
+                from ai_karen_engine.database.client import MultiTenantPostgresClient
+                from ai_karen_engine.core.model_runtime.milvus_client import MilvusClient
+                from ai_karen_engine.core.model_runtime.embedding_manager import EmbeddingManager
+                
+                self._memory_service = UnifiedMemoryService(
+                    db_client=MultiTenantPostgresClient(),
+                    milvus_client=MilvusClient(),
+                    embedding_manager=EmbeddingManager()
+                )
                 await self._memory_service.initialize()
             else:
                 self._memory_service = None

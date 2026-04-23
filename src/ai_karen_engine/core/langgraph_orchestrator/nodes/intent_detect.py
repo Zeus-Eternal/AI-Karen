@@ -82,6 +82,39 @@ class IntentDetectNode:
                     "Intent engine suggests clarifying user request"
                 )
 
+            metadata = analysis.get("metadata", {}) if isinstance(analysis, dict) else {}
+            reasoning_hints = {
+                "requires_reasoning": bool(
+                    metadata.get("knowledge_gaps")
+                    or analysis.get("requires_clarification")
+                    or state["detected_intent"] in {"troubleshoot", "debug_error", "decision_making"}
+                ),
+                "reasoning_depth": "deep"
+                if metadata.get("knowledge_gaps") or analysis.get("requires_clarification")
+                else "standard",
+                "reasoning_modes": [],
+                "should_use_retrieval_reasoning": bool(state.get("memory_context")),
+                "should_use_causal_reasoning": state["detected_intent"] in {"troubleshoot", "debug_error"},
+                "should_use_graph_reasoning": state["detected_intent"] in {"information_retrieval", "decision_making", "troubleshoot"}
+                or bool(metadata.get("knowledge_gaps")),
+                "should_use_soft_reasoning": bool(analysis.get("requires_clarification"))
+                or analysis.get("confidence", 0.0) < 0.7,
+                "should_self_refine": bool(analysis.get("requires_clarification"))
+                or analysis.get("confidence", 0.0) < 0.65,
+                "should_verify": bool(metadata.get("knowledge_gaps"))
+                or analysis.get("confidence", 0.0) < 0.75,
+            }
+            if reasoning_hints["should_use_causal_reasoning"]:
+                reasoning_hints["reasoning_modes"].append("causal")
+            if reasoning_hints["should_use_graph_reasoning"]:
+                reasoning_hints["reasoning_modes"].append("graph")
+            if reasoning_hints["should_use_retrieval_reasoning"]:
+                reasoning_hints["reasoning_modes"].append("retrieval")
+            if reasoning_hints["should_use_soft_reasoning"]:
+                reasoning_hints["reasoning_modes"].append("soft")
+
+            state["reasoning_hints"] = reasoning_hints
+
         except Exception as e:
             logger.error(f"Intent detection error: {e}")
             state.setdefault("errors", []).append(f"Intent detection error: {str(e)}")

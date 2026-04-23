@@ -9,13 +9,14 @@ providing a unified interface for agent interactions.
 import asyncio
 import logging
 from datetime import datetime
-from typing import Any, AsyncGenerator, Dict, List, Optional
+from typing import Any, AsyncGenerator, Dict, List, Optional, Set
 
 from .models import (
     AgentRequest,
     AgentResponse,
     AgentStreamResponse,
     AgentInfo,
+    AgentConfig,
     AgentExecutionMode,
     AgentCapability,
     AgentStatus,
@@ -26,6 +27,15 @@ from .models import (
 from .execution_handlers import get_execution_handler
 from .lifecycle_manager import get_lifecycle_manager
 from .capability_router import get_capability_router
+from .auth import AgentAuthManager
+
+try:
+    from .agent_registry import AgentRegistry
+
+    HAS_AGENT_REGISTRY = True
+except Exception:  # pragma: no cover - optional dependency chain
+    AgentRegistry = None
+    HAS_AGENT_REGISTRY = False
 
 logger = logging.getLogger(__name__)
 
@@ -35,17 +45,27 @@ class AgentIntegrationService:
     
     def __init__(self):
         self.logger = logging.getLogger(f"{__name__}.AgentIntegrationService")
+        self._initialized = False
         self._active_requests: Dict[str, AgentRequest] = {}
         self._active_streams: Dict[str, AsyncGenerator[StreamChunk, None]] = {}
+        self._agent_registry: Optional[Any] = None
         self._lock = asyncio.Lock()
-    
+        self._auth = AgentAuthManager()
+
     async def initialize(self):
         """Initialize the integration service."""
+        if self._initialized:
+            return
+
         self.logger.info("Initializing Agent Integration Service")
         
         # Initialize lifecycle manager
         lifecycle_manager = get_lifecycle_manager()
         await lifecycle_manager.initialize()
+
+        # Initialize the persistent registry when available.
+        await self._ensure_agent_registry()
+        self._initialized = True
         
         self.logger.info("Agent Integration Service initialized")
     
@@ -68,8 +88,245 @@ class AgentIntegrationService:
         # Shutdown lifecycle manager
         lifecycle_manager = get_lifecycle_manager()
         await lifecycle_manager.shutdown()
+
+        # Best-effort registry shutdown if the registry was initialized.
+        if self._agent_registry and hasattr(self._agent_registry, "stop"):
+            try:
+                await self._agent_registry.stop()
+            except Exception as e:
+                self.logger.error(f"Error stopping agent registry: {e}")
+
+        self._agent_registry = None
+        self._initialized = False
         
         self.logger.info("Agent Integration Service shutdown complete")
+
+    async def _ensure_initialized(self) -> None:
+        if not self._initialized:
+            await self.initialize()
+
+    async def _ensure_agent_registry(self) -> Optional[Any]:
+        if self._agent_registry is not None:
+            return self._agent_registry
+
+        if not HAS_AGENT_REGISTRY or AgentRegistry is None:
+            return None
+
+        try:
+            self._agent_registry = AgentRegistry()
+            await self._agent_registry.initialize()
+            await self._sync_registry_agents_to_lifecycle()
+        except Exception as e:
+            self.logger.warning(f"Agent registry unavailable: {e}")
+            self._agent_registry = None
+
+        return self._agent_registry
+
+    async def _sync_registry_agents_to_lifecycle(self) -> None:
+        """Mirror persistent registry agents into the runtime lifecycle manager."""
+        registry = self._agent_registry
+        if registry is None or not hasattr(registry, "list_agents"):
+            return
+
+        lifecycle_manager = get_lifecycle_manager()
+        try:
+            registry_agents = await registry.list_agents()
+        except Exception as e:
+            self.logger.warning(f"Failed to list registry agents for sync: {e}")
+            return
+
+        for agent_data in registry_agents or []:
+            info = self._registry_agent_to_info(agent_data)
+            if info is None:
+                continue
+
+            try:
+                existing = await lifecycle_manager.get_agent(info.agent_id)
+                if existing is None:
+                    await lifecycle_manager.create_agent(
+                        agent_id=info.agent_id,
+                        name=info.name,
+                        description=info.description,
+                        execution_mode=info.execution_mode,
+                        config=info.config,
+                    )
+                if info.status != AgentStatus.IDLE:
+                    await lifecycle_manager.update_agent_status(
+                        info.agent_id,
+                        info.status,
+                        metadata={"source": "registry_sync"},
+                    )
+            except Exception as e:
+                self.logger.warning(
+                    f"Failed to sync registry agent {info.agent_id} to lifecycle manager: {e}"
+                )
+
+    @staticmethod
+    def _normalize_execution_mode(value: Any) -> AgentExecutionMode:
+        if isinstance(value, AgentExecutionMode):
+            return value
+        if isinstance(value, str):
+            try:
+                return AgentExecutionMode(value)
+            except ValueError:
+                pass
+        return AgentExecutionMode.NATIVE
+
+    @staticmethod
+    def _normalize_status(value: Any) -> AgentStatus:
+        if isinstance(value, AgentStatus):
+            return value
+        if isinstance(value, str):
+            normalized = value.lower()
+            mapping = {
+                "ready": AgentStatus.IDLE,
+                "idle": AgentStatus.IDLE,
+                "running": AgentStatus.PROCESSING,
+                "busy": AgentStatus.PROCESSING,
+                "processing": AgentStatus.PROCESSING,
+                "streaming": AgentStatus.STREAMING,
+                "stopped": AgentStatus.TERMINATED,
+                "stopping": AgentStatus.TERMINATED,
+                "terminated": AgentStatus.TERMINATED,
+                "error": AgentStatus.ERROR,
+                "initializing": AgentStatus.INITIALIZING,
+            }
+            return mapping.get(normalized, AgentStatus.IDLE)
+        return AgentStatus.IDLE
+
+    @staticmethod
+    def _coerce_capability(value: Any) -> Optional[AgentCapability]:
+        if isinstance(value, AgentCapability):
+            return value
+        if isinstance(value, dict):
+            value = value.get("name")
+        if isinstance(value, str):
+            try:
+                return AgentCapability(value)
+            except ValueError:
+                return None
+        return None
+
+    @staticmethod
+    def _build_agent_config(
+        execution_mode: AgentExecutionMode,
+        payload: Optional[Dict[str, Any]],
+    ) -> AgentConfig:
+        data = dict(payload or {})
+        capabilities_payload = data.pop("capabilities", [])
+        custom_config = dict(data.pop("custom_config", {}) or {})
+        data.pop("execution_mode", None)
+
+        capabilities: List[AgentCapability] = []
+        for capability in capabilities_payload or []:
+            normalized = AgentIntegrationService._coerce_capability(capability)
+            if normalized is not None:
+                capabilities.append(normalized)
+
+        return AgentConfig(
+            execution_mode=execution_mode,
+            model_name=data.pop("model_name", None),
+            provider=data.pop("provider", None),
+            temperature=data.pop("temperature", 0.7),
+            max_tokens=data.pop("max_tokens", 2048),
+            timeout_seconds=data.pop("timeout_seconds", 60),
+            enable_streaming=bool(data.pop("enable_streaming", False)),
+            capabilities=capabilities,
+            custom_config={**data, **custom_config},
+        )
+
+    def _registry_agent_to_info(self, agent_data: Dict[str, Any]) -> Optional[AgentInfo]:
+        agent_id = agent_data.get("agent_id") or agent_data.get("id")
+        name = agent_data.get("name") or agent_id
+        if not agent_id or not name:
+            return None
+
+        execution_mode = self._normalize_execution_mode(
+            agent_data.get("execution_mode")
+            or agent_data.get("agent_type")
+            or agent_data.get("metadata", {}).get("execution_mode")
+        )
+        status = self._normalize_status(agent_data.get("status"))
+
+        capabilities: List[AgentCapability] = []
+        for capability in agent_data.get("capabilities", []):
+            normalized = self._coerce_capability(capability)
+            if normalized is not None:
+                capabilities.append(normalized)
+
+        metadata = dict(agent_data.get("metadata") or {})
+        config_payload = dict(agent_data.get("config") or {})
+        custom_config = dict(metadata.get("config") or config_payload)
+
+        config = AgentConfig(
+            execution_mode=execution_mode,
+            model_name=metadata.get("model_name"),
+            provider=metadata.get("provider"),
+            capabilities=capabilities,
+            custom_config=custom_config,
+        )
+
+        metrics = AgentMetrics(
+            agent_id=agent_id,
+            execution_mode=execution_mode,
+        )
+
+        performance = agent_data.get("performance") or {}
+        response_time = performance.get("response_time") or {}
+        if isinstance(response_time, dict):
+            metrics.average_response_time = float(response_time.get("avg", 0.0) or 0.0)
+            metrics.total_requests = int(response_time.get("count", 0) or 0)
+            metrics.successful_requests = int(
+                round(metrics.total_requests * float(performance.get("success_rate", {}).get("avg", 0.0) or 0.0))
+            )
+            metrics.failed_requests = max(
+                0, metrics.total_requests - metrics.successful_requests
+            )
+
+        created_at = agent_data.get("registered_at") or agent_data.get("created_at")
+        last_activity = agent_data.get("updated_at") or agent_data.get("last_activity")
+
+        def _parse_dt(value: Any) -> datetime:
+            if isinstance(value, datetime):
+                return value
+            if isinstance(value, str):
+                try:
+                    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+                except Exception:
+                    pass
+            return datetime.utcnow()
+
+        return AgentInfo(
+            agent_id=agent_id,
+            name=name,
+            description=agent_data.get("description") or "",
+            execution_mode=execution_mode,
+            status=status,
+            capabilities=capabilities,
+            config=config,
+            metrics=metrics,
+            created_at=_parse_dt(created_at),
+            last_activity=_parse_dt(last_activity) if last_activity else None,
+            version=agent_data.get("version") or "1.0.0",
+        )
+
+    async def _merge_agent_sources(self) -> List[AgentInfo]:
+        lifecycle_manager = get_lifecycle_manager()
+        lifecycle_agents = await lifecycle_manager.get_all_agents()
+        merged: Dict[str, AgentInfo] = {agent.agent_id: agent for agent in lifecycle_agents}
+
+        registry = await self._ensure_agent_registry()
+        if registry is not None and hasattr(registry, "list_agents"):
+            try:
+                registry_agents = await registry.list_agents()
+                for agent_data in registry_agents or []:
+                    info = self._registry_agent_to_info(agent_data)
+                    if info is not None and info.agent_id not in merged:
+                        merged[info.agent_id] = info
+            except Exception as e:
+                self.logger.warning(f"Failed to read registry agents: {e}")
+
+        return list(merged.values())
     
     async def execute_request(self, request: AgentRequest) -> AgentResponse:
         """
@@ -81,7 +338,11 @@ class AgentIntegrationService:
         Returns:
             Agent response
         """
-        self.logger.info(f"Executing request {request.request_id} in {request.execution_mode.value} mode")
+        await self._ensure_initialized()
+
+        self.logger.info(
+            f"Executing request {request.request_id} in {request.execution_mode.value} mode"
+        )
         
         start_time = datetime.utcnow()
         
@@ -207,7 +468,11 @@ class AgentIntegrationService:
         Yields:
             Agent stream responses
         """
-        self.logger.info(f"Starting stream for request {request.request_id} in {request.execution_mode.value} mode")
+        await self._ensure_initialized()
+
+        self.logger.info(
+            f"Starting stream for request {request.request_id} in {request.execution_mode.value} mode"
+        )
         
         try:
             # Track active request and stream
@@ -357,18 +622,34 @@ class AgentIntegrationService:
     
     async def get_agent_info(self, agent_id: str) -> Optional[AgentInfo]:
         """Get information about a specific agent."""
+        await self._ensure_initialized()
+
         lifecycle_manager = get_lifecycle_manager()
-        return await lifecycle_manager.get_agent(agent_id)
+        agent = await lifecycle_manager.get_agent(agent_id)
+        if agent:
+            return agent
+
+        registry = await self._ensure_agent_registry()
+        if registry is None or not hasattr(registry, "get_agent"):
+            return None
+
+        try:
+            agent_data = await registry.get_agent(agent_id)
+            return self._registry_agent_to_info(agent_data) if agent_data else None
+        except Exception as e:
+            self.logger.warning(f"Registry lookup failed for agent {agent_id}: {e}")
+            return None
     
     async def get_all_agents(self) -> List[AgentInfo]:
         """Get information about all agents."""
-        lifecycle_manager = get_lifecycle_manager()
-        return await lifecycle_manager.get_all_agents()
+        await self._ensure_initialized()
+        return await self._merge_agent_sources()
     
     async def get_agents_by_execution_mode(self, execution_mode: AgentExecutionMode) -> List[AgentInfo]:
         """Get agents by execution mode."""
-        lifecycle_manager = get_lifecycle_manager()
-        return await lifecycle_manager.get_agents_by_execution_mode(execution_mode)
+        await self._ensure_initialized()
+        agents = await self._merge_agent_sources()
+        return [agent for agent in agents if agent.execution_mode == execution_mode]
     
     async def get_available_agents(
         self,
@@ -376,8 +657,24 @@ class AgentIntegrationService:
         capabilities: Optional[List[AgentCapability]] = None
     ) -> List[AgentInfo]:
         """Get available agents that match criteria."""
+        await self._ensure_initialized()
         lifecycle_manager = get_lifecycle_manager()
-        return await lifecycle_manager.get_available_agents(execution_mode, capabilities)
+        lifecycle_agents = await lifecycle_manager.get_available_agents(
+            execution_mode, capabilities
+        )
+
+        agents = {agent.agent_id: agent for agent in lifecycle_agents}
+        for agent in await self._merge_agent_sources():
+            if agent.agent_id in agents:
+                continue
+            if execution_mode and agent.execution_mode != execution_mode:
+                continue
+            if capabilities and not all(cap in agent.capabilities for cap in capabilities):
+                continue
+            if agent.is_available:
+                agents[agent.agent_id] = agent
+
+        return list(agents.values())
     
     async def create_agent(
         self,
@@ -388,39 +685,114 @@ class AgentIntegrationService:
         config: Dict[str, Any]
     ) -> AgentInfo:
         """Create a new agent."""
-        from .models import AgentConfig
-        
-        # Convert config dict to AgentConfig
-        agent_config = AgentConfig(**config)
+        await self._ensure_initialized()
+
+        # Convert config dict to AgentConfig using the explicit execution mode.
+        agent_config = self._build_agent_config(execution_mode, config)
         
         lifecycle_manager = get_lifecycle_manager()
-        return await lifecycle_manager.create_agent(
+        created_agent = await lifecycle_manager.create_agent(
             agent_id=agent_id,
             name=name,
             description=description,
             execution_mode=execution_mode,
             config=agent_config
         )
+
+        registry = await self._ensure_agent_registry()
+        if registry is not None and hasattr(registry, "register_agent"):
+            try:
+                await registry.register_agent(
+                    agent_id=agent_id,
+                    agent_type=execution_mode.value,
+                    capabilities=[cap.value for cap in agent_config.capabilities],
+                    metadata={
+                        "name": name,
+                        "description": description,
+                        "execution_mode": execution_mode.value,
+                        "config": config,
+                    },
+                    version=created_agent.version,
+                )
+            except Exception as e:
+                self.logger.warning(f"Failed to register agent {agent_id} in registry: {e}")
+
+        return created_agent
     
     async def terminate_agent(self, agent_id: str) -> bool:
         """Terminate an agent."""
+        await self._ensure_initialized()
+
         lifecycle_manager = get_lifecycle_manager()
-        return await lifecycle_manager.terminate_agent(agent_id)
+        success = await lifecycle_manager.terminate_agent(agent_id)
+
+        registry = await self._ensure_agent_registry()
+        if registry is not None and hasattr(registry, "update_agent_status"):
+            try:
+                await registry.update_agent_status(agent_id, "stopped")
+            except Exception as e:
+                self.logger.warning(f"Failed to update registry status for {agent_id}: {e}")
+
+        return success
     
     async def delete_agent(self, agent_id: str) -> bool:
         """Delete an agent."""
+        await self._ensure_initialized()
+
         lifecycle_manager = get_lifecycle_manager()
-        return await lifecycle_manager.delete_agent(agent_id)
+        success = await lifecycle_manager.delete_agent(agent_id)
+
+        registry = await self._ensure_agent_registry()
+        if registry is not None and hasattr(registry, "unregister_agent"):
+            try:
+                await registry.unregister_agent(agent_id)
+            except Exception as e:
+                self.logger.warning(f"Failed to unregister agent {agent_id} from registry: {e}")
+
+        return success
     
     async def get_agent_metrics(self, agent_id: str) -> Optional[AgentMetrics]:
         """Get metrics for a specific agent."""
+        await self._ensure_initialized()
+
         agent_info = await self.get_agent_info(agent_id)
-        return agent_info.metrics if agent_info else None
+        if agent_info:
+            return agent_info.metrics
+
+        registry = await self._ensure_agent_registry()
+        if registry is None or not hasattr(registry, "get_agent"):
+            return None
+
+        try:
+            agent_data = await registry.get_agent(agent_id)
+            info = self._registry_agent_to_info(agent_data) if agent_data else None
+            return info.metrics if info else None
+        except Exception as e:
+            self.logger.warning(f"Registry metrics lookup failed for agent {agent_id}: {e}")
+            return None
+
+    async def get_agent_lifecycle_events(
+        self,
+        agent_id: Optional[str] = None,
+        event_type: Optional[str] = None,
+        limit: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        """Get lifecycle events for the agent management surface."""
+        await self._ensure_initialized()
+        lifecycle_manager = get_lifecycle_manager()
+        events = await lifecycle_manager.get_lifecycle_events(
+            agent_id=agent_id, event_type=event_type, limit=limit
+        )
+        return [
+            event.dict() if hasattr(event, "dict") else dict(event)
+            for event in events
+        ]
     
     async def get_system_metrics(self) -> Dict[str, Any]:
         """Get system-wide metrics."""
-        lifecycle_manager = get_lifecycle_manager()
-        agents = await lifecycle_manager.get_all_agents()
+        await self._ensure_initialized()
+
+        agents = await self._merge_agent_sources()
         
         total_requests = sum(agent.metrics.total_requests for agent in agents)
         total_successful = sum(agent.metrics.successful_requests for agent in agents)
@@ -445,11 +817,14 @@ class AgentIntegrationService:
             "agents_by_status": status_counts,
             "agents_by_execution_mode": mode_counts,
             "active_requests": len(self._active_requests),
-            "active_streams": len(self._active_streams)
+            "active_streams": len(self._active_streams),
+            "registry_enabled": self._agent_registry is not None,
         }
     
     async def cancel_request(self, request_id: str) -> bool:
         """Cancel an active request."""
+        await self._ensure_initialized()
+
         async with self._lock:
             if request_id in self._active_requests:
                 # Cancel the stream if it exists
@@ -480,6 +855,8 @@ class AgentIntegrationService:
     ):
         """Update agent metrics after request completion."""
         try:
+            await self._ensure_initialized()
+
             lifecycle_manager = get_lifecycle_manager()
             
             # Get current metrics
@@ -506,6 +883,23 @@ class AgentIntegrationService:
             
             # Update metrics
             await lifecycle_manager.update_agent_metrics(agent_id, metrics_update)
+
+            registry = await self._ensure_agent_registry()
+            if registry is not None and hasattr(registry, "record_agent_performance"):
+                try:
+                    await registry.record_agent_performance(
+                        agent_id=agent_id,
+                        response_time=response.processing_time if response else 0.0,
+                        success=not bool(response and response.error),
+                        error_type=response.error.code if response and response.error else None,
+                        task_type="agent_request",
+                        metadata={
+                            "request_id": response.request_id if response else agent_id,
+                            "source": "integration_service",
+                        },
+                    )
+                except Exception as e:
+                    self.logger.warning(f"Failed to record registry performance for {agent_id}: {e}")
             
         except Exception as e:
             self.logger.error(f"Error updating metrics for agent {agent_id}: {e}")

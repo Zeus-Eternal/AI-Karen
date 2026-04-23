@@ -15,6 +15,7 @@ from ai_karen_engine.services.formatting.response_formatting_engine import (
     CitationInfo,
     AnalysisResult,
 )
+from ai_karen_engine.services.formatting.pretty_output_layer import PrettyOutputLayer
 from ai_karen_engine.services.formatting.response_policy_enforcer import (
     ResponsePolicyEnforcer,
     PolicyDecision,
@@ -45,6 +46,7 @@ __all__ = [
     "CodeBlockInfo",
     "CitationInfo",
     "AnalysisResult",
+    "PrettyOutputLayer",
     "ResponsePolicyEnforcer",
     "PolicyDecision",
     "PolicyResult",

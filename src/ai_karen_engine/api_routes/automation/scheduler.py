@@ -28,7 +28,7 @@ from ai_karen_engine.services.scheduling.scheduler_manager import (
 )
 from ai_karen_engine.learning.autonomous_learner import AutonomousLearner
 from ai_karen_engine.core.langgraph_orchestrator.decision_engine import SpacyAnalyzer
-from ai_karen_engine.memory.memory_service import WebUIMemoryService
+from ai_karen_engine.core.memory.memory_service import WebUIMemoryService
 
 # Simple auth imports
 from ai_karen_engine.core.services.dependencies import bypass_user_context_func

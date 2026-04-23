@@ -50,7 +50,7 @@ def _get_service_classes():
 
         try:
             classes["WebUIMemoryService"] = __import__(
-                "ai_karen_engine.memory.memory_service", fromlist=["WebUIMemoryService"]
+                "ai_karen_engine.core.memory.memory_service", fromlist=["WebUIMemoryService"]
             ).WebUIMemoryService
             logger.info("✅ WebUIMemoryService imported successfully")
         except Exception as e:
@@ -59,7 +59,7 @@ def _get_service_classes():
 
         try:
             classes["UnifiedMemoryService"] = __import__(
-                "ai_karen_engine.memory.unified_memory_service",
+                "ai_karen_engine.core.memory.unified_memory_service",
                 fromlist=["UnifiedMemoryService"],
             ).UnifiedMemoryService
             logger.info("✅ UnifiedMemoryService imported successfully")
@@ -69,7 +69,7 @@ def _get_service_classes():
 
         try:
             classes["ConversationService"] = __import__(
-                "ai_karen_engine.memory.conversation_service",
+                "ai_karen_engine.services.memory.conversation_service",
                 fromlist=["ConversationService"],
             ).ConversationService
             logger.info("✅ ConversationService imported successfully")
@@ -79,7 +79,7 @@ def _get_service_classes():
 
         try:
             classes["PluginService"] = __import__(
-                "ai_karen_engine.infra.plugin_service", fromlist=["PluginService"]
+                "ai_karen_engine.services.plugin_service", fromlist=["PluginService"]
             ).PluginService
             logger.info("✅ PluginService imported successfully")
         except Exception as e:
@@ -1326,15 +1326,17 @@ async def initialize_services() -> None:
         logger.info("Registered FallbackDatabaseClient service")
 
     try:
-        logger.info("🔍 DEBUG: Attempting to register WebUIMemoryService...")
-        # Check if WebUIMemoryService is available
-        if WebUIMemoryService is None:
-            logger.error("❌ WebUIMemoryService is None, cannot register")
-        else:
-            registry.register_service("memory_service", WebUIMemoryService)
-            logger.info("✅ Registered WebUIMemoryService service")
+        from ai_karen_engine.core.memory import get_memory_manager
+        from ai_karen_engine.core.memory.profile_synthesis import get_profile_service
+        from ai_karen_engine.services.persona.persona_service import get_persona_service
+        
+        # Register Next-Gen Memory Ledger and Profile Synthesis
+        registry.register_service("memory_service", lambda: get_memory_manager())
+        registry.register_service("profile_service", lambda: get_profile_service())
+        registry.register_service("persona_service", lambda: get_persona_service())
+        logger.info("✅ Registered next-gen memory, profile, and persona services")
     except Exception as e:
-        logger.error(f"❌ Could not register WebUIMemoryService: {e}", exc_info=True)
+        logger.error(f"❌ Could not register next-gen memory/profile/persona services: {e}", exc_info=True)
 
     try:
         logger.info("🔍 DEBUG: Attempting to register ConversationService...")
@@ -1438,7 +1440,7 @@ async def initialize_services() -> None:
 
     # Force synchronous initialization of critical services
     logger.info("🔥 Force synchronizing critical services...")
-    critical_services = ["chat_orchestrator", "memory_service", "conversation_service"]
+    critical_services = ["chat_orchestrator", "memory_service", "conversation_service", "persona_service"]
 
     for service_name in critical_services:
         if service_name in registry._instances:
@@ -1493,6 +1495,12 @@ async def get_memory_service() -> Any:
     """Get Memory service instance."""
     registry = get_service_registry()
     return await registry.get_service("memory_service")
+
+
+async def get_profile_service() -> Any:
+    """Get Profile service instance."""
+    registry = get_service_registry()
+    return await registry.get_service("profile_service")
 
 
 async def get_conversation_service() -> Any:

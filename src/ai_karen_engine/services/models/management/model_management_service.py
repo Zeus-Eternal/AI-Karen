@@ -26,7 +26,7 @@ from ..routing.intelligent_model_router import (
     ModelRouter,
     get_model_router,
 )
-from ai_karen_engine.memory.profile_manager import (
+from ai_karen_engine.core.memory.profile_synthesis.profile_manager import (
     ProfileManager, get_profile_manager, LLMProfile
 )
 from .model_connection_manager import (

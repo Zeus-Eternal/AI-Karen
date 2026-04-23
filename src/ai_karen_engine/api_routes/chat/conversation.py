@@ -19,7 +19,7 @@ from ai_karen_engine.models.web_api_error_responses import (
     create_service_error_response,
     get_http_status_for_error_code,
 )
-from ai_karen_engine.memory.conversation_service import (
+from ai_karen_engine.services.memory.conversation_service import (
     ConversationPriority,
     UISource,
     ConversationService,

@@ -636,6 +636,26 @@ class ToolService:
             "executions_failed": 0,
             "average_execution_time": 0.0
         }
+
+        self._bootstrap_builtin_tools()
+
+    def _bootstrap_builtin_tools(self) -> None:
+        """Register built-in production tools so the registry is not empty on startup."""
+        try:
+            from ai_karen_engine.tools.production_tools import get_production_tools
+
+            for tool in get_production_tools():
+                if self.registry.get_tool(tool.metadata.name) is None:
+                    self.registry.register_tool(tool)
+        except Exception as e:
+            logger.warning(f"Failed to register production tools: {e}")
+
+        try:
+            from ai_karen_engine.tools.weather_tool import register_weather_tool
+
+            register_weather_tool(self)
+        except Exception as e:
+            logger.debug(f"Weather tool bootstrap skipped: {e}")
     
     async def execute_tool(self, tool_input: ToolInput) -> ToolOutput:
         """

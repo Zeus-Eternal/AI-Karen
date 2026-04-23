@@ -53,6 +53,11 @@ export default function SequencesPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [errorMsg, setErrorMsg] = React.useState("");
 
+  // State for the creation form
+  const [jobName, setJobName] = React.useState("");
+  const [jobDescription, setJobDescription] = React.useState("");
+  const [jobTrigger, setJobTrigger] = React.useState("Manual Run");
+
   const fetchJobs = useCallback(async () => {
     if (!isAuthenticated) {
       setJobs([]);
@@ -91,7 +96,7 @@ export default function SequencesPage() {
     { name: "Generate Header Image", description: "Uses an AI image generator to create a header image." },
   ];
   
-  // State for the mock form
+  // State for the task list
   const [newJobTasks, setNewJobTasks] = React.useState<SequenceTask[]>([
       { name: "Web Research", instructions: "{'topic': 'Latest AI advancements'}" },
       { name: "Write Article Draft", instructions: "Use a formal tone, 500 words." },
@@ -157,14 +162,29 @@ export default function SequencesPage() {
       setErrorMsg("Sign in to manage jobs.");
       return;
     }
+    if (!jobName.trim()) {
+      alert("Please provide a name for the job.");
+      return;
+    }
+    if (newJobTasks.length === 0) {
+      alert("Please add at least one task to the job.");
+      return;
+    }
+
     try {
       const { apiClient } = await import('@/lib/api');
       await apiClient.post('/api/automation/jobs/', {
-        name: "New Custom Job",
-        description: "A dynamically generated job workflow.",
+        name: jobName,
+        description: jobDescription,
         tasks: newJobTasks.map(t => ({ name: t.name, agent: "Configured Agent", instructions: t.instructions })),
-        trigger: "Manual Run"
+        trigger: jobTrigger
       });
+      
+      // Reset form
+      setJobName("");
+      setJobDescription("");
+      setNewJobTasks([]);
+      
       fetchJobs();
     } catch (err: unknown) {
       alert("Failed to create job: " + (err instanceof Error ? err.message : String(err)));
@@ -263,11 +283,31 @@ export default function SequencesPage() {
               <CardContent className="space-y-4">
                 <div className="space-y-1.5">
                     <Label htmlFor="job-name">Job Name</Label>
-                    <Input id="job-name" placeholder="e.g., Daily Content Pipeline" disabled />
+                    <Input 
+                      id="job-name" 
+                      placeholder="e.g., Daily Content Pipeline" 
+                      value={jobName}
+                      onChange={(e) => setJobName(e.target.value)}
+                    />
                 </div>
                 <div className="space-y-1.5">
                     <Label htmlFor="job-desc">Description</Label>
-                    <Textarea id="job-desc" placeholder="Describe the goal of this job." rows={2} disabled />
+                    <Textarea 
+                      id="job-desc" 
+                      placeholder="Describe the goal of this job." 
+                      rows={2} 
+                      value={jobDescription}
+                      onChange={(e) => setJobDescription(e.target.value)}
+                    />
+                </div>
+                <div className="space-y-1.5">
+                    <Label htmlFor="job-trigger">Trigger Type</Label>
+                    <Input 
+                      id="job-trigger" 
+                      placeholder="Manual Run, Cron, Event..." 
+                      value={jobTrigger}
+                      onChange={(e) => setJobTrigger(e.target.value)}
+                    />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Add Tasks to the Chain</Label>

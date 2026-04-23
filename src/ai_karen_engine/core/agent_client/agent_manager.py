@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 from pathlib import Path
 import json
 
-from ..recalls import RecallManager, RecallQuery
+from ..memory.retrieval import RecallManager, RecallQuery
 from ...tools.interpreters import BaseInterpreter, PythonInterpreter, DockerInterpreter, SubprocessInterpreter, IPythonInterpreter
 from ...tools.search import SearchTool
 from ...tools.documents import DocumentsTool

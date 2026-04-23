@@ -48,6 +48,16 @@ from ai_karen_engine.core.reasoning.synthesis.metacognition import (
     ReasoningStrategy,
     PerformanceMetrics,
 )
+from ai_karen_engine.core.reasoning.synthesis.small_language_model_service import (
+    SmallLanguageModelService,
+    SmallLanguageModelConfig,
+    ModelInfo,
+    SystemResources,
+    ScaffoldResult,
+    OutlineResult,
+    SummaryResult,
+    SmallLMHealthStatus,
+)
 
 # Alias for backward compatibility
 KariICEWrapper = PremiumICEWrapper
@@ -79,4 +89,12 @@ __all__ = [
     "CognitiveState",
     "ReasoningStrategy",
     "PerformanceMetrics",
+    "SmallLanguageModelService",
+    "SmallLanguageModelConfig",
+    "ModelInfo",
+    "SystemResources",
+    "ScaffoldResult",
+    "OutlineResult",
+    "SummaryResult",
+    "SmallLMHealthStatus",
 ]

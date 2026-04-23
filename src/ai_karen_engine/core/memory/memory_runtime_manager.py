@@ -1,853 +1,1377 @@
 """
-Unified MemoryManager: context recall and update
-- Postgres: Source of truth for all memory metadata
-- Redis: Ephemeral short-term cache and buffering (with RedisConnectionManager)
-- Zvec (Phase 2): Personal edge/offline RAG (per-user embedded DB)
-- Milvus/NeuroVault: Server-side vector semantic search
-- Elastic: Optional full-text search
-- DuckDB: Read-only analytics (NO WRITES - derived data only)
-- All ops logged/audited for observability
+Memory Runtime Manager for AI Karen.
 
-PHASE 2: Zvec Integration
-- Zvec adapter provides offline RAG capability
-- Hybrid search: Zvec (personal) + Milvus (shared)
-- Fallback logic: Zvec → Milvus → Redis → DuckDB
+This module is the adaptive-memory write authority and also preserves the
+legacy package-level API used by the rest of the application:
+- init_memory()
+- close()
+- recall_context()
+- update_memory()
+- export_promoted_artifacts()
+- get_metrics()
+
+The canonical write path is:
+extraction -> scoring -> ledger write -> projection dispatch -> offline synthesis.
 """
 
-from typing import Any, Dict, List, Optional
-import os
-import time
-import logging
-import json
-import threading
+from __future__ import annotations
+
 import asyncio
-from dataclasses import asdict
+import hashlib
+import logging
+import uuid
+from contextlib import suppress
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Sequence
 
-from ai_karen_engine.core.neuro_vault import NeuroVault
-from ai_karen_engine.core.memory.types import (
-    ArtifactPrivacyTag,
-    ArtifactSourceTier,
-    ArtifactTrainingEligibility,
-    ArtifactType,
-    RuntimeMemoryArtifact,
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
+
+from ..runtime.resilience import get_feature_flags
+from .ledger_models import (
+    ContradictionEvent,
+    ConsentScope,
+    MemoryAssertion,
+    MemoryEpisode,
+    MemoryEvent,
+    ProfileFact,
+    ProjectionStatus,
+    ReinforcementEvent,
+    RetentionPolicy,
 )
+from .scoring import MemoryWorthinessScorer
+from .signals import MemorySignal, get_signal_pipeline
 
-# ========== Logging ==========
-logger = logging.getLogger("kari.memory.manager")
-logger.setLevel(logging.INFO)
+logger = logging.getLogger(__name__)
 
-# ========== Backend Imports ==========
-try:
-    from ai_karen_engine.clients.database.milvus_client import (
-        recall_vectors,
-        store_vector,
-    )
-except ImportError:
-    recall_vectors = store_vector = None
 
-# PHASE 2: Zvec Integration (Edge/Offline RAG)
-try:
-    from ai_karen_engine.core.memory.adapters.zvec_neurovault_adapter import get_zvec_adapter
-    ZVEC_ADAPTER_AVAILABLE = True
-except ImportError:
-    ZVEC_ADAPTER_AVAILABLE = False
-    get_zvec_adapter = None
-    logger.warning("[MemoryManager] ZvecNeuroVaultAdapter not available (Phase 2 feature)")
-
-# Global Zvec adapter instance
-zvec_adapter = None
-
-try:
-    from ai_karen_engine.clients.database.postgres_client import PostgresClient
-except Exception:
-    PostgresClient = None
-
-try:
-    from ai_karen_engine.clients.database.duckdb_client import DuckDBClient
-except Exception:
-    DuckDBClient = None
-
-try:
-    from ai_karen_engine.clients.database.elastic_client import ElasticClient
-except Exception:
-    ElasticClient = None
-
-# Use RedisConnectionManager for proper health monitoring and degraded mode
-try:
-    from ai_karen_engine.memory.redis_connection_manager import (
-        RedisConnectionManager,
-        get_redis_manager,
-        initialize_redis_manager
-    )
-    REDIS_MANAGER_AVAILABLE = True
-except ImportError:
-    try:
-        from ai_karen_engine.infra.redis_connection_manager import (
-            RedisConnectionManager,
-            get_redis_manager,
-            initialize_redis_manager
-        )
-        REDIS_MANAGER_AVAILABLE = True
-    except ImportError:
-
-        RedisConnectionManager = None
-        get_redis_manager = None
-        initialize_redis_manager = None
-        REDIS_MANAGER_AVAILABLE = False
-        logger.warning("[MemoryManager] RedisConnectionManager not available")
-
-# Redis manager instance (replaces basic redis_client)
-redis_manager: Optional[RedisConnectionManager] = None
-
-try:
-    import duckdb
-except ImportError:
-    duckdb = None
-
-# ========== Metrics ==========
 _METRICS: Dict[str, int] = {
-    "memory_store_total": 0,
-    "memory_recall_total": 0,
+    "interactions_processed": 0,
+    "signals_extracted": 0,
+    "signals_admitted": 0,
+    "ledger_writes": 0,
+    "ledger_duplicates": 0,
+    "projection_dispatches": 0,
+    "projection_failures": 0,
+    "profile_synthesis_requests": 0,
+    "echocore_candidates": 0,
+    "recall_requests": 0,
+    "recall_hits": 0,
+    "shadow_mode_runs": 0,
+    "inspector_requests": 0,
+    "consent_updates": 0,
+    "retention_updates": 0,
 }
 
 
-def get_metrics() -> Dict[str, int]:
-    """Return a copy of the current memory metrics."""
-    return dict(_METRICS)
-
-try:
-    from prometheus_client import Counter
-    from ai_karen_engine.integrations.llm_utils import PROM_REGISTRY
-
-    MEM_STORE_COUNT = Counter(
-        "memory_store_total",
-        "Total memory store operations",
-        registry=PROM_REGISTRY,
-    )
-    MEM_RECALL_COUNT = Counter(
-        "memory_recall_total",
-        "Total memory recall operations",
-        registry=PROM_REGISTRY,
-    )
-except Exception:  # pragma: no cover - optional dependency
-    class _DummyCounter:
-        def inc(self, amount: int = 1) -> None:
-            pass
-
-    MEM_STORE_COUNT = MEM_RECALL_COUNT = _DummyCounter()
-
-def _inc(name: str, amount: int = 1) -> None:
-    _METRICS[name] = _METRICS.get(name, 0) + amount
-
-# ========== Backend Init ==========
-postgres = PostgresClient(use_sqlite=True) if PostgresClient else None
-duckdb_path = os.getenv("DUCKDB_PATH", "kari_mem.duckdb")
-pg_syncer: "PostgresSyncer | None" = None
-
-# Redis buffer configuration
-REDIS_BUFFER_KEY_PREFIX = "kari:mem:buffer"
-REDIS_BUFFER_TTL = 3600  # 1 hour TTL for buffered entries
-
-# ---- Postgres Syncer with Redis Buffer ----
-class PostgresSyncer:
-    """
-    Background checker and Redis-to-Postgres flusher.
-
-    ARCHITECTURAL COMPLIANCE:
-    - Uses Redis for ephemeral buffering (NOT DuckDB)
-    - DuckDB is read-only for analytics only
-    - Postgres is source of truth
-    """
-
-    def __init__(self, client: PostgresClient, redis_mgr: Optional[RedisConnectionManager], interval: float = 5.0) -> None:
-        self.client = client
-        self.redis_mgr = redis_mgr
-        self.interval = interval
-        self.postgres_available = client.health() if client else False
-        self._timer: Optional[threading.Timer] = None
-        self._lock = threading.Lock()
-
-    def start(self) -> None:
-        if not self.client:
-            return
-        with self._lock:
-            if self._timer is None:
-                self._timer = threading.Timer(self.interval, self._loop)
-                self._timer.daemon = True
-                self._timer.start()
-
-    def _loop(self) -> None:
-        with self._lock:
-            self._timer = None
-        self.run_once()
-        self.start()
-
-    def run_once(self) -> None:
-        if not self.client:
-            return
-        healthy = False
-        try:
-            healthy = self.client.health()
-        except Exception as ex:
-            logger.warning(f"[MemoryManager] Postgres health check failed: {ex}")
-        if healthy:
-            if not self.postgres_available:
-                logger.info("[MemoryManager] Postgres reconnected; flushing Redis buffer")
-                self.postgres_available = True
-                # Flush Redis buffer → Postgres (replaces DuckDB flush)
-                if self.redis_mgr:
-                    asyncio.run(flush_redis_to_postgres(self.client, self.redis_mgr))
-        else:
-            if self.postgres_available:
-                logger.warning("[MemoryManager] Postgres connection lost, buffering to Redis")
-            self.postgres_available = False
-
-    def mark_unavailable(self) -> None:
-        self.postgres_available = False
-
-    def stop(self) -> None:
-        with self._lock:
-            if self._timer is not None:
-                self._timer.cancel()
-                self._timer = None
+def _coerce_uuid(value: Any) -> uuid.UUID:
+    if isinstance(value, uuid.UUID):
+        return value
+    return uuid.UUID(str(value))
 
 
-async def flush_redis_to_postgres(client: PostgresClient, redis_mgr: RedisConnectionManager) -> None:
-    """
-    Flush Redis buffer entries to Postgres.
-
-    ARCHITECTURAL COMPLIANCE:
-    - Redis is ephemeral buffer, NOT source of truth
-    - All buffered entries replayed to Postgres
-    - DuckDB NOT used for buffering
-    """
-    if not client or not redis_mgr:
-        return
-
-    try:
-        # Scan for buffered memory entries
-        # Pattern: kari:mem:buffer:{tenant_id}:{user_id}:{timestamp}
-        buffer_keys = []
-        cursor = 0
-
-        # Note: redis-py scan returns (cursor, keys)
-        # We'll use a simple approach - get all buffer keys
-        # In production, consider pagination for large buffers
-
-        # For now, we'll get keys via pattern matching
-        # RedisConnectionManager doesn't expose scan directly, so we'll use exists check
-        # This is a simplified implementation - in production, add scan support to RedisConnectionManager
-
-        logger.info("[MemoryManager] Redis buffer flush: scanning for buffered entries")
-
-        # We'll fetch keys by checking a known set
-        # For proper implementation, need to add scan() method to RedisConnectionManager
-        # For now, log that we attempted flush
-
-        logger.info("[MemoryManager] Redis buffer flush completed (scan not yet implemented)")
-
-        # TODO: Implement proper scan/replay logic:
-        # 1. Scan Redis for kari:mem:buffer:* keys
-        # 2. For each key, deserialize entry
-        # 3. Write to Postgres
-        # 4. Delete key from Redis on success
-
-    except Exception as ex:
-        logger.warning(f"[MemoryManager] Redis buffer flush error: {ex}")
-
-
-def init_memory() -> None:
-    """Initialize memory backends and start background syncer."""
-    global pg_syncer, redis_manager, zvec_adapter
-
-    # Initialize Redis manager (replaces basic redis client)
-    if REDIS_MANAGER_AVAILABLE and redis_manager is None:
-        try:
-            # Try to get existing manager or create new one
-            redis_manager = get_redis_manager()
-            if redis_manager and not redis_manager._client:
-                # Manager exists but not initialized, initialize it
-                asyncio.run(redis_manager.initialize())
-            logger.info("[MemoryManager] RedisConnectionManager initialized")
-        except Exception as ex:
-            logger.warning(f"[MemoryManager] RedisConnectionManager initialization failed: {ex}")
-            redis_manager = None
-
-    # Initialize Postgres syncer with Redis buffer support
-    if postgres and pg_syncer is None:
-        pg_syncer = PostgresSyncer(postgres, redis_manager)
-        pg_syncer.start()
-
-    # PHASE 2: Initialize Zvec Adapter
-    if ZVEC_ADAPTER_AVAILABLE and zvec_adapter is None:
-        try:
-            zvec_adapter = get_zvec_adapter(
-                enable_hybrid_search=True,
-                enable_fallback=True,
-                pii_scrubbing=True,
-                rbac_enabled=True,
-            )
-            if zvec_adapter:
-                logger.info("[MemoryManager] ZvecNeuroVaultAdapter initialized (Phase 2)")
-            else:
-                logger.warning("[MemoryManager] Zvec adapter factory returned None")
-        except Exception as ex:
-            logger.warning(f"[MemoryManager] ZvecNeuroVaultAdapter initialization failed: {ex}")
-            zvec_adapter = None
-
-# NeuroVault vector index
-neuro_vault = NeuroVault()
-
-
-# ========== Redis Helper Functions ==========
-async def _recall_from_redis(key: str, limit: int) -> Optional[List[Dict[str, Any]]]:
-    """Helper to recall from Redis using RedisConnectionManager."""
-    if not redis_manager:
+def _coerce_datetime(value: Any) -> Optional[datetime]:
+    if value is None:
         return None
-
-    try:
-        records = []
-        # Get list of memory entries
-        for i in range(limit):
-            value = await redis_manager.get(f"{key}:{i}")
-            if value:
-                try:
-                    records.append(json.loads(value))
-                except json.JSONDecodeError as jex:
-                    logger.warning(f"[MemoryManager] Redis JSON decode error: {jex}")
-            else:
-                break  # No more entries
-        return records if records else None
-    except Exception as ex:
-        logger.warning(f"[MemoryManager] Redis recall helper failed: {ex}")
-        return None
-
-
-async def _store_to_redis(key: str, entry: Dict[str, Any], ttl: int = REDIS_BUFFER_TTL) -> bool:
-    """Helper to store entry in Redis with TTL."""
-    if not redis_manager:
-        return False
-
-    try:
-        value = json.dumps(entry)
-        return await redis_manager.set(key, value, ex=ttl)
-    except Exception as ex:
-        logger.warning(f"[MemoryManager] Redis store helper failed: {ex}")
-        return False
-
-
-async def _buffer_to_redis(entry: Dict[str, Any]) -> bool:
-    """
-    Buffer memory entry to Redis when Postgres is unavailable.
-
-    ARCHITECTURAL COMPLIANCE:
-    - Redis is ephemeral buffer (NOT DuckDB)
-    - Entries have TTL (1 hour default)
-    - Replayed to Postgres when connectivity restored
-    """
-    if not redis_manager:
-        return False
-
-    try:
-        tenant_id = entry.get("tenant_id", "default")
-        user_id = entry.get("user_id", "anonymous")
-        timestamp = entry.get("timestamp", int(time.time()))
-
-        # Store with unique key
-        buffer_key = f"{REDIS_BUFFER_KEY_PREFIX}:{tenant_id}:{user_id}:{timestamp}"
-        return await _store_to_redis(buffer_key, entry, ttl=REDIS_BUFFER_TTL)
-    except Exception as ex:
-        logger.warning(f"[MemoryManager] Redis buffering failed: {ex}")
-        return False
-
-
-async def close() -> None:
-    """Clean up memory manager resources."""
-    global pg_syncer, postgres, redis_manager
-
-    if pg_syncer:
-        try:
-            pg_syncer.stop()
-        except Exception as ex:  # pragma: no cover - defensive
-            logger.warning(f"[MemoryManager] Postgres syncer stop failed: {ex}")
-        pg_syncer = None
-
-    if postgres:
-        try:
-            conn = getattr(postgres, "conn", None)
-            if conn:
-                conn.close()
-        except Exception as ex:  # pragma: no cover - defensive
-            logger.warning(f"[MemoryManager] Postgres close failed: {ex}")
-        postgres = None
-
-    if redis_manager:
-        try:
-            await redis_manager.close()
-            logger.info("[MemoryManager] RedisConnectionManager closed")
-        except Exception as ex:  # pragma: no cover - defensive
-            logger.warning(f"[MemoryManager] Redis manager close failed: {ex}")
-        redis_manager = None
-
-    index = getattr(neuro_vault, "index", None)
-    if index and hasattr(index, "disconnect"):
-        try:
-            await index.disconnect()
-        except Exception as ex:  # pragma: no cover - defensive
-            logger.warning(f"[MemoryManager] NeuroVault disconnect failed: {ex}")
-
-# ====== Context Recall ======
-def recall_context(
-    user_ctx: Dict[str, Any], query: str, limit: int = 10, tenant_id: Optional[str] = None
-) -> Optional[List[Dict[str, Any]]]:
-    """
-    Recall the most relevant context for user/query from the memory stack.
-    
-    PHASE 2: Enhanced Priority with Zvec:
-    1. Zvec (Edge/Offline RAG) - NEW!
-    2. NeuroVault (Hybrid Search)
-    3. ElasticSearch (Optional)
-    4. Milvus (Server-side vectors)
-    5. Postgres
-    6. Redis
-    7. DuckDB (Analytics only)
-    """
-    _inc("memory_recall_total")
-    MEM_RECALL_COUNT.inc()
-    tenant_id = tenant_id or user_ctx.get("tenant_id")
-    user_id = user_ctx.get("user_id") or "anonymous"
-
-    # PHASE 2: 0. Zvec (Edge/Offline RAG)
-    if zvec_adapter:
-        try:
-            result = zvec_adapter.retrieve_context(
-                user_id=user_id,
-                query=query,
-                top_k=limit,
-                tenant_id=tenant_id,
-                hybrid_search=True,
-            )
-            if result and result.memories:
-                records = result.memories
-                logger.info(
-                    f"[MemoryManager] Zvec recall: {len(records)} results for user {user_id} "
-                    f"(zvec={result.sources.get('zvec_count', 0)}, "
-                    f"milvus={result.sources.get('milvus_count', 0)})"
-                )
-                return records
-        except Exception as ex:
-            logger.warning(f"[MemoryManager] Zvec recall failed: {ex}")
-
-    # 1. NeuroVault vector recall
-    try:
-        records = neuro_vault.query(user_id, query, top_k=limit)
-        if records:
-            logger.info(
-                f"[MemoryManager] NeuroVault recall: {len(records)} results for user {user_id}"
-            )
-            return records
-    except Exception as ex:
-        logger.warning(f"[MemoryManager] NeuroVault recall failed: {ex}")
-
-    # 1. ElasticSearch (optional, semantic/keyword)
-    if ElasticClient:
-        try:
-            es_host = os.getenv("ELASTIC_HOST", "localhost")
-            es_port = int(os.getenv("ELASTIC_PORT", "9200"))
-            es_index = os.getenv("ELASTIC_INDEX", "kari_memory")
-            es_user = os.getenv("ELASTIC_USER")
-            es_password = os.getenv("ELASTIC_PASSWORD")
-            es = ElasticClient(es_host, es_port, es_index, es_user, es_password)
-            records = es.search(user_id, query, limit=limit, tenant_id=tenant_id or "")
-            if records:
-                logger.info(
-                    f"[MemoryManager] Elastic recall: {len(records)} results for user {user_id}"
-                )
-                return records
-        except Exception as ex:
-            logger.warning(f"[MemoryManager] Elastic recall failed: {ex}")
-
-    # 2. Milvus
-    if recall_vectors:
-        try:
-            vec_results = recall_vectors(user_id, query, top_k=limit, tenant_id=tenant_id)
-            records = []
-            for r in vec_results:
-                meta = postgres.get_by_vector(r.get("id")) if postgres else None
-                records.append(meta or r)
-            if records:
-                logger.info(
-                    f"[MemoryManager] Milvus recall: {len(records)} results for user {user_id}"
-                )
-                return records
-        except Exception as ex:
-            logger.warning(f"[MemoryManager] Milvus recall failed: {ex}")
-
-    # 3. Postgres
-    if postgres and pg_syncer and pg_syncer.postgres_available:
-        try:
-            db_results = postgres.recall_memory(
-                user_id=user_id, query=query, limit=limit, tenant_id=tenant_id
-            )
-            if db_results:
-                logger.info(
-                    f"[MemoryManager] Postgres recall: {len(db_results)} results for user {user_id}"
-                )
-                return db_results
-        except Exception as ex:
-            logger.warning(f"[MemoryManager] Postgres recall failed: {ex}")
-
-    # 4. Redis (using RedisConnectionManager)
-    if redis_manager:
-        try:
-            key = f"kari:mem:{tenant_id}:{user_id}" if tenant_id else f"kari:mem:{user_id}"
-            # Use async context with asyncio.run for compatibility
-            records = asyncio.run(_recall_from_redis(key, limit))
-            if records:
-                logger.info(
-                    f"[MemoryManager] Redis recall: {len(records)} results for user {user_id}"
-                )
-                return records
-        except Exception as ex:
-            logger.warning(f"[MemoryManager] Redis recall failed: {ex}")
-
-    # 5. DuckDB (READ-ONLY analytics - NO WRITES)
-    # DuckDB is for derived/analytical queries only, not source of truth
-    if duckdb:
-        try:
-            con = duckdb.connect(duckdb_path, read_only=True)
-            # Only read from DuckDB for analytics/reporting
-            # This query reads exported data for analysis only
-            query_sql = """
-                SELECT * FROM memory_analytics
-                WHERE user_id = ?
-                """
-            if tenant_id:
-                query_sql += " AND tenant_id = ?"
-            query_sql += """
-                ORDER BY timestamp DESC
-                LIMIT ?
-            """
-            params = [user_id]
-            if tenant_id:
-                params.append(tenant_id)
-            params.append(limit)
-            res = con.execute(query_sql, params).fetchdf()
-            records = res.to_dict("records")
-            if records:
-                logger.info(
-                    f"[MemoryManager] DuckDB analytics recall: {len(records)} results for user {user_id}"
-                )
-                return records
-        except Exception as ex:
-            logger.warning(f"[MemoryManager] DuckDB analytics recall failed: {ex}")
-
-    logger.info(
-        f"[MemoryManager] No recall results for user {user_id} (all backends empty)"
-    )
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        with suppress(ValueError):
+            return datetime.fromisoformat(value)
     return None
 
-# ====== EchoCore Export Helpers ======
-def _coerce_privacy_tags(raw_tags: Any) -> List[ArtifactPrivacyTag]:
-    tags: List[ArtifactPrivacyTag] = []
-    if not raw_tags:
-        return tags
-    for tag in raw_tags:
+
+def _json_safe(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {str(key): _json_safe(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, tuple):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, (uuid.UUID, datetime)):
+        return str(value)
+    if hasattr(value, "value") and not isinstance(value, (str, bytes)):
         try:
-            tags.append(ArtifactPrivacyTag(str(tag).lower()))
+            return value.value
         except Exception:
-            continue
-    return tags
+            return str(value)
+    return value
 
 
-def _infer_artifact_type(query: str, result: Any, entry: Dict[str, Any]) -> ArtifactType:
-    text = " ".join(
-        [
-            query or "",
-            json.dumps(result, default=str) if not isinstance(result, str) else result,
-            json.dumps(entry, default=str),
-        ]
-    ).lower()
+class MemoryRuntimeManager:
+    """Single write authority for Karen's memory system."""
 
-    if any(k in text for k in ["prefer", "preference", "like ", "dislike", "favorite", "favourite"]):
-        return ArtifactType.USER_PREFERENCE
-    if any(k in text for k in ["project", "roadmap", "architecture", "migration", "task plan"]):
-        return ArtifactType.PROJECT_MEMORY
-    if any(k in text for k in ["fact", "is ", " are ", "was ", "were ", "known"]) or entry.get("ag_ui_type") == "fact":
-        return ArtifactType.LONG_TERM_FACT
-    return ArtifactType.EPISODIC_EVENT
+    def __init__(self):
+        self.signal_pipeline = get_signal_pipeline()
+        self.worthiness_scorer = MemoryWorthinessScorer()
+        self.flags = get_feature_flags()
+        self._db_session_factory = None
+        self._projection_workers: Optional[Dict[str, Any]] = None
+        self._background_tasks: set[asyncio.Task[Any]] = set()
 
+    def set_db_session_factory(self, factory):
+        """Set the SQLAlchemy async session factory."""
+        self._db_session_factory = factory
 
-def _build_runtime_memory_artifacts(
-    user_ctx: Dict[str, Any],
-    query: str,
-    result: Any,
-    entry: Dict[str, Any],
-) -> List[RuntimeMemoryArtifact]:
-    user_id = user_ctx.get("user_id") or "anonymous"
-    tenant_id = user_ctx.get("tenant_id")
-    session_id = user_ctx.get("session_id")
-    thread_id = user_ctx.get("thread_id")
-    privacy_tags = _coerce_privacy_tags(entry.get("privacy_tags") or entry.get("metadata", {}).get("privacy_tags"))
-    artifact_type = _infer_artifact_type(query, result, entry)
-    importance = float(entry.get("importance_score") or entry.get("confidence") or 0.0)
-    retention = float(entry.get("retention_score") or entry.get("relevance_score") or importance)
+    def _ensure_db_session_factory(self) -> None:
+        """Try to bind the runtime manager to the application's async DB session."""
+        if self._db_session_factory is not None:
+            return
 
-    training_eligibility = ArtifactTrainingEligibility.REVIEW
-    if any(tag in {ArtifactPrivacyTag.RESTRICTED, ArtifactPrivacyTag.NO_TRAINING} for tag in privacy_tags):
-        training_eligibility = ArtifactTrainingEligibility.INELIGIBLE
-    elif artifact_type in {
-        ArtifactType.LONG_TERM_FACT,
-        ArtifactType.USER_PREFERENCE,
-        ArtifactType.PROJECT_MEMORY,
-    } and importance >= 0.75:
-        training_eligibility = ArtifactTrainingEligibility.ELIGIBLE
+        try:
+            from ai_karen_engine.database.client import db_client
 
-    base_artifact_id = str(entry.get("artifact_id") or entry.get("id") or f"{user_id}-{int(entry['timestamp'])}")
-    content = {
-        "query": query,
-        "result": result,
-        "memory_entry": entry,
-    }
-    metadata = dict(entry.get("metadata", {}) or {})
+            if db_client and hasattr(db_client, "get_async_session"):
+                self._db_session_factory = db_client.get_async_session
+                logger.info("Bound memory runtime manager to the database async session factory")
+        except Exception as exc:
+            logger.debug("Database session factory could not be auto-bound: %s", exc)
 
-    artifacts = [
-        RuntimeMemoryArtifact(
-            artifact_id=base_artifact_id,
-            artifact_type=artifact_type,
-            source_tier=ArtifactSourceTier.EPISODIC,
-            user_id=user_id,
-            tenant_id=tenant_id,
-            session_id=session_id,
-            thread_id=thread_id,
-            content=content,
-            importance_score=importance,
-            retention_score=retention,
-            privacy_tags=privacy_tags,
-            training_eligibility=training_eligibility,
-            metadata=metadata,
+    async def recall_context(
+        self,
+        user_id: Any,
+        query: str,
+        top_k: int = 10,
+        tiers: Optional[Sequence[str]] = None,
+        tenant_id: Optional[str] = None,
+        include_embeddings: bool = False,
+        **kwargs,
+    ) -> Dict[str, Any]:
+        """
+        Synthesize context recall by querying the PostgreSQL ledger.
+        Legacy-compatible wrapper for cognitive routes and context assembly.
+        """
+        _METRICS["recall_requests"] += 1
+        self._ensure_db_session_factory()
+        
+        if not self._db_session_factory:
+            return {"results": [], "status": "degraded", "reason": "database unavailable"}
+
+        user_uuid = _coerce_uuid(user_id) if not isinstance(user_id, dict) else _coerce_uuid(user_id.get("user_id") or user_id.get("id"))
+        tenant_uuid = _coerce_uuid(tenant_id) if tenant_id else None
+        
+        async with self._db_session_factory() as session:
+            # Simple lexical-ish fallback query on the ledger for now
+            # Phase 8 will implement the full Hybrid Retrieval Router
+            stmt = select(MemoryAssertion).where(MemoryAssertion.user_id == user_uuid)
+            if tenant_uuid:
+                stmt = stmt.where(MemoryAssertion.tenant_id == tenant_uuid)
+            
+            # Simple content filter if query provided
+            if query and len(query) > 2:
+                stmt = stmt.where(MemoryAssertion.content.ilike(f"%{query}%"))
+                
+            stmt = stmt.order_by(MemoryAssertion.created_at.desc()).limit(top_k)
+            result = await session.execute(stmt)
+            items = result.scalars().all()
+            
+            formatted = []
+            for item in items:
+                formatted.append({
+                    "id": str(item.assertion_id),
+                    "content": item.content,
+                    "confidence": item.confidence,
+                    "timestamp": item.created_at.timestamp(),
+                    "memory_type": "assertion"
+                })
+                
+            _METRICS["recall_hits"] += len(formatted)
+            return {
+                "results": formatted, 
+                "status": "success", 
+                "count": len(formatted)
+            }
+
+    def _schedule_background(self, coro: Any) -> None:
+        """Schedule a background task if an event loop is running."""
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            logger.debug("No running event loop; skipping background task scheduling.")
+            return
+
+        task = loop.create_task(coro)
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
+
+    def _hash_payload(self, text: str) -> str:
+        return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+    def _hash_idempotency_key(
+        self,
+        tenant_id: str,
+        user_id: str,
+        source_type: str,
+        source_ref: Optional[str],
+        signal: MemorySignal,
+    ) -> str:
+        raw = "|".join(
+            [
+                tenant_id,
+                user_id,
+                source_type,
+                source_ref or "",
+                signal.signal_type,
+                signal.text,
+                signal.metadata.get("origin", ""),
+            ]
         )
-    ]
+        return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
-    if artifact_type in {
-        ArtifactType.LONG_TERM_FACT,
-        ArtifactType.USER_PREFERENCE,
-        ArtifactType.PROJECT_MEMORY,
-    } or retention >= 0.8:
-        artifacts.append(
-            RuntimeMemoryArtifact(
-                artifact_id=f"{base_artifact_id}-ltm",
-                artifact_type=artifact_type,
-                source_tier=ArtifactSourceTier.LTM,
-                user_id=user_id,
-                tenant_id=tenant_id,
-                session_id=session_id,
-                thread_id=thread_id,
-                content=content,
-                importance_score=importance,
-                retention_score=retention,
-                privacy_tags=privacy_tags,
-                training_eligibility=training_eligibility,
+    async def process_interaction(
+        self,
+        text: str,
+        tenant_id: str,
+        user_id: str,
+        source_type: str = "chat",
+        source_ref: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Process an interaction, extract signals, and manage memory.
+        """
+        _METRICS["interactions_processed"] += 1
+        self._ensure_db_session_factory()
+
+        extraction_result = await self.signal_pipeline.process_text(
+            text=text, tenant_id=tenant_id, user_id=user_id
+        )
+        _METRICS["signals_extracted"] += len(extraction_result.signals)
+
+        admitted_signals: List[Dict[str, Any]] = []
+        for signal in extraction_result.signals:
+            worthiness = await self.worthiness_scorer.evaluate(
+                signal.text, signal.signal_type
+            )
+
+            if worthiness["is_worthy"]:
+                admitted_signals.append({"signal": signal, "score": worthiness["score"]})
+            else:
+                logger.debug(
+                    "Signal discarded (score %s < %s): %s",
+                    worthiness["score"],
+                    worthiness["threshold"],
+                    signal.text[:80],
+                )
+
+        shadow_mode = self.flags.is_enabled(
+            "memory_shadow_mode_enabled", tenant_id, user_id
+        )
+        learning_enabled = self.flags.is_enabled(
+            "memory_learning_enabled", tenant_id, user_id
+        )
+        persist_enabled = bool(admitted_signals) and learning_enabled and not shadow_mode
+
+        if persist_enabled:
+            await self._commit_to_ledger(
+                admitted_signals,
+                tenant_id,
+                user_id,
+                source_type,
+                source_ref,
                 metadata=metadata,
             )
-        )
+        elif admitted_signals:
+            _METRICS["shadow_mode_runs"] += 1
 
-    return artifacts
+        status = "success"
+        if shadow_mode or not learning_enabled:
+            status = "shadow"
+        if extraction_result.status != "success" or (
+            extraction_result.signals and not admitted_signals
+        ):
+            status = "degraded"
+        if extraction_result.status == "failed":
+            status = "failed"
 
-
-def export_promoted_artifacts(
-    user_ctx: Dict[str, Any], query: str, result: Any, entry: Dict[str, Any]
-) -> List[RuntimeMemoryArtifact]:
-    """Normalize runtime memory output into EchoCore-ready artifacts."""
-    return _build_runtime_memory_artifacts(user_ctx, query, result, entry)
-
-
-def _artifact_to_write_result_payload(artifact: RuntimeMemoryArtifact) -> Dict[str, Any]:
-    payload = asdict(artifact)
-    payload["artifact_type"] = artifact.artifact_type.value
-    payload["source_tier"] = artifact.source_tier.value
-    payload["privacy_tags"] = [tag.value for tag in artifact.privacy_tags]
-    payload["training_eligibility"] = artifact.training_eligibility.value
-    payload["record_type"] = artifact.artifact_type.value
-    return payload
-
-
-def _ingest_artifacts_to_echocore(
-    user_ctx: Dict[str, Any], artifacts: List[RuntimeMemoryArtifact]
-) -> None:
-    if not artifacts:
-        return
-
-    try:
-        from ai_karen_engine.echocore.factory import get_echocore_factory
-
-        user_id = user_ctx.get("user_id") or "anonymous"
-        factory = get_echocore_factory()
-        echo_manager = factory.create_echo_manager(user_id)
-        bridge = factory.create_runtime_to_echo_bridge(user_id)
-
-        write_result = {
-            "episodic_records": [
-                _artifact_to_write_result_payload(artifact)
-                for artifact in artifacts
-                if artifact.artifact_type
-                in {
-                    ArtifactType.EPISODIC_EVENT,
-                    ArtifactType.METADATA_SIGNAL,
-                }
-            ],
-            "promoted_ltm_records": [
-                _artifact_to_write_result_payload(artifact)
-                for artifact in artifacts
-                if artifact.artifact_type
-                in {
-                    ArtifactType.LONG_TERM_FACT,
-                    ArtifactType.USER_PREFERENCE,
-                    ArtifactType.PROJECT_MEMORY,
-                    ArtifactType.TRAINING_CANDIDATE,
-                }
-            ],
-            "shadow_records": [
-                _artifact_to_write_result_payload(artifact)
-                for artifact in artifacts
-                if any(tag == ArtifactPrivacyTag.RESTRICTED for tag in artifact.privacy_tags)
-            ],
+        return {
+            "extracted": len(extraction_result.signals),
+            "admitted": len(admitted_signals),
+            "persisted": len(admitted_signals) if persist_enabled else 0,
+            "shadow_mode": shadow_mode,
+            "learning_enabled": learning_enabled,
+            "status": status,
+            "errors": list(extraction_result.errors),
+            "processing_time_ms": extraction_result.processing_time_ms,
         }
 
-        if any(write_result.values()):
-            asyncio.run(bridge.ingest_write_result(write_result, echo_manager))
-    except Exception as ex:
-        logger.warning(f"[MemoryManager] EchoCore ingest failed: {ex}")
+    async def _commit_to_ledger(
+        self,
+        admitted_signals: Sequence[Dict[str, Any]],
+        tenant_id: str,
+        user_id: str,
+        source_type: str,
+        source_ref: Optional[str],
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Write to Postgres ledger and enqueue projections."""
+        if not self._db_session_factory:
+            logger.warning("DB session factory not set. Cannot commit memory to ledger.")
+            return
 
-# ====== Context Write ======
-def update_memory(
-    user_ctx: Dict[str, Any], query: str, result: Any, tenant_id: Optional[str] = None
-) -> bool:
-    """
-    Store context/result to all available memory backends.
-    Returns True if at least one backend succeeds.
-    """
-    _inc("memory_store_total")
-    MEM_STORE_COUNT.inc()
-    tenant_id = tenant_id or user_ctx.get("tenant_id")
-    user_id = user_ctx.get("user_id") or "anonymous"
-    session_id = user_ctx.get("session_id")
-    entry = {
-        "tenant_id": tenant_id,
-        "user_id": user_id,
-        "session_id": session_id,
-        "query": query,
-        "result": result,
-        "timestamp": int(time.time()),
-    }
-    ok = False
-    vector_id = None
-    postgres_ok = False
+        tenant_uuid = _coerce_uuid(tenant_id)
+        user_uuid = _coerce_uuid(user_id)
+        committed_events: List[Dict[str, Any]] = []
 
-    # 0. NeuroVault index
-    try:
-        neuro_vault.index_text(user_id, query, {"result": result})
-    except Exception as ex:
-        logger.warning(f"[MemoryManager] NeuroVault index failed: {ex}")
+        async with self._db_session_factory() as session:
+            for item in admitted_signals:
+                signal: MemorySignal = item["signal"]
+                score: float = float(item["score"])
+                merged_metadata = dict(signal.metadata or {})
+                if metadata:
+                    merged_metadata.update(metadata)
+                event_id = uuid.uuid4()
+                payload_hash = self._hash_payload(signal.text)
+                idempotency_key = self._hash_idempotency_key(
+                    tenant_id, user_id, source_type, source_ref, signal
+                )
+                signal_payload = {
+                    "text": signal.text,
+                    "type": signal.signal_type,
+                    "entities": _json_safe(signal.entities),
+                    "keywords": _json_safe(signal.keywords),
+                    "metadata": _json_safe(merged_metadata),
+                }
 
-    # 1. Milvus
-    if store_vector:
-        try:
-            vector_id = store_vector(user_id, query, result, tenant_id=tenant_id)
-            ok = True
-            logger.info(f"[MemoryManager] Milvus stored vector for user {user_id}")
-        except Exception as ex:
-            logger.warning(f"[MemoryManager] Milvus store failed: {ex}")
+                try:
+                    event = MemoryEvent(
+                        event_id=event_id,
+                        tenant_id=tenant_uuid,
+                        user_id=user_uuid,
+                        source_type=source_type,
+                        source_ref=source_ref or merged_metadata.get("source_ref"),
+                        payload_hash=payload_hash,
+                        idempotency_key=idempotency_key,
+                        confidence=score,
+                        scope=signal.scope,
+                        sensitivity_class=str(merged_metadata.get("sensitivity_class", "normal")),
+                        consent_state=str(merged_metadata.get("consent_state", "granted")),
+                        event_type="signal_extracted",
+                        payload=signal_payload,
+                    )
+                    session.add(event)
 
-    # 2. Postgres (if available, else buffer in DuckDB)
-    if postgres and pg_syncer and pg_syncer.postgres_available:
-        try:
-            postgres.upsert_memory(
-                vector_id or -1,
-                tenant_id or "",
-                user_id,
-                session_id,
-                query,
-                result,
-                entry["timestamp"],
+                    if signal.signal_type == "preference":
+                        fact = ProfileFact(
+                            event_id=event_id,
+                            tenant_id=tenant_uuid,
+                            user_id=user_uuid,
+                            category="preference",
+                            attribute=str(merged_metadata.get("attribute", "user_preference")),
+                            value={
+                                "text": signal.text,
+                                "keywords": signal.keywords,
+                                "entities": signal.entities,
+                            },
+                            confidence=score,
+                            source_type=source_type,
+                            source_ref=source_ref or merged_metadata.get("source_ref"),
+                        )
+                        session.add(fact)
+                        derived_record = {
+                            "kind": "profile_fact",
+                            "profile_fact_id": str(fact.fact_id),
+                        }
+                    else:
+                        assertion = MemoryAssertion(
+                            event_id=event_id,
+                            tenant_id=tenant_uuid,
+                            user_id=user_uuid,
+                            content=signal.text,
+                            confidence=score,
+                            scope=signal.scope,
+                            sensitivity_class=str(
+                                merged_metadata.get("sensitivity_class", "normal")
+                            ),
+                            consent_state=str(merged_metadata.get("consent_state", "granted")),
+                            valid_from=_coerce_datetime(merged_metadata.get("valid_from")),
+                            valid_to=_coerce_datetime(merged_metadata.get("valid_to")),
+                            supersedes=(
+                                _coerce_uuid(merged_metadata["supersedes"])
+                                if merged_metadata.get("supersedes")
+                                else None
+                            ),
+                        )
+                        session.add(assertion)
+                        derived_record = {
+                            "kind": "memory_assertion",
+                            "assertion_id": str(assertion.assertion_id),
+                        }
+
+                    if merged_metadata.get("reinforces"):
+                        session.add(
+                            ReinforcementEvent(
+                                event_id=event_id,
+                                target_assertion_id=_coerce_uuid(
+                                    merged_metadata["reinforces"]
+                                ),
+                                weight=float(merged_metadata.get("reinforcement_weight", 0.1)),
+                            )
+                        )
+
+                    if merged_metadata.get("contradicts"):
+                        target_id = _coerce_uuid(merged_metadata["contradicts"])
+                        session.add(
+                            ContradictionEvent(
+                                event_id=event_id,
+                                source_assertion_id=target_id,
+                                target_assertion_id=target_id,
+                                resolution_status="open",
+                            )
+                        )
+
+                    summary = merged_metadata.get("episode_summary") or signal.text[:160]
+                    session.add(
+                        MemoryEpisode(
+                            event_id=event_id,
+                            tenant_id=tenant_uuid,
+                            user_id=user_uuid,
+                            session_id=merged_metadata.get("session_id"),
+                            summary=summary,
+                            snapshot_data={
+                                "event_id": str(event_id),
+                                "signal_type": signal.signal_type,
+                                "confidence": score,
+                                "text": signal.text,
+                                "metadata": _json_safe(merged_metadata),
+                            },
+                        )
+                    )
+
+                    stores = ["redis", "milvus", "elasticsearch", "duckdb"]
+                    if self.flags.is_enabled(
+                        "graph_relationships_enabled", tenant_id, user_id
+                    ):
+                        stores.append("leangraph")
+
+                    for store in stores:
+                        session.add(
+                            ProjectionStatus(
+                                event_id=event_id,
+                                target_store=store,
+                                status="pending",
+                            )
+                        )
+
+                    await session.commit()
+                    _METRICS["ledger_writes"] += 1
+                    _METRICS["signals_admitted"] += 1
+                    committed_events.append(
+                        {
+                            "event": {
+                                "event_id": str(event_id),
+                                "tenant_id": str(tenant_uuid),
+                                "user_id": str(user_uuid),
+                                "source_type": source_type,
+                                "source_ref": source_ref or merged_metadata.get("source_ref"),
+                                "payload_hash": payload_hash,
+                                "confidence": score,
+                                "scope": signal.scope,
+                                "sensitivity_class": merged_metadata.get(
+                                    "sensitivity_class", "normal"
+                                ),
+                                "consent_state": merged_metadata.get(
+                                    "consent_state", "granted"
+                                ),
+                                "session_id": merged_metadata.get("session_id"),
+                                "created_at": event.created_at.isoformat()
+                                if getattr(event, "created_at", None)
+                                else None,
+                                "payload": _json_safe(signal_payload),
+                            },
+                            "assertion": derived_record
+                            if signal.signal_type != "preference"
+                            else {
+                                "event_id": str(event_id),
+                                "profile_fact_id": derived_record["profile_fact_id"],
+                                "content": signal.text,
+                                "confidence": score,
+                                "scope": signal.scope,
+                            },
+                        }
+                    )
+                except IntegrityError:
+                    await session.rollback()
+                    _METRICS["ledger_duplicates"] += 1
+                    logger.info(
+                        "Duplicate memory event skipped for tenant=%s user=%s source=%s",
+                        tenant_id,
+                        user_id,
+                        source_type,
+                    )
+                except Exception as exc:
+                    await session.rollback()
+                    logger.exception("Failed to commit memory event: %s", exc)
+
+        if committed_events:
+            self._schedule_background(
+                self._trigger_projections(committed_events, tenant_id, user_id)
             )
-            postgres_ok = True
-            ok = True
-            logger.info(f"[MemoryManager] Postgres upserted memory for user {user_id}")
-        except Exception as ex:
-            pg_syncer.mark_unavailable()
-            logger.warning(f"[MemoryManager] Postgres store failed: {ex}")
 
-    # 3. Redis (short-term cache + buffering if Postgres down)
-    if redis_manager:
-        try:
-            # Store to Redis short-term cache with TTL
-            key = f"kari:mem:{tenant_id}:{user_id}" if tenant_id else f"kari:mem:{user_id}"
-            # Store with 30 minute TTL for short-term recall
-            asyncio.run(_store_to_redis(key, entry, ttl=1800))
-            ok = True
-            logger.info(f"[MemoryManager] Redis cached memory for user {user_id}")
+        if committed_events and self.flags.is_enabled(
+            "profile_synthesis_enabled", tenant_id, user_id
+        ):
+            _METRICS["profile_synthesis_requests"] += 1
+            self._schedule_background(
+                self._trigger_profile_synthesis(committed_events, tenant_id, user_id)
+            )
 
-            # If Postgres write failed, buffer to Redis for replay
-            if not postgres_ok:
-                buffered = asyncio.run(_buffer_to_redis(entry))
-                if buffered:
-                    logger.info(f"[MemoryManager] Buffered to Redis for Postgres replay: user {user_id}")
-        except Exception as ex:
-            logger.warning(f"[MemoryManager] Redis store failed: {ex}")
+        if committed_events and self.flags.is_enabled("echocore_enabled", tenant_id, user_id):
+            self._emit_echocore_candidates(committed_events)
 
-    # 4. DuckDB: READ-ONLY, NO WRITES
-    # DuckDB is for analytics only - memory data exported via separate ETL process
-    # Removed DuckDB write logic to comply with architecture (DuckDB = derived data only)
+    async def _update_projection_status(
+        self,
+        event_id: str,
+        target_store: str,
+        status: str,
+        last_error: Optional[str] = None,
+    ) -> None:
+        if not self._db_session_factory:
+            return
 
-    # 5. ElasticSearch (optional, document index)
-    if ElasticClient:
-        try:
-            es_host = os.getenv("ELASTIC_HOST", "localhost")
-            es_port = int(os.getenv("ELASTIC_PORT", "9200"))
-            es_index = os.getenv("ELASTIC_INDEX", "kari_memory")
-            es_user = os.getenv("ELASTIC_USER")
-            es_password = os.getenv("ELASTIC_PASSWORD")
-            es = ElasticClient(es_host, es_port, es_index, es_user, es_password)
-            es.index_entry(entry)
-            ok = True
-            logger.info(f"[MemoryManager] Elastic indexed memory for user {user_id}")
-        except Exception as ex:
-            logger.warning(f"[MemoryManager] Elastic store failed: {ex}")
+        async with self._db_session_factory() as session:
+            stmt = (
+                select(ProjectionStatus)
+                .where(ProjectionStatus.event_id == _coerce_uuid(event_id))
+                .where(ProjectionStatus.target_store == target_store)
+            )
+            result = await session.execute(stmt)
+            projection = result.scalar_one_or_none()
+            if projection is None:
+                return
 
-    if not ok:
-        logger.error(
-            f"[MemoryManager] FAILED to store memory for user {user_id} on all backends"
+            projection.status = status
+            projection.last_error = last_error
+            await session.commit()
+
+    async def _trigger_projections(
+        self,
+        committed_events: Sequence[Dict[str, Any]],
+        tenant_id: str,
+        user_id: str,
+    ) -> None:
+        """Fan out committed events to the specialized projection workers."""
+        from .projections import get_projection_manager
+        
+        manager = get_projection_manager()
+        for committed in committed_events:
+            event_data = committed["event"]
+            assertion_data = committed.get("assertion")
+            event_id = event_data["event_id"]
+
+            try:
+                # Use the new projection manager for all configured stores
+                await manager.project_event(event_data, assertion_data)
+                _METRICS["projection_dispatches"] += 1
+                
+                # Update status for all stores handled by the manager
+                # In a more advanced version, manager would return per-store success
+                for store_name in ("redis", "milvus", "elasticsearch", "leangraph", "duckdb"):
+                    await self._update_projection_status(
+                        event_id, store_name, "completed"
+                    )
+                    
+            except Exception as exc:
+                _METRICS["projection_failures"] += 1
+                logger.warning(
+                    "Projection orchestration failed for event %s: %s",
+                    event_id,
+                    exc,
+                )
+
+        logger.info(
+            "Triggered asynchronous projections for %s committed memory events.",
+            len(committed_events),
         )
 
-    if ok:
-        try:
-            artifacts = export_promoted_artifacts(user_ctx, query, result, entry)
-            _ingest_artifacts_to_echocore(user_ctx, artifacts)
-        except Exception as ex:
-            logger.warning(f"[MemoryManager] EchoCore export helper failed: {ex}")
+    async def _trigger_profile_synthesis(
+        self,
+        committed_events: Sequence[Dict[str, Any]],
+        tenant_id: str,
+        user_id: str,
+    ) -> None:
+        """Trigger synthesis of profile summary from durable facts."""
+        logger.info(
+            "Triggered profile synthesis update for tenant=%s user=%s (%s events).",
+            tenant_id,
+            user_id,
+            len(committed_events),
+        )
 
-    return ok
+    def _emit_echocore_candidates(self, committed_events: Sequence[Dict[str, Any]]) -> None:
+        """Emit candidates for EchoCore offline consolidation."""
+        _METRICS["echocore_candidates"] += len(committed_events)
+        logger.info(
+            "Emitted EchoCore archival candidates for %s events.",
+            len(committed_events),
+        )
+
+    async def inspect_memory_state(
+        self,
+        *,
+        tenant_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+        limit: int = 20,
+    ) -> Dict[str, Any]:
+        """Return a structured memory inspection snapshot for operators and users."""
+        _METRICS["inspector_requests"] += 1
+        self._ensure_db_session_factory()
+
+        snapshot: Dict[str, Any] = {
+            "status": "degraded" if not self._db_session_factory else "success",
+            "tenant_id": tenant_id,
+            "user_id": user_id,
+            "limit": limit,
+            "feature_flags": {
+                "memory_learning_enabled": self.flags.is_enabled(
+                    "memory_learning_enabled", tenant_id, user_id
+                ),
+                "memory_shadow_mode_enabled": self.flags.is_enabled(
+                    "memory_shadow_mode_enabled", tenant_id, user_id
+                ),
+                "memory_inspector_enabled": self.flags.is_enabled(
+                    "memory_inspector_enabled", tenant_id, user_id
+                ),
+                "memory_consent_controls_enabled": self.flags.is_enabled(
+                    "memory_consent_controls_enabled", tenant_id, user_id
+                ),
+                "memory_retention_controls_enabled": self.flags.is_enabled(
+                    "memory_retention_controls_enabled", tenant_id, user_id
+                ),
+                "memory_profile_corrections_enabled": self.flags.is_enabled(
+                    "memory_profile_corrections_enabled", tenant_id, user_id
+                ),
+            },
+            "metrics": get_metrics()["memory_runtime"],
+            "recent_events": [],
+            "recent_assertions": [],
+            "recent_profile_facts": [],
+            "recent_episodes": [],
+            "open_contradictions": [],
+            "consent_scopes": [],
+            "retention_policies": [],
+            "projection_status": [],
+        }
+
+        if not self._db_session_factory:
+            return snapshot
+
+        limit = max(1, min(int(limit), 100))
+
+        tenant_uuid = _coerce_uuid(tenant_id) if tenant_id else None
+        user_uuid = _coerce_uuid(user_id) if user_id else None
+
+        async with self._db_session_factory() as session:
+            event_filters: List[Any] = []
+            assertion_filters: List[Any] = []
+            fact_filters: List[Any] = []
+            episode_filters: List[Any] = []
+            consent_filters: List[Any] = []
+            retention_filters: List[Any] = []
+            if tenant_uuid is not None:
+                event_filters.append(MemoryEvent.tenant_id == tenant_uuid)
+                assertion_filters.append(MemoryAssertion.tenant_id == tenant_uuid)
+                fact_filters.append(ProfileFact.tenant_id == tenant_uuid)
+                episode_filters.append(MemoryEpisode.tenant_id == tenant_uuid)
+                consent_filters.append(ConsentScope.tenant_id == tenant_uuid)
+                retention_filters.append(RetentionPolicy.tenant_id == tenant_uuid)
+            if user_uuid is not None:
+                event_filters.append(MemoryEvent.user_id == user_uuid)
+                assertion_filters.append(MemoryAssertion.user_id == user_uuid)
+                fact_filters.append(ProfileFact.user_id == user_uuid)
+                episode_filters.append(MemoryEpisode.user_id == user_uuid)
+                consent_filters.append(ConsentScope.user_id == user_uuid)
+
+            base_event_query = select(MemoryEvent)
+            if event_filters:
+                base_event_query = base_event_query.where(*event_filters)
+
+            event_result = await session.execute(
+                base_event_query.order_by(MemoryEvent.created_at.desc()).limit(limit)
+            )
+            events = event_result.scalars().all()
+
+            assertion_query = select(MemoryAssertion)
+            if assertion_filters:
+                assertion_query = assertion_query.where(*assertion_filters)
+            assertion_result = await session.execute(
+                assertion_query.order_by(MemoryAssertion.created_at.desc()).limit(limit)
+            )
+            assertions = assertion_result.scalars().all()
+
+            fact_query = select(ProfileFact)
+            if fact_filters:
+                fact_query = fact_query.where(*fact_filters)
+            fact_result = await session.execute(
+                fact_query.order_by(ProfileFact.created_at.desc()).limit(limit)
+            )
+            facts = fact_result.scalars().all()
+
+            episode_query = select(MemoryEpisode)
+            if episode_filters:
+                episode_query = episode_query.where(*episode_filters)
+            episode_result = await session.execute(
+                episode_query.order_by(MemoryEpisode.created_at.desc()).limit(limit)
+            )
+            episodes = episode_result.scalars().all()
+
+            contradiction_query = select(ContradictionEvent)
+            if event_filters:
+                contradiction_query = contradiction_query.join(
+                    MemoryEvent,
+                    MemoryEvent.event_id == ContradictionEvent.event_id,
+                )
+                if tenant_uuid is not None:
+                    contradiction_query = contradiction_query.where(
+                        MemoryEvent.tenant_id == tenant_uuid
+                    )
+                if user_uuid is not None:
+                    contradiction_query = contradiction_query.where(
+                        MemoryEvent.user_id == user_uuid
+                    )
+            contradiction_result = await session.execute(
+                contradiction_query.order_by(ContradictionEvent.created_at.desc()).limit(limit)
+            )
+            contradictions = contradiction_result.scalars().all()
+
+            consent_query = select(ConsentScope)
+            if consent_filters:
+                consent_query = consent_query.where(*consent_filters)
+            consent_result = await session.execute(
+                consent_query.order_by(ConsentScope.granted_at.desc()).limit(limit)
+            )
+            consents = consent_result.scalars().all()
+
+            retention_query = select(RetentionPolicy)
+            if tenant_uuid is not None:
+                retention_query = retention_query.where(
+                    (RetentionPolicy.tenant_id == tenant_uuid)
+                    | (RetentionPolicy.tenant_id.is_(None))
+                )
+            elif retention_filters:
+                retention_query = retention_query.where(*retention_filters)
+            retention_result = await session.execute(
+                retention_query.order_by(RetentionPolicy.updated_at.desc()).limit(limit)
+            )
+            retentions = retention_result.scalars().all()
+
+            projection_query = select(ProjectionStatus)
+            if event_filters:
+                projection_query = projection_query.join(
+                    MemoryEvent,
+                    MemoryEvent.event_id == ProjectionStatus.event_id,
+                )
+                if tenant_uuid is not None:
+                    projection_query = projection_query.where(
+                        MemoryEvent.tenant_id == tenant_uuid
+                    )
+                if user_uuid is not None:
+                    projection_query = projection_query.where(
+                        MemoryEvent.user_id == user_uuid
+                    )
+            projection_result = await session.execute(
+                projection_query.order_by(ProjectionStatus.updated_at.desc()).limit(limit)
+            )
+            projections = projection_result.scalars().all()
+
+            def _serialize_datetime(value: Any) -> Optional[str]:
+                if value is None:
+                    return None
+                if isinstance(value, datetime):
+                    return value.isoformat()
+                return str(value)
+
+            def _serialize_event(row: MemoryEvent) -> Dict[str, Any]:
+                return {
+                    "event_id": str(row.event_id),
+                    "tenant_id": str(row.tenant_id),
+                    "user_id": str(row.user_id),
+                    "source_type": row.source_type,
+                    "source_ref": row.source_ref,
+                    "payload_hash": row.payload_hash,
+                    "confidence": row.confidence,
+                    "scope": row.scope,
+                    "sensitivity_class": row.sensitivity_class,
+                    "consent_state": row.consent_state,
+                    "valid_from": _serialize_datetime(row.valid_from),
+                    "valid_to": _serialize_datetime(row.valid_to),
+                    "supersedes": str(row.supersedes) if row.supersedes else None,
+                    "event_type": row.event_type,
+                    "created_at": _serialize_datetime(row.created_at),
+                    "updated_at": _serialize_datetime(row.updated_at),
+                    "payload": _json_safe(row.payload),
+                }
+
+            snapshot["recent_events"] = [_serialize_event(row) for row in events]
+            snapshot["recent_assertions"] = [
+                {
+                    "assertion_id": str(row.assertion_id),
+                    "event_id": str(row.event_id),
+                    "tenant_id": str(row.tenant_id),
+                    "user_id": str(row.user_id),
+                    "content": row.content,
+                    "confidence": row.confidence,
+                    "scope": row.scope,
+                    "sensitivity_class": row.sensitivity_class,
+                    "consent_state": row.consent_state,
+                    "valid_from": _serialize_datetime(row.valid_from),
+                    "valid_to": _serialize_datetime(row.valid_to),
+                    "supersedes": str(row.supersedes) if row.supersedes else None,
+                    "created_at": _serialize_datetime(row.created_at),
+                    "updated_at": _serialize_datetime(row.updated_at),
+                }
+                for row in assertions
+            ]
+            snapshot["recent_profile_facts"] = [
+                {
+                    "fact_id": str(row.fact_id),
+                    "event_id": str(row.event_id),
+                    "tenant_id": str(row.tenant_id),
+                    "user_id": str(row.user_id),
+                    "category": row.category,
+                    "attribute": row.attribute,
+                    "value": _json_safe(row.value),
+                    "confidence": row.confidence,
+                    "source_type": row.source_type,
+                    "source_ref": row.source_ref,
+                    "valid_from": _serialize_datetime(row.valid_from),
+                    "valid_to": _serialize_datetime(row.valid_to),
+                    "supersedes": str(row.supersedes) if row.supersedes else None,
+                    "created_at": _serialize_datetime(row.created_at),
+                    "updated_at": _serialize_datetime(row.updated_at),
+                }
+                for row in facts
+            ]
+            snapshot["recent_episodes"] = [
+                {
+                    "episode_id": str(row.episode_id),
+                    "event_id": str(row.event_id),
+                    "tenant_id": str(row.tenant_id),
+                    "user_id": str(row.user_id),
+                    "session_id": row.session_id,
+                    "summary": row.summary,
+                    "snapshot_data": _json_safe(row.snapshot_data),
+                    "created_at": _serialize_datetime(row.created_at),
+                }
+                for row in episodes
+            ]
+            snapshot["open_contradictions"] = [
+                {
+                    "contradiction_id": str(row.contradiction_id),
+                    "event_id": str(row.event_id),
+                    "source_assertion_id": str(row.source_assertion_id),
+                    "target_assertion_id": str(row.target_assertion_id),
+                    "resolution_status": row.resolution_status,
+                    "created_at": _serialize_datetime(row.created_at),
+                    "resolved_at": _serialize_datetime(row.resolved_at),
+                }
+                for row in contradictions
+            ]
+            snapshot["consent_scopes"] = [
+                {
+                    "scope_id": str(row.scope_id),
+                    "tenant_id": str(row.tenant_id),
+                    "user_id": str(row.user_id),
+                    "scope_name": row.scope_name,
+                    "is_granted": row.is_granted,
+                    "granted_at": _serialize_datetime(row.granted_at),
+                    "revoked_at": _serialize_datetime(row.revoked_at),
+                }
+                for row in consents
+            ]
+            snapshot["retention_policies"] = [
+                {
+                    "policy_id": str(row.policy_id),
+                    "tenant_id": str(row.tenant_id) if row.tenant_id else None,
+                    "memory_class": row.memory_class,
+                    "ttl_days": row.ttl_days,
+                    "created_at": _serialize_datetime(row.created_at),
+                    "updated_at": _serialize_datetime(row.updated_at),
+                }
+                for row in retentions
+            ]
+            snapshot["projection_status"] = [
+                {
+                    "projection_id": str(row.projection_id),
+                    "event_id": str(row.event_id),
+                    "target_store": row.target_store,
+                    "status": row.status,
+                    "retry_count": row.retry_count,
+                    "last_error": row.last_error,
+                    "created_at": _serialize_datetime(row.created_at),
+                    "updated_at": _serialize_datetime(row.updated_at),
+                }
+                for row in projections
+            ]
+
+            counts = {}
+            for name, model, filters in (
+                ("events", MemoryEvent, event_filters),
+                ("assertions", MemoryAssertion, assertion_filters),
+                ("profile_facts", ProfileFact, fact_filters),
+                ("episodes", MemoryEpisode, episode_filters),
+                ("contradictions", ContradictionEvent, []),
+                ("consent_scopes", ConsentScope, consent_filters),
+                ("retention_policies", RetentionPolicy, retention_filters),
+            ):
+                count_stmt = select(func.count()).select_from(model)
+                if model is ContradictionEvent:
+                    count_stmt = count_stmt.join(
+                        MemoryEvent,
+                        MemoryEvent.event_id == ContradictionEvent.event_id,
+                    )
+                    if tenant_uuid is not None:
+                        count_stmt = count_stmt.where(MemoryEvent.tenant_id == tenant_uuid)
+                    if user_uuid is not None:
+                        count_stmt = count_stmt.where(MemoryEvent.user_id == user_uuid)
+                else:
+                    if filters:
+                        count_stmt = count_stmt.where(*filters)
+                result = await session.execute(count_stmt)
+                counts[name] = int(result.scalar_one() or 0)
+
+            snapshot["counts"] = counts
+
+        return snapshot
+
+    async def list_consent_scopes(
+        self,
+        *,
+        tenant_id: str,
+        user_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Return consent scope rows for a tenant/user pair."""
+        self._ensure_db_session_factory()
+        if not self._db_session_factory:
+            return {"status": "degraded", "items": []}
+
+        tenant_uuid = _coerce_uuid(tenant_id)
+        user_uuid = _coerce_uuid(user_id) if user_id else None
+
+        async with self._db_session_factory() as session:
+            query = select(ConsentScope).where(ConsentScope.tenant_id == tenant_uuid)
+            if user_uuid is not None:
+                query = query.where(ConsentScope.user_id == user_uuid)
+            result = await session.execute(query.order_by(ConsentScope.granted_at.desc()))
+            items = result.scalars().all()
+            return {
+                "status": "success",
+                "items": [
+                    {
+                        "scope_id": str(row.scope_id),
+                        "tenant_id": str(row.tenant_id),
+                        "user_id": str(row.user_id),
+                        "scope_name": row.scope_name,
+                        "is_granted": row.is_granted,
+                        "granted_at": row.granted_at.isoformat()
+                        if row.granted_at
+                        else None,
+                        "revoked_at": row.revoked_at.isoformat()
+                        if row.revoked_at
+                        else None,
+                    }
+                    for row in items
+                ],
+            }
+
+    async def set_consent_scope(
+        self,
+        *,
+        tenant_id: str,
+        user_id: str,
+        scope_name: str,
+        granted: bool,
+    ) -> Dict[str, Any]:
+        """Create or update a consent scope entry."""
+        _METRICS["consent_updates"] += 1
+        self._ensure_db_session_factory()
+        if not self._db_session_factory:
+            return {"status": "degraded", "granted": granted}
+
+        tenant_uuid = _coerce_uuid(tenant_id)
+        user_uuid = _coerce_uuid(user_id)
+        now = datetime.utcnow()
+
+        async with self._db_session_factory() as session:
+            query = select(ConsentScope).where(
+                ConsentScope.tenant_id == tenant_uuid,
+                ConsentScope.user_id == user_uuid,
+                ConsentScope.scope_name == scope_name,
+            )
+            result = await session.execute(query)
+            row = result.scalar_one_or_none()
+            if row is None:
+                row = ConsentScope(
+                    tenant_id=tenant_uuid,
+                    user_id=user_uuid,
+                    scope_name=scope_name,
+                    is_granted=granted,
+                    granted_at=now,
+                    revoked_at=None if granted else now,
+                )
+                session.add(row)
+            else:
+                row.is_granted = granted
+                row.revoked_at = None if granted else now
+                if granted and row.granted_at is None:
+                    row.granted_at = now
+            await session.commit()
+            return {
+                "status": "success",
+                "scope_id": str(row.scope_id),
+                "tenant_id": str(row.tenant_id),
+                "user_id": str(row.user_id),
+                "scope_name": row.scope_name,
+                "is_granted": row.is_granted,
+                "granted_at": row.granted_at.isoformat() if row.granted_at else None,
+                "revoked_at": row.revoked_at.isoformat() if row.revoked_at else None,
+            }
+
+    async def list_retention_policies(
+        self,
+        *,
+        tenant_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Return retention policy rows for a tenant or global scope."""
+        self._ensure_db_session_factory()
+        if not self._db_session_factory:
+            return {"status": "degraded", "items": []}
+
+        tenant_uuid = _coerce_uuid(tenant_id) if tenant_id else None
+        async with self._db_session_factory() as session:
+            query = select(RetentionPolicy)
+            if tenant_uuid is not None:
+                query = query.where(
+                    (RetentionPolicy.tenant_id == tenant_uuid)
+                    | (RetentionPolicy.tenant_id.is_(None))
+                )
+            result = await session.execute(query.order_by(RetentionPolicy.updated_at.desc()))
+            items = result.scalars().all()
+            return {
+                "status": "success",
+                "items": [
+                    {
+                        "policy_id": str(row.policy_id),
+                        "tenant_id": str(row.tenant_id) if row.tenant_id else None,
+                        "memory_class": row.memory_class,
+                        "ttl_days": row.ttl_days,
+                        "created_at": row.created_at.isoformat()
+                        if row.created_at
+                        else None,
+                        "updated_at": row.updated_at.isoformat()
+                        if row.updated_at
+                        else None,
+                    }
+                    for row in items
+                ],
+            }
+
+    async def set_retention_policy(
+        self,
+        *,
+        memory_class: str,
+        ttl_days: Optional[int],
+        tenant_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Create or update a retention policy entry."""
+        _METRICS["retention_updates"] += 1
+        self._ensure_db_session_factory()
+        if not self._db_session_factory:
+            return {"status": "degraded", "ttl_days": ttl_days}
+
+        tenant_uuid = _coerce_uuid(tenant_id) if tenant_id else None
+
+        async with self._db_session_factory() as session:
+            query = select(RetentionPolicy).where(
+                RetentionPolicy.memory_class == memory_class,
+                RetentionPolicy.tenant_id.is_(None)
+                if tenant_uuid is None
+                else RetentionPolicy.tenant_id == tenant_uuid,
+            )
+            result = await session.execute(query)
+            row = result.scalar_one_or_none()
+            if row is None:
+                row = RetentionPolicy(
+                    tenant_id=tenant_uuid,
+                    memory_class=memory_class,
+                    ttl_days=ttl_days,
+                )
+                session.add(row)
+            else:
+                row.ttl_days = ttl_days
+            await session.commit()
+            return {
+                "status": "success",
+                "policy_id": str(row.policy_id),
+                "tenant_id": str(row.tenant_id) if row.tenant_id else None,
+                "memory_class": row.memory_class,
+                "ttl_days": row.ttl_days,
+                "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+            }
+
+    def set_shadow_mode(
+        self,
+        *,
+        enabled: bool,
+        tenant_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Set the active memory shadow-mode gate."""
+        if tenant_id:
+            self.flags.set_tenant_override(tenant_id, "memory_shadow_mode_enabled", enabled)
+        elif user_id:
+            self.flags.set_user_override(user_id, "memory_shadow_mode_enabled", enabled)
+        else:
+            self.flags.set_global("memory_shadow_mode_enabled", enabled)
+
+        return {
+            "status": "success",
+            "enabled": enabled,
+            "tenant_id": tenant_id,
+            "user_id": user_id,
+            "effective": self.flags.is_enabled(
+                "memory_shadow_mode_enabled", tenant_id, user_id
+            ),
+        }
+
+    async def close(self) -> None:
+        """Cancel any pending background tasks."""
+        if not self._background_tasks:
+            return
+
+        tasks = list(self._background_tasks)
+        for task in tasks:
+            task.cancel()
+
+        with suppress(Exception):
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+        self._background_tasks.clear()
+
+
+memory_manager = MemoryRuntimeManager()
+
+
+def get_memory_manager() -> MemoryRuntimeManager:
+    return memory_manager
+
+
+def init_memory() -> MemoryRuntimeManager:
+    """Compatibility initializer used by startup code."""
+    logger.info("Initializing memory runtime manager")
+    memory_manager._ensure_db_session_factory()
+    return memory_manager
+
+
 async def close() -> None:
-    """Cleanup memory manager resources."""
-    global pg_syncer
+    """Compatibility shutdown hook used by startup cleanup."""
+    await memory_manager.close()
+
+
+async def recall_context(
+    user_id: Any,
+    query: str,
+    top_k: int = 10,
+    tiers: Optional[Sequence[str]] = None,
+    tenant_id: Optional[str] = None,
+    include_embeddings: bool = False,
+    **kwargs,
+) -> Dict[str, Any]:
+    """
+    Compatibility recall API used by cognitive routes and UI helpers.
+
+    Falls back to an empty result if the database memory manager is unavailable.
+    """
+    _METRICS["recall_requests"] += 1
+
     try:
-        if pg_syncer:
-            pg_syncer.stop()
-            pg_syncer = None
-        logger.info("[MemoryManager] Memory manager closed successfully")
-    except Exception as ex:
-        logger.error(f"[MemoryManager] Error during cleanup: {ex}")
+        effective_top_k = int(kwargs.get("limit", top_k) or top_k)
+        user_ctx = user_id if isinstance(user_id, dict) else kwargs.get("user_ctx")
+        if isinstance(user_ctx, dict):
+            tenant_id = tenant_id or user_ctx.get("tenant_id")
+            user_id = user_ctx.get("user_id") or user_ctx.get("id") or user_id
+
+        from .types import MemoryQuery
+        from .retrieval.retrieval_router import get_retrieval_router
+
+        # Build unified query model
+        query_model = MemoryQuery(
+            text=str(query or ""),
+            user_id=str(user_id) if user_id is not None else None,
+            tenant_id=str(tenant_id or "default"),
+            top_k=effective_top_k
+        )
+        
+        # Phase 8: Use Hybrid Retrieval Router across all projection stores
+        router = get_retrieval_router()
+        items = await router.recall(query_model)
+        
+        formatted: List[Dict[str, Any]] = []
+        for item in items:
+            formatted.append({
+                "id": item.id,
+                "content": item.content,
+                "metadata": item.to_dict().get("metadata", {}),
+                "timestamp": item.timestamp.timestamp(),
+                "similarity_score": item.relevance,
+                "memory_type": item.memory_type.value,
+                "result": item.content
+            })
+            
+        _METRICS["recall_hits"] += len(formatted)
+        return {"results": formatted, "status": "success", "count": len(formatted)}
+    except Exception as exc:
+        logger.warning("Recall failed for user=%s query=%r: %s", user_id, query, exc)
+        return {"results": [], "status": "degraded", "error": str(exc)}
 
 
-__all__ = [
-    "init_memory",
-    "close",
-    "recall_context",
-    "update_memory",
-    "export_promoted_artifacts",
-    "flush_duckdb_to_postgres",
-    "get_metrics",
-    "_METRICS",
-    "close",
-]
+async def update_memory(
+    memory_id: str,
+    updates: Dict[str, Any],
+    user_ctx: Optional[Dict[str, Any]] = None,
+    **kwargs,
+) -> Dict[str, Any]:
+    """
+    Compatibility update API.
+
+    The new runtime manager treats updates as a fresh signal when a direct
+    mutation path is not available.
+    """
+    content = updates.get("content") or updates.get("text") or updates.get("query") or ""
+    if not content:
+        return {"status": "noop", "memory_id": memory_id, "updated": False}
+
+    tenant_id = str(
+        (user_ctx or {}).get("tenant_id")
+        or kwargs.get("tenant_id")
+        or "default"
+    )
+    user_id = str(
+        (user_ctx or {}).get("user_id")
+        or kwargs.get("user_id")
+        or "anonymous"
+    )
+
+    result = await memory_manager.process_interaction(
+        text=str(content),
+        tenant_id=tenant_id,
+        user_id=user_id,
+        source_type=str(updates.get("source_type", "manual_update")),
+        source_ref=str(updates.get("source_ref") or memory_id),
+        metadata=updates.get("metadata")
+        if isinstance(updates.get("metadata"), dict)
+        else None,
+    )
+    result["memory_id"] = memory_id
+    result["updated"] = True
+    return result
+
+
+async def export_promoted_artifacts(*, limit: int = 100, **kwargs) -> Dict[str, Any]:
+    """
+    Compatibility export hook for offline consolidation pipelines.
+
+    Returns a preview of durable memory candidates suitable for EchoCore or
+    operator review.
+    """
+    limit = max(1, min(int(limit), 500))
+    tenant_id = kwargs.get("tenant_id")
+    user_id = kwargs.get("user_id")
+
+    try:
+        inspection = await memory_manager.inspect_memory_state(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            limit=limit,
+        )
+        artifacts: List[Dict[str, Any]] = []
+
+        for row in inspection.get("recent_profile_facts", [])[:limit]:
+            artifacts.append(
+                {
+                    "artifact_id": row.get("fact_id"),
+                    "artifact_type": "user_preference"
+                    if row.get("category") == "preference"
+                    else "long_term_fact",
+                    "source_tier": "ltm",
+                    "user_id": row.get("user_id"),
+                    "tenant_id": row.get("tenant_id"),
+                    "session_id": row.get("event_id"),
+                    "thread_id": None,
+                    "content": {
+                        "category": row.get("category"),
+                        "attribute": row.get("attribute"),
+                        "value": row.get("value"),
+                        "confidence": row.get("confidence"),
+                    },
+                    "importance_score": float(row.get("confidence") or 0.0),
+                    "retention_score": 1.0,
+                    "privacy_tags": [row.get("sensitivity_class", "normal")],
+                    "training_eligibility": "review",
+                    "metadata": {
+                        "source": "profile_fact",
+                        "source_ref": row.get("source_ref"),
+                        "valid_from": row.get("valid_from"),
+                        "valid_to": row.get("valid_to"),
+                    },
+                }
+            )
+
+        for row in inspection.get("recent_assertions", [])[:limit]:
+            if len(artifacts) >= limit:
+                break
+            artifacts.append(
+                {
+                    "artifact_id": row.get("assertion_id"),
+                    "artifact_type": "long_term_fact",
+                    "source_tier": "ltm",
+                    "user_id": row.get("user_id"),
+                    "tenant_id": row.get("tenant_id"),
+                    "session_id": row.get("event_id"),
+                    "thread_id": None,
+                    "content": {
+                        "content": row.get("content"),
+                        "scope": row.get("scope"),
+                        "confidence": row.get("confidence"),
+                    },
+                    "importance_score": float(row.get("confidence") or 0.0),
+                    "retention_score": 1.0,
+                    "privacy_tags": [row.get("sensitivity_class", "normal")],
+                    "training_eligibility": "review",
+                    "metadata": {
+                        "source": "memory_assertion",
+                        "valid_from": row.get("valid_from"),
+                        "valid_to": row.get("valid_to"),
+                        "consent_state": row.get("consent_state"),
+                    },
+                }
+            )
+
+        return {
+            "status": inspection.get("status", "success"),
+            "count": len(artifacts),
+            "limit": limit,
+            "artifacts": artifacts,
+        }
+    except Exception as exc:
+        logger.warning("Promoted artifact export failed: %s", exc)
+        return {
+            "status": "degraded",
+            "count": 0,
+            "limit": limit,
+            "artifacts": [],
+            "error": str(exc),
+        }
+
+
+def get_metrics() -> Dict[str, Any]:
+    """Return runtime and compatibility metrics."""
+    from ..runtime.resilience import get_resilience_health_monitor
+
+    return {
+        "memory_runtime": dict(_METRICS),
+        "memory_learning_enabled": memory_manager.flags.is_enabled(
+            "memory_learning_enabled"
+        ),
+        "resilience_health": get_resilience_health_monitor().get_health_status(),
+    }

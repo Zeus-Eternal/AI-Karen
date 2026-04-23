@@ -26,7 +26,7 @@ from ..discovery.model_discovery_engine import (
     ModalityType,
     ModelCategory,
 )
-from ai_karen_engine.memory.provider_registry import get_provider_registry_service, ProviderCapability
+from ai_karen_engine.core.model_runtime.provider_registry_service import get_provider_registry_service, ProviderCapability
 from .llm_router_service import LLMRouter, ChatRequest, RoutingPolicy
 from ai_karen_engine.integrations.llm_router import IntelligentLLMRouter, RoutingRequest, TaskType
 from ai_karen_engine.integrations.registry import get_registry

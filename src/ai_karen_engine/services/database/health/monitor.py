@@ -30,7 +30,7 @@ from sqlalchemy.pool import QueuePool, Pool
 from sqlalchemy.exc import SQLAlchemyError, DisconnectionError, OperationalError, TimeoutError as SQLTimeoutError
 
 from ai_karen_engine.core.logging import get_logger
-from ai_karen_engine.services.connection_health_manager import (
+from ai_karen_engine.core.runtime.resilience.connection_health_manager import (
     get_connection_health_manager,
     ConnectionType,
     ServiceStatus,

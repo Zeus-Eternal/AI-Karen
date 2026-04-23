@@ -1,6 +1,25 @@
 from __future__ import annotations
 
+import time
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
+
+from ai_karen_engine.core.memory.memory_runtime_manager import recall_context
+
+
+Result = Dict[str, Any]
+
+
+@dataclass
+class EvidenceBundle:
+    retrieval_mode: str
+    dense_hits: List[Result] = field(default_factory=list)
+    lexical_hits: List[Result] = field(default_factory=list)
+    graph_hits: List[Result] = field(default_factory=list)
+    context_hits: List[Result] = field(default_factory=list)
+    fusion_summary: Dict[str, Any] = field(default_factory=dict)
+    confidence: float = 0.0
+    latency_ms: float = 0.0
 
 
 @runtime_checkable
@@ -8,21 +27,40 @@ class SRRetriever(Protocol):
     """Abstract SR retriever adapter.
     Implementations must be local-first or RBAC-gated.
     """
-    def query(self, text: str, *, top_k: int = 5, metadata_filter: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+
+    def query(
+        self,
+        text: str,
+        *,
+        top_k: int = 5,
+        metadata_filter: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
         ...
 
-    def ingest(self, text: str, metadata: Optional[Dict[str, Any]] = None, *, ttl_seconds: Optional[float] = None, force: bool = False) -> Optional[int]:
+    def ingest(
+        self,
+        text: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        *,
+        ttl_seconds: Optional[float] = None,
+        force: bool = False,
+    ) -> Optional[int]:
         ...
 
 
 class SRCompositeRetriever(SRRetriever):
-    """Chain multiple SR retrievers; first successful wins for query.
-    Ingest broadcasts to the first retriever by default (can be extended).
-    """
+    """Chain multiple SR retrievers; first successful wins for query."""
+
     def __init__(self, *retrievers: SRRetriever) -> None:
         self._retrievers = [r for r in retrievers if r]
 
-    def query(self, text: str, *, top_k: int = 5, metadata_filter: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+    def query(
+        self,
+        text: str,
+        *,
+        top_k: int = 5,
+        metadata_filter: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
         last_err: Optional[Exception] = None
         for r in self._retrievers:
             try:
@@ -34,7 +72,106 @@ class SRCompositeRetriever(SRRetriever):
             raise last_err
         return []
 
-    def ingest(self, text: str, metadata: Optional[Dict[str, Any]] = None, *, ttl_seconds: Optional[float] = None, force: bool = False) -> Optional[int]:
+    def ingest(
+        self,
+        text: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        *,
+        ttl_seconds: Optional[float] = None,
+        force: bool = False,
+    ) -> Optional[int]:
         if not self._retrievers:
             return None
-        return self._retrievers[0].ingest(text, metadata, ttl_seconds=ttl_seconds, force=force)
+        return self._retrievers[0].ingest(
+            text, metadata, ttl_seconds=ttl_seconds, force=force
+        )
+
+
+class ReasoningEvidenceAdapter:
+    """Normalize hybrid memory retrieval into a reasoning-ready evidence bundle."""
+
+    def __init__(self, *, top_k: int = 8) -> None:
+        self.top_k = top_k
+
+    async def retrieve_bundle(
+        self,
+        text: str,
+        *,
+        user_id: str,
+        tenant_id: Optional[str] = None,
+        memory_context: Optional[Dict[str, Any]] = None,
+        metadata_filter: Optional[Dict[str, Any]] = None,
+    ) -> EvidenceBundle:
+        start = time.perf_counter()
+        bundle = EvidenceBundle(retrieval_mode="hybrid")
+
+        try:
+            merged = await recall_context(
+                user_id=user_id,
+                query=text,
+                top_k=self.top_k,
+                tenant_id=tenant_id,
+                include_embeddings=False,
+            )
+            results = merged.get("results", []) if isinstance(merged, dict) else []
+
+            for item in results:
+                metadata = item.get("metadata") or {}
+                hit: Result = {
+                    "id": item.get("id"),
+                    "score": float(
+                        item.get("similarity_score")
+                        or item.get("score")
+                        or 0.0
+                    ),
+                    "payload": {
+                        "text": item.get("content") or item.get("result") or "",
+                        "metadata": metadata,
+                    },
+                }
+
+                store_name = str(
+                    metadata.get("store") or metadata.get("source") or ""
+                ).lower()
+                if metadata.get("context_type") or store_name in {"short_term", "session"}:
+                    bundle.context_hits.append(hit)
+                elif metadata.get("graph_path") or metadata.get("relationship"):
+                    bundle.graph_hits.append(hit)
+                elif store_name in {"lexical", "elasticsearch", "text"} or metadata_filter:
+                    bundle.lexical_hits.append(hit)
+                else:
+                    bundle.dense_hits.append(hit)
+
+            if memory_context and isinstance(memory_context, dict):
+                for item in memory_context.get("memories", []) or []:
+                    if isinstance(item, dict):
+                        bundle.context_hits.append(
+                            {
+                                "id": item.get("id"),
+                                "score": float(
+                                    item.get("similarity_score") or item.get("score") or 0.0
+                                ),
+                                "payload": {
+                                    "text": item.get("content") or item.get("result") or "",
+                                    "metadata": item,
+                                },
+                            }
+                        )
+
+            bundle.confidence = min(
+                1.0,
+                0.35
+                + 0.08
+                * (len(bundle.dense_hits) + len(bundle.lexical_hits) + len(bundle.context_hits)),
+            )
+            bundle.fusion_summary = {
+                "dense_hits": len(bundle.dense_hits),
+                "lexical_hits": len(bundle.lexical_hits),
+                "context_hits": len(bundle.context_hits),
+                "graph_hits": len(bundle.graph_hits),
+                "metadata_filter": metadata_filter or {},
+            }
+        finally:
+            bundle.latency_ms = (time.perf_counter() - start) * 1000.0
+
+        return bundle

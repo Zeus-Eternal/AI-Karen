@@ -25,7 +25,7 @@ from ai_karen_engine.services.models.management.model_management_service import 
 from ai_karen_engine.services.database.cache.integrated_cache_system import (
     get_integrated_cache_system, initialize_integrated_cache_system
 )
-from ai_karen_engine.services.integrated_performance_monitoring import (
+from ai_karen_engine.services.monitoring.integrated_performance_monitoring import (
     get_integrated_performance_monitor, initialize_integrated_performance_monitoring
 )
 from ai_karen_engine.services.optimization.configuration_manager import (

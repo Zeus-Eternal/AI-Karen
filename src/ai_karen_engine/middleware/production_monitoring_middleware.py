@@ -15,7 +15,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from ai_karen_engine.core.logging import get_logger
-from ai_karen_engine.services.production_monitoring_service import (
+from ai_karen_engine.services.monitoring.production_monitoring_service import (
     get_production_monitoring_service
 )
 

@@ -8,7 +8,7 @@ import time
 from dataclasses import asdict
 from typing import Any, Dict, List, Optional
 
-from ai_karen_engine.core.services.cache import MemoryCache, get_request_deduplicator
+from ai_karen_engine.services.cache import MemoryCache, get_request_deduplicator
 from ai_karen_engine.monitoring.kire_metrics import (
     KIRE_CACHE_EVENTS_TOTAL,
     KIRE_DECISION_CONFIDENCE,

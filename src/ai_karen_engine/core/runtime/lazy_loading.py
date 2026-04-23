@@ -735,7 +735,7 @@ def create_langgraph_orchestrator_factory():
 
 def create_memory_service_factory():
     def factory():
-        from ai_karen_engine.memory.memory_service import WebUIMemoryService
+        from ai_karen_engine.core.memory.memory_service import WebUIMemoryService
 
         return WebUIMemoryService()
 
@@ -744,7 +744,7 @@ def create_memory_service_factory():
 
 def create_conversation_service_factory():
     async def factory():
-        from ai_karen_engine.memory.conversation_service import ConversationService
+        from ai_karen_engine.services.memory.conversation_service import ConversationService
         from ai_karen_engine.database.conversation_manager import ConversationManager
         from ai_karen_engine.database.client import MultiTenantPostgresClient
 
@@ -759,6 +759,15 @@ def create_conversation_service_factory():
             base_conversation_manager=conversation_manager,
             memory_service=memory_service,
         )
+
+    return factory
+
+
+def create_persona_service_factory():
+    async def factory():
+        from ai_karen_engine.services.persona.persona_service import get_persona_service
+
+        return get_persona_service()
 
     return factory
 
@@ -837,6 +846,15 @@ async def setup_lazy_services():
         factory=create_conversation_service_factory(),
         idle_timeout=orchestrator_timeout * 2,
         priority=5,
+    )
+
+    # Register persona service (high priority, user-facing behavior control)
+    logger.info("🔍 DEBUG: Registering persona service...")
+    lazy_registry.register(
+        name="persona_service",
+        factory=create_persona_service_factory(),
+        idle_timeout=orchestrator_timeout * 2,
+        priority=4,
     )
 
     # Register analytics service (low priority, very aggressive cleanup)

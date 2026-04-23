@@ -163,6 +163,14 @@ class ServiceConfigurationLoader:
                 resource_requirements=ResourceRequirements(memory_mb=256),
                 idle_timeout=300,
             ),
+            "profile_service": ServiceConfig(
+                name="profile_service",
+                classification=ServiceClassification.OPTIONAL,
+                startup_priority=55,
+                dependencies=["database_client"],
+                resource_requirements=ResourceRequirements(memory_mb=128),
+                idle_timeout=300,
+            ),
             "conversation_service": ServiceConfig(
                 name="conversation_service",
                 classification=ServiceClassification.OPTIONAL,

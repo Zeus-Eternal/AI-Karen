@@ -15,7 +15,7 @@ Version: 1.0.0 (Unified Architecture)
 
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, List, Optional, Protocol, Sequence, Tuple, runtime_checkable
+from typing import Any, Dict, List, Optional, Protocol, Sequence, Tuple, runtime_checkable
 
 from ai_karen_engine.core.memory.types import (
     EmbeddingVector,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import useAuth from "@/lib/useAuth";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,16 +45,34 @@ interface SystemMetrics {
   [key: string]: unknown;
 }
 
-const AVAILABLE_PLUGINS_AND_TOOLS: Record<string, string[]> = {
-  "Core Tools": ["core.webSearch", "core.fetchUrl", "core.dateTime"],
-  "Data Connector": ["dataConnector.querySql", "dataConnector.readDoc", "dataConnector.vectorSearch"],
-  Gmail: ["gmail.checkUnread", "gmail.composeDraft", "gmail.summarizeThread"],
-  Facebook: ["facebook.postStatus", "facebook.getMentions"],
-  Analytics: ["analytics.trackEvent"],
-  Reporting: ["reporting.createPdf"],
-};
+interface ToolRecord {
+  name: string;
+  description: string;
+  category: string;
+  version: string;
+  author: string;
+  enabled: boolean;
+  tags?: string[];
+}
 
-const DEFAULT_TOOLS = ["core.webSearch", "dataConnector.readDoc"];
+interface PluginRecord {
+  id: string;
+  name: string;
+  display_name?: string;
+  description: string;
+  category?: string;
+  status: string;
+  version: string;
+  tags?: string[];
+}
+
+interface ToolOption {
+  id: string;
+  label: string;
+  description?: string;
+  source: "system" | "plugin";
+  group: string;
+}
 
 function formatTimestamp(value?: string | null): string {
   if (!value) return "Not yet recorded";
@@ -72,6 +90,8 @@ export default function AgentsPage() {
   const { isAuthenticated, isLoading: isAuthLoading, user } = useAuth();
   const [agents, setAgents] = useState<AgentRecord[]>([]);
   const [systemMetrics, setSystemMetrics] = useState<SystemMetrics | null>(null);
+  const [availableToolGroups, setAvailableToolGroups] = useState<Array<[string, ToolOption[]]>>([]);
+  const [installedPlugins, setInstalledPlugins] = useState<PluginRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -80,17 +100,85 @@ export default function AgentsPage() {
   const [newAgentName, setNewAgentName] = useState("");
   const [newAgentDescription, setNewAgentDescription] = useState("");
   const [newAgentExecutionMode, setNewAgentExecutionMode] = useState<AgentExecutionMode>("native");
-  const [newAgentTools, setNewAgentTools] = useState<string[]>(DEFAULT_TOOLS);
+  const [newAgentTools, setNewAgentTools] = useState<string[]>([]);
 
   const isAdmin = user?.roles?.includes("admin") ?? false;
-  const availableToolGroups = useMemo(() => Object.entries(AVAILABLE_PLUGINS_AND_TOOLS), []);
 
   const resetCreateForm = () => {
     setNewAgentName("");
     setNewAgentDescription("");
     setNewAgentExecutionMode("native");
-    setNewAgentTools(DEFAULT_TOOLS);
+    setNewAgentTools([]);
   };
+
+  const loadToolInventory = useCallback(async () => {
+    try {
+      const { apiClient } = await import("@/lib/api");
+
+      const [toolsResponse, pluginsResponse, publicPluginsResponse] = await Promise.allSettled([
+        apiClient.get<{ tools?: ToolRecord[] }>("/api/tools"),
+        apiClient.get<{ plugins?: PluginRecord[] }>("/api/plugins"),
+        apiClient.get<{ plugins?: PluginRecord[] }>("/api/public/plugins"),
+      ]);
+
+      const nextGroups = new Map<string, ToolOption[]>();
+
+      if (toolsResponse.status === "fulfilled") {
+        for (const tool of toolsResponse.value?.tools || []) {
+          const category = tool.category?.trim() || "General Tools";
+          const next = nextGroups.get(category) || [];
+          next.push({
+            id: tool.name,
+            label: tool.name,
+            description: tool.description,
+            source: "system",
+            group: category,
+          });
+          nextGroups.set(category, next);
+        }
+      }
+
+      let pluginSource: PluginRecord[] = [];
+      if (pluginsResponse.status === "fulfilled") {
+        pluginSource = pluginsResponse.value?.plugins || [];
+      } else if (publicPluginsResponse.status === "fulfilled") {
+        pluginSource = publicPluginsResponse.value?.plugins || [];
+      }
+
+      const installed = pluginSource
+        .filter((plugin) => plugin.status === "installed")
+        .sort((left, right) =>
+          (left.display_name || left.name).localeCompare(right.display_name || right.name)
+        );
+
+      setInstalledPlugins(installed);
+
+      for (const plugin of installed) {
+        const category = plugin.category?.trim() || "Plugins";
+        const next = nextGroups.get(category) || [];
+        next.push({
+          id: plugin.name,
+          label: plugin.display_name || plugin.name,
+          description: plugin.description,
+          source: "plugin",
+          group: category,
+        });
+        nextGroups.set(category, next);
+      }
+
+      const grouped = Array.from(nextGroups.entries()).map(([groupName, tools]) => [
+        groupName,
+        tools.sort((left, right) => left.label.localeCompare(right.label)),
+      ]);
+
+      grouped.sort((left, right) => left[0].localeCompare(right[0]));
+      setAvailableToolGroups(grouped);
+    } catch (err) {
+      console.error("Failed to load tools/plugins:", err);
+      setAvailableToolGroups([]);
+      setInstalledPlugins([]);
+    }
+  }, []);
 
    const fetchAgents = useCallback(async () => {
      if (!isAuthenticated) {
@@ -108,11 +196,11 @@ export default function AgentsPage() {
        const data = await apiClient.get<AgentRecord[]>("/api/agents");
        setAgents(data || []);
 
-       if (isAdmin) {
-         try {
-           const metrics = await apiClient.get<SystemMetrics>("/api/agents/system/metrics");
-           setSystemMetrics(metrics);
-         } catch {
+      if (isAdmin) {
+        try {
+          const metrics = await apiClient.get<SystemMetrics>("/api/agents/system/metrics");
+          setSystemMetrics(metrics);
+        } catch {
            setSystemMetrics(null);
          }
        } else {
@@ -127,12 +215,15 @@ export default function AgentsPage() {
      }
    }, [isAuthenticated, isAdmin]);
 
-   useEffect(() => {
-     if (isAuthLoading) {
-       return;
-     }
-     fetchAgents();
-   }, [isAuthenticated, isAuthLoading, fetchAgents]);
+  useEffect(() => {
+    if (isAuthLoading) {
+      return;
+    }
+    fetchAgents();
+    if (isAuthenticated) {
+      loadToolInventory();
+    }
+  }, [isAuthenticated, isAuthLoading, fetchAgents, loadToolInventory]);
 
   const handleCreateAgent = async () => {
     if (!isAuthenticated || !isAdmin) {
@@ -480,30 +571,78 @@ export default function AgentsPage() {
               </div>
 
               <div className="space-y-3">
-                <Label>Available Plugin Tools</Label>
-                {availableToolGroups.map(([groupName, tools]) => (
-                  <div key={groupName} className="rounded-md border p-3">
-                    <div className="text-sm font-medium mb-2">{groupName}</div>
-                    <div className="space-y-2">
-                      {tools.map((tool) => {
-                        const assigned = newAgentTools.includes(tool);
-                        return (
-                          <Button
-                            key={tool}
-                            type="button"
-                            variant={assigned ? "secondary" : "outline"}
-                            className="w-full justify-between"
-                            disabled={!isAuthenticated || !isAdmin || isSaving || assigned}
-                            onClick={() => addTool(tool)}
-                          >
-                            <span className="font-mono text-xs">{tool}</span>
-                            <span>{assigned ? "Assigned" : "Add"}</span>
-                          </Button>
-                        );
-                      })}
-                    </div>
+                <Label>Available Tools</Label>
+                {availableToolGroups.length === 0 ? (
+                  <div className="rounded-md border p-3 bg-muted/20">
+                    <p className="text-xs text-muted-foreground">
+                      No live tools were returned by the backend registry.
+                    </p>
                   </div>
-                ))}
+                ) : (
+                  availableToolGroups.map(([groupName, tools]) => (
+                    <div key={groupName} className="rounded-md border p-3">
+                      <div className="text-sm font-medium mb-2">{groupName}</div>
+                      <div className="space-y-2">
+                        {tools.map((tool) => {
+                          const assigned = newAgentTools.includes(tool.id);
+                          return (
+                            <Button
+                              key={`${tool.source}:${tool.id}`}
+                              type="button"
+                              variant={assigned ? "secondary" : "outline"}
+                              className="w-full justify-between gap-3"
+                              disabled={!isAuthenticated || !isAdmin || isSaving || assigned}
+                              onClick={() => addTool(tool.id)}
+                            >
+                              <span className="flex min-w-0 flex-col items-start text-left">
+                                <span className="font-mono text-xs break-all">{tool.label}</span>
+                                {tool.description && (
+                                  <span className="text-[11px] text-muted-foreground line-clamp-2">
+                                    {tool.description}
+                                  </span>
+                                )}
+                              </span>
+                              <span className="flex items-center gap-2 shrink-0">
+                                <Badge variant={tool.source === "system" ? "default" : "secondary"} className="text-[10px]">
+                                  {tool.source}
+                                </Badge>
+                                <span>{assigned ? "Assigned" : "Add"}</span>
+                              </span>
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))
+                )}
+
+                <div className="rounded-md border p-3 bg-muted/20 space-y-2">
+                  <div className="text-sm font-medium">Installed Plugins</div>
+                  {installedPlugins.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      No installed plugins were returned by the backend.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {installedPlugins.map((plugin) => (
+                        <div
+                          key={plugin.id}
+                          className="flex items-start justify-between gap-3 rounded-md border bg-background p-2"
+                        >
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium">{plugin.display_name || plugin.name}</div>
+                            <div className="text-xs text-muted-foreground line-clamp-2">
+                              {plugin.description}
+                            </div>
+                          </div>
+                          <Badge variant="secondary" className="shrink-0">
+                            {plugin.status}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </CardContent>
             <CardFooter>

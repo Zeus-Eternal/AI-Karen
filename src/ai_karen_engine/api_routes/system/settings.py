@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from ai_karen_engine.core.services.user_prefs import UserPrefs, get_user_prefs
+from ai_karen_engine.services.user_prefs import UserPrefs, get_user_prefs
 
 router = APIRouter(prefix="/api", tags=["settings"])
 

@@ -401,7 +401,7 @@ class SecureAuthMiddleware:
             "/api/auth/refresh",
             "/api/auth/forgot-password",
             "/api/auth/reset-password",
-            "/api/public/",
+            "/api/public",
             "/ws",
         ]
         return any(path.startswith(pattern) for pattern in public_patterns)

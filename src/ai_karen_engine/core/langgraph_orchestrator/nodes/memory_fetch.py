@@ -11,31 +11,54 @@ from ai_karen_engine.utils.chat_helpers import (
     build_structured_context_sections,
     wants_long_form_markdown_article,
 )
+from ai_karen_engine.core.memory.profile_synthesis import get_profile_service
 
 logger = logging.getLogger(__name__)
 
 
 class MemoryFetchNode:
-    """Memory and context fetching with salvaged session state retrieval."""
+    """Memory and context fetching with Profile Synthesis and salvaged session state retrieval."""
 
     def __init__(self):
-        pass
+        self.profile_service = get_profile_service()
 
     async def __call__(
         self, state: LangGraphOrchestrationState
     ) -> LangGraphOrchestrationState:
-        """Memory and context fetching with salvaged session state retrieval."""
-        logger.info("Memory fetch processing")
+        """Memory and context fetching with Profile Synthesis and salvaged session state retrieval."""
+        logger.info("Memory fetch processing (Profile-Synthesis-Aware)")
 
         try:
             errors = state.setdefault("errors", [])
             warnings = state.setdefault("warnings", [])
             messages = state.get("messages", [])
+            user_id = state.get("user_id")
+            tenant_id = state.get("tenant_id", "default")
+            
             conversation_history = [
                 message_to_history_entry(message) for message in messages
             ]
 
             state["conversation_history"] = conversation_history
+
+            # 1. Synthesize User Profile from durable facts (Phase 7)
+            if user_id:
+                try:
+                    profile_summary = await self.profile_service.get_profile_summary(user_id, tenant_id)
+                    state["user_profile_summary"] = profile_summary.dict()
+                    
+                    # Map to legacy user_profile for backward compatibility with prompt builders
+                    legacy_profile = state.get("user_profile") or {}
+                    legacy_profile.update({
+                        "id": str(profile_summary.user_id),
+                        "preferences": profile_summary.top_preferences,
+                        "style": profile_summary.communication_style.dict(),
+                        "roles": profile_summary.roles
+                    })
+                    state["user_profile"] = legacy_profile
+                    logger.debug(f"Synthesized profile for {user_id} with {profile_summary.stable_facts_count} facts.")
+                except Exception as prof_err:
+                    logger.warning(f"Profile synthesis failed for {user_id}: {prof_err}")
 
             if not messages:
                 state["memory_context"] = {
@@ -52,7 +75,7 @@ class MemoryFetchNode:
             prompt = conversation_history[-1]["content"]
 
             context = await context_manager.build_context(
-                user_id=state.get("user_id"),
+                user_id=user_id,
                 session_id=state.get("session_id"),
                 prompt=prompt,
                 conversation_history=conversation_history,

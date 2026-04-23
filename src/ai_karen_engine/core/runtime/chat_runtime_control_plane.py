@@ -369,7 +369,7 @@ class RedisProbe:
                 pass
 
             # Fall back to the legacy manager path where older health probes still report.
-            from ai_karen_engine.memory.redis_connection_manager import (
+            from ai_karen_engine.core.memory.redis_connection_manager import (
                 get_redis_manager,
             )
 

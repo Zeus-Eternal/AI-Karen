@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 from ai_karen_engine.core.logging import get_logger
-from ai_karen_engine.core.services.cache import MemoryCache
+from ai_karen_engine.services.cache import MemoryCache
 
 logger = get_logger(__name__)
 

@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import json
 from datetime import datetime
 
-from ..recalls import RecallManager, RecallQuery, RecallEntry
+from ..memory.retrieval import RecallManager, RecallQuery
 from ...learning.case_memory import CaseRetriever, Case, StepTrace, Reward
 from ...tools.interpreters import BaseInterpreter
 
@@ -324,18 +324,18 @@ class CBRAgent:
             plan_text = json.dumps(plan_data)
             
             # Create recall entry
-            recall_entry = RecallEntry(
-                question=task,
-                plan=plan_text,
-                reward=reward,
-                timestamp=datetime.now(),
-                metadata={
+            recall_entry = {
+                'question': task,
+                'plan': plan_text,
+                'reward': reward,
+                'timestamp': datetime.now(),
+                'metadata': {
                     'agent_id': self.agent_id,
                     'execution_time': datetime.now().isoformat(),
                     'success': success,
                     'steps_count': len(steps)
                 }
-            )
+            }
             
             # Add to recall manager
             await self.recall_manager.add_recall(recall_entry)

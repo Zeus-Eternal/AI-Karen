@@ -34,7 +34,9 @@ if not _PROFILE_SRC:
 if not _PROFILE_SRC:
     try:
         # Legacy JSON-based service profile manager
-        from ai_karen_engine.memory.profile_manager import ProfileManager as _ServicePM
+        from ai_karen_engine.core.memory.profile_synthesis.profile_manager import (
+            ProfileManager as _ServicePM,
+        )
         ServiceProfileManager = _ServicePM  # type: ignore
         _PROFILE_SRC = "service"
     except Exception:

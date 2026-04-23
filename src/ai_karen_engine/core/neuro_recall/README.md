@@ -64,7 +64,7 @@ The neuro-recall capabilities are now deeply integrated into AI-Karen:
 ```python
 # Case-memory learning is automatically enabled in planner/executor
 from ai_karen_engine.learning.case_memory import get_observer
-from ai_karen_engine.core.recalls import RecallManager
+from ai_karen_engine.core.memory.retrieval import RecallManager
 from ai_karen_engine.tools.interpreters import PythonInterpreter
 
 # Observability

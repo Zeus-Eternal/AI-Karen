@@ -25,7 +25,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from ai_karen_engine.core.logging import get_logger
 from .database_connection_manager import get_database_manager
-from ai_karen_engine.infra.redis_connection_manager import get_redis_manager
+from ai_karen_engine.core.memory.redis_connection_manager import get_redis_manager
 from ai_karen_engine.core.model_runtime.milvus_client import MilvusClient
 from ai_karen_engine.database.models import (
     Base,

@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import List, Optional, Tuple
 
 from ai_karen_engine.models.ag_ui_types import AGUIMemoryEntry, AGUIMemoryQuery
-from ai_karen_engine.memory.memory_service import WebUIMemoryEntry, WebUIMemoryQuery
+from ai_karen_engine.core.memory.memory_service import WebUIMemoryEntry, WebUIMemoryQuery
 
 
 async def transform_ag_ui_query(query: AGUIMemoryQuery) -> WebUIMemoryQuery:

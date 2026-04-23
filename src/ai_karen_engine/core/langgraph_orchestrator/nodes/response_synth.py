@@ -49,6 +49,7 @@ class ResponseSynthesisNode:
                 "tool_results_count": len(state.get("tool_results") or []),
                 "selected_provider": state.get("selected_provider"),
                 "selected_model": state.get("selected_model"),
+                "has_reasoning_result": bool(state.get("reasoning_result")),
             }
             state["response_summary"] = {
                 "response_length": len(response),
@@ -58,6 +59,7 @@ class ResponseSynthesisNode:
                 "included_execution_summary": bool(
                     state.get("execution_summary") and self.config.include_execution_summary
                 ),
+                "included_reasoning_summary": bool(state.get("reasoning_result")),
             }
             if self.config.apply_safety_filter:
                 state = self._apply_safety_filter(state)
@@ -72,6 +74,7 @@ class ResponseSynthesisNode:
         last_user_message = self._extract_last_user_message(messages)
         tool_results = state.get("tool_results") or []
         execution_summary = state.get("execution_summary") or {}
+        reasoning_result = state.get("reasoning_result") or {}
 
         parts: List[str] = []
 
@@ -87,6 +90,9 @@ class ResponseSynthesisNode:
                 f"{execution_summary.get('successful_executions', 0)} successful, "
                 f"{execution_summary.get('failed_executions', 0)} failed."
             )
+
+        if isinstance(reasoning_result, dict) and reasoning_result.get("summary"):
+            parts.append(f"Reasoning summary: {reasoning_result['summary']}")
 
         if not parts:
             parts.append("I’m ready to help.")

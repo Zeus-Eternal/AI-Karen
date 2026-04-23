@@ -147,12 +147,34 @@ async def get_memory_service() -> Any:
     return await _resolve_service("memory_service")
 
 
+async def get_profile_service() -> Any:
+    """Discovery for Profile service."""
+    return await _resolve_service("profile_service")
+
+
+async def get_persona_service() -> Any:
+    """Discovery for Persona service."""
+
+    async def factory():
+        from ai_karen_engine.services.persona.persona_service import (
+            get_persona_service as get_persona_service_impl,
+            initialize_persona_service,
+        )
+
+        service = get_persona_service_impl()
+        if getattr(service, "db_client", None) is None:
+            service = initialize_persona_service()
+        return service
+
+    return await _resolve_service("persona_service", factory)
+
+
 async def get_conversation_service() -> Any:
     """Discovery for Conversation service with complex legacy mapping support."""
 
     async def factory():
-        from ai_karen_engine.memory.conversation_service import ConversationService
-        from ai_karen_engine.memory.memory_service import WebUIMemoryService
+        from ai_karen_engine.services.memory.conversation_service import ConversationService
+        from ai_karen_engine.core.memory.memory_service import WebUIMemoryService
         from ai_karen_engine.database.conversation_manager import ConversationManager
         from ai_karen_engine.database.client import MultiTenantPostgresClient
 
@@ -189,13 +211,13 @@ async def get_conversation_service() -> Any:
 async def get_plugin_service() -> Any:
     async def factory():
         from pathlib import Path
-        from ai_karen_engine.infra.plugin_service import (
-            get_plugin_service as get_infra_plugin_service,
+        from ai_karen_engine.services.plugin_service import (
+            get_plugin_service as get_plugin_service_impl,
             initialize_plugin_service,
         )
 
         expected_path = Path("src/ai_karen_engine/extensions/plugins")
-        service = get_infra_plugin_service()
+        service = get_plugin_service_impl()
 
         if (
             not getattr(service, "initialized", False)
@@ -265,6 +287,7 @@ ServiceRegistry_Dep = Depends(get_service_registry_instance)
 
 LangGraphOrchestrator_Dep = Depends(get_langgraph_orchestrator_service)
 MemoryService_Dep = Depends(get_memory_service)
+ProfileService_Dep = Depends(get_profile_service)
 ConversationService_Dep = Depends(get_conversation_service)
 
 PluginService_Dep = Depends(get_plugin_service)

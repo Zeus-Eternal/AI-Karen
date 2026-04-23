@@ -26,7 +26,7 @@ from ai_karen_engine.core.services.base import BaseService, ServiceConfig
 
 # Try to import Unified Memory Service components
 try:
-    from ai_karen_engine.memory.unified_memory_service import (
+    from ai_karen_engine.core.memory.unified_memory_service import (
         UnifiedMemoryService,
         MemoryCommitRequest,
         MemoryQueryRequest,

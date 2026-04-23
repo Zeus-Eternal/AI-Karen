@@ -4,6 +4,7 @@ REST endpoints for managing personas, style controls, and user preferences
 """
 
 from datetime import datetime
+import logging
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -11,15 +12,16 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from ai_karen_engine.core.services.dependencies import bypass_user_context_func
+from ai_karen_engine.services.persona.persona_service import get_persona_service
 from ai_karen_engine.models.persona_models import (
     LanguageEnum,
     PersonaStyleOverride,
     ToneEnum,
     VerbosityEnum,
 )
-from ai_karen_engine.memory.persona_service import get_persona_service
 
 router = APIRouter(tags=["personas"])
+logger = logging.getLogger(__name__)
 
 
 # Alias core dependency for convenience
@@ -282,19 +284,21 @@ async def delete_persona(
 async def get_my_preferences(
     current_user: Dict[str, Any] = Depends(get_current_user),
 ) -> PreferencesResponse:
-    """Get current user's persona preferences"""
+    """Get current user's persona preferences."""
 
-    user_context = current_user
+    user_id = current_user["user_id"]
+    tenant_id = current_user.get("tenant_id", "default")
     persona_service = get_persona_service()
 
     try:
         preferences = await persona_service.get_user_preferences(
-            user_id=user_context["user_id"], tenant_id=user_context["tenant_id"]
+            user_id=user_id, tenant_id=tenant_id
         )
 
-        return PreferencesResponse(**preferences.dict())
+        return PreferencesResponse(**preferences.dict(exclude={"custom_personas"}))
 
-    except Exception:
+    except Exception as exc:
+        logger.error(f"Failed to load persona preferences: {exc}")
         raise HTTPException(status_code=500, detail="Failed to get preferences")
 
 
@@ -303,24 +307,28 @@ async def update_my_preferences(
     request: UpdatePreferencesRequest,
     current_user: Dict[str, Any] = Depends(get_current_user),
 ) -> PreferencesResponse:
-    """Update current user's persona preferences"""
+    """Update current user's persona preferences."""
 
-    user_context = current_user
+    user_id = current_user["user_id"]
+    tenant_id = current_user.get("tenant_id", "default")
     persona_service = get_persona_service()
 
     try:
-        # Filter out None values
-        updates = {k: v for k, v in request.dict().items() if v is not None}
-
+        updates = {
+            key: value
+            for key, value in request.dict().items()
+            if value is not None
+        }
         preferences = await persona_service.update_user_preferences(
-            user_id=user_context["user_id"],
-            tenant_id=user_context["tenant_id"],
+            user_id=user_id,
+            tenant_id=tenant_id,
             updates=updates,
         )
 
-        return PreferencesResponse(**preferences.dict())
+        return PreferencesResponse(**preferences.dict(exclude={"custom_personas"}))
 
-    except Exception:
+    except Exception as exc:
+        logger.error(f"Failed to update preferences: {exc}")
         raise HTTPException(status_code=500, detail="Failed to update preferences")
 
 
@@ -341,7 +349,7 @@ async def switch_persona(
             persona_id=request.persona_id,
         )
 
-        return PreferencesResponse(**preferences.dict())
+        return PreferencesResponse(**preferences.dict(exclude={"custom_personas"}))
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

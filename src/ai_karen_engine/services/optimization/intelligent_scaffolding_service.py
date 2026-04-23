@@ -23,7 +23,7 @@ from ai_karen_engine.services.intelligent_model_router import (
 from ai_karen_engine.services.models.discovery.model_discovery_engine import (
     ModelDiscoveryEngine, get_model_discovery_engine
 )
-from ai_karen_engine.memory.profile_manager import (
+from ai_karen_engine.core.memory.profile_synthesis.profile_manager import (
     ProfileManager, get_profile_manager
 )
 

@@ -1,0 +1,367 @@
+"""
+Memory Control API Routes.
+
+Exposes the operator/user-facing control surface for the canonical memory
+ledger and runtime manager:
+- memory inspection
+- consent scope control
+- retention policy control
+- shadow-mode launch gating
+- profile correction ingestion
+- promoted artifact export preview
+"""
+
+from __future__ import annotations
+
+import logging
+import uuid
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, HTTPException, Request
+from pydantic import Field
+
+from ai_karen_engine.api_routes.shared.schemas import ErrorHandler
+from ai_karen_engine.auth.rbac_middleware import check_scope
+from ai_karen_engine.core.memory.memory_runtime_manager import (
+    export_promoted_artifacts,
+    get_memory_manager,
+)
+from ai_karen_engine.utils.pydantic_base import ISO8601Model
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/memory/control", tags=["memory-control"])
+
+
+def get_correlation_id(request: Request) -> str:
+    """Extract or generate correlation ID for request tracking."""
+    return request.headers.get("X-Correlation-Id", str(uuid.uuid4()))
+
+
+def _memory_manager():
+    return get_memory_manager()
+
+
+class MemoryInspectorRequest(ISO8601Model):
+    tenant_id: Optional[str] = None
+    user_id: Optional[str] = None
+    limit: int = Field(20, ge=1, le=100)
+
+
+class MemoryInspectorResponse(ISO8601Model):
+    correlation_id: str
+    status: str
+    tenant_id: Optional[str] = None
+    user_id: Optional[str] = None
+    limit: int
+    feature_flags: Dict[str, bool] = Field(default_factory=dict)
+    metrics: Dict[str, Any] = Field(default_factory=dict)
+    counts: Dict[str, int] = Field(default_factory=dict)
+    recent_events: List[Dict[str, Any]] = Field(default_factory=list)
+    recent_assertions: List[Dict[str, Any]] = Field(default_factory=list)
+    recent_profile_facts: List[Dict[str, Any]] = Field(default_factory=list)
+    recent_episodes: List[Dict[str, Any]] = Field(default_factory=list)
+    open_contradictions: List[Dict[str, Any]] = Field(default_factory=list)
+    consent_scopes: List[Dict[str, Any]] = Field(default_factory=list)
+    retention_policies: List[Dict[str, Any]] = Field(default_factory=list)
+    projection_status: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+class ConsentScopeRequest(ISO8601Model):
+    tenant_id: str = Field(..., min_length=1)
+    user_id: str = Field(..., min_length=1)
+    scope_name: str = Field(..., min_length=1, max_length=100)
+    granted: bool = Field(...)
+
+
+class ConsentScopeResponse(ISO8601Model):
+    correlation_id: str
+    status: str
+    scope_id: Optional[str] = None
+    tenant_id: Optional[str] = None
+    user_id: Optional[str] = None
+    scope_name: Optional[str] = None
+    is_granted: Optional[bool] = None
+    granted_at: Optional[str] = None
+    revoked_at: Optional[str] = None
+
+
+class ConsentScopeListResponse(ISO8601Model):
+    correlation_id: str
+    status: str
+    items: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+class RetentionPolicyRequest(ISO8601Model):
+    tenant_id: Optional[str] = None
+    memory_class: str = Field(..., min_length=1, max_length=50)
+    ttl_days: Optional[int] = Field(None, ge=1, le=3650)
+
+
+class RetentionPolicyResponse(ISO8601Model):
+    correlation_id: str
+    status: str
+    policy_id: Optional[str] = None
+    tenant_id: Optional[str] = None
+    memory_class: Optional[str] = None
+    ttl_days: Optional[int] = None
+    updated_at: Optional[str] = None
+
+
+class RetentionPolicyListResponse(ISO8601Model):
+    correlation_id: str
+    status: str
+    items: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+class ShadowModeRequest(ISO8601Model):
+    enabled: bool
+    tenant_id: Optional[str] = None
+    user_id: Optional[str] = None
+
+
+class ShadowModeResponse(ISO8601Model):
+    correlation_id: str
+    status: str
+    enabled: bool
+    tenant_id: Optional[str] = None
+    user_id: Optional[str] = None
+    effective: bool
+
+
+class ProfileCorrectionRequest(ISO8601Model):
+    tenant_id: str = Field(..., min_length=1)
+    user_id: str = Field(..., min_length=1)
+    correction_text: str = Field(..., min_length=1, max_length=16000)
+    profile_area: Optional[str] = Field(None, max_length=128)
+    source_ref: Optional[str] = Field(None, max_length=255)
+    session_id: Optional[str] = Field(None, max_length=255)
+    confidence: Optional[float] = Field(None, ge=0.0, le=1.0)
+
+
+class ProfileCorrectionResponse(ISO8601Model):
+    correlation_id: str
+    status: str
+    result: Dict[str, Any] = Field(default_factory=dict)
+
+
+class ExportPromotedRequest(ISO8601Model):
+    limit: int = Field(100, ge=1, le=500)
+
+
+class ExportPromotedResponse(ISO8601Model):
+    correlation_id: str
+    status: str
+    count: int
+    limit: int
+    artifacts: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+async def _authorize(request: Request, scope: str) -> None:
+    if not await check_scope(request, scope):
+        correlation_id = get_correlation_id(request)
+        error_response = ErrorHandler.create_authorization_error_response(
+            correlation_id=correlation_id,
+            path=str(request.url.path),
+            message=f"Insufficient permissions for {scope}",
+        )
+        raise HTTPException(status_code=403, detail=error_response.model_dump(mode="json"))
+
+
+@router.get("/inspector", response_model=MemoryInspectorResponse)
+async def inspect_memory(request: Request, tenant_id: Optional[str] = None, user_id: Optional[str] = None, limit: int = 20):
+    """Return a structured memory inspection snapshot."""
+    correlation_id = get_correlation_id(request)
+    await _authorize(request, "admin:read")
+
+    manager = _memory_manager()
+    if not manager.flags.is_enabled("memory_inspector_enabled", tenant_id, user_id):
+        raise HTTPException(status_code=403, detail="Memory inspector is disabled")
+    snapshot = await manager.inspect_memory_state(
+        tenant_id=tenant_id,
+        user_id=user_id,
+        limit=limit,
+    )
+    snapshot["correlation_id"] = correlation_id
+    return MemoryInspectorResponse(**snapshot)
+
+
+@router.get("/consent", response_model=ConsentScopeListResponse)
+async def list_consent_scopes(request: Request, tenant_id: str, user_id: Optional[str] = None):
+    """List consent scopes for a tenant and optional user."""
+    correlation_id = get_correlation_id(request)
+    await _authorize(request, "admin:read")
+
+    manager = _memory_manager()
+    if not manager.flags.is_enabled("memory_consent_controls_enabled", tenant_id, user_id):
+        raise HTTPException(status_code=403, detail="Memory consent controls are disabled")
+    result = await manager.list_consent_scopes(tenant_id=tenant_id, user_id=user_id)
+    return ConsentScopeListResponse(
+        correlation_id=correlation_id,
+        status=result.get("status", "degraded"),
+        items=result.get("items", []),
+    )
+
+
+@router.post("/consent", response_model=ConsentScopeResponse)
+async def update_consent_scope(request: Request, body: ConsentScopeRequest):
+    """Create or update a consent scope entry."""
+    correlation_id = get_correlation_id(request)
+    await _authorize(request, "admin:write")
+
+    manager = _memory_manager()
+    if not manager.flags.is_enabled("memory_consent_controls_enabled", body.tenant_id, body.user_id):
+        raise HTTPException(status_code=403, detail="Memory consent controls are disabled")
+    result = await manager.set_consent_scope(
+        tenant_id=body.tenant_id,
+        user_id=body.user_id,
+        scope_name=body.scope_name,
+        granted=body.granted,
+    )
+    return ConsentScopeResponse(correlation_id=correlation_id, **result)
+
+
+@router.get("/retention", response_model=RetentionPolicyListResponse)
+async def list_retention_policies(request: Request, tenant_id: Optional[str] = None):
+    """List retention policies for a tenant or the global defaults."""
+    correlation_id = get_correlation_id(request)
+    await _authorize(request, "admin:read")
+
+    manager = _memory_manager()
+    if not manager.flags.is_enabled("memory_retention_controls_enabled", tenant_id):
+        raise HTTPException(status_code=403, detail="Memory retention controls are disabled")
+    result = await manager.list_retention_policies(tenant_id=tenant_id)
+    return RetentionPolicyListResponse(
+        correlation_id=correlation_id,
+        status=result.get("status", "degraded"),
+        items=result.get("items", []),
+    )
+
+
+@router.post("/retention", response_model=RetentionPolicyResponse)
+async def update_retention_policy(request: Request, body: RetentionPolicyRequest):
+    """Create or update a retention policy entry."""
+    correlation_id = get_correlation_id(request)
+    await _authorize(request, "admin:write")
+
+    manager = _memory_manager()
+    if not manager.flags.is_enabled("memory_retention_controls_enabled", body.tenant_id):
+        raise HTTPException(status_code=403, detail="Memory retention controls are disabled")
+    result = await manager.set_retention_policy(
+        tenant_id=body.tenant_id,
+        memory_class=body.memory_class,
+        ttl_days=body.ttl_days,
+    )
+    return RetentionPolicyResponse(correlation_id=correlation_id, **result)
+
+
+@router.get("/shadow-mode", response_model=ShadowModeResponse)
+async def get_shadow_mode(request: Request, tenant_id: Optional[str] = None, user_id: Optional[str] = None):
+    """Return the effective memory shadow-mode state."""
+    correlation_id = get_correlation_id(request)
+    await _authorize(request, "admin:read")
+
+    manager = _memory_manager()
+    effective = manager.flags.is_enabled("memory_shadow_mode_enabled", tenant_id, user_id)
+    return ShadowModeResponse(
+        correlation_id=correlation_id,
+        status="success",
+        enabled=effective,
+        tenant_id=tenant_id,
+        user_id=user_id,
+        effective=effective,
+    )
+
+
+@router.post("/shadow-mode", response_model=ShadowModeResponse)
+async def set_shadow_mode(request: Request, body: ShadowModeRequest):
+    """Set memory shadow mode globally or for a tenant/user override."""
+    correlation_id = get_correlation_id(request)
+    await _authorize(request, "admin:write")
+
+    manager = _memory_manager()
+    result = manager.set_shadow_mode(
+        enabled=body.enabled,
+        tenant_id=body.tenant_id,
+        user_id=body.user_id,
+    )
+    return ShadowModeResponse(
+        correlation_id=correlation_id,
+        status=result.get("status", "success"),
+        enabled=result["enabled"],
+        tenant_id=result.get("tenant_id"),
+        user_id=result.get("user_id"),
+        effective=result.get("effective", body.enabled),
+    )
+
+
+@router.post("/profile/correction", response_model=ProfileCorrectionResponse)
+async def submit_profile_correction(request: Request, body: ProfileCorrectionRequest):
+    """Ingest a user profile correction into the canonical memory ledger."""
+    correlation_id = get_correlation_id(request)
+    await _authorize(request, "memory:write")
+
+    manager = _memory_manager()
+    if not manager.flags.is_enabled("memory_profile_corrections_enabled", body.tenant_id, body.user_id):
+        return ProfileCorrectionResponse(
+            correlation_id=correlation_id,
+            status="disabled",
+            result={
+                "status": "skipped",
+                "reason": "Memory profile corrections are disabled",
+            },
+        )
+    source_text = body.correction_text
+    if body.profile_area:
+        source_text = f"{body.profile_area}: {source_text}"
+
+    result = await manager.process_interaction(
+        text=source_text,
+        tenant_id=body.tenant_id,
+        user_id=body.user_id,
+        source_type="profile_correction",
+        source_ref=body.source_ref or body.session_id,
+        metadata={
+            "profile_area": body.profile_area,
+            "confidence": body.confidence,
+            "session_id": body.session_id,
+            "source_ref": body.source_ref,
+        },
+    )
+    result["profile_area"] = body.profile_area
+    result["confidence"] = body.confidence
+    return ProfileCorrectionResponse(
+        correlation_id=correlation_id,
+        status=str(result.get("status", "success")),
+        result=result,
+    )
+
+
+@router.post("/export/promoted", response_model=ExportPromotedResponse)
+async def export_promoted(request: Request, body: ExportPromotedRequest):
+    """Preview promoted artifacts for offline consolidation or review."""
+    correlation_id = get_correlation_id(request)
+    await _authorize(request, "admin:read")
+
+    result = await export_promoted_artifacts(limit=body.limit)
+    return ExportPromotedResponse(
+        correlation_id=correlation_id,
+        status=result.get("status", "noop"),
+        count=int(result.get("count", 0)),
+        limit=int(result.get("limit", body.limit)),
+        artifacts=result.get("artifacts", []),
+    )
+
+
+@router.get("/health")
+async def health_check():
+    """Health check for the memory control surface."""
+    return {
+        "status": "healthy",
+        "service": "memory_control",
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+
+
+__all__ = ["router"]

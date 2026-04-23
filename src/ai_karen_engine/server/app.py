@@ -212,7 +212,7 @@ def create_app() -> FastAPI:
                 from ai_karen_engine.services.database_connection_manager import (
                     get_database_manager,
                 )
-                from ai_karen_engine.infra.redis_connection_manager import (
+                from ai_karen_engine.core.memory.redis_connection_manager import (
                     get_redis_manager,
                 )
 

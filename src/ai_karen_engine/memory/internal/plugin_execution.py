@@ -36,7 +36,7 @@ try:
 except ImportError:
     from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict, Field, validator
 
-from ai_karen_engine.memory.plugin_registry import (
+from ai_karen_engine.services.plugin_discovery import (
     PluginManifest,
     PluginMetadata,
     PluginRegistry,

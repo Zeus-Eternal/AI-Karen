@@ -40,6 +40,9 @@ class LangGraphOrchestrationState(TypedDict):
     intent_confidence: Optional[float]
     execution_plan: Optional[Dict[str, Any]]
     intent_analysis: Optional[Dict[str, Any]]
+    reasoning_hints: Optional[Dict[str, Any]]
+    reasoning_result: Optional[Dict[str, Any]]
+    reasoning_metadata: Optional[Dict[str, Any]]
 
     # Routing & Execution
     selected_provider: Optional[str]
@@ -116,6 +119,9 @@ def create_initial_state(
         "intent_confidence": None,
         "execution_plan": None,
         "intent_analysis": None,
+        "reasoning_hints": None,
+        "reasoning_result": None,
+        "reasoning_metadata": None,
         "selected_provider": None,
         "selected_model": None,
         "routing_reason": None,

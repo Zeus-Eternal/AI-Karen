@@ -538,6 +538,38 @@ class MultiTenantPostgresClient(DatabaseClient):
             ),
             text(
                 """
+                CREATE TABLE IF NOT EXISTS persona_memory_entries (
+                    id VARCHAR(64) PRIMARY KEY,
+                    tenant_id VARCHAR(255) NOT NULL,
+                    user_id VARCHAR(255) NOT NULL,
+                    conversation_id VARCHAR(255),
+                    persona_id VARCHAR(64),
+                    persona_name VARCHAR(100),
+                    tone_used VARCHAR(32),
+                    verbosity_used VARCHAR(32),
+                    content TEXT NOT NULL,
+                    memory_type VARCHAR(64) NOT NULL DEFAULT 'chat_interaction',
+                    importance_score FLOAT NOT NULL DEFAULT 0.5,
+                    embedding_id VARCHAR(64),
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    accessed_at TIMESTAMP
+                )
+                """
+            ),
+            text(
+                """
+                CREATE INDEX IF NOT EXISTS idx_persona_memory_entries_user_lookup
+                ON persona_memory_entries (tenant_id, user_id, created_at DESC)
+                """
+            ),
+            text(
+                """
+                CREATE INDEX IF NOT EXISTS idx_persona_memory_entries_persona_lookup
+                ON persona_memory_entries (tenant_id, persona_id, created_at DESC)
+                """
+            ),
+            text(
+                """
                 CREATE INDEX IF NOT EXISTS idx_user_persona_preferences_active_persona
                 ON user_persona_preferences (active_persona_id)
                 """

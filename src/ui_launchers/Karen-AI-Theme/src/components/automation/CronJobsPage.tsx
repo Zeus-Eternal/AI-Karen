@@ -11,36 +11,151 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel, SelectSeparator } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { useState, useEffect, useCallback } from "react";
+import useAuth from "@/lib/useAuth";
+import { ApiError, apiClient } from "@/lib/api";
 
 /**
  * @file CronJobsPage.tsx
  * @description Preview page for scheduling Tasks using cron expressions.
  */
+let cronJobsFetchPromise: Promise<any[]> | null = null;
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function loadCronJobsWithRetry(): Promise<any[]> {
+  const retryDelaysMs = [250, 750];
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt <= retryDelaysMs.length; attempt += 1) {
+    try {
+      if (!cronJobsFetchPromise) {
+        cronJobsFetchPromise = apiClient
+          .get<any[]>("/api/automation/cron")
+          .finally(() => {
+            cronJobsFetchPromise = null;
+          });
+      }
+
+      return await cronJobsFetchPromise;
+    } catch (error) {
+      lastError = error;
+
+      if (error instanceof ApiError && (error.status === 404 || error.status === 429) && attempt < retryDelaysMs.length) {
+        await sleep(retryDelaysMs[attempt]);
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("Failed to load cron jobs");
+}
+
 export default function CronJobsPage() {
 
-  const conceptualJobs = [
-    {
-      taskName: "Weekly Blog Post Workflow",
-      schedule: "0 9 * * 1",
-      nextRun: "Next Monday at 9:00 AM",
-      type: "Sequence",
-      enabled: true,
-    },
-    {
-      taskName: "Check Urgent Emails",
-      schedule: "*/15 * * * *",
-      nextRun: "In 8 minutes",
-      type: "Task",
-      enabled: true,
-    },
-    {
-      taskName: "Generate Weekly Sales Report",
-      schedule: "0 17 * * 5",
-      nextRun: "This Friday at 5:00 PM",
-      type: "Task",
-      enabled: false,
-    },
-  ];
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [sequences, setSequences] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  
+  // Form State
+  const [taskName, setTaskName] = useState("");
+  const [schedule, setSchedule] = useState("");
+  const [targetId, setTargetId] = useState("");
+  const [type, setType] = useState("Sequence"); // "Sequence" or "Task"
+  const [enabled, setEnabled] = useState(true);
+
+  const fetchDependencies = useCallback(async () => {
+    if (!isAuthenticated) return;
+    try {
+      const [tasksRes, seqsRes] = await Promise.all([
+        apiClient.get<any[]>("/api/tasks/"),
+        apiClient.get<any[]>("/api/automation/jobs/")
+      ]);
+      setTasks(tasksRes || []);
+      setSequences(seqsRes || []);
+    } catch (e) {
+      console.error("Failed to fetch dependencies", e);
+    }
+  }, [isAuthenticated]);
+
+  const fetchJobs = useCallback(async () => {
+    if (!isAuthenticated) {
+      setJobs([]);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const res = await loadCronJobsWithRetry();
+      setJobs(res);
+    } catch (error) {
+      if (error instanceof ApiError && (error.status === 401 || error.status === 404 || error.status === 429)) {
+        setJobs([]);
+      } else {
+        console.error("Failed to fetch cron jobs", error);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (isAuthLoading) {
+      return;
+    }
+
+    fetchJobs();
+    fetchDependencies();
+  }, [fetchJobs, fetchDependencies, isAuthLoading]);
+
+  const handleCreateJob = async () => {
+    if (!isAuthenticated) return;
+    if (!taskName || !schedule || !targetId) return;
+
+    try {
+      await apiClient.post("/api/automation/cron", {
+        taskName,
+        schedule,
+        type,
+        targetId,
+        enabled,
+      });
+      setTaskName("");
+      setSchedule("");
+      setTargetId("");
+      fetchJobs();
+    } catch (error) {
+      console.error("Failed to create cron job", error);
+      alert("Failed to create cron Job. Ensure schedule is valid.");
+    }
+  };
+
+  const handleToggle = async (id: string, currentEnabled: boolean) => {
+    if (!isAuthenticated) return;
+    try {
+      await apiClient.put(`/api/automation/cron/${id}/toggle`, { enabled: !currentEnabled });
+      fetchJobs();
+    } catch (error) {
+      console.error("Failed to toggle cron job", error);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!isAuthenticated) return;
+    try {
+      await apiClient.delete(`/api/automation/cron/${id}`);
+      fetchJobs();
+    } catch (error) {
+      console.error("Failed to delete cron job", error);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -49,25 +164,38 @@ export default function CronJobsPage() {
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Cron Job Assignments</h2>
           <p className="text-sm text-muted-foreground">
-            Preview the scheduler UX while backend job execution is still being wired.
+            Manage live scheduled automations executing on the backend.
           </p>
         </div>
       </div>
       
       <Alert>
         <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>Scheduler Not Yet Connected</AlertTitle>
+        <AlertTitle>Scheduler Connected</AlertTitle>
         <AlertDescription>
-          Job schedules shown here are illustrative only. The backend scheduler and execution persistence are not connected yet, so creating or editing jobs is currently disabled.
+          Jobs created below are saved to backend memory and evaluated in real-time. Use the toggles to enable or disable live workflows. Note: mock data may be shown if none are configured.
         </AlertDescription>
       </Alert>
+
+      {!isAuthLoading && !isAuthenticated && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Authentication Required</AlertTitle>
+          <AlertDescription>
+            Sign in to manage cron jobs. The page will continue to show mock data until a session is restored.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Cron Job List */}
         <div className="lg:col-span-2 space-y-4">
-          <h3 className="text-lg font-semibold">Scheduled Jobs</h3>
-          {conceptualJobs.map((job, index) => (
-            <Card key={index}>
+          <h3 className="text-lg font-semibold">Scheduled Jobs {loading && <span className="text-sm font-normal text-muted-foreground ml-2">(Syncing...)</span>}</h3>
+          {jobs.length === 0 && !loading && (
+             <p className="text-sm text-muted-foreground">No cron jobs configured yet.</p>
+          )}
+          {jobs.map((job, index) => (
+            <Card key={job.id || index}>
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div>
@@ -81,11 +209,12 @@ export default function CronJobsPage() {
                     </CardDescription>
                   </div>
                   <div className="flex items-center space-x-1">
-                      <Switch checked={job.enabled} disabled className="data-[state=checked]:bg-green-600"/>
-                      <Button variant="ghost" size="icon" disabled>
-                        <Edit className="h-4 w-4 text-muted-foreground" />
-                      </Button>
-                      <Button variant="ghost" size="icon" disabled>
+                      <Switch 
+                        checked={job.enabled} 
+                        onCheckedChange={() => handleToggle(job.id, job.enabled)}
+                        className="data-[state=checked]:bg-green-600"
+                      />
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(job.id)}>
                         <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
                       </Button>
                   </div>
@@ -105,40 +234,62 @@ export default function CronJobsPage() {
             <CardContent className="space-y-4">
                <div className="space-y-1.5">
                   <Label htmlFor="cron-task">Task or Sequence to Schedule</Label>
-                   <Select disabled>
+                   <Select value={targetId} onValueChange={(val) => {
+                     const selectedSeq = sequences.find(t => t.id === val);
+                     const selectedTask = tasks.find(t => t.id === val);
+                     if (selectedSeq) {
+                       setTargetId(val);
+                       setTaskName(selectedSeq.name || selectedSeq.id);
+                       setType("Sequence");
+                     } else if (selectedTask) {
+                       setTargetId(val);
+                       setTaskName(selectedTask.name || selectedTask.id);
+                       setType("Task");
+                     }
+                   }}>
                     <SelectTrigger id="cron-task">
                       <SelectValue placeholder="Select a task or sequence" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
                         <SelectLabel>Sequences</SelectLabel>
-                        <SelectItem value="seq1">Weekly Blog Post Workflow</SelectItem>
-                        <SelectItem value="seq2">Social Media Engagement</SelectItem>
+                        {sequences.map(t => (
+                           <SelectItem key={t.id} value={t.id}>{t.name || t.id}</SelectItem>
+                        ))}
                       </SelectGroup>
                       <SelectSeparator />
                       <SelectGroup>
                         <SelectLabel>Tasks</SelectLabel>
-                        <SelectItem value="task1">Post Daily Facebook Summary</SelectItem>
-                        <SelectItem value="task2">Check Urgent Emails</SelectItem>
-                        <SelectItem value="task3">Generate Weekly Sales Report</SelectItem>
+                        {tasks.map(t => (
+                           <SelectItem key={t.id} value={t.id}>{t.name || t.id}</SelectItem>
+                        ))}
                       </SelectGroup>
                     </SelectContent>
                   </Select>
                </div>
                <div className="space-y-1.5">
                   <Label htmlFor="cron-schedule">Cron Schedule</Label>
-                  <Input id="cron-schedule" placeholder="e.g., 0 9 * * 1-5" disabled />
+                  <Input 
+                    id="cron-schedule" 
+                    placeholder="e.g., 0 9 * * 1-5" 
+                    value={schedule}
+                    onChange={(e) => setSchedule(e.target.value)}
+                  />
                    <p className="text-xs text-muted-foreground">
                      Standard cron syntax. E.g., &quot;*/5 * * * *&quot; for every 5 minutes.
                    </p>
                </div>
                <div className="flex items-center space-x-2 pt-2">
-                  <Switch id="cron-enabled" disabled />
+                  <Switch 
+                    id="cron-enabled" 
+                    checked={enabled}
+                    onCheckedChange={(c) => setEnabled(c as boolean)}
+                  />
                   <Label htmlFor="cron-enabled">Enable this job upon creation</Label>
                </div>
             </CardContent>
             <CardFooter>
-              <Button disabled className="w-full">
+              <Button onClick={handleCreateJob} className="w-full" disabled={!targetId || !schedule}>
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Schedule Job
               </Button>
@@ -146,12 +297,12 @@ export default function CronJobsPage() {
           </Card>
         </div>
       </div>
-
-       <Alert>
+      
+      <Alert>
         <Info className="h-4 w-4" />
         <AlertTitle>Developer Insight</AlertTitle>
         <AlertDescription>
-         The remaining backend work is to persist schedules, evaluate due runs, and dispatch the linked task or sequence through the automation executor.
+         The backend scheduler evaluates due runs natively using `croniter`. Creating a job dynamically enqueues it to the live polling system without restarts. Future scope includes duckdb durability to survive restarts.
         </AlertDescription>
       </Alert>
     </div>

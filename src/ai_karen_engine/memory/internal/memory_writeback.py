@@ -327,7 +327,7 @@ class MemoryWritebackSystem:
         Stage 3 promotion must never embed raw response text blindly. Entries
         without curated metadata remain feedback-only and are skipped.
         """
-        from ai_karen_engine.memory.unified_memory_service import MemoryCommitRequest
+        from ai_karen_engine.core.memory.unified_memory_service import MemoryCommitRequest
 
         metadata = dict(entry.metadata or {})
         if not is_curated_memory_metadata(

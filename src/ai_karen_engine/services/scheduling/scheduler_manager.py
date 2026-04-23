@@ -36,7 +36,7 @@ except ImportError:
     # Note: croniter not available - cron scheduling will be disabled
 
 from ai_karen_engine.learning.autonomous_learner import AutonomousLearner, LearningCycleResult
-from ai_karen_engine.memory.memory_service import WebUIMemoryService
+from ai_karen_engine.core.memory.memory_service import WebUIMemoryService
 
 logger = logging.getLogger(__name__)
 
@@ -368,7 +368,7 @@ class NotificationManager:
             return
         
         try:
-            from ai_karen_engine.memory.memory_service import MemoryType, UISource
+            from ai_karen_engine.core.memory.memory_service import MemoryType, UISource
             
             content = f"Training Notification: {title}\n\n{message}"
             

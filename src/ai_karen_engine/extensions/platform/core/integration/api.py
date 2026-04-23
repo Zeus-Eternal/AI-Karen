@@ -12,13 +12,18 @@ This module provides REST API endpoints for:
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from datetime import datetime, timezone
+from pathlib import Path as FilePath
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Path, Body, BackgroundTasks
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, validator
 
+from ai_karen_engine.extensions.platform.core.manager import (
+    get_extension_core_manager,
+)
 from ai_karen_engine.extensions.platform.core.integration.lifecycle_manager import ExtensionLifecycleManager, ExtensionState
 from ai_karen_engine.extensions.platform.core.integration.discovery_service import ExtensionDiscoveryService
 from ai_karen_engine.extensions.platform.core.integration.sandbox_manager import ExtensionSandboxManager
@@ -259,6 +264,168 @@ class OperationResponse(BaseModel):
 # Create router
 router = APIRouter(prefix="/extensions", tags=["extensions"])
 
+
+def _load_manifest_payload(manifest_path: Optional[str]) -> Dict[str, Any]:
+    if not manifest_path:
+        return {}
+
+    path = FilePath(manifest_path)
+    if not path.exists():
+        return {}
+
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+            return payload if isinstance(payload, dict) else {}
+    except Exception:
+        return {}
+
+
+def _normalise_menu_entries(
+    plugin_name: str,
+    manifest_payload: Dict[str, Any],
+    menu_contributions: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    ui_config = manifest_payload.get("ui") if isinstance(manifest_payload, dict) else {}
+    component_id = ""
+    if isinstance(ui_config, dict):
+        component_id = str(ui_config.get("component_id") or "").strip()
+    if not component_id:
+        component_id = plugin_name
+
+    entries: List[Dict[str, Any]] = []
+    for contribution in menu_contributions:
+        if not isinstance(contribution, dict):
+            continue
+        entries.append(
+            {
+                "entry_id": contribution.get("entry_id") or f"{plugin_name}.default",
+                "component": component_id,
+                "zone": contribution.get("zone") or "sidebar.plugins",
+                "label": contribution.get("label") or manifest_payload.get("display_name") or plugin_name,
+                "order": contribution.get("order") or 0,
+            }
+        )
+
+    if entries:
+        return entries
+
+    if isinstance(ui_config, dict):
+        hook_zones = ui_config.get("hook_zones") or []
+        if isinstance(hook_zones, list):
+            for index, zone in enumerate(hook_zones):
+                if not isinstance(zone, dict):
+                    continue
+                entries.append(
+                    {
+                        "entry_id": f"{plugin_name}.hook.{index}",
+                        "component": component_id,
+                        "zone": zone.get("zone") or "sidebar.plugins",
+                        "label": zone.get("label")
+                        or manifest_payload.get("display_name")
+                        or plugin_name,
+                        "order": zone.get("order") or index,
+                    }
+                )
+
+    return entries
+
+
+def _build_frontend_extension_entry(
+    status_entry: Dict[str, Any], manifest_payload: Dict[str, Any]
+) -> Dict[str, Any]:
+    name = str(status_entry.get("name") or status_entry.get("id") or "")
+    manifest_capabilities = manifest_payload.get("capabilities") if isinstance(manifest_payload, dict) else {}
+    manifest_rbac = manifest_payload.get("rbac") if isinstance(manifest_payload, dict) else {}
+    manifest_ui = manifest_payload.get("ui") if isinstance(manifest_payload, dict) else {}
+
+    capabilities = status_entry.get("capabilities") or {}
+    if not isinstance(capabilities, dict):
+        capabilities = {}
+
+    merged_capabilities = {
+        "provides_ui": bool(
+            capabilities.get("provides_ui")
+            or (isinstance(manifest_capabilities, dict) and manifest_capabilities.get("provides_ui"))
+            or (isinstance(manifest_ui, dict) and (manifest_ui.get("has_component") or manifest_ui.get("component_id")))
+            or bool(status_entry.get("menu_contributions"))
+        ),
+        "provides_api": bool(
+            capabilities.get("provides_api")
+            or (isinstance(manifest_capabilities, dict) and manifest_capabilities.get("provides_api"))
+        ),
+        "provides_background_tasks": bool(
+            capabilities.get("provides_background_tasks")
+            or (isinstance(manifest_capabilities, dict) and manifest_capabilities.get("provides_background_tasks"))
+        ),
+        "provides_webhooks": bool(
+            capabilities.get("provides_webhooks")
+            or (isinstance(manifest_capabilities, dict) and manifest_capabilities.get("provides_webhooks"))
+        ),
+    }
+
+    ui_entries = _normalise_menu_entries(
+        plugin_name=name,
+        manifest_payload=manifest_payload,
+        menu_contributions=list(status_entry.get("menu_contributions") or []),
+    )
+
+    ui_config = manifest_ui if isinstance(manifest_ui, dict) else {}
+    component_id = str(ui_config.get("component_id") or name).strip() or name
+
+    return {
+        "name": name,
+        "display_name": status_entry.get("display_name")
+        or manifest_payload.get("display_name")
+        or name,
+        "description": status_entry.get("description")
+        or manifest_payload.get("description")
+        or "No description available",
+        "version": status_entry.get("version") or manifest_payload.get("version") or "0.0.0",
+        "status": status_entry.get("status") or "discovered",
+        "loaded_at": status_entry.get("loaded_at"),
+        "error_message": status_entry.get("error_message"),
+        "capabilities": merged_capabilities,
+        "has_component": bool(merged_capabilities["provides_ui"]),
+        "ui": {
+            "has_component": bool(
+                merged_capabilities["provides_ui"]
+                or bool(ui_entries)
+                or bool(ui_config.get("has_component"))
+            ),
+            "component_id": component_id,
+            "purpose": manifest_payload.get("purpose")
+            or ui_config.get("purpose")
+            or status_entry.get("description")
+            or "",
+            "menu": [
+                {
+                    "placement": entry.get("zone") or "sidebar.plugins",
+                    "label": entry.get("label") or status_entry.get("display_name") or name,
+                    "icon": None,
+                    "order": entry.get("order") or 0,
+                }
+                for entry in ui_entries
+            ],
+        },
+        "ui_entry_points": ui_entries,
+        "rbac": {
+            "allowed_roles": list(
+                manifest_rbac.get("allowed_roles") if isinstance(manifest_rbac, dict) else []
+            ),
+            "default_enabled": bool(
+                manifest_rbac.get("default_enabled")
+                if isinstance(manifest_rbac, dict) and "default_enabled" in manifest_rbac
+                else True
+            ),
+        },
+        "tags": list(manifest_payload.get("tags") or []),
+        "purpose": manifest_payload.get("purpose") or "",
+        "actions": manifest_payload.get("actions") or [],
+        "invocation_guidance": manifest_payload.get("invocation_guidance"),
+        "manifest_path": status_entry.get("manifest_path"),
+    }
+
 # Dependency injection
 def get_lifecycle_manager() -> ExtensionLifecycleManager:
     """Get extension lifecycle manager instance."""
@@ -396,6 +563,44 @@ async def list_extensions(
         )
         
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/list", response_model=List[Dict[str, Any]])
+async def list_extension_catalog(
+    core_manager=Depends(get_extension_core_manager),
+):
+    """
+    Return a frontend-friendly extension catalog.
+
+    This endpoint mirrors the discovery registry in a flat array shape so the
+    plugin overview and loader can normalize it directly.
+    """
+    try:
+        statuses = core_manager.list_extension_statuses()
+        registry = core_manager.registry
+
+        catalog: List[Dict[str, Any]] = []
+        for status_entry in statuses:
+            manifest_payload = {}
+            manifest_path = status_entry.get("manifest_path")
+
+            metadata = registry.get_metadata(status_entry.get("name") or status_entry.get("id") or "")
+            if metadata and getattr(metadata, "manifest_path", None):
+                manifest_payload = _load_manifest_payload(str(metadata.manifest_path))
+            elif manifest_path:
+                manifest_payload = _load_manifest_payload(str(manifest_path))
+
+            catalog.append(
+                _build_frontend_extension_entry(
+                    status_entry=status_entry,
+                    manifest_payload=manifest_payload,
+                )
+            )
+
+        return catalog
+    except Exception as e:
+        logger.error("Failed to build frontend extension catalog: %s", e)
         raise HTTPException(status_code=500, detail=str(e))
 
 

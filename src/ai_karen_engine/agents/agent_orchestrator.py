@@ -487,7 +487,7 @@ class AgentOrchestrator(BaseService):
 
             elif service_name == "memory_service":
                 try:
-                    from ai_karen_engine.memory.unified_memory_service import (
+                    from ai_karen_engine.core.memory.unified_memory_service import (
                         UnifiedMemoryService,
                     )
                     from ai_karen_engine.core.model_runtime.embedding_manager import EmbeddingManager
@@ -2079,7 +2079,7 @@ class AgentOrchestrator(BaseService):
             # Store in unified memory service if available
             if self._memory_service:
                 try:
-                    from ai_karen_engine.memory.unified_memory_service import (
+                    from ai_karen_engine.core.memory.unified_memory_service import (
                         MemoryCommitRequest,
                     )
 
@@ -2198,7 +2198,7 @@ class AgentOrchestrator(BaseService):
             # If no memories found, try unified memory service
             if not memories and self._memory_service:
                 try:
-                    from ai_karen_engine.memory.unified_memory_service import (
+                    from ai_karen_engine.core.memory.unified_memory_service import (
                         MemoryQueryRequest,
                     )
 
@@ -2321,7 +2321,7 @@ class AgentOrchestrator(BaseService):
             # If no results, try unified memory service
             if self._memory_service:
                 try:
-                    from ai_karen_engine.memory.unified_memory_service import (
+                    from ai_karen_engine.core.memory.unified_memory_service import (
                         MemoryQueryRequest,
                     )
 

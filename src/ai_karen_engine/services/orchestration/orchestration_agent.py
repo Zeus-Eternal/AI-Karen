@@ -24,14 +24,14 @@ from ai_karen_engine.core.runtime.degraded_mode import (
 )
 from ai_karen_engine.integrations.llm_utils import LLMUtils, GenerationFailed
 from ai_karen_engine.integrations.llm_registry import get_registry
-from ai_karen_engine.memory.provider_registry import (
+from ai_karen_engine.core.model_runtime.provider_registry_service import (
     get_provider_registry_service,
     ProviderRegistryService,
     ProviderCapability,
 )
-from ai_karen_engine.memory.distilbert_service import DistilBertService
-from ai_karen_engine.memory.spacy_service import SpacyService
-from ai_karen_engine.memory.small_language_model_service import (
+from ai_karen_engine.core.memory.signals.distilbert_service import DistilBertService
+from ai_karen_engine.core.memory.signals.spacy_service import SpacyService
+from ai_karen_engine.core.reasoning.synthesis.small_language_model_service import (
     SmallLanguageModelService,
 )
 

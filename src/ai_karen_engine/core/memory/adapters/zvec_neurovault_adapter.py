@@ -26,9 +26,7 @@ Use Cases:
 from __future__ import annotations
 
 import logging
-import time
-from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 # Import NeuroVault components
 from ai_karen_engine.core.neuro_vault import (
@@ -36,7 +34,6 @@ from ai_karen_engine.core.neuro_vault import (
     MemoryStatus,
     MemoryEntry,
     MemoryMetadata,
-    RetrievalRequest,
     RetrievalResult,
     ImportanceLevel,
     DecayFunction,

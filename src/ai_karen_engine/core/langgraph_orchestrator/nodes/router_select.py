@@ -3,7 +3,7 @@ from typing import Dict, Any, Optional
 from dataclasses import asdict
 
 # from ai_karen_engine.services.llm_router import ChatRequest  <- Moved to local scope
-from ai_karen_engine.memory.profile_manager import ProfileManager
+from ai_karen_engine.core.memory.profile_synthesis.profile_manager import ProfileManager
 from ..contracts.orchestration_state import LangGraphOrchestrationState
 from ..utils.message_serialization import message_to_history_entry
 

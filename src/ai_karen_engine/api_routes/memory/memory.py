@@ -17,7 +17,7 @@ from ai_karen_engine.api_routes.shared.schemas import (
     FieldError,
     ValidationUtils,
 )
-from ai_karen_engine.memory.unified_memory_service import (
+from ai_karen_engine.core.memory.unified_memory_service import (
     MemoryCommitRequest,
     MemoryQueryRequest,
     PIIRedactor,
@@ -37,13 +37,23 @@ _metrics_service: Optional[MetricsService] = None
 
 # Graceful imports with fallback mechanisms
 try:
-    from ai_karen_engine.memory.memory_service import WebUIMemoryService
+    from ai_karen_engine.core.memory.memory_service import WebUIMemoryService
 
     MEMORY_SERVICE_AVAILABLE = True
 except ImportError:
     logger.warning("Memory service not available, using fallback")
     MEMORY_SERVICE_AVAILABLE = False
     WebUIMemoryService = None  # type: ignore
+
+try:
+    from ai_karen_engine.core.memory.memory_runtime_manager import (
+        get_memory_manager as get_memory_runtime_manager,
+    )
+
+    MEMORY_RUNTIME_MANAGER_AVAILABLE = True
+except ImportError:
+    MEMORY_RUNTIME_MANAGER_AVAILABLE = False
+    get_memory_runtime_manager = None  # type: ignore
 
 try:
     from ai_karen_engine.auth.rbac_middleware import get_current_user  # type: ignore
@@ -253,6 +263,22 @@ def apply_tenant_filtering(user_id: str, org_id: Optional[str]) -> Dict[str, Any
     if org_id:
         filters["org_id"] = org_id
     return filters
+
+
+def _memory_write_is_shadowed(user_id: str, org_id: Optional[str]) -> bool:
+    """Return True when durable memory writes should be skipped."""
+    if not MEMORY_RUNTIME_MANAGER_AVAILABLE:
+        return False
+
+    try:
+        manager = get_memory_runtime_manager()
+        tenant_id = org_id or user_id
+        return not manager.flags.is_enabled("memory_learning_enabled", tenant_id, user_id) or manager.flags.is_enabled(
+            "memory_shadow_mode_enabled", tenant_id, user_id
+        )
+    except Exception as exc:
+        logger.warning(f"Failed to resolve memory learning gate: {exc}")
+        return False
 
 
 @router.post("/search", response_model=MemSearchResponse)
@@ -614,6 +640,24 @@ async def memory_commit(request: MemCommit, http_request: Request):
                 status_code=422, detail=error_response.model_dump(mode="json")
             )
 
+        if _memory_write_is_shadowed(request.user_id, request.org_id):
+            commit_duration = (datetime.utcnow() - start_time).total_seconds()
+            record_metrics(
+                "commit",
+                "shadow",
+                commit_duration,
+                request.user_id,
+                request.org_id or "",
+                request.decay,
+                correlation_id,
+            )
+            return MemCommitResponse(
+                id="",
+                success=True,
+                message="Memory learning is in shadow mode; no durable write was performed",
+                correlation_id=correlation_id,
+            )
+
         # Apply tenant filtering
         tenant_filters = apply_tenant_filtering(request.user_id, request.org_id)
 
@@ -839,6 +883,25 @@ async def memory_update(
                 raise HTTPException(
                     status_code=422, detail=error_response.model_dump(mode="json")
                 )
+
+        if _memory_write_is_shadowed(user_id, org_id):
+            update_duration = (datetime.utcnow() - start_time).total_seconds()
+            record_metrics(
+                "update",
+                "shadow",
+                update_duration,
+                user_id,
+                org_id or "",
+                "",
+                correlation_id,
+            )
+            return MemUpdateResponse(
+                success=True,
+                message=(
+                    f"Memory {memory_id} update skipped because memory learning is in shadow mode"
+                ),
+                correlation_id=correlation_id,
+            )
 
         # Apply tenant filtering
         tenant_filters = apply_tenant_filtering(user_id, org_id)

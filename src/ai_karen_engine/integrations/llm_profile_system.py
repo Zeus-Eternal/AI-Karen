@@ -830,7 +830,7 @@ class LLMProfileManager:
 
         try:
             # Also notify the existing profile manager for compatibility
-            from ai_karen_engine.memory.profile_manager import (
+            from ai_karen_engine.core.memory.profile_synthesis.profile_manager import (
                 get_profile_manager as get_legacy_profile_manager,
             )
 
