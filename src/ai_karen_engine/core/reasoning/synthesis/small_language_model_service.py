@@ -24,7 +24,6 @@ import json
 import platform
 import psutil
 import GPUtil
-import importlib
 
 try:
     from cachetools import TTLCache
@@ -109,34 +108,60 @@ class _ChatClientProtocol(Protocol):
 
     def load_model(self, model_path: str) -> Dict[str, Any]: ...
 
-# Optional dependencies with graceful fallback
-llamacpp_inprocess_client = None
-LLAMACPP_AVAILABLE = False
+local_model_client = None
+LOCAL_MODEL_CLIENT_AVAILABLE = False
 
-def _get_llamacpp_client():
-    """Lazy loading of LlamaCpp client to avoid import-time errors."""
-    global llamacpp_inprocess_client, LLAMACPP_AVAILABLE
-    
-    if LLAMACPP_AVAILABLE:
-        return llamacpp_inprocess_client
-    
-    import_paths = [
-        "ai_karen_engine.core.reasoning.synthesis.llamacpp_client",
-                "src.services.models.llm_router",
-        "src.ai_karen_engine.integrations.llm_registry",
-        "src.ai_karen_engine.plugins.manager",
-    ]
-    
-    for module_path in import_paths:
-        try:
-            module = importlib.import_module(module_path)
-            llamacpp_inprocess_client = module.llamacpp_inprocess_client
-            LLAMACPP_AVAILABLE = True
-            return llamacpp_inprocess_client
-        except (ImportError, FileNotFoundError, Exception) as e:
-            logger.debug(f"Failed to import LlamaCpp client from {module_path}: {e}")
-    
-    return None
+
+def _get_local_model_client():
+    """Lazy loading of a neutral local model client."""
+    global local_model_client, LOCAL_MODEL_CLIENT_AVAILABLE
+
+    if LOCAL_MODEL_CLIENT_AVAILABLE:
+        return local_model_client
+
+    try:
+        from ai_karen_engine.integrations.providers.fallback_provider import (
+            FallbackProvider,
+        )
+
+        class _LocalModelClient:
+            def __init__(self) -> None:
+                self._provider = FallbackProvider()
+                self._model_path: Optional[str] = None
+
+            def load_model(self, model_path: str) -> Dict[str, Any]:
+                self._model_path = model_path
+                return {"status": "success"}
+
+            def chat(
+                self,
+                messages: List[Dict[str, Any]],
+                *,
+                max_tokens: int = 256,
+                temperature: float = 0.7,
+                stream: bool = False,
+                **kwargs: Any,
+            ) -> str:
+                return self._provider.generate_text(
+                    messages,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    stream=stream,
+                    **kwargs,
+                )
+
+            def health_check(self) -> Dict[str, Any]:
+                status = self._provider.health_check()
+                status["client"] = "fallback_local"
+                status["model_path"] = self._model_path
+                return status
+
+        local_model_client = _LocalModelClient()
+        LOCAL_MODEL_CLIENT_AVAILABLE = True
+        return local_model_client
+    except Exception as exc:
+        logger.debug("Failed to initialize local model client: %s", exc)
+        return None
 
 
 @dataclass
@@ -280,7 +305,7 @@ class SmallLanguageModelService:
     
     def __init__(self, config: Optional[SmallLanguageModelConfig] = None, models_dir: Optional[str] = None):
         self.config = config or SmallLanguageModelConfig()
-        self.models_dir = Path(models_dir) if models_dir else Path("models/llama-cpp")
+        self.models_dir = Path(models_dir) if models_dir else Path("models/transformers")
         self.models_dir.mkdir(parents=True, exist_ok=True)
         
         self.client = None
@@ -319,7 +344,7 @@ class SmallLanguageModelService:
                 logger.info(f"Selected model: {self.current_model}")
                 
                 # Initialize client
-                client = _get_llamacpp_client()
+                client = _get_local_model_client()
                 if client is not None:
                     self.client = client
                     
@@ -366,11 +391,11 @@ class SmallLanguageModelService:
                             else:
                                 raise RuntimeError(f"No download URL for model {self.current_model} and fallback disabled")
                 else:
-                    logger.warning("LlamaCpp client not available, using fallback mode")
+                    logger.warning("Local GGUF client not available, using fallback mode")
                     if self.config.enable_fallback:
                         self.fallback_mode = True
                     else:
-                        raise RuntimeError("LlamaCpp client not available and fallback disabled")
+                        raise RuntimeError("Local GGUF client not available and fallback disabled")
             else:
                 logger.warning("No suitable model found for system resources")
                 if self.config.enable_fallback:

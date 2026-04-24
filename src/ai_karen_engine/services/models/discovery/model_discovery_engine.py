@@ -30,7 +30,7 @@ logger = logging.getLogger("kari.model_discovery_engine")
 class ModelType(Enum):
     """Supported model types."""
 
-    LLAMA_CPP = "llama-cpp"
+    LOCAL_GGUF = "local_gguf"
     TRANSFORMERS = "transformers"
     STABLE_DIFFUSION = "stable-diffusion"
     HUGGINGFACE = "huggingface"
@@ -179,7 +179,7 @@ class ModelDiscoveryEngine:
 
         # Model type detection patterns
         self.type_patterns = {
-            ModelType.LLAMA_CPP: [".gguf", ".ggml", ".bin"],
+            ModelType.LOCAL_GGUF: [".gguf", ".ggml", ".bin"],
             ModelType.TRANSFORMERS: [
                 "config.json",
                 "pytorch_model.bin",
@@ -453,8 +453,8 @@ class ModelDiscoveryEngine:
         # Determine model type from directory structure
         model_type = self._detect_directory_model_type(directory)
 
-        if model_type == ModelType.LLAMA_CPP:
-            models.extend(await self._scan_llama_cpp_models(directory))
+        if model_type == ModelType.LOCAL_GGUF:
+            models.extend(await self._scan_local_gguf_models(directory))
         elif model_type == ModelType.TRANSFORMERS:
             models.extend(await self._scan_transformers_models(directory))
         elif model_type == ModelType.STABLE_DIFFUSION:
@@ -470,8 +470,8 @@ class ModelDiscoveryEngine:
         dir_name = directory.name.lower()
 
         # Check directory name patterns
-        if "llama" in dir_name or "cpp" in dir_name:
-            return ModelType.LLAMA_CPP
+        if "gguf" in dir_name or "ggml" in dir_name or "local" in dir_name:
+            return ModelType.LOCAL_GGUF
         elif "transformers" in dir_name:
             return ModelType.TRANSFORMERS
         elif "stable-diffusion" in dir_name or "diffusion" in dir_name:
@@ -492,30 +492,30 @@ class ModelDiscoveryEngine:
 
         return ModelType.UNKNOWN
 
-    async def _scan_llama_cpp_models(self, directory: Path) -> List[ModelInfo]:
-        """Scan for llama-cpp models (.gguf, .ggml files)."""
+    async def _scan_local_gguf_models(self, directory: Path) -> List[ModelInfo]:
+        """Scan for local GGUF models (.gguf, .ggml files)."""
         models = []
 
         for model_file in directory.rglob("*.gguf"):
             try:
                 model_info = await self._create_model_info_from_file(
-                    model_file, ModelType.LLAMA_CPP
+                    model_file, ModelType.LOCAL_GGUF
                 )
                 if model_info:
                     models.append(model_info)
             except Exception as e:
-                logger.error(f"Failed to process llama-cpp model {model_file}: {e}")
+                logger.error(f"Failed to process local GGUF model {model_file}: {e}")
 
         # Also check for .ggml files (older format)
         for model_file in directory.rglob("*.ggml"):
             try:
                 model_info = await self._create_model_info_from_file(
-                    model_file, ModelType.LLAMA_CPP
+                    model_file, ModelType.LOCAL_GGUF
                 )
                 if model_info:
                     models.append(model_info)
             except Exception as e:
-                logger.error(f"Failed to process llama-cpp model {model_file}: {e}")
+                logger.error(f"Failed to process local GGUF model {model_file}: {e}")
 
         return models
 
@@ -1299,7 +1299,7 @@ class ModelDiscoveryEngine:
                 )
 
         # Add type-based capabilities
-        if model_type == ModelType.LLAMA_CPP:
+        if model_type == ModelType.LOCAL_GGUF:
             capabilities.extend(["local-inference", "cpu-optimized"])
         elif model_type == ModelType.STABLE_DIFFUSION:
             capabilities.extend(["image-generation", "artistic-creation"])
@@ -1350,8 +1350,8 @@ class ModelDiscoveryEngine:
                         return ModelStatus.ERROR
 
             # Type-specific validation
-            if model_type == ModelType.LLAMA_CPP:
-                return await self._validate_llama_cpp_model(path)
+            if model_type == ModelType.LOCAL_GGUF:
+                return await self._validate_local_gguf_model(path)
             elif model_type == ModelType.TRANSFORMERS:
                 return await self._validate_transformers_model(path)
             elif model_type == ModelType.STABLE_DIFFUSION:
@@ -1364,8 +1364,8 @@ class ModelDiscoveryEngine:
             logger.error(f"Error validating model {model_path}: {e}")
             return ModelStatus.ERROR
 
-    async def _validate_llama_cpp_model(self, path: Path) -> ModelStatus:
-        """Validate llama-cpp model file."""
+    async def _validate_local_gguf_model(self, path: Path) -> ModelStatus:
+        """Validate local GGUF model file."""
         try:
             # Check file extension
             if path.suffix.lower() not in [".gguf", ".ggml", ".bin"]:

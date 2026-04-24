@@ -83,16 +83,17 @@ class VectorDBConfig:
 class LLMConfig:
     """LLM configuration."""
 
-    default_provider: str = "llamacpp"
-    default_model: str = "Phi-3-mini-4k-instruct-q4.gguf"
-    default_lightweight_model_id: str = "Phi-3-mini-4k-instruct-q4.gguf"
+    default_provider: str = "builtin_vllm"
+    default_model: str = "auto"
+    default_lightweight_model_id: str = "auto"
     default_nlp_model_id: str = "distilbert-base-uncased"
     default_classifier_model_id: str = "default-classifier-model"
     models_dir: str = "models"
     transformers_dir: str = "models/transformers"
     fallback_chain: List[str] = field(
         default_factory=lambda: [
-            "llamacpp",
+            "builtin_vllm",
+            "builtin_transformers",
             "openai",
             "gemini",
             "deepseek",
@@ -103,7 +104,8 @@ class LLMConfig:
         default_factory=lambda: {
             "openai": "gpt-4o-mini",
             "deepseek": "deepseek-chat",
-            "llamacpp": "Phi-3-mini-4k-instruct-q4.gguf",
+            "builtin_vllm": "auto",
+            "builtin_transformers": "auto",
             "gemini": "gemini-1.5-flash",
             "huggingface": "microsoft/DialoGPT-large",
         }
@@ -114,8 +116,8 @@ class LLMConfig:
             "code": {"provider": "deepseek", "model": "deepseek-coder"},
             "reasoning": {"provider": "openai", "model": "gpt-4o"},
             "summarization": {
-                "provider": "llamacpp",
-                "model": "Phi-3-mini-4k-instruct-q4.gguf",
+                "provider": "builtin_transformers",
+                "model": "auto",
             },
         }
     )
@@ -236,18 +238,19 @@ DEFAULT_CONFIG = {
     "active_user": "default",
     "theme": "dark",
     "llm": {
-        "default_provider": "llamacpp",
-        "default_model": "Phi-3-mini-4k-instruct-q4.gguf",
-        "default_lightweight_model_id": "Phi-3-mini-4k-instruct-q4.gguf",
+        "default_provider": "builtin_vllm",
+        "default_model": "auto",
+        "default_lightweight_model_id": "auto",
         "default_nlp_model_id": "distilbert-base-uncased",
         "default_classifier_model_id": "default-classifier-model",
         "models_dir": "models",
         "transformers_dir": "models/transformers",
-        "fallback_chain": ["llamacpp", "openai", "gemini", "deepseek", "huggingface"],
+        "fallback_chain": ["builtin_vllm", "builtin_transformers", "openai", "gemini", "deepseek", "huggingface"],
         "provider_defaults": {
             "openai": "gpt-4o-mini",
             "deepseek": "deepseek-chat",
-            "llamacpp": "Phi-3-mini-4k-instruct-q4.gguf",
+            "builtin_vllm": "auto",
+            "builtin_transformers": "auto",
             "gemini": "gemini-1.5-flash",
             "huggingface": "microsoft/DialoGPT-large",
         },
@@ -256,8 +259,8 @@ DEFAULT_CONFIG = {
             "code": {"provider": "deepseek", "model": "deepseek-coder"},
             "reasoning": {"provider": "openai", "model": "gpt-4o"},
             "summarization": {
-                "provider": "llamacpp",
-                "model": "Phi-3-mini-4k-instruct-q4.gguf",
+                "provider": "builtin_transformers",
+                "model": "auto",
             },
         },
         "temperature": 0.7,
@@ -557,7 +560,7 @@ def get_default_model(provider: str = "") -> str:
     """Get the default model for a provider, or the system default.
 
     Args:
-        provider: Optional provider name (e.g. 'llamacpp', 'openai').
+        provider: Optional provider name (e.g. 'builtin_vllm', 'openai').
                   If None, returns the system-wide default model.
     """
     llm = get_llm_config()
@@ -570,7 +573,7 @@ def get_default_model(provider: str = "") -> str:
 
 def get_default_provider() -> str:
     """Get the default LLM provider."""
-    return get_llm_config().get("default_provider", "llamacpp")
+    return get_llm_config().get("default_provider", "builtin_vllm")
 
 
 def get_provider_defaults() -> Dict[str, str]:
@@ -581,7 +584,8 @@ def get_provider_defaults() -> Dict[str, str]:
 def get_fallback_chain() -> list:
     """Get the ordered fallback chain of providers."""
     return get_llm_config().get(
-        "fallback_chain", ["llamacpp", "openai", "gemini", "deepseek", "huggingface"]
+        "fallback_chain",
+        ["builtin_vllm", "builtin_transformers", "openai", "gemini", "deepseek", "huggingface"],
     )
 
 
@@ -596,8 +600,8 @@ def get_task_assignment(task_type: str) -> Dict[str, str]:
         return assignments[task_type]
     # Fallback to system defaults
     return {
-        "provider": llm.get("default_provider", "llamacpp"),
-        "model": llm.get("default_model", "Phi-3-mini-4k-instruct-q4.gguf"),
+        "provider": llm.get("default_provider", "builtin_vllm"),
+        "model": llm.get("default_model", "auto"),
     }
 
 
@@ -723,10 +727,10 @@ class ConfigManager:
     def get_llm_fallback_hierarchy(self):
         """Get LLM provider fallback hierarchy"""
         config = load_config()
-        # Ensure default fallback uses the canonical provider id 'llamacpp'
+        # Ensure default fallback uses the built-in runtime provider IDs.
         return config.get("llm_providers", {}).get(
             "fallback_hierarchy",
-            ["llamacpp", "openai", "gemini", "deepseek", "huggingface"],
+            ["builtin_vllm", "builtin_transformers", "openai", "gemini", "deepseek", "huggingface"],
         )
 
     def get_plugins_config(self):

@@ -33,7 +33,6 @@ class SystemInitializer:
         self.config_dir = Path("config")
 
         self.default_models = {
-            "llama-cpp": self._get_default_llama_cpp_models(),
             "transformers": [
                 "gpt2",  # Will be downloaded via transformers library if not present
                 # "distilbert-base-uncased" - already available in models/
@@ -43,7 +42,6 @@ class SystemInitializer:
         # Required directories
         self.required_dirs = [
             self.models_dir,
-            self.models_dir / "llama-cpp",
             self.models_dir / "transformers",
             self.models_dir / "groq",
             self.data_dir,
@@ -64,43 +62,6 @@ class SystemInitializer:
             "config_assets/memory.yml": self._get_default_memory_config,
             "config_assets/security_config.yml": self._get_default_security_config,
         }
-
-    def _get_default_llama_cpp_models(self) -> List[Dict[str, Any]]:
-        """Load default llama.cpp model definitions from config files."""
-        config_path = self.config_dir / "llamacpp" / "config.json"
-
-        model_path: Optional[str] = None
-        download_url: Optional[str] = None
-        size_mb: Optional[int] = None
-        description = "Default local GGUF model"
-
-        try:
-            if config_path.exists():
-                with open(config_path, "r", encoding="utf-8") as f:
-                    cfg = json.load(f)
-                model_path = cfg.get("model_path")
-                download_url = cfg.get("download_url")
-                size_mb = cfg.get("size_mb")
-                description = cfg.get("description", description)
-        except Exception as exc:
-            self.logger.warning(
-                f"⚠️ Failed to load llama.cpp config from {config_path}: {exc}"
-            )
-
-        if not model_path:
-            from ai_karen_engine.config.config_manager import get_default_model
-
-            model_path = get_default_model("llamacpp")
-
-        model_name = Path(str(model_path)).name
-        return [
-            {
-                "name": model_name,
-                "url": download_url,
-                "size_mb": size_mb,
-                "description": description,
-            }
-        ]
 
     async def initialize_system(self, force_reinstall: bool = False) -> Dict[str, bool]:
         """
@@ -264,9 +225,6 @@ class SystemInitializer:
             # Setup transformers models
             await self._setup_transformers_models(force_reinstall)
 
-            # Setup llama-cpp models
-            await self._setup_llama_cpp_models(force_reinstall)
-
             # Download spaCy model
             await self._setup_spacy_models()
 
@@ -320,39 +278,6 @@ class SystemInitializer:
             self.logger.warning(
                 "⚠️ Transformers library not available - skipping transformers models"
             )
-
-    async def _setup_llama_cpp_models(self, force_reinstall: bool = False) -> None:
-        """Download and setup llama-cpp models."""
-        for model_info in self.default_models["llama-cpp"]:
-            model_path = self.models_dir / "llama-cpp" / model_info["name"]
-
-            if model_path.exists() and not force_reinstall:
-                self.logger.info(f"✅ Model already exists: {model_info['name']}")
-                continue
-
-            try:
-                model_url = model_info.get("url")
-                if not model_url:
-                    self.logger.info(
-                        f"ℹ️ No download URL configured for model {model_info['name']} - skipping automatic download"
-                    )
-                    continue
-
-                size_mb = model_info.get("size_mb")
-                size_label = f" ({size_mb}MB)" if size_mb else ""
-                self.logger.info(
-                    f"📥 Downloading model: {model_info['name']}{size_label}"
-                )
-
-                # Download with progress
-                await self._download_file_with_progress(model_url, model_path)
-
-                self.logger.info(f"✅ Downloaded model: {model_info['name']}")
-
-            except Exception as e:
-                self.logger.warning(
-                    f"⚠️ Failed to download model {model_info['name']}: {e}"
-                )
 
     async def _setup_spacy_models(self) -> None:
         """Download spaCy models."""
@@ -517,7 +442,7 @@ class SystemInitializer:
                 "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
             },
             "models": {
-                "default_provider": "transformers",
+                "default_provider": "builtin_vllm",
                 "model_dir": str(self.models_dir),
                 "cache_enabled": True,
             },
@@ -533,9 +458,9 @@ class SystemInitializer:
         """Generate default model registry."""
         return {
             "providers": {
-                "llama-cpp": {
+                "builtin_vllm": {
                     "enabled": True,
-                    "models_dir": str(self.models_dir / "llama-cpp"),
+                    "models_dir": str(self.models_dir / "vllm"),
                     "supported_formats": [".gguf", ".bin"],
                 },
                 "transformers": {
@@ -561,19 +486,19 @@ class SystemInitializer:
         return """
 profiles:
   default:
-    provider: transformers
+    provider: builtin_transformers
     model: gpt2
     temperature: 0.7
     max_tokens: 150
     
   creative:
-    provider: transformers
+    provider: builtin_transformers
     model: gpt2
     temperature: 0.9
     max_tokens: 200
     
   precise:
-    provider: transformers
+    provider: builtin_transformers
     model: distilbert-base-uncased
     temperature: 0.3
     max_tokens: 100

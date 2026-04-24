@@ -12,7 +12,7 @@ describe('formatModelSwitchError', () => {
     const message = formatModelSwitchError(error, 'Z.ai');
 
     expect(message).toContain('Z.ai credential is invalid or expired');
-    expect(message).toContain('switch to llama.cpp/local');
+    expect(message).toContain('switch to local fallback');
   });
 
   it('returns provider timeout guidance on validation timeout', () => {

@@ -2,7 +2,7 @@
 Integration helpers for Kari AI.
 
 Production-ready LLM integration system with:
-- Multi-provider support (OpenAI, Gemini, LlamaCpp, HuggingFace, DeepSeek, etc.)
+- Multi-provider support (OpenAI, Gemini, local GGUF, HuggingFace, DeepSeek, etc.)
 - Intelligent routing with capability awareness
 - Fallback management (cloud → local → degraded)
 - Error recovery and failure pattern analysis

@@ -24,7 +24,7 @@ export function formatModelSwitchError(
     lowered.includes('401');
 
   if (isCredentialError) {
-    return `${providerLabel} credential is invalid or expired. Update the API key/token in settings, or switch to llama.cpp/local, then try again.`;
+    return `${providerLabel} credential is invalid or expired. Update the API key/token in settings, or switch to local fallback, then try again.`;
   }
 
   if (lowered.includes('timed out')) {

@@ -1,6 +1,6 @@
 {
-  "provider": "llama-cpp",
-  "model": "Phi-3-mini-4k-instruct-q4.gguf",
+  "provider": "builtin_vllm",
+  "model": "auto",
   "use_memory": true,
   "context_length": 512,
   "decay": 0.1,
@@ -42,8 +42,8 @@
       "last_model": "glm-4.7",
       "base_url": "https://api.z.ai/api/coding/paas/v4"
     },
-    "llama-cpp": {
-      "last_model": "Phi-3-mini-4k-instruct-q4.gguf",
+    "builtin_vllm": {
+      "last_model": "auto",
       "base_url": "http://localhost:8080/v1"
     },
     "openai": {

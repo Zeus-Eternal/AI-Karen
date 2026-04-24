@@ -204,7 +204,7 @@ class ModelRouter:
         """Determine the appropriate provider for a model."""
         # Map model types to providers
         type_provider_map = {
-            ModelType.LLAMA_CPP: "llamacpp",
+            ModelType.LOCAL_GGUF: "local_gguf",
             ModelType.TRANSFORMERS: "huggingface",
             ModelType.HUGGINGFACE: "huggingface",
             ModelType.STABLE_DIFFUSION: "huggingface",
@@ -274,7 +274,7 @@ class ModelRouter:
         """Establish actual connection to the model."""
         try:
             # For local models, verify file exists and is accessible
-            if connection.provider == "local" or connection.provider == "llamacpp":
+            if connection.provider in {"local", "local_gguf"}:
                 model_path = Path(connection.model_info.path)
                 if not model_path.exists():
                     logger.error(f"Model file not found: {model_path}")

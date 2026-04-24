@@ -501,7 +501,7 @@ class EnhancedErrorHandler:
             return self._create_cached_response(context)
 
         # Get list of available providers excluding the failed one
-        available_providers = ["openai", "anthropic", "llama-cpp", "huggingface"]
+        available_providers = ["openai", "anthropic", "local_gguf", "huggingface"]
         if failed_provider in available_providers:
             available_providers.remove(failed_provider)
         

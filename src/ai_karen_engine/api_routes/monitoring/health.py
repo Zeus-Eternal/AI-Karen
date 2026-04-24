@@ -302,35 +302,21 @@ async def overall_health(request: Request) -> Dict[str, Any]:
 async def _check_local_model_capabilities() -> Dict[str, int]:
     """Check which local model systems are actually working."""
     capabilities = {
-        "llamacpp_models": 0,
+        "local_gguf_models": 0,
         "transformers_models": 0,
         "spacy_available": 0,
     }
 
-    # Check llama-cpp models
+    # Check local GGUF models
     try:
         from pathlib import Path
-        from ai_karen_engine.inference.llamacpp_runtime import LlamaCppRuntime
-
-        if LlamaCppRuntime.is_available():
-            models_dir = Path("models/llama-cpp")
-            if models_dir.exists():
-                gguf_files = list(models_dir.glob("*.gguf"))
-                for gguf_file in gguf_files:
-                    try:
-                        # Quick test load with minimal resources
-                        runtime = LlamaCppRuntime(
-                            model_path=str(gguf_file),
-                            n_ctx=128,
-                            n_batch=32,
-                            verbose=False,
-                        )
-                        if runtime.is_loaded():
-                            capabilities["llamacpp_models"] += 1
-                            runtime.unload_model()
-                            break  # Found at least one working model
-                    except Exception:
-                        continue
+        models_dir = Path("models/local-gguf")
+        if models_dir.exists():
+            capabilities["local_gguf_models"] = sum(
+                1
+                for gguf_file in models_dir.glob("*.gguf")
+                if gguf_file.is_file() and gguf_file.stat().st_size > 0
+            )
     except Exception:
         pass
 
@@ -492,7 +478,7 @@ async def _build_degraded_mode_status() -> Dict[str, Any]:
     # Provider health checks with local fallback awareness
     total_ai_capabilities = 0
     local_capabilities = {
-        "llamacpp_models": 0,
+        "local_gguf_models": 0,
         "transformers_models": 0,
         "spacy_available": 0,
     }
@@ -528,8 +514,8 @@ async def _build_degraded_mode_status() -> Dict[str, Any]:
 
         models_dir = Path("models")
         default_model_available = (
-            any((models_dir / "llama-cpp").glob("*.gguf"))
-            if (models_dir / "llama-cpp").exists()
+            any((models_dir / "local-gguf").glob("*.gguf"))
+            if (models_dir / "local-gguf").exists()
             else False
         )
 
@@ -547,7 +533,7 @@ async def _build_degraded_mode_status() -> Dict[str, Any]:
         total_ai_capabilities = (
             system_status.get("available_providers", 0)
             + llm_models_available
-            + local_capabilities.get("llamacpp_models", 0)
+            + local_capabilities.get("local_gguf_models", 0)
             + local_capabilities.get("transformers_models", 0)
             + (1 if spacy_available else 0)
         )
@@ -563,8 +549,8 @@ async def _build_degraded_mode_status() -> Dict[str, Any]:
 
             models_dir = Path("models")
             default_model_available = (
-                any((models_dir / "llama-cpp").glob("*.gguf"))
-                if (models_dir / "llama-cpp").exists()
+                any((models_dir / "local-gguf").glob("*.gguf"))
+                if (models_dir / "local-gguf").exists()
                 else False
             )
 
@@ -595,8 +581,8 @@ async def _build_degraded_mode_status() -> Dict[str, Any]:
 
         models_dir = Path("models")
         default_model_file_available = (
-            any((models_dir / "llama-cpp").glob("*.gguf"))
-            if (models_dir / "llama-cpp").exists()
+            any((models_dir / "local-gguf").glob("*.gguf"))
+            if (models_dir / "local-gguf").exists()
             else False
         )
 
@@ -640,7 +626,7 @@ async def _build_degraded_mode_status() -> Dict[str, Any]:
             "local_llm_file": default_model_file_available,
             "llm_orchestrator_models": llm_orchestrator_models,
             "remote_providers": remote_providers_available,
-            "llamacpp_working_models": local_capabilities.get("llamacpp_models", 0),
+            "local_gguf_working_models": local_capabilities.get("local_gguf_models", 0),
             "transformers_working_models": local_capabilities.get(
                 "transformers_models", 0
             ),
@@ -652,13 +638,13 @@ async def _build_degraded_mode_status() -> Dict[str, Any]:
             "total_ai_capabilities": (
                 llm_orchestrator_models
                 + remote_providers_available
-                + local_capabilities.get("llamacpp_models", 0)
+                + local_capabilities.get("local_gguf_models", 0)
                 + local_capabilities.get("transformers_models", 0)
                 + local_capabilities.get("spacy_available", 0)
             ),
         }
         core_helpers_available["local_fallback_ready"] = bool(
-            core_helpers_available["llamacpp_working_models"]
+            core_helpers_available["local_gguf_working_models"]
             or core_helpers_available["transformers_working_models"]
             or core_helpers_available["spacy_intelligent_responses"]
             or core_helpers_available["local_llm_file"]

@@ -15,6 +15,12 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Type, Union
 
+from ai_karen_engine.core.model_runtime.provider_endpoint import (
+    BUILTIN_PROVIDER_ENDPOINTS,
+    ProviderEndpoint,
+    ProviderEndpointStatus,
+    ProviderEndpointType,
+)
 from ai_karen_engine.integrations.provider_registry import (
     ProviderRegistry as BaseProviderRegistry,
     ProviderRegistration,
@@ -30,11 +36,19 @@ class ProviderCapability(str, Enum):
     """Provider capability types"""
 
     TEXT_GENERATION = "text_generation"
+    CHAT_COMPLETION = "chat_completion"
     EMBEDDINGS = "embeddings"
     STREAMING = "streaming"
     FUNCTION_CALLING = "function_calling"
     VISION = "vision"
     AUDIO = "audio"
+    RERANKING = "reranking"
+    CLASSIFICATION = "classification"
+    SENTIMENT = "sentiment"
+    SUMMARIZATION = "summarization"
+    TRANSLATION = "translation"
+    VLM_HELPER = "vlm_helper"
+    OCR_HELPER = "ocr_helper"
 
 
 @dataclass
@@ -68,12 +82,14 @@ class ProviderRegistryService:
     def __init__(self, use_global_registry: bool = True):
         # Use the centralized registry instead of creating our own
         self.base_registry = get_provider_registry()
+        self._provider_endpoints: Dict[str, ProviderEndpoint] = {
+            endpoint.provider_id: endpoint for endpoint in BUILTIN_PROVIDER_ENDPOINTS
+        }
 
-        # Use the new LLMRouter's health monitoring instead of the old health monitor
-        from ai_karen_engine.services.models.routing.llm_router_service import LLMRouter
-
-        self.llm_router = LLMRouter()
-        self.health_monitor = None  # Deprecated - using LLMRouter health
+        # Keep LLMRouter lazy so simple registry queries do not initialize the
+        # broader routing stack unless health data is actually needed.
+        self.llm_router = None
+        self.health_monitor = None  # Deprecated - kept for compatibility
 
         self._lock = threading.RLock()
         self._fallback_chains: Dict[str, FallbackChain] = {}
@@ -86,29 +102,135 @@ class ProviderRegistryService:
         # Don't start old health monitoring - use LLMRouter's health
         self._monitoring_task = None
 
+    def _get_llm_router(self):
+        """Lazy-load the router used for provider health snapshots."""
+        if self.llm_router is None:
+            from ai_karen_engine.services.models.routing.llm_router_service import (
+                LLMRouter,
+            )
+
+            self.llm_router = LLMRouter()
+        return self.llm_router
+
     def _setup_default_fallback_chains(self):
         """Setup default fallback chains for common use cases"""
 
         # Text generation fallback chain
         self._fallback_chains["text_generation"] = FallbackChain(
-            primary="llamacpp",
+            primary="builtin_vllm",
             fallbacks=["openai", "gemini", "deepseek", "huggingface", "local"],
             capability_required=ProviderCapability.TEXT_GENERATION,
         )
 
         # Embeddings fallback chain
         self._fallback_chains["embeddings"] = FallbackChain(
-            primary="llamacpp",
+            primary="builtin_transformers",
             fallbacks=["openai", "huggingface"],
             capability_required=ProviderCapability.EMBEDDINGS,
         )
 
         # Local-first fallback chain
         self._fallback_chains["local_first"] = FallbackChain(
-            primary="llamacpp",
+            primary="builtin_vllm",
             fallbacks=["openai", "gemini", "deepseek", "huggingface"],
             capability_required=ProviderCapability.TEXT_GENERATION,
         )
+
+    def _endpoint_to_capabilities(
+        self, endpoint: ProviderEndpoint
+    ) -> Set[ProviderCapability]:
+        capabilities: Set[ProviderCapability] = set()
+        for capability_name in endpoint.capabilities:
+            try:
+                capabilities.add(ProviderCapability(capability_name))
+            except ValueError:
+                continue
+        if endpoint.supports_embeddings:
+            capabilities.add(ProviderCapability.EMBEDDINGS)
+        if endpoint.supports_streaming:
+            capabilities.add(ProviderCapability.STREAMING)
+        if not capabilities:
+            capabilities.add(ProviderCapability.TEXT_GENERATION)
+        return capabilities
+
+    def register_provider_endpoint(self, endpoint: ProviderEndpoint) -> None:
+        """Register a canonical provider endpoint."""
+        with self._lock:
+            self._provider_endpoints[endpoint.provider_id] = endpoint
+            self._update_provider_status(
+                endpoint.provider_id,
+                self._endpoint_to_capabilities(endpoint),
+                bool(endpoint.api_key_env),
+            )
+
+    def register_openai_compatible_endpoint(
+        self,
+        provider_id: str,
+        display_name: str,
+        *,
+        base_url: str,
+        api_key_env: Optional[str] = None,
+        supports_streaming: bool = True,
+        supports_embeddings: bool = False,
+        supports_models_endpoint: bool = True,
+        capabilities: Optional[List[str]] = None,
+        default_model: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> ProviderEndpoint:
+        """Register a generic OpenAI-compatible endpoint as a canonical runtime endpoint."""
+        endpoint = ProviderEndpoint(
+            provider_id=provider_id,
+            display_name=display_name,
+            endpoint_type=ProviderEndpointType.OPENAI_COMPATIBLE,
+            base_url=base_url,
+            api_key_env=api_key_env,
+            builtin=False,
+            tenant_scoped=True,
+            supports_streaming=supports_streaming,
+            supports_embeddings=supports_embeddings,
+            supports_models_endpoint=supports_models_endpoint,
+            fallback_eligible=True,
+            capabilities=tuple(capabilities or ("chat_completion", "text_generation")),
+            default_model=default_model,
+            metadata=dict(metadata or {}),
+        )
+        self.register_provider_endpoint(endpoint)
+        return endpoint
+
+    def register_configured_endpoint(self, endpoint_data: Dict[str, Any]) -> ProviderEndpoint:
+        """Register a canonical endpoint from a config dictionary."""
+        endpoint_type = endpoint_data.get("endpoint_type") or ProviderEndpointType.OPENAI_COMPATIBLE
+        if isinstance(endpoint_type, str):
+            endpoint_type = ProviderEndpointType(endpoint_type)
+
+        endpoint = ProviderEndpoint(
+            provider_id=str(endpoint_data["provider_id"]),
+            display_name=str(endpoint_data.get("display_name") or endpoint_data["provider_id"]),
+            endpoint_type=endpoint_type,
+            base_url=endpoint_data.get("base_url"),
+            api_key_env=endpoint_data.get("api_key_env"),
+            enabled=bool(endpoint_data.get("enabled", True)),
+            builtin=bool(endpoint_data.get("builtin", False)),
+            tenant_scoped=bool(endpoint_data.get("tenant_scoped", True)),
+            timeout_seconds=float(endpoint_data.get("timeout_seconds", 30.0)),
+            supports_streaming=bool(endpoint_data.get("supports_streaming", False)),
+            supports_embeddings=bool(endpoint_data.get("supports_embeddings", False)),
+            supports_models_endpoint=bool(endpoint_data.get("supports_models_endpoint", False)),
+            fallback_eligible=bool(endpoint_data.get("fallback_eligible", True)),
+            capabilities=tuple(endpoint_data.get("capabilities") or ()),
+            default_model=endpoint_data.get("default_model"),
+            metadata=dict(endpoint_data.get("metadata") or {}),
+        )
+        self.register_provider_endpoint(endpoint)
+        return endpoint
+
+    def get_provider_endpoint(self, provider_id: str) -> Optional[ProviderEndpoint]:
+        """Return a registered endpoint if one exists."""
+        return self._provider_endpoints.get(provider_id)
+
+    def list_provider_endpoints(self) -> List[ProviderEndpoint]:
+        """List all canonical endpoints."""
+        return list(self._provider_endpoints.values())
 
     def register_provider(
         self,
@@ -158,6 +280,30 @@ class ProviderRegistryService:
                 f"Registered provider '{name}' with capabilities: {capabilities}"
             )
 
+    def _build_endpoint_status(self, endpoint: ProviderEndpoint) -> ProviderStatus:
+        """Build a provider status snapshot for a canonical endpoint."""
+        capabilities = self._endpoint_to_capabilities(endpoint)
+        has_api_key = True
+        if endpoint.api_key_env:
+            has_api_key = bool((os.getenv(endpoint.api_key_env) or "").strip())
+
+        health_status = HealthStatus.HEALTHY if endpoint.enabled else HealthStatus.UNAVAILABLE
+        is_available = endpoint.enabled and has_api_key and health_status in [
+            HealthStatus.HEALTHY,
+            HealthStatus.DEGRADED,
+            HealthStatus.UNKNOWN,
+        ]
+
+        return ProviderStatus(
+            name=endpoint.provider_id,
+            is_available=is_available,
+            has_api_key=has_api_key,
+            health_status=health_status,
+            capabilities=capabilities,
+            last_check=datetime.utcnow(),
+            error_message=None if is_available else "endpoint disabled or unavailable",
+        )
+
     def _detect_provider_capabilities(
         self, provider_class: Type[Any]
     ) -> Set[ProviderCapability]:
@@ -203,8 +349,9 @@ class ProviderRegistryService:
 
         # Get health status from LLMRouter
         health_status = HealthStatus.HEALTHY  # Default to healthy
-        if name in self.llm_router.provider_health:
-            llm_health = self.llm_router.provider_health[name]
+        llm_router = self._get_llm_router()
+        if name in llm_router.provider_health:
+            llm_health = llm_router.provider_health[name]
             if llm_health.is_healthy:
                 health_status = HealthStatus.HEALTHY
             else:
@@ -264,6 +411,14 @@ class ProviderRegistryService:
     def get_provider_status(self, name: str) -> Optional[ProviderStatus]:
         """Get current status of a provider"""
         with self._lock:
+            endpoint = self._provider_endpoints.get(name)
+            if endpoint is not None:
+                status = self._provider_status_cache.get(name)
+                if status is None or (datetime.utcnow() - status.last_check).total_seconds() > self._cache_ttl:
+                    status = self._build_endpoint_status(endpoint)
+                    self._provider_status_cache[name] = status
+                return status
+
             status = self._provider_status_cache.get(name)
 
             if status is None:
@@ -316,9 +471,33 @@ class ProviderRegistryService:
     ) -> List[str]:
         """Get list of available providers with optional filtering"""
 
-        available_providers = []
+        available_providers: List[str] = []
+        seen: Set[str] = set()
 
-        for provider_name in self.base_registry.list_providers(category=category):
+        builtin_provider_names = list(self._provider_endpoints.keys())
+        for provider_name in builtin_provider_names:
+            status = self.get_provider_status(provider_name)
+            if not status or not status.is_available:
+                continue
+
+            if capability and capability not in status.capabilities:
+                continue
+
+            if provider_name not in seen:
+                seen.add(provider_name)
+                available_providers.append(provider_name)
+
+        if capability is not None:
+            # Capability-based requests are satisfied from the canonical endpoint
+            # registry first so local built-ins stay authoritative and fast.
+            return available_providers
+
+        provider_names = list(self.base_registry.list_providers(category=category))
+        for endpoint in self._provider_endpoints.values():
+            if endpoint.provider_id not in provider_names:
+                provider_names.append(endpoint.provider_id)
+
+        for provider_name in provider_names:
             status = self.get_provider_status(provider_name)
 
             if status and status.is_available:
@@ -326,7 +505,9 @@ class ProviderRegistryService:
                 if capability and capability not in status.capabilities:
                     continue
 
-                available_providers.append(provider_name)
+                if provider_name not in seen:
+                    seen.add(provider_name)
+                    available_providers.append(provider_name)
 
         return available_providers
 
@@ -572,7 +753,12 @@ class ProviderRegistryService:
             "recommendations": [],
         }
 
-        for provider_name in self.base_registry.list_providers():
+        provider_names = list(self.base_registry.list_providers())
+        for endpoint in self._provider_endpoints.values():
+            if endpoint.provider_id not in provider_names:
+                provider_names.append(endpoint.provider_id)
+
+        for provider_name in provider_names:
             provider_status = self.get_provider_status(provider_name)
             status["total_providers"] += 1
 

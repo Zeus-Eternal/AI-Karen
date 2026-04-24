@@ -72,40 +72,40 @@ class CopilotRoutingPolicy:
     def __post_init__(self):
         if self.privacy_level_enforcement is None:
             self.privacy_level_enforcement = {
-                PrivacyLevel.CONFIDENTIAL: ["local", "llamacpp"],
-                PrivacyLevel.INTERNAL: ["local", "llamacpp", "huggingface"],
-                PrivacyLevel.PUBLIC: ["local", "llamacpp", "huggingface", "openai_cloud", "deepseek"]
+                PrivacyLevel.CONFIDENTIAL: ["local", "local_gguf"],
+                PrivacyLevel.INTERNAL: ["local", "local_gguf", "huggingface"],
+                PrivacyLevel.PUBLIC: ["local", "local_gguf", "huggingface", "openai_cloud", "deepseek"]
             }
         
         if self.capability_routing is None:
             self.capability_routing = {
                 CopilotCapability.REVIEW: {
-                    "preferred_providers": ["deepseek", "llamacpp"],
+                    "preferred_providers": ["deepseek", "local_gguf"],
                     "required_capabilities": ["code_analysis"],
                     "privacy_level": PrivacyLevel.INTERNAL
                 },
                 CopilotCapability.DEBUG: {
-                    "preferred_providers": ["openai_cloud", "llamacpp"],
+                    "preferred_providers": ["openai_cloud", "local_gguf"],
                     "required_capabilities": ["reasoning"],
                     "privacy_level": PrivacyLevel.INTERNAL
                 },
                 CopilotCapability.REFACTOR: {
-                    "preferred_providers": ["llamacpp"],  # Always local for refactoring
+                    "preferred_providers": ["local_gguf"],  # Always local for refactoring
                     "privacy_level": PrivacyLevel.CONFIDENTIAL,
                     "force_local": True
                 },
                 CopilotCapability.GENERATE_TESTS: {
-                    "preferred_providers": ["deepseek", "llamacpp"],
+                    "preferred_providers": ["deepseek", "local_gguf"],
                     "required_capabilities": ["code_generation"],
                     "privacy_level": PrivacyLevel.INTERNAL
                 }
             }
         
         if self.trusted_providers is None:
-            self.trusted_providers = ["local", "llamacpp", "huggingface"]
+            self.trusted_providers = ["local", "local_gguf", "huggingface"]
         
         if self.local_providers is None:
-            self.local_providers = ["local", "llamacpp"]
+            self.local_providers = ["local", "local_gguf"]
 
 
 class CopilotLLMRouter(IntelligentLLMRouter):
@@ -493,7 +493,7 @@ class CopilotLLMRouter(IntelligentLLMRouter):
         # This would integrate with the existing runtime selection logic
         # For now, return a default based on provider type
         runtime_mapping = {
-            "local": "llama.cpp",
+            "local": "local_gguf",
             "openai_cloud": "api",
             "deepseek": "api",
             "huggingface": "transformers"
@@ -576,8 +576,8 @@ class CopilotLLMRouter(IntelligentLLMRouter):
                 suggestions.append("Configure API key: Set COPILOT_API_KEY in secret storage")
         
         if "local" in error.lower() and "not available" in error.lower():
-            suggestions.append("Check local providers: Ensure llama.cpp runtime is configured")
-            suggestions.append("Install local GGUF models under models/llama-cpp; see docs for supported models")
+            suggestions.append("Check local providers: Ensure the local GGUF runtime is configured")
+            suggestions.append("Install local GGUF models under models/local-gguf; see docs for supported models")
         
         if context.privacy_level == PrivacyLevel.CONFIDENTIAL:
             suggestions.append("Confidential data requires local providers only")

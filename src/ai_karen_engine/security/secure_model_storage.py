@@ -45,7 +45,7 @@ class ModelType(str, Enum):
     """Types of AI models."""
     SPACY_NLP = "spacy_nlp"
     TRANSFORMER = "transformer"
-    LLAMA_CPP = "llama_cpp"
+    LOCAL_GGUF = "local_gguf"
     DISTILBERT = "distilbert"
     BASIC_CLASSIFIER = "basic_classifier"
     CUSTOM = "custom"

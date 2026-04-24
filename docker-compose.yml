@@ -238,15 +238,15 @@ services:
       - ai-karen-net
 
   # ──────────────────────────────────────────────────────────────────────
-  # Local LLM Server (OPTIONAL - only starts with --profile local-llm)
-  # Download model first: see models/llama-cpp/README.md
+  # Local GGUF Server (OPTIONAL - only starts with --profile local-gguf)
+  # Download model first: see models/local-gguf/README.md
   # ──────────────────────────────────────────────────────────────────────
-  local-llm:
-    container_name: ai-karen-local-llm
+  local-gguf:
+    container_name: ai-karen-local-gguf
     image: ghcr.io/ggerganov/llama.cpp:server
     restart: unless-stopped
     profiles:
-      - local-llm
+      - local-gguf
     deploy:
       resources:
         limits:
@@ -264,7 +264,7 @@ services:
       NVIDIA_DRIVER_CAPABILITIES: "${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}"
     command:
       - "-m"
-      - "/models/llama-cpp/Phi-3-mini-4k-instruct-q4.gguf"
+      - "/models/local-gguf/Phi-3-mini-4k-instruct-q4.gguf"
       - "-c"
       - "4096"
       - "--n-gpu-layers"

@@ -2,7 +2,7 @@
 System Model Manager
 
 Manages configuration and monitoring for system models including:
-- llama-cpp models (GGUF format)
+- local GGUF models
 - default-nlp-model (transformer model)
 - default-classifier-model (classification model)
 
@@ -42,8 +42,8 @@ class ModelStatus:
     inference_time: Optional[float] = None
 
 @dataclass
-class LlamaCppConfig:
-    """Configuration for llama-cpp models."""
+class LocalGGUFConfig:
+    """Configuration for local GGUF models."""
     quantization: str = "Q4_K_M"
     context_length: int = 2048
     gpu_layers: int = 0
@@ -135,12 +135,12 @@ class SystemModelManager:
         self.system_models = {
             "default-lightweight-model": {
                 "name": "Default Lightweight Model",
-                "family": "llama",
+                "family": "gguf",
                 "format": "gguf",
-                "path": self.models_dir / "llama-cpp" / f"{default_lightweight}-v2.0.Q4_K_M.gguf",
-                "config_class": LlamaCppConfig,
+                "path": self.models_dir / "local-gguf" / f"{default_lightweight}-v2.0.Q4_K_M.gguf",
+                "config_class": LocalGGUFConfig,
                 "capabilities": ["text-generation", "chat", "local-inference"],
-                "runtime_compatibility": ["llama-cpp"]
+                "runtime_compatibility": ["local_gguf"]
             },
             "default-nlp-model": {
                 "name": "Default NLP Model",
@@ -321,7 +321,7 @@ class SystemModelManager:
         """Validate model configuration against hardware constraints."""
         try:
             if model_id == "default-lightweight-model":
-                return self._validate_llama_cpp_config(config)
+                return self._validate_local_gguf_config(config)
             elif model_id == "default-nlp-model":
                 return self._validate_transformer_config(config)
             elif model_id == "default-classifier-model":
@@ -332,8 +332,8 @@ class SystemModelManager:
         except Exception as e:
             return {"valid": False, "error": str(e)}
     
-    def _validate_llama_cpp_config(self, config: LlamaCppConfig) -> Dict[str, Any]:
-        """Validate llama-cpp configuration."""
+    def _validate_local_gguf_config(self, config: LocalGGUFConfig) -> Dict[str, Any]:
+        """Validate local GGUF configuration."""
         # Check GPU availability for GPU layers
         if config.gpu_layers > 0:
             try:

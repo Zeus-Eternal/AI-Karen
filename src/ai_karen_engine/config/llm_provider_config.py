@@ -34,19 +34,13 @@ DEFAULT_OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
 # Canonical provider identifier aliases (UI/API/runtime should all use these).
 PROVIDER_NAME_ALIASES: Dict[str, str] = {
-    "llama-cpp": "llamacpp",
-    "llama.cpp": "llamacpp",
-    "llama_cpp": "llamacpp",
-    "llamacpp": "llamacpp",
-    "local": "llamacpp",
 }
 
 # Canonical provider class names with module ownership.
 PROVIDER_CLASS_MODULES: Dict[str, str] = {
-    "LlamaCppProvider": "ai_karen_engine.integrations.providers.llamacpp_provider",
-    "OptimizedLlamaCppProvider": "ai_karen_engine.integrations.providers.llamacpp_provider_optimized",
     "OllamaProvider": "ai_karen_engine.integrations.providers.ollama_provider",
     "OpenAIProvider": "ai_karen_engine.integrations.providers.openai_provider",
+    "OpenAICompatibleProvider": "ai_karen_engine.integrations.providers.openai_compatible_provider",
     "GeminiProvider": "ai_karen_engine.integrations.providers.gemini_provider",
     "DeepseekProvider": "ai_karen_engine.integrations.providers.deepseek_provider",
     "HuggingFaceProvider": "ai_karen_engine.integrations.providers.huggingface_provider",
@@ -56,7 +50,6 @@ PROVIDER_CLASS_MODULES: Dict[str, str] = {
 
 # Backward-compatible class-name aliases that appear in persisted registry/config.
 PROVIDER_CLASS_ALIASES: Dict[str, str] = {
-    "LlamaCppProviderOptimized": "OptimizedLlamaCppProvider",
 }
 
 # Shared settings UI order, centralized here to avoid route-level drift.
@@ -83,7 +76,6 @@ MODEL_SETTINGS_PROVIDER_ORDER: List[str] = [
     "novita",
     "gmi-cloud",
     "ollama",
-    "llama-cpp",
     "custom",
 ]
 
@@ -993,7 +985,7 @@ class LLMProviderConfigManager:
         )
         self.add_provider(huggingface_config)
 
-        # Ollama remains a supported local runtime option alongside llama.cpp.
+        # Ollama remains a supported local runtime option alongside local GGUF runtimes.
 
         logger.info("Created default LLM provider configurations")
 
@@ -1917,37 +1909,6 @@ class LLMProviderConfigManager:
                     concurrent_requests=2,
                     max_context_length=131072,
                     max_output_tokens=8192,
-                ),
-            ),
-            ProviderConfig(
-                name="llama-cpp",
-                display_name="llama.cpp",
-                description="Local GGUF execution via llama.cpp or a compatible local server",
-                provider_type=ProviderType.LOCAL,
-                priority=67,
-                endpoint=ProviderEndpoint(
-                    base_url="http://localhost:8080/v1",
-                    chat_endpoint="/chat/completions",
-                    models_endpoint="/models",
-                ),
-                authentication=ProviderAuthentication(type=AuthenticationType.NONE),
-                models=[
-                    ProviderModel(
-                        id="auto-detect-gguf",
-                        name="Auto-detect local GGUF",
-                        family="llama",
-                        capabilities={"text", "local"},
-                        context_length=8192,
-                        max_tokens=4096,
-                        supports_streaming=True,
-                    ),
-                ],
-                default_model="auto-detect-gguf",
-                capabilities={"local_execution", "gguf"},
-                limits=ProviderLimits(
-                    concurrent_requests=1,
-                    max_context_length=32768,
-                    max_output_tokens=4096,
                 ),
             ),
             ProviderConfig(

@@ -45,8 +45,8 @@ class ProviderModelCompatibilityService:
     def _initialize_provider_capabilities(self) -> Dict[str, ProviderCapabilities]:
         """Initialize provider capabilities and requirements."""
         return {
-            "llama-cpp": ProviderCapabilities(
-                name="llama-cpp",
+            "local_gguf": ProviderCapabilities(
+                name="local_gguf",
                 supported_formats=["gguf", "ggml"],
                 required_capabilities=["text-generation"],
                 optional_capabilities=["chat", "instruction-following", "embeddings"],
@@ -194,8 +194,8 @@ class ProviderModelCompatibilityService:
         
         # Check provider match
         if model_info.provider != provider_caps.name:
-            if provider_caps.name == "llama-cpp" and model_info.provider in ["gguf", "llama"]:
-                # Allow GGUF models for llama-cpp
+            if provider_caps.name == "local_gguf" and model_info.provider in ["gguf", "llama"]:
+                # Allow GGUF models for the local GGUF runtime
                 reasons.append("Model format compatible with provider")
             elif provider_caps.name == "huggingface" and model_info.provider in ["transformers", "hf"]:
                 # Allow transformers models for huggingface

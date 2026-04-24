@@ -506,7 +506,7 @@ async def warm_local_llm_stack(app: FastAPI) -> None:
         active_provider = (
             str(settings_manager.get_setting("provider", "") or "").strip().lower()
         )
-        if active_provider not in {"llama-cpp", "llamacpp", "local"}:
+        if active_provider not in {"local_gguf", "local"}:
             logger.info(
                 "Skipping local LLM warmup for non-local provider: %s",
                 active_provider or "unset",

@@ -34,7 +34,7 @@ def resolve_routing_intent(query: str, user_ctx: Dict[str, Any]) -> Tuple[str, D
 
 def extract_routing_parameters(query: str) -> Dict[str, Any]:
     """Extract routing parameters from query."""
-    providers = ["openai", "deepseek", "llamacpp", "huggingface", "gemini"]
+    providers = ["openai", "deepseek", "local_gguf", "huggingface", "gemini"]
     models = ["gpt-4", "gpt-3.5-turbo", "deepseek-chat", "llama2", "gemini-pro"]
     
     detected_provider = None

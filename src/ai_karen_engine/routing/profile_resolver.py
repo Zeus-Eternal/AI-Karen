@@ -87,7 +87,7 @@ class ProfileResolver:
         for tt, ma in DEFAULT_ASSIGNMENTS.items():
             assignments.setdefault(tt, ma)
 
-        chain = ["openai", "deepseek", "llamacpp", "huggingface", "gemini"]
+        chain = ["openai", "deepseek", "local_gguf", "huggingface", "gemini"]
         return UserProfile(
             profile_id=active.id,
             name=active.label,
@@ -106,7 +106,7 @@ class ProfileResolver:
         except Exception:
             active_name = "default"
         assignments = dict(DEFAULT_ASSIGNMENTS)
-        chain = ["openai", "deepseek", "llamacpp", "huggingface", "gemini"]
+        chain = ["openai", "deepseek", "local_gguf", "huggingface", "gemini"]
         return UserProfile(profile_id=active_name, name=active_name, assignments=assignments, fallback_chain=chain, khrp_config={})
 
     def _get_user_profiles(self) -> Optional[UserProfile]:
@@ -119,7 +119,7 @@ class ProfileResolver:
         assignments: Dict[str, ModelAssignment] = {}
         for tt, ma in prof.assignments.items():
             assignments[tt] = ModelAssignment(task_type=tt, provider=ma.provider, model=ma.model, parameters=ma.parameters)
-        chain = prof.fallback_chain or ["openai", "deepseek", "llamacpp", "huggingface", "gemini"]
+        chain = prof.fallback_chain or ["openai", "deepseek", "local_gguf", "huggingface", "gemini"]
         return UserProfile(profile_id=prof.id, name=prof.name, assignments=assignments, fallback_chain=chain, khrp_config={})
 
     def get_user_profile(self, user_id: str) -> Optional[UserProfile]:

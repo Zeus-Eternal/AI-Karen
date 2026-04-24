@@ -77,11 +77,11 @@ def _ensure_db_dependencies() -> bool:
         return False
 
 
-def _has_local_llama_model() -> bool:
-    """Return ``True`` when a local llama.cpp model appears to be available."""
+def _has_local_model() -> bool:
+    """Return ``True`` when a local model appears to be available."""
 
     try:
-        model_dir = Path(os.getenv("AI_KAREN_LLAMA_MODEL_DIR", "models/llama-cpp"))
+        model_dir = Path(os.getenv("AI_KAREN_LOCAL_MODEL_DIR", "models/local-gguf"))
         if not model_dir.exists():
             return False
         for path in model_dir.glob("*.gguf"):
@@ -110,11 +110,11 @@ def _should_use_registry() -> bool:
     if os.getenv("OPENAI_API_KEY"):
         return True
 
-    if _has_local_llama_model():
+    if _has_local_model():
         return True
 
     logger.info(
-        "LLM registry disabled automatically (no API keys or local llama.cpp models detected)"
+        "LLM registry disabled automatically (no API keys or local models detected)"
     )
     return False
 
@@ -259,7 +259,7 @@ class LLMUtils:
     def __init__(
         self,
         providers: Optional[Dict[str, LLMProviderBase]] = None,
-        default: str = "llamacpp",
+        default: str = "builtin_vllm",
         use_registry: bool = True,
         config: Optional[Dict[str, Any]] = None,
     ):
@@ -936,7 +936,7 @@ class LLMUtils:
 # ========== Prompt-First Plugin API ==========
 def get_llm_manager(
     providers: Optional[Dict[str, LLMProviderBase]] = None,
-    default: str = "llamacpp",
+    default: str = "builtin_vllm",
     use_registry: bool = True,
 ) -> LLMUtils:
     return LLMUtils(providers, default=default, use_registry=use_registry)

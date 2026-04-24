@@ -230,7 +230,7 @@ class ModelMetadataService:
             "default-lightweight-model": {
                 "id": "default-lightweight-model",
                 "name": "Default Lightweight Chat Model",
-                "provider": "llama-cpp",
+                "provider": "local_gguf",
                 "size": 520000000,  # ~520MB
                 "description": "A compact Qwen3 language model optimized for chat applications with efficient quantization for fast local inference.",
                 "capabilities": ["text-generation", "chat", "local-inference", "low-memory"],
@@ -256,7 +256,7 @@ class ModelMetadataService:
             "default-instruct-model": {
                 "id": "default-instruct-model",
                 "name": "Default Instruct Model",
-                "provider": "llama-cpp",
+                "provider": "local_gguf",
                 "size": 669000000,
                 "description": "A compact model fine-tuned for instruction following with efficient quantization.",
                 "capabilities": ["text-generation", "instruction-following", "local-inference", "low-memory"],
@@ -721,7 +721,7 @@ class ModelLibraryService:
             
             # Create registry entry
             download_path = self.download_manager.download_dir / task.filename
-            final_path = self.models_dir / "llama-cpp" / task.filename
+            final_path = self.models_dir / "local-gguf" / task.filename
             
             # Move file to final location
             final_path.parent.mkdir(parents=True, exist_ok=True)

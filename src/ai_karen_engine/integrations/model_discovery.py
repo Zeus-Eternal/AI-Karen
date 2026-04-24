@@ -1,7 +1,7 @@
 """
 Kari Model Discovery Engine (Enterprise)
 - Discovers, validates, and manages local/remote LLM and embedding models.
-- Pluggable registry: local disk, llama.cpp (GGUF), transformers, plugin endpoints, remote registry.
+- Pluggable registry: local disk, local GGUF, transformers, plugin endpoints, remote registry.
 - Observability: logs, RBAC, audit, and hot reloads.
 """
 
@@ -73,7 +73,7 @@ class LocalModelSource(ModelSourceBase):
 
 # ======== Ollama Model Registry (if installed) ========
 
-# Ollama integration removed; prefer llama.cpp GGUF discovery via LocalModelSource.
+# Ollama integration removed; prefer local GGUF discovery via LocalModelSource.
 
 # ======== Transformers Hub/Plugin Registry (Stub for now) ========
 
@@ -133,7 +133,7 @@ class ModelDiscoveryEngine:
     @staticmethod
     def default_sources() -> List[ModelSourceBase]:
         out = []
-    # Ollama provider removed; prefer local llama.cpp (GGUF) discovery.
+    # Ollama provider removed; prefer local GGUF discovery.
         out.append(LocalModelSource())
         out.append(TransformersHubSource())
         # Add more as needed (plugins, cloud, enterprise registry...)

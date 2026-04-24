@@ -31,16 +31,17 @@ fi
 echo "✅ GPU is available"
 
 # Check if CUDA services are running (only check if we're in CUDA mode)
-
-# Check if CUDA services are running (only check if we're in CUDA mode)
 if [ "$CUDA_VISIBLE_DEVICES" ]; then
-    SERVICES=("ai-karen" "llamacpp-cuda")
+    LABELS=("ai-karen" "local-gguf-cuda")
+    CONTAINERS=("ai-karen-app" "ai-karen-local-gguf")
 else
-    SERVICES=("ai-karen")
+    LABELS=("ai-karen")
+    CONTAINERS=("ai-karen-app")
 fi
 
-for service in "${SERVICES[@]}"; do
-    container_name="ai-karen-${service}"
+for i in "${!CONTAINERS[@]}"; do
+    container_name="${CONTAINERS[$i]}"
+    service="${LABELS[$i]}"
 
     if ! docker ps | grep -q "${container_name}"; then
         echo "❌ Service ${service} is not running"
@@ -78,11 +79,11 @@ done
 # Check model loading
 echo ""
 echo "📊 Model Loading Status:"
-if docker exec ai-karen-llamacpp curl -s http://localhost:8080/health &> /dev/null; then
-    echo "✅ llama.cpp service is responding"
+if docker exec ai-karen-local-gguf curl -s http://localhost:8080/health &> /dev/null; then
+    echo "✅ local GGUF service is responding"
     
     # Check if model is loaded
-    model_info=$(docker exec ai-karen-llamacpp curl -s http://localhost:8080/v1/models 2>/dev/null || echo "not_available")
+    model_info=$(docker exec ai-karen-local-gguf curl -s http://localhost:8080/v1/models 2>/dev/null || echo "not_available")
     if [[ $model_info == *"not_available"* ]]; then
         echo "⚠️  Model endpoint not available"
     else
@@ -90,7 +91,7 @@ if docker exec ai-karen-llamacpp curl -s http://localhost:8080/health &> /dev/nu
         echo "   Model info: $model_info"
     fi
 else
-    echo "❌ llama.cpp service is not responding"
+    echo "❌ local GGUF service is not responding"
 fi
 
 # Check AI-Karen application
@@ -116,7 +117,7 @@ if [ "$CUDA_VISIBLE_DEVICES" ]; then
 
     # Check for CUDA-related errors
     echo "   CUDA-related errors:"
-    $DOCKER_COMPOSE_CMD -f docker-compose.cuda.yml logs --tail=100 llamacpp-cuda | grep -i "error\|fail\|exception" | head -5 || echo "   No CUDA errors found"
+    $DOCKER_COMPOSE_CMD -f docker-compose.cuda.yml logs --tail=100 local-gguf-cuda | grep -i "error\|fail\|exception" | head -5 || echo "   No CUDA errors found"
 
     # Check for general application errors
     echo "   Application errors:"

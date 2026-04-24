@@ -526,7 +526,7 @@ class ApiClient {
     const url = this.forceBrowserRelativeApiUrl(this.buildUrl(preferredBaseUrl, endpoint));
 
     // Streaming configuration
-    // Local runtimes (ollama/llama.cpp) can take a while to emit first tokens.
+    // Local runtimes (ollama/local GGUF) can take a while to emit first tokens.
     const STREAMING_TIMEOUT = 300000; // 5 minutes total
     const FIRST_CONTENT_TIMEOUT = 360000; // 6 minutes for model warmup/status-only phases
     const CHUNK_TIMEOUT = 120000; // 120 seconds between content chunks once content starts

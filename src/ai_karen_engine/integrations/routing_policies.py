@@ -90,14 +90,14 @@ class RoutingPolicyManager:
             },
             
             task_runtime_map={
-                TaskType.CHAT: "llama.cpp",
-                TaskType.CODE: "llama.cpp",
-                TaskType.REASONING: "llama.cpp", 
+                TaskType.CHAT: "local_gguf",
+                TaskType.CODE: "local_gguf",
+                TaskType.REASONING: "local_gguf", 
                 TaskType.EMBEDDING: "transformers",
-                TaskType.SUMMARIZATION: "llama.cpp",
-                TaskType.TRANSLATION: "llama.cpp",
-                TaskType.CREATIVE: "llama.cpp",
-                TaskType.ANALYSIS: "llama.cpp",
+                TaskType.SUMMARIZATION: "local_gguf",
+                TaskType.TRANSLATION: "local_gguf",
+                TaskType.CREATIVE: "local_gguf",
+                TaskType.ANALYSIS: "local_gguf",
             },
             
             privacy_provider_map={
@@ -108,9 +108,9 @@ class RoutingPolicyManager:
             },
             
             privacy_runtime_map={
-                PrivacyLevel.PUBLIC: ["llama.cpp", "transformers", "core_helpers"],
-                PrivacyLevel.INTERNAL: ["llama.cpp", "transformers", "core_helpers"],
-                PrivacyLevel.CONFIDENTIAL: ["llama.cpp", "core_helpers"],
+                PrivacyLevel.PUBLIC: ["local_gguf", "transformers", "core_helpers"],
+                PrivacyLevel.INTERNAL: ["local_gguf", "transformers", "core_helpers"],
+                PrivacyLevel.CONFIDENTIAL: ["local_gguf", "core_helpers"],
                 PrivacyLevel.RESTRICTED: ["core_helpers"],
             },
             
@@ -121,13 +121,13 @@ class RoutingPolicyManager:
             },
             
             performance_runtime_map={
-                PerformanceRequirement.INTERACTIVE: "llama.cpp",
+                PerformanceRequirement.INTERACTIVE: "local_gguf",
                 PerformanceRequirement.BATCH: "transformers",
-                PerformanceRequirement.BACKGROUND: "llama.cpp",
+                PerformanceRequirement.BACKGROUND: "local_gguf",
             },
             
             fallback_providers=["local", "huggingface"],
-            fallback_runtimes=["llama.cpp", "core_helpers"],
+            fallback_runtimes=["local_gguf", "core_helpers"],
             
             privacy_weight=0.6,
             performance_weight=0.2,
@@ -171,9 +171,9 @@ class RoutingPolicyManager:
             },
             
             privacy_runtime_map={
-                PrivacyLevel.PUBLIC: ["transformers", "llama.cpp", "core_helpers"],
-                PrivacyLevel.INTERNAL: ["transformers", "llama.cpp", "core_helpers"],
-                PrivacyLevel.CONFIDENTIAL: ["llama.cpp", "core_helpers"],
+                PrivacyLevel.PUBLIC: ["transformers", "local_gguf", "core_helpers"],
+                PrivacyLevel.INTERNAL: ["transformers", "local_gguf", "core_helpers"],
+                PrivacyLevel.CONFIDENTIAL: ["local_gguf", "core_helpers"],
                 PrivacyLevel.RESTRICTED: ["core_helpers"],
             },
             
@@ -190,7 +190,7 @@ class RoutingPolicyManager:
             },
             
             fallback_providers=["local", "huggingface"],
-            fallback_runtimes=["transformers", "llama.cpp"],
+            fallback_runtimes=["transformers", "local_gguf"],
             
             privacy_weight=0.1,
             performance_weight=0.6,
@@ -216,11 +216,11 @@ class RoutingPolicyManager:
             },
             
             task_runtime_map={
-                TaskType.CHAT: "llama.cpp",
+                TaskType.CHAT: "local_gguf",
                 TaskType.CODE: "transformers",
                 TaskType.REASONING: "transformers", 
                 TaskType.EMBEDDING: "transformers",
-                TaskType.SUMMARIZATION: "llama.cpp",
+                TaskType.SUMMARIZATION: "local_gguf",
                 TaskType.TRANSLATION: "transformers",
                 TaskType.CREATIVE: "transformers",
                 TaskType.ANALYSIS: "transformers",
@@ -234,9 +234,9 @@ class RoutingPolicyManager:
             },
             
             privacy_runtime_map={
-                PrivacyLevel.PUBLIC: ["llama.cpp", "transformers", "core_helpers"],
-                PrivacyLevel.INTERNAL: ["llama.cpp", "transformers", "core_helpers"],
-                PrivacyLevel.CONFIDENTIAL: ["llama.cpp", "core_helpers"],
+                PrivacyLevel.PUBLIC: ["local_gguf", "transformers", "core_helpers"],
+                PrivacyLevel.INTERNAL: ["local_gguf", "transformers", "core_helpers"],
+                PrivacyLevel.CONFIDENTIAL: ["local_gguf", "core_helpers"],
                 PrivacyLevel.RESTRICTED: ["core_helpers"],
             },
             
@@ -249,11 +249,11 @@ class RoutingPolicyManager:
             performance_runtime_map={
                 PerformanceRequirement.INTERACTIVE: "transformers",
                 PerformanceRequirement.BATCH: "transformers",
-                PerformanceRequirement.BACKGROUND: "llama.cpp",
+                PerformanceRequirement.BACKGROUND: "local_gguf",
             },
             
             fallback_providers=["local", "huggingface"],
-            fallback_runtimes=["llama.cpp", "transformers"],
+            fallback_runtimes=["local_gguf", "transformers"],
             
             privacy_weight=0.2,
             performance_weight=0.2,
@@ -283,7 +283,7 @@ class RoutingPolicyManager:
                 TaskType.CODE: "transformers",
                 TaskType.REASONING: "transformers",
                 TaskType.EMBEDDING: "transformers",
-                TaskType.SUMMARIZATION: "llama.cpp",
+                TaskType.SUMMARIZATION: "local_gguf",
                 TaskType.TRANSLATION: "transformers",
                 TaskType.CREATIVE: "transformers",
                 TaskType.ANALYSIS: "transformers",
@@ -297,9 +297,9 @@ class RoutingPolicyManager:
             },
             
             privacy_runtime_map={
-                PrivacyLevel.PUBLIC: ["transformers", "llama.cpp", "core_helpers"],
-                PrivacyLevel.INTERNAL: ["transformers", "llama.cpp", "core_helpers"],
-                PrivacyLevel.CONFIDENTIAL: ["llama.cpp", "core_helpers"],
+                PrivacyLevel.PUBLIC: ["transformers", "local_gguf", "core_helpers"],
+                PrivacyLevel.INTERNAL: ["transformers", "local_gguf", "core_helpers"],
+                PrivacyLevel.CONFIDENTIAL: ["local_gguf", "core_helpers"],
                 PrivacyLevel.RESTRICTED: ["core_helpers"],
             },
             
@@ -312,11 +312,11 @@ class RoutingPolicyManager:
             performance_runtime_map={
                 PerformanceRequirement.INTERACTIVE: "transformers",
                 PerformanceRequirement.BATCH: "transformers",
-                PerformanceRequirement.BACKGROUND: "llama.cpp",
+                PerformanceRequirement.BACKGROUND: "local_gguf",
             },
             
             fallback_providers=["local", "huggingface"],
-            fallback_runtimes=["llama.cpp", "core_helpers"],
+            fallback_runtimes=["local_gguf", "core_helpers"],
             
             privacy_weight=0.25,
             performance_weight=0.25,
@@ -340,7 +340,7 @@ class RoutingPolicyManager:
                     description="Route confidential data to local models only",
                     conditions={"privacy_level": "confidential"},
                     provider_preference="local",
-                    runtime_preference="llama.cpp",
+                    runtime_preference="local_gguf",
                     confidence_boost=0.3,
                     priority=90,
                 ),
@@ -374,7 +374,7 @@ class RoutingPolicyManager:
                     description="Use local models for debugging to avoid API costs",
                     conditions={"metadata.debug": True},
                     provider_preference="local",
-                    runtime_preference="llama.cpp",
+                    runtime_preference="local_gguf",
                     confidence_boost=0.1,
                     priority=70,
                 ),

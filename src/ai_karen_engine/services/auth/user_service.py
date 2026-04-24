@@ -534,7 +534,7 @@ class UserService(BaseService):
                     "customPersonaInstructions", ""
                 ),
                 "preferredLLMProvider": preferences.get(
-                    "preferredLLMProvider", "llamacpp"
+                    "preferredLLMProvider", "builtin_vllm"
                 ),
                 "preferredModel": preferences.get("preferredModel", "llama3.2:latest"),
                 "temperature": preferences.get("temperature", 0.7),
@@ -718,7 +718,7 @@ class UserService(BaseService):
             "personalityVerbosity": "balanced",
             "memoryDepth": "medium",
             "customPersonaInstructions": "",
-            "preferredLLMProvider": "llamacpp",
+            "preferredLLMProvider": "builtin_vllm",
             "preferredModel": "llama3.2:latest",
             "temperature": 0.7,
             "maxTokens": 1000,
@@ -733,7 +733,7 @@ class UserService(BaseService):
             "personalityVerbosity": "balanced",
             "memoryDepth": "medium",
             "customPersonaInstructions": "",
-            "preferredLLMProvider": "llamacpp",
+            "preferredLLMProvider": "builtin_vllm",
             "preferredModel": "llama3.2:latest",
             "temperature": 0.7,
             "maxTokens": 1000,

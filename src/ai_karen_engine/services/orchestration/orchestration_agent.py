@@ -85,12 +85,12 @@ class OrchestrationAgent:
             config=self.config,
         )
 
-        # Configurable system default fallback hierarchy [Llama-CPP (DL models with hugginface), Transformers, OpenAI, Gemini, DeepSeek]
+        # Configurable system default fallback hierarchy [Local GGUF, Transformers, OpenAI, Gemini, DeepSeek]
         # Requirements 1.1, 1.2, 2.1, 2.2
         self.default_hierarchy = self.config.get(
             "default_hierarchy",
             [
-                "llamacpp",  # Llama-CPP (DL models with huggingface)
+                "local_gguf",  # Local GGUF runtime
                 "transformers",  # Transformers
                 "openai",  # OpenAI
                 "gemini",  # Gemini
@@ -110,7 +110,7 @@ class OrchestrationAgent:
 
         self.hard_final_fallback = self.config.get(
             "hard_final_fallback",
-            {"provider": "llamacpp", "model": default_lightweight},
+            {"provider": "local_gguf", "model": default_lightweight},
         )
 
         # User preference validation settings
@@ -388,8 +388,6 @@ class OrchestrationAgent:
         if provider:
             # Normalize common variations
             provider_mapping = {
-                "llama-cpp": "llamacpp",
-                "llama_cpp": "llamacpp",
                 "openai": "openai",
                 "gpt": "openai",
                 "gemini": "gemini",

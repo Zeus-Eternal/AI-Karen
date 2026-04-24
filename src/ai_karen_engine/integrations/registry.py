@@ -7,7 +7,7 @@ routing and compatibility matching.
 
 Key Features:
 - Extensible provider registration (OpenAI, Gemini, DeepSeek, HuggingFace, etc.)
-- Runtime registry for different execution engines (llama.cpp, Transformers)
+- Runtime registry for different execution engines (local GGUF, Transformers)
 - Compatibility matching between models and runtimes
 - Health monitoring and capability detection
 - Thread-safe operations with instance caching
@@ -199,7 +199,7 @@ class LLMRegistry:
 
     This registry separates concerns:
     - Providers: Where models come from (OpenAI API, HuggingFace Hub, local files)
-    - Runtimes: How models execute (llama.cpp, Transformers)
+    - Runtimes: How models execute (local GGUF, Transformers)
     """
 
     def __init__(self):
@@ -1346,7 +1346,7 @@ class LLMRegistry:
             capabilities={"local_execution", "privacy"},
             discover=self._discover_local_models,
             health_check=self._health_check_local,
-            required_dependencies=["llama-cpp-python"],
+            required_dependencies=[],
             fallback_priority=60,
             can_fallback_to=[],
             fallback_models=[],  # Will be populated by scanning local files
@@ -1368,17 +1368,15 @@ class LLMRegistry:
     def _register_core_runtimes(self) -> None:
         """Register core model runtimes."""
         try:
-            from ai_karen_engine.inference import (
-                LlamaCppRuntime,
-                TransformersRuntime,
-                CoreHelpersRuntime,
-            )
+            from ai_karen_engine.inference.local_gguf_runtime import LocalGGUFRuntime
+            from ai_karen_engine.inference.transformers_runtime import TransformersRuntime
+            from ai_karen_engine.inference.core_helpers_runtime import CoreHelpersRuntime
 
-            # llama.cpp Runtime
-            if LlamaCppRuntime and LlamaCppRuntime.is_available():
-                llamacpp_spec = RuntimeSpec(
-                    name="llama.cpp",
-                    description="llama.cpp runtime for GGUF models",
+            # Local GGUF Runtime
+            if LocalGGUFRuntime and LocalGGUFRuntime.is_available():
+                local_gguf_spec = RuntimeSpec(
+                    name="local_gguf",
+                    description="Local GGUF runtime for compatible models",
                     family=["llama", "mistral", "qwen", "phi", "gemma", "codellama"],
                     supports=["gguf"],
                     requires_gpu=False,
@@ -1388,13 +1386,13 @@ class LLMRegistry:
                     startup_time="fast",
                     throughput="medium",
                     priority=80,  # High priority for GGUF models
-                    load=lambda kwargs: LlamaCppRuntime(**kwargs),
+                    load=lambda kwargs: LocalGGUFRuntime(**kwargs),
                     health=lambda: {
                         "status": "healthy",
-                        "message": "llama.cpp runtime available",
+                        "message": "Local GGUF runtime available",
                     },
                 )
-                self.register_runtime(llamacpp_spec)
+                self.register_runtime(local_gguf_spec)
 
             # Transformers Runtime
             if TransformersRuntime and TransformersRuntime.is_available():
@@ -1669,7 +1667,7 @@ class LLMRegistry:
 
             # Scan model directories using absolute paths
             model_dirs = [
-                Path("/app/models/llama-cpp"),  # GGUF models for llama.cpp
+                Path("/app/models/local-gguf"),  # GGUF models for local runtime
                 Path("/app/models/stable-diffusion"),  # Diffusion models
                 # Note: transformers models are handled by separate runtime, not scanned here
             ]

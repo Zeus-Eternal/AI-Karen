@@ -361,7 +361,7 @@ class ComprehensiveHealthMonitor:
             endpoint_url = self.provider_endpoints.get(provider_name)
             if not endpoint_url:
                 # For local providers, test local model availability
-                if provider_name in ["llama_cpp", "transformers", "local"]:
+                if provider_name in ["local_gguf", "transformers", "local"]:
                     return self._test_local_provider_connectivity(provider_name)
                 else:
                     # Unknown provider, assume connectivity is OK
@@ -465,10 +465,12 @@ class ComprehensiveHealthMonitor:
         start_time = time.time()
         
         try:
-            if provider_name == "llama_cpp":
-                # Check if llama-cpp-python is available
+            if provider_name == "local_gguf":
+                # Check if the local GGUF runtime is available
                 try:
-                    import llama_cpp
+                    from ai_karen_engine.inference.local_gguf_runtime import (  # noqa: F401
+                        LocalGGUFRuntime,
+                    )
                     # Check for model files
                     available_models, _ = self._check_local_models(provider_name)
                     if available_models:
@@ -483,14 +485,14 @@ class ComprehensiveHealthMonitor:
                             success=False,
                             response_time=time.time() - start_time,
                             endpoint_url="local",
-                            error_message="llama-cpp-python available but no GGUF models found"
+                            error_message="local GGUF runtime available but no GGUF models found"
                         )
                 except ImportError:
                     return ConnectivityResult(
                         success=False,
                         response_time=time.time() - start_time,
                         endpoint_url="local",
-                        error_message="llama-cpp-python not installed"
+                        error_message="local GGUF runtime not installed"
                     )
             
             elif provider_name == "transformers":
@@ -577,7 +579,7 @@ class ComprehensiveHealthMonitor:
                                       for model in provider_spec.fallback_models]
             
             # For local providers, check if model files exist and are loadable
-            elif provider_name in ["llama_cpp", "transformers", "local"]:
+            elif provider_name in ["local_gguf", "transformers", "local"]:
                 available_models, unavailable_models = self._check_local_models_with_testing(provider_name)
             
             else:
@@ -675,9 +677,11 @@ class ComprehensiveHealthMonitor:
             file_available, file_unavailable = self._check_local_models(provider_name)
             
             # Test a sample of models to see if they can actually be loaded
-            if provider_name == "llama_cpp":
+            if provider_name == "local_gguf":
                 try:
-                    import llama_cpp
+                    from ai_karen_engine.inference.local_gguf_runtime import (  # noqa: F401
+                        LocalGGUFRuntime,
+                    )
                     # Test first few models
                     for model_file in file_available[:3]:  # Test first 3 models
                         try:
@@ -704,7 +708,7 @@ class ComprehensiveHealthMonitor:
                         unavailable.extend(file_available[3:])
                         
                 except ImportError:
-                    # llama-cpp-python not available
+                    # local GGUF runtime not available
                     unavailable.extend(file_available)
             
             elif provider_name == "transformers":
@@ -754,7 +758,7 @@ class ComprehensiveHealthMonitor:
         """Find the full path to a model file or directory."""
         model_dirs = [
             "models",
-            "models/llama-cpp",
+            "models/local-gguf",
             "models/transformers",
             os.path.expanduser("~/.cache/huggingface/transformers"),
             os.path.expanduser("~/.cache/huggingface/hub"),
@@ -801,7 +805,7 @@ class ComprehensiveHealthMonitor:
                 detected_capabilities.update(self._test_anthropic_capabilities())
             elif provider_name == "huggingface":
                 detected_capabilities.update(self._test_huggingface_capabilities())
-            elif provider_name in ["llama_cpp", "transformers", "local"]:
+            elif provider_name in ["local_gguf", "transformers", "local"]:
                 detected_capabilities.update(self._test_local_capabilities(provider_name))
             else:
                 # Unknown provider, use spec capabilities
@@ -967,9 +971,11 @@ class ComprehensiveHealthMonitor:
             "text_generation": True,
         }
         
-        if provider_name == "llama_cpp":
+        if provider_name == "local_gguf":
             try:
-                import llama_cpp
+                from ai_karen_engine.inference.local_gguf_runtime import (  # noqa: F401
+                    LocalGGUFRuntime,
+                )
                 capabilities["streaming_support"] = True
                 # Check if we have any vision-capable models
                 available_models, _ = self._check_local_models(provider_name)
@@ -1093,7 +1099,7 @@ class ComprehensiveHealthMonitor:
             # Common model directories
             model_dirs = [
                 "models",
-                "models/llama-cpp",
+                "models/local-gguf",
                 "models/transformers",
                 os.path.expanduser("~/.cache/huggingface/transformers"),
                 os.path.expanduser("~/.cache/huggingface/hub"),
@@ -2042,7 +2048,7 @@ class ComprehensiveHealthMonitor:
             ])
         
         # Add provider-specific steps
-        if provider_name in ["llama_cpp", "transformers"]:
+        if provider_name in ["local_gguf", "transformers"]:
             steps.extend([
                 "5. Check if model files exist and are readable",
                 "6. Verify sufficient disk space and memory",
@@ -2552,10 +2558,10 @@ class ComprehensiveHealthMonitor:
                         "Verify API key is for Gemini API",
                         "Enable Gemini API in Google Cloud Console",
                     ])
-                elif provider_name in ["llama_cpp", "transformers"]:
+                elif provider_name in ["local_gguf", "transformers"]:
                     suggestions.extend([
                         "Check if model files exist in models directory",
-                        "Verify model file format (GGUF for llama.cpp)",
+                        "Verify model file format (GGUF for local GGUF)",
                         "Check available disk space",
                         "Verify model file permissions",
                     ])

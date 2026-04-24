@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Model Selection Algorithm for Orchestration Agent
 
@@ -8,10 +10,12 @@ Requirements: 1.1, 1.2, 2.1, 2.2, 2.5
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
-from ai_karen_engine.core.operations.health_checker import HealthChecker
 from ai_karen_engine.core.model_runtime.provider_registry_service import ProviderRegistryService
+
+if TYPE_CHECKING:
+    from ai_karen_engine.core.operations.health_checker import HealthChecker
 
 logger = logging.getLogger(__name__)
 
@@ -51,20 +55,15 @@ class ModelSelectionAlgorithm:
         
         # Configuration
         self.default_hierarchy = self.config.get("default_hierarchy", [
-            "llamacpp",      # Llama-CPP (DL models with huggingface)
-            "transformers",  # Transformers
-            "openai",        # OpenAI
-            "gemini",        # Gemini
-            "deepseek",      # DeepSeek
-            "huggingface",   # HuggingFace fallback
+            "builtin_vllm",
+            "builtin_transformers",
         ])
-        
+
         self.hard_final_fallback = self.config.get("hard_final_fallback", None)
         if not self.hard_final_fallback:
-            from ai_karen_engine.config.config_manager import get_default_model, get_default_provider
             self.hard_final_fallback = {
-                "provider": get_default_provider(),
-                "model": get_default_model()
+                "provider": "builtin_transformers",
+                "model": "auto"
             }
         
         # Fail-fast configuration
@@ -160,7 +159,34 @@ class ModelSelectionAlgorithm:
                 selection_log.append(f"  ✗ System default '{provider}' failed: {reason}")
                 logger.debug(f"  ✗ System default '{provider}' failed: {reason}")
                 fallback_attempts += 1
-        
+
+        registry_fallback = self.provider_registry.select_provider_with_fallback(
+            capability=None,
+            fallback_chain_name="text_generation",
+        )
+        if registry_fallback and registry_fallback not in self.default_hierarchy:
+            selection_log.append(
+                f"Step 2b: Registry fallback selected - {registry_fallback}"
+            )
+            logger.info("Step 2b: Registry fallback selected - %s", registry_fallback)
+
+            health_result = await self._check_provider_health_with_timeout(registry_fallback)
+            health_checks_performed += 1
+
+            if health_result["healthy"]:
+                total_time = (time.time() - start_time) * 1000
+                return SelectionResult(
+                    provider=registry_fallback,
+                    model=self._get_default_model_for_provider(registry_fallback),
+                    selection_path="registry_fallback",
+                    rationale=f"Registry fallback provider '{registry_fallback}' is healthy and available",
+                    fallback_attempts=fallback_attempts,
+                    selection_log=selection_log,
+                    health_checks_performed=health_checks_performed,
+                    total_selection_time_ms=total_time,
+                )
+            fallback_attempts += 1
+
         # Step 3: Hard final fallback (Requirement 2.2)
         hard_provider = self.hard_final_fallback["provider"]
         hard_model = self.hard_final_fallback["model"]
@@ -272,6 +298,8 @@ class ModelSelectionAlgorithm:
     
     def _get_default_model_for_provider(self, provider: str) -> Optional[str]:
         """Get the default model for a given provider."""
+        if provider in {"builtin_vllm", "builtin_transformers"}:
+            return "auto"
         try:
             # Try to get from provider registry first
             provider_info = self.provider_registry.base_registry.get_provider_info(provider)

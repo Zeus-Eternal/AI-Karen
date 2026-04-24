@@ -151,14 +151,14 @@ class DependencyChecker:
                     ),
                 ]
             },
-            "local": {
+                "local": {
                 "required": [
                     DependencyInfo(
-                        name="llama-cpp-python",
-                        import_name="llama_cpp",
-                        version_required=">=0.2.0",
-                        install_command="pip install llama-cpp-python",
-                        description="Python bindings for llama.cpp"
+                        name="local-gguf-runtime",
+                        import_name="ai_karen_engine.inference.local_gguf_runtime",
+                        version_required=">=1.0.0",
+                        install_command="runtime bundled with AI Karen",
+                        description="Local GGUF runtime support"
                     ),
                 ],
                 "optional": [
@@ -382,9 +382,9 @@ class DependencyChecker:
         
         elif provider_name == "local":
             if system == "darwin":
-                notes.append("On macOS with Apple Silicon: CMAKE_ARGS='-DLLAMA_METAL=on' pip install llama-cpp-python")
+                notes.append("Local GGUF runtime is bundled with AI Karen on macOS")
             elif system == "linux":
-                notes.append("On Linux with CUDA: CMAKE_ARGS='-DLLAMA_CUBLAS=on' pip install llama-cpp-python")
+                notes.append("Local GGUF runtime is bundled with AI Karen on Linux")
         
         return notes
     
@@ -462,13 +462,13 @@ class DependencyChecker:
             "pip install openai",
             "",
             "# For local models:",
-            "pip install llama-cpp-python",
+            "# Local GGUF runtime is bundled with AI Karen",
             "",
             "# For HuggingFace models:",
             "pip install transformers torch",
             "",
             "# For comprehensive setup:",
-            "pip install openai google-generativeai transformers torch llama-cpp-python"
+            "pip install openai google-generativeai transformers torch"
         ])
         
         return commands

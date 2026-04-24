@@ -91,7 +91,7 @@ class ModelValidationSystem:
         
         # Dependency checkers
         self.dependency_checkers = {
-            ModelType.LLAMA_CPP: self._check_llama_cpp_dependencies,
+            ModelType.LOCAL_GGUF: self._check_local_gguf_dependencies,
             ModelType.TRANSFORMERS: self._check_transformers_dependencies,
             ModelType.STABLE_DIFFUSION: self._check_diffusion_dependencies,
             ModelType.PYTORCH: self._check_pytorch_dependencies,
@@ -387,8 +387,8 @@ class ModelValidationSystem:
                 ))
         
         # Type-specific basic validation
-        if model_info.type == ModelType.LLAMA_CPP:
-            issues.extend(await self._validate_basic_llama_cpp(path))
+        if model_info.type == ModelType.LOCAL_GGUF:
+            issues.extend(await self._validate_basic_local_gguf(path))
         elif model_info.type == ModelType.TRANSFORMERS:
             issues.extend(await self._validate_basic_transformers(path))
         elif model_info.type == ModelType.STABLE_DIFFUSION:
@@ -396,8 +396,8 @@ class ModelValidationSystem:
         
         return issues
     
-    async def _validate_basic_llama_cpp(self, path: Path) -> List[ValidationIssue]:
-        """Basic validation for llama-cpp models."""
+    async def _validate_basic_local_gguf(self, path: Path) -> List[ValidationIssue]:
+        """Basic validation for local GGUF models."""
         issues = []
         
         if path.is_file():
@@ -406,7 +406,7 @@ class ModelValidationSystem:
                 issues.append(ValidationIssue(
                     severity="warning",
                     category="format",
-                    message=f"Unexpected file extension for llama-cpp model: {path.suffix}",
+                    message=f"Unexpected file extension for local GGUF model: {path.suffix}",
                     suggestion="Expected .gguf, .ggml, or .bin file"
                 ))
             
@@ -514,22 +514,20 @@ class ModelValidationSystem:
         
         return issues
     
-    async def _check_llama_cpp_dependencies(self) -> List[ValidationIssue]:
-        """Check llama-cpp dependencies."""
+    async def _check_local_gguf_dependencies(self) -> List[ValidationIssue]:
+        """Check local GGUF runtime dependencies."""
         issues = []
-        
-        # Check for llama-cpp-python
+
         try:
-            import llama_cpp
-            # Check version if possible
-            if hasattr(llama_cpp, '__version__'):
-                logger.debug(f"llama-cpp-python version: {llama_cpp.__version__}")
-        except ImportError:
+            from ai_karen_engine.inference.local_gguf_runtime import LocalGGUFRuntime  # noqa: F401
+            logger.debug("local GGUF runtime import available")
+        except Exception as exc:
             issues.append(ValidationIssue(
                 severity="error",
                 category="dependency",
-                message="llama-cpp-python not installed",
-                suggestion="Install with: pip install llama-cpp-python"
+                message="local GGUF runtime not available",
+                suggestion="Ensure the local GGUF runtime module can be imported",
+                technical_details=str(exc),
             ))
         
         return issues
@@ -734,7 +732,7 @@ class ModelValidationSystem:
         
         # Check architecture compatibility
         arch = system["architecture"].lower()
-        if model_info.type == ModelType.LLAMA_CPP:
+        if model_info.type == ModelType.LOCAL_GGUF:
             # GGUF models generally work on most architectures
             if arch not in ["x86_64", "amd64", "arm64", "aarch64"]:
                 issues.append(ValidationIssue(

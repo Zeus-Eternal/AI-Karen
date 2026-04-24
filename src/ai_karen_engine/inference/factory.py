@@ -15,14 +15,14 @@ class InferenceServiceConfig:
     def __init__(
         self,
         # Runtime enablement
-        enable_llamacpp: bool = True,
+        enable_local_gguf: bool = False,
         enable_transformers: bool = True,
         enable_core_helpers: bool = True,
-        # LlamaCpp settings
-        llamacpp_n_ctx: int = 2048,
-        llamacpp_n_batch: int = 512,
-        llamacpp_n_gpu_layers: int = 0,
-        llamacpp_n_threads: Optional[int] = None,
+        # Local GGUF settings
+        local_gguf_n_ctx: int = 2048,
+        local_gguf_n_batch: int = 512,
+        local_gguf_n_gpu_layers: int = 0,
+        local_gguf_n_threads: Optional[int] = None,
         # Transformers settings
         transformers_device: str = "auto",
         transformers_torch_dtype: str = "auto",
@@ -34,14 +34,14 @@ class InferenceServiceConfig:
         # Performance settings
         auto_select_optimal_runtime: bool = True,
     ):
-        self.enable_llamacpp = enable_llamacpp
+        self.enable_local_gguf = enable_local_gguf
         self.enable_transformers = enable_transformers
         self.enable_core_helpers = enable_core_helpers
 
-        self.llamacpp_n_ctx = llamacpp_n_ctx
-        self.llamacpp_n_batch = llamacpp_n_batch
-        self.llamacpp_n_gpu_layers = llamacpp_n_gpu_layers
-        self.llamacpp_n_threads = llamacpp_n_threads
+        self.local_gguf_n_ctx = local_gguf_n_ctx
+        self.local_gguf_n_batch = local_gguf_n_batch
+        self.local_gguf_n_gpu_layers = local_gguf_n_gpu_layers
+        self.local_gguf_n_threads = local_gguf_n_threads
 
         self.transformers_device = transformers_device
         self.transformers_torch_dtype = transformers_torch_dtype
@@ -58,7 +58,7 @@ class InferenceServiceFactory:
     """
     Factory for creating and wiring inference services.
 
-    This factory ensures all inference runtimes (llama.cpp, Transformers)
+    This factory ensures all inference runtimes (Transformers, Core Helpers)
     are properly initialized, configured, and wired together for production use.
     """
 
@@ -68,32 +68,32 @@ class InferenceServiceFactory:
         self._runtimes = {}
         logger.info("InferenceServiceFactory initialized")
 
-    def create_llamacpp_runtime(self, model_path: Optional[str] = None):
-        """Create and configure llama.cpp runtime."""
-        if not self.config.enable_llamacpp:
-            logger.info("LlamaCpp runtime disabled by configuration")
+    def create_local_gguf_runtime(self, model_path: Optional[str] = None):
+        """Create and configure the local GGUF runtime."""
+        if not self.config.enable_local_gguf:
+            logger.info("Local GGUF runtime disabled by configuration")
             return None
 
         try:
-            from ai_karen_engine.inference.llamacpp_runtime import LlamaCppRuntime
+            from ai_karen_engine.inference.local_gguf_runtime import LocalGGUFRuntime
 
-            runtime = LlamaCppRuntime(
+            runtime = LocalGGUFRuntime(
                 model_path=model_path,
-                n_ctx=self.config.llamacpp_n_ctx,
-                n_batch=self.config.llamacpp_n_batch,
-                n_gpu_layers=self.config.llamacpp_n_gpu_layers,
-                n_threads=self.config.llamacpp_n_threads,
+                n_ctx=self.config.local_gguf_n_ctx,
+                n_batch=self.config.local_gguf_n_batch,
+                n_gpu_layers=self.config.local_gguf_n_gpu_layers,
+                n_threads=self.config.local_gguf_n_threads,
             )
 
-            self._runtimes["llamacpp"] = runtime
-            logger.info("LlamaCpp runtime created successfully")
+            self._runtimes["local_gguf"] = runtime
+            logger.info("Local GGUF runtime created successfully")
             return runtime
 
         except ImportError as e:
-            logger.warning(f"LlamaCpp runtime unavailable (llama-cpp-python not installed): {e}")
+            logger.warning(f"Local GGUF runtime unavailable: {e}")
             return None
         except Exception as e:
-            logger.error(f"Failed to create LlamaCpp runtime: {e}")
+            logger.error(f"Failed to create Local GGUF runtime: {e}")
             return None
 
     def create_transformers_runtime(self, model_path: Optional[str] = None):
@@ -186,7 +186,7 @@ class InferenceServiceFactory:
 
         # Format-to-runtime mapping
         runtime_preferences = {
-            "gguf": ["llamacpp"],
+            "gguf": ["transformers"],
             "safetensors": ["transformers"],
             "fp16": ["transformers"],
             "bf16": ["transformers"],
@@ -228,7 +228,8 @@ class InferenceServiceFactory:
         logger.info("Creating all inference runtimes")
 
         # Create runtimes (without loading models yet)
-        self.create_llamacpp_runtime()
+        if self.config.enable_local_gguf:
+            self.create_local_gguf_runtime()
         self.create_transformers_runtime()
         self.create_core_helpers_runtime()
 
@@ -317,13 +318,13 @@ def get_inference_service_factory(
     return _global_factory
 
 
-def get_llamacpp_runtime():
-    """Get or create global LlamaCpp runtime."""
+def get_local_gguf_runtime():
+    """Get or create global local GGUF runtime."""
     factory = get_inference_service_factory()
-    runtime = factory.get_runtime("llamacpp")
+    runtime = factory.get_runtime("local_gguf")
 
     if runtime is None:
-        runtime = factory.create_llamacpp_runtime()
+        runtime = factory.create_local_gguf_runtime()
 
     return runtime
 
@@ -354,7 +355,7 @@ __all__ = [
     "InferenceServiceConfig",
     "InferenceServiceFactory",
     "get_inference_service_factory",
-    "get_llamacpp_runtime",
+    "get_local_gguf_runtime",
     "get_transformers_runtime",
     "get_model_store",
 ]

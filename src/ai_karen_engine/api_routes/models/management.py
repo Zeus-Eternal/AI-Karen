@@ -24,7 +24,7 @@ import threading
 import requests
 
 from ai_karen_engine.inference.huggingface_service import get_huggingface_service
-from ai_karen_engine.inference.llama_tools import get_llama_tools
+from ai_karen_engine.inference.local_gguf_tools import get_local_gguf_tools
 from ai_karen_engine.inference.model_store import get_model_store
 from ai_karen_engine.integrations.dynamic_provider_system import get_dynamic_provider_manager
 from ai_karen_engine.integrations.registry import get_registry
@@ -198,13 +198,13 @@ class ProviderValidationRequest(BaseModel):
 
 
 # -----------------------------
-# Llama.cpp-friendly local model management (no HF key required)
+# Local GGUF-friendly model management (no HF key required)
 # -----------------------------
 
 class LocalDownloadRequest(BaseModel):
     url: str
     filename: Optional[str] = None
-    directory: Optional[str] = None  # defaults to models/llama-cpp
+    directory: Optional[str] = None  # defaults to models/local-gguf
 
 
 @router.get("/models/local/search")
@@ -232,9 +232,9 @@ async def search_local_models(q: Optional[str] = None):
 
 @router.post("/models/local/download")
 async def download_local_model(req: LocalDownloadRequest):
-    """Download a model file via direct URL to the llama-cpp directory."""
+    """Download a model file via direct URL to the local GGUF directory."""
     try:
-        dest_dir = Path(req.directory or "models/llama-cpp")
+        dest_dir = Path(req.directory or "models/local-gguf")
         job = _DownloadJob(url=req.url, dest_dir=dest_dir, filename=req.filename)
         _JOBS[job.id] = job
         t = threading.Thread(target=job.run, daemon=True)
@@ -797,15 +797,15 @@ def _register_job_handlers():
         """Handle model conversion job."""
         try:
             params = job.parameters
-            llama_tools = get_llama_tools()
+            local_tools = get_local_gguf_tools()
             
-            if not llama_tools:
-                raise Exception("llama.cpp tools not available")
+            if not local_tools:
+                raise Exception("Local conversion tools not available")
             
             job_manager.append_log(job.id, "Starting model conversion...")
             
             # Run conversion
-            process = llama_tools.convert_llama_dir(
+            process = local_tools.convert_llama_dir(
                 hf_dir=params["source_path"],
                 out_path=params["output_name"],
                 vocab_only=params.get("vocab_only", False)
@@ -831,15 +831,15 @@ def _register_job_handlers():
         """Handle model quantization job."""
         try:
             params = job.parameters
-            llama_tools = get_llama_tools()
+            local_tools = get_local_gguf_tools()
             
-            if not llama_tools:
-                raise Exception("llama.cpp tools not available")
+            if not local_tools:
+                raise Exception("Local quantization tools not available")
             
             job_manager.append_log(job.id, "Starting model quantization...")
             
             # Run quantization
-            process = llama_tools.quantize(
+            process = local_tools.quantize(
                 in_path=params["source_path"],
                 out_path=params["output_name"],
                 fmt=params["quantization_format"],
@@ -1786,7 +1786,7 @@ async def get_active_provider_profile():
 
 @router.get("/models/all")
 async def get_all_models():
-    """Get all available models including local llama-cpp compatible GGUF files.
+    """Get all available models including local GGUF files.
 
     Returns a flat list suitable for UI consumption.
     """
@@ -1802,7 +1802,7 @@ async def get_all_models():
             local_files = model_store.scan_local_models(str(repo_models_dir))
             for lm in local_files:
                 is_gguf = (lm.format or "").lower() == "gguf"
-                runtime_compat = ["llama.cpp"] if is_gguf else []
+                runtime_compat = ["local_gguf"] if is_gguf else []
                 capabilities = ["text"] + (["local_execution"] if is_gguf else [])
 
                 models.append({
@@ -2215,7 +2215,7 @@ async def get_supported_formats():
         "gguf": {
             "description": "GGML Universal Format - optimized for CPU inference",
             "extensions": [".gguf"],
-            "runtimes": ["llama.cpp"],
+            "runtimes": ["local_gguf"],
             "quantization_support": True,
             "streaming_support": True,
             "memory_efficient": True,
@@ -2282,11 +2282,11 @@ async def validate_conversion_request(request: ConversionRequest):
             "estimated_size": None
         }
         
-        # Check if llama.cpp tools are available
-        llama_tools = get_llama_tools()
-        if not llama_tools:
+        # Check if local conversion tools are available
+        local_tools = get_local_gguf_tools()
+        if not local_tools:
             validation_result["valid"] = False
-            validation_result["errors"].append("llama.cpp conversion tools not available")
+            validation_result["errors"].append("Local conversion tools not available")
         
         # Check output path doesn't already exist
         output_path = Path(request.output_name)
@@ -2344,11 +2344,11 @@ async def validate_quantization_request(request: QuantizationRequest):
                 f"Invalid quantization format. Valid formats: {', '.join(valid_formats)}"
             )
         
-        # Check if llama.cpp tools are available
-        llama_tools = get_llama_tools()
-        if not llama_tools:
+        # Check if local conversion tools are available
+        local_tools = get_local_gguf_tools()
+        if not local_tools:
             validation_result["valid"] = False
-            validation_result["errors"].append("llama.cpp quantization tools not available")
+            validation_result["errors"].append("Local quantization tools not available")
         
         # Check if source is GGUF format
         if not source_path.name.endswith('.gguf'):
@@ -2630,7 +2630,7 @@ async def download_curated_model(model_key: str):
         model_info = CURATED_MODELS[model_key]
         
         # Create download job using the simple local download system
-        dest_dir = Path("models/llama-cpp")
+        dest_dir = Path("models/local-gguf")
         job = _DownloadJob(
             url=model_info["url"], 
             dest_dir=dest_dir, 

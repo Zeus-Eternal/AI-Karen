@@ -67,7 +67,7 @@ RUN poetry install --no-interaction --no-ansi --only main --no-root || \
 RUN python -m spacy download en_core_web_sm || true
 
 # -----------------------------
-# Runtime-cuda stage (CUDA-enabled llama.cpp build)
+# Runtime-cuda stage (CUDA-enabled local GGUF build)
 # Use API_BUILD_TARGET=runtime-cuda when building the API image on GPU hosts.
 # -----------------------------
 FROM nvidia/cuda:12.4.1-devel-ubuntu22.04 AS runtime-cuda

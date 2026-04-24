@@ -13,7 +13,6 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict
 from enum import Enum
 
-from ai_karen_engine.services.models.routing.llm_router_service import ProviderHealth
 from ai_karen_engine.services.cache import get_provider_cache
 
 logger = logging.getLogger(__name__)
@@ -52,12 +51,13 @@ class ProviderHealthMonitor:
         self._monitoring_active = False
         self._enhanced_cache = get_provider_cache()
         self._known_providers = [
+            "builtin_vllm",
+            "builtin_transformers",
             "openai",
-            "anthropic", 
+            "anthropic",
             "google",
-            "llamacpp",
             "huggingface",
-            "cohere"
+            "cohere",
         ]
     
     def get_provider_health(self, provider_name: str) -> Optional[ProviderHealthInfo]:

@@ -329,7 +329,7 @@ class RuntimeProviderManager:
     def _check_local_provider_health(self, config: ProviderConfig) -> ProviderHealthStatus:
         """Check health of local provider"""
         try:
-            if config.name in ("llamacpp", "llama-cpp", "local"):
+            if config.name in ("builtin_vllm", "builtin_transformers", "local"):
                 # Check if local model files exist
                 try:
                     from ai_karen_engine.inference.model_store import ModelStore

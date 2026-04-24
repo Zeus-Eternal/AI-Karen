@@ -88,7 +88,7 @@ save_config()
 **Available Loaders**:
 - `load_optimization_config()`: Loads `config_assets/optimization_config.json`
 - `load_permissions_config()`: Loads `config_assets/permissions.json`
-- `load_llamacpp_config()`: Loads `config_assets/llamacpp/config.json`
+- `load_local_model_runtime_config()`: Loads local GGUF runtime asset configuration
 - `load_extension_configs()`: Loads all YAML files from `config_assets/extensions/`
 - `load_memory_policy_config()`: Loads `config_assets/memory.yml`
 - `load_llm_profiles_config()`: Loads `config_assets/llm_profiles.yml`

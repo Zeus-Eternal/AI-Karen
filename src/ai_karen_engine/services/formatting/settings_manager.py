@@ -66,7 +66,7 @@ class SettingsManager:
     def _get_default_settings(self) -> Dict[str, Any]:
         """Get default settings configuration."""
         return {
-            "provider": "llama-cpp",
+            "provider": "local_gguf",
             "model": "Phi-3-mini-4k-instruct-q4.gguf",
             "use_memory": True,
             "context_length": 512,

@@ -367,7 +367,7 @@ class EnhancedLLMRouter:
             )
 
         # Fallback to privacy-focused providers
-        privacy_providers = ["llama.cpp", "transformers"]
+        privacy_providers = ["local_gguf", "transformers"]
         for provider in privacy_providers:
             models = await self.registry.get_models_for_provider(provider)
             if models:
@@ -457,7 +457,7 @@ class EnhancedLLMRouter:
 
             # Privacy score
             if task_analysis.contains_sensitive_info:
-                if provider in ["local", "llama.cpp"]:
+                if provider in ["local", "local_gguf"]:
                     score += 0.4
                 elif provider in ["openai", "anthropic"]:
                     score += 0.1

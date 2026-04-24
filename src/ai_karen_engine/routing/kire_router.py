@@ -66,7 +66,7 @@ except ImportError:
         @staticmethod
         def get_fallback_provider() -> tuple[str, str]:
             from ai_karen_engine.config.config_manager import get_default_model
-            return "llamacpp", get_default_model("llamacpp")
+            return "local_gguf", get_default_model("local_gguf")
 
 
 class KIRERouter:
@@ -124,7 +124,7 @@ class KIRERouter:
             # Start from profile assignment or default config
             provider = assignment.provider if assignment else "openai"
             model = assignment.model if assignment else "gpt-4o-mini"
-            chain = profile.fallback_chain if profile else ["openai", "deepseek", "llamacpp"]
+            chain = profile.fallback_chain if profile else ["openai", "deepseek", "local_gguf"]
 
             async def _decide():
                 # Apply capability/constraint matching and health checks
@@ -269,7 +269,7 @@ class KIRERouter:
             if await ProviderHealth.is_healthy("openai"):
                 provider, model = "openai", "gpt-4o"
                 reason_segments.append("high urgency escalated to openai/gpt-4o")
-        elif cognition.need_urgency == "elevated" and provider == "llamacpp":
+        elif cognition.need_urgency == "elevated" and provider == "local_gguf":
             if await ProviderHealth.is_healthy("deepseek"):
                 provider, model = "deepseek", "deepseek-chat"
                 reason_segments.append("elevated urgency upgraded to deepseek")
@@ -290,11 +290,11 @@ class KIRERouter:
             if await ProviderHealth.is_healthy("huggingface"):
                 provider, model = "huggingface", "sentence-transformers/all-MiniLM-L6-v2"
                 reason_segments.append("embedding capability -> huggingface transformers")
-        elif inferred_task == "summarization" and provider != "llamacpp":
-            if await ProviderHealth.is_healthy("llamacpp"):
+        elif inferred_task == "summarization" and provider != "local_gguf":
+            if await ProviderHealth.is_healthy("local_gguf"):
                 from ai_karen_engine.config.config_manager import get_default_model
-                provider, model = "llamacpp", get_default_model("llamacpp")
-                reason_segments.append("summarization uses llamacpp low-latency")
+                provider, model = "local_gguf", get_default_model("local_gguf")
+                reason_segments.append("summarization uses local_gguf low-latency")
 
         # Health gate on chosen provider
         health_source = getattr(ProviderHealth, "SOURCE", "live")
@@ -437,7 +437,7 @@ class KIRERouter:
             "deepseek": 0.003,
             "gemini": 0.004,
             "huggingface": 0.002,
-            "llamacpp": 0.0,
+            "local_gguf": 0.0,
         }
         # Assume small call unless specified
         tks = int((req.requirements or {}).get("expected_tokens", 1000))

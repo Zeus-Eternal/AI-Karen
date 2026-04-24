@@ -47,19 +47,16 @@ def _is_lmstudio_enabled() -> bool:
     # Explicit endpoint configuration implies intentional LM Studio usage.
     return bool((os.getenv("LMSTUDIO_ENDPOINT") or "").strip())
 
-def list_llama_cpp_models(models_dir=None):
-    """
-    Scan for GGUF/llama.cpp compatible models
-    """
-    models_dir = models_dir or os.getenv("KARI_MODEL_DIR", "models/llama-cpp")
+def list_local_gguf_models(models_dir=None):
+    """Scan for locally available GGUF model files."""
+    models_dir = models_dir or os.getenv("KARI_MODEL_DIR", "models/local-gguf")
     supported_ext = {".gguf", ".bin"}
     models = []
 
     try:
         models_path = Path(models_dir)
         if not models_path.exists():
-            # Trigger system initialization if models directory doesn't exist
-            logger.info(f"[llama-cpp] Models directory not found, initializing system...")
+            logger.info("Local GGUF models directory not found, initializing system...")
             try:
                 from ai_karen_engine.core.runtime.initialization import initialize_system
                 import asyncio
@@ -76,12 +73,12 @@ def list_llama_cpp_models(models_dir=None):
                 except RuntimeError:
                     # Fallback: just create the directory
                     models_path.mkdir(parents=True, exist_ok=True)
-                    logger.info(f"[llama-cpp] Created models directory: {models_dir}")
+                    logger.info("Created local GGUF models directory: %s", models_dir)
                     
             except ImportError:
                 # Fallback if initialization module not available
                 models_path.mkdir(parents=True, exist_ok=True)
-                logger.info(f"[llama-cpp] Created models directory: {models_dir}")
+                logger.info("Created local GGUF models directory: %s", models_dir)
             
             return ["<initializing-models>"]
         
@@ -92,12 +89,14 @@ def list_llama_cpp_models(models_dir=None):
                 if file.stat().st_size > 1000:
                     models.append(file.stem)
                 
-        # If no models found, suggest initialization
         if not models:
-            logger.info(f"[llama-cpp] No models found in {models_dir}. Run system initialization to download default models.")
+            logger.info(
+                "No local GGUF models found in %s. Run system initialization to populate local models.",
+                models_dir,
+            )
             
     except Exception as e:
-        logger.warning(f"[llama-cpp] Error accessing models directory: {e}")
+        logger.warning("Error accessing local GGUF models directory: %s", e)
 
     return models or ["<no-models-found>"]
 
@@ -172,8 +171,8 @@ def list_transformers_models(registry_path: Path | None = None) -> List[str]:
 
 
 def list_ollama_models():
-    """Deprecated: use list_llama_cpp_models instead."""
-    return list_llama_cpp_models()
+    """Deprecated: use list_local_gguf_models instead."""
+    return list_local_gguf_models()
 
 
 def list_gemini_models() -> List[str]:
@@ -279,7 +278,7 @@ def list_groq_models():
 # === Final Aggregation ===
 
 MODEL_PROVIDERS = {
-    "llama-cpp": list_llama_cpp_models("models/llama-cpp"),
+    "local_gguf": list_local_gguf_models("models/local-gguf"),
     "lmstudio": list_lmstudio_models(),
     "gemini": list_gemini_models(),
     "anthropic": list_anthropic_models(),

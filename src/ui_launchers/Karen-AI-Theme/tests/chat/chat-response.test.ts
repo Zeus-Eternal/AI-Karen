@@ -22,14 +22,14 @@ describe('chat response fallback presentation', () => {
     expect(degraded.degradedBannerText).toContain('zai failed, switched to Local Emergency Fallback (Karen Local Fallback).');
   });
 
-  it('does not claim failover when llama-cpp naming variants are equivalent', () => {
+  it('does not claim failover when local runtime naming variants are equivalent', () => {
     const degraded = deriveDegradedPresentation({
       degraded_mode: false,
       llm: {
-        requested_provider: 'llama-cpp',
+        requested_provider: 'local_gguf',
         requested_model: 'phi-3-mini-4k-instruct-q4',
-        provider: 'llama.cpp',
-        model_id: 'llamacpp:phi-3-mini-4k-instruct-q4',
+        provider: 'local_gguf',
+        model_id: 'local_gguf:phi-3-mini-4k-instruct-q4',
         model_name: 'phi-3-mini-4k-instruct-q4',
       },
     });

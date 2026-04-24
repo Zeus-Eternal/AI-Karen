@@ -120,7 +120,7 @@ logger = logging.getLogger(__name__)
 class ProviderPriority(Enum):
     """Provider priority levels honoring Kari's local-first doctrine."""
 
-    LOCAL = 1  # llama.cpp, GGUF runtimes
+    LOCAL = 1  # local GGUF runtimes
     TRANSFORMER = 2  # Transformers running locally (HF pipelines, GGML wrappers)
     NLP = 3  # spaCy-powered deterministic responders
     LIGHTWEIGHT = 4  # Small distilled models (e.g., DistilBERT, classifiers)
@@ -250,8 +250,7 @@ class LLMRouter:
 
         # Provider priority mapping
         self.provider_priorities = {
-            "llamacpp": ProviderPriority.LOCAL,
-            "llama_cpp": ProviderPriority.LOCAL,
+            "local_gguf": ProviderPriority.LOCAL,
             "transformers": ProviderPriority.TRANSFORMER,
             "huggingface": ProviderPriority.TRANSFORMER,
             "spacy": ProviderPriority.NLP,
@@ -648,9 +647,7 @@ class LLMRouter:
             return None
 
         aliases = {
-            "local": "llamacpp",
-            "llama-cpp": "llamacpp",
-            "llama_cpp": "llamacpp",
+            "local": "local_gguf",
         }
         return aliases.get(normalized, normalized)
 

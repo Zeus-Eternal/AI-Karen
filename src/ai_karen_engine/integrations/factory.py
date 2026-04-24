@@ -19,7 +19,7 @@ class IntegrationServiceConfig:
         enable_gemini: bool = True,
         enable_deepseek: bool = True,
         enable_huggingface: bool = True,
-        enable_llamacpp: bool = True,
+        enable_local_gguf: bool = True,
         enable_anthropic: bool = True,
         # Registry settings
         enable_provider_registry: bool = True,
@@ -59,7 +59,7 @@ class IntegrationServiceConfig:
         self.enable_gemini = enable_gemini
         self.enable_deepseek = enable_deepseek
         self.enable_huggingface = enable_huggingface
-        self.enable_llamacpp = enable_llamacpp
+        self.enable_local_gguf = enable_local_gguf
         self.enable_anthropic = enable_anthropic
 
         # Registry settings
@@ -390,7 +390,7 @@ class IntegrationServiceFactory:
             "gemini": self.config.enable_gemini,
             "deepseek": self.config.enable_deepseek,
             "huggingface": self.config.enable_huggingface,
-            "llamacpp": self.config.enable_llamacpp,
+            "local_gguf": self.config.enable_local_gguf,
             "anthropic": self.config.enable_anthropic,
         }
 

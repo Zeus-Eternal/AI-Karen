@@ -226,8 +226,8 @@ class NLPServiceManager:
         if requested_provider:
             providers_to_try.append(requested_provider)
 
-        # Add fallback providers in order of preference: llamacpp-optimized first, then llamacpp, then fallback, then ollama
-        fallback_providers = ["llamacpp-optimized", "llamacpp", "fallback", "ollama"]
+        # Add fallback providers in order of preference: local GGUF first, then fallback, then ollama
+        fallback_providers = ["local_gguf", "fallback", "ollama"]
         for fallback_provider in fallback_providers:
             if fallback_provider != requested_provider:  # Avoid duplicates
                 providers_to_try.append(fallback_provider)
@@ -253,10 +253,10 @@ class NLPServiceManager:
                 health_status = registry.health_check(provider_name)
                 is_healthy = health_status.get("status") == "healthy"
 
-                # Allow llamacpp even if health check says unhealthy since we know the model files exist
+                # Allow local GGUF even if health check says unhealthy since we know the model files exist
                 if not is_healthy and provider_name not in [
                     "fallback",
-                    "llamacpp",
+                    "local_gguf",
                 ]:
                     logger.warning(
                         f"Provider {provider_name} is unhealthy: {health_status.get('error', 'Unknown error')}"
@@ -264,11 +264,8 @@ class NLPServiceManager:
                     failed_providers.append(provider_name)
                     continue
 
-                # For llamacpp variants, log but still attempt even if health check fails
-                if not is_healthy and provider_name in [
-                    "llamacpp",
-                    "llamacpp-optimized",
-                ]:
+                # For local GGUF, log but still attempt even if health check fails
+                if not is_healthy and provider_name == "local_gguf":
                     logger.warning(
                         f"{provider_name} health check failed: {health_status.get('error', 'Unknown error')}, but attempting anyway since model files exist"
                     )
@@ -299,13 +296,10 @@ class NLPServiceManager:
                     last_error = result.get("error", f"Provider {provider_name} failed")
                     failed_providers.append(provider_name)
 
-                    # If llamacpp failed with timeout, try fallback immediately
-                    if (
-                        provider_name == "llamacpp"
-                        and "timed out" in str(last_error).lower()
-                    ):
+                    # If local GGUF failed with timeout, try fallback immediately
+                    if provider_name == "local_gguf" and "timed out" in str(last_error).lower():
                         logger.info(
-                            "llamacpp timed out, trying fallback provider immediately"
+                            "local_gguf timed out, trying fallback provider immediately"
                         )
                         continue
 
@@ -320,8 +314,8 @@ class NLPServiceManager:
         logger.error(f"All generation attempts failed: {error_msg}")
         logger.error(f"Failed providers: {failed_providers}")
 
-        # If llamacpp was attempted and failed, specifically mention it
-        if "llamacpp" in failed_providers:
+        # If local GGUF was attempted and failed, specifically mention it
+        if "local_gguf" in failed_providers:
             error_msg = f"Local model generation failed. {error_msg}"
 
         return {
@@ -488,10 +482,10 @@ class NLPServiceManager:
             logger.info(f"Messages: {messages}")
             logger.info(f"Gen kwargs: {gen_kwargs}")
 
-            # Special handling for llamacpp provider - reduce timeout for faster feedback
-            if provider_name == "llamacpp":
+            # Special handling for the local GGUF provider - reduce timeout for faster feedback
+            if provider_name == "local_gguf":
                 timeout = 30.0  # Reduced timeout for faster fallback
-                logger.info(f"Using reduced timeout {timeout}s for llamacpp provider")
+                logger.info(f"Using reduced timeout {timeout}s for local_gguf provider")
             else:
                 timeout = 60.0
 

@@ -36,7 +36,7 @@ from ai_karen_engine.config.llm_provider_config import (
     ProviderType,
     get_provider_config_manager,
 )
-from ai_karen_engine.config.model_registry import list_llama_cpp_models
+from ai_karen_engine.config.model_registry import list_local_gguf_models
 from ai_karen_engine.integrations.llm_registry import get_registry
 from ai_karen_engine.services.formatting.settings_manager import get_settings_manager
 from ai_karen_engine.models.secret_manager import get_secret_manager
@@ -77,7 +77,6 @@ PROVIDER_DOC_URLS = {
     "novita": "https://novita.ai/docs/api-reference/model-apis-llm-create-chat-completion",
     "gmi-cloud": "https://docs.gmicloud.ai/",
     "ollama": "https://github.com/ollama/ollama/blob/main/docs/api.md",
-    "llama-cpp": "https://github.com/ggml-org/llama.cpp/tree/master/examples/server",
 }
 
 SECRET_NAMES = {
@@ -508,8 +507,8 @@ def _infer_family(model_id: str) -> str:
 
 def _normalize_provider_id(provider_id: Optional[str]) -> str:
     value = str(provider_id or "").strip().lower()
-    if value in {"llamacpp", "llama_cpp"}:
-        return "llama-cpp"
+    if value in {"localgguf", "local_gguf"}:
+        return "local_gguf"
     return value
 
 
@@ -520,7 +519,7 @@ def _normalize_selected_model_for_provider(
     if not value:
         return ""
     if (
-        provider_name == "llama-cpp"
+        provider_name == "local_gguf"
         and value != "auto-detect-gguf"
         and not value.endswith(".gguf")
     ):
@@ -725,11 +724,11 @@ def _discover_ollama_models(base_url: str) -> List[ProviderModelPayload]:
     return models
 
 
-def _discover_llama_cpp_models(base_url: Optional[str]) -> List[ProviderModelPayload]:
+def _discover_local_gguf_models(base_url: Optional[str]) -> List[ProviderModelPayload]:
     models: List[ProviderModelPayload] = []
     seen: set[str] = set()
 
-    for model_name in list_llama_cpp_models():
+    for model_name in list_local_gguf_models():
         if model_name.startswith("<") and model_name.endswith(">"):
             continue
         if model_name in seen:
@@ -759,7 +758,7 @@ def _discover_llama_cpp_models(base_url: Optional[str]) -> List[ProviderModelPay
                 seen.add(model.id)
                 models.append(model)
         except Exception as exc:  # pragma: no cover - local service optional
-            logger.debug("llama.cpp server discovery skipped: %s", exc)
+            logger.debug("Local GGUF server discovery skipped: %s", exc)
 
     return models
 
@@ -788,8 +787,8 @@ def _load_provider_models(
     if provider.name == "ollama":
         return _discover_ollama_models(_resolve_provider_base_url(provider, override))
 
-    if provider.name == "llama-cpp":
-        discovered = _discover_llama_cpp_models(
+    if provider.name == "local_gguf":
+        discovered = _discover_local_gguf_models(
             _resolve_provider_base_url(provider, override)
         )
         return discovered or _configured_models(provider)
@@ -888,12 +887,12 @@ def _build_provider_payload(
             or {}
         ),
         supports_base_url_override=_supports_base_url_override(provider),
-        supports_model_discovery=provider.name in {"ollama", "llama-cpp"}
+        supports_model_discovery=provider.name in {"ollama", "local_gguf"}
         or bool(provider.endpoint and provider.endpoint.models_endpoint),
         supports_model_pull=provider.name == "ollama",
         supports_custom_auth=_is_custom_provider(provider),
         supports_manual_model_entry=_is_custom_provider(provider)
-        or provider.name in {"ollama", "llama-cpp"},
+        or provider.name in {"ollama", "local_gguf"},
         runtime_source=runtime_source,
         runtime_options=runtime_options,
     )
@@ -1040,10 +1039,8 @@ def _refresh_runtime_provider_state(
 
         orchestrator = LLMOrchestrator()
         prefixes = {f"{provider_name}:"}
-        if provider_name == "llama-cpp":
-            prefixes.add("llamacpp:")
-        elif provider_name == "llamacpp":
-            prefixes.add("llama-cpp:")
+        if provider_name == "local_gguf":
+            prefixes.add("local_gguf:")
 
         with orchestrator.registry._lock:
             stale_ids = [

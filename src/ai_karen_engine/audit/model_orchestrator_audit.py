@@ -128,8 +128,8 @@ class ModelOrchestratorAuditor:
         """Determine the provider based on library and model ID."""
         if library == "transformers":
             return "huggingface"
-        elif library == "llama-cpp":
-            return "llamacpp"
+        elif library == "local_gguf":
+            return "local_gguf"
         elif library == "spacy":
             return "spacy"
         elif library == "sklearn":

@@ -38,7 +38,7 @@ FRIENDLY_PROVIDER_NAMES = {
     "deepseek": "DeepSeek",
     "huggingface": "Hugging Face",
     "anthropic": "Anthropic Claude",
-    "llamacpp": "Llama.cpp Local",
+    "local_gguf": "Local GGUF",
     "local": "Local Fallback",
 }
 
@@ -182,8 +182,8 @@ def _list_gguf(dir_path: Path) -> List[ContractModelInfo]:
                 break
         models.append(
             ContractModelInfo(
-                id=f"llama:/{p.name}",
-                provider="llama-cpp",
+                id=f"local_gguf:/{p.name}",
+                provider="local_gguf",
                 displayName=display,
                 family="llama",
                 installed=True,
@@ -738,8 +738,12 @@ async def get_provider_stats(registry=Depends(get_llm_registry)):
 async def provider_discovery() -> List[ContractProviderItem]:
     items: List[ContractProviderItem] = []
 
-    llama_dir = Path(os.getenv("LLAMA_CPP_MODELS_DIR", "./models/gguf")).resolve()
-    llama_available = llama_dir.exists() and _has_gguf(llama_dir)
+    gguf_dir = Path(
+        os.getenv("KARI_LOCAL_GGUF_MODELS_DIR")
+        or os.getenv("KARI_MODEL_DIR")
+        or "./models/gguf"
+    ).resolve()
+    gguf_available = gguf_dir.exists() and _has_gguf(gguf_dir)
 
     tf_dir = Path(os.getenv("TRANSFORMERS_MODELS_DIR", "./models/transformers")).resolve()
     transformers_available = tf_dir.exists() and any(tf_dir.iterdir())
@@ -758,12 +762,12 @@ async def provider_discovery() -> List[ContractProviderItem]:
     items.extend(
         [
             ContractProviderItem(
-                id="llama-cpp",
-                title="llama.cpp (Local)",
+                id="local_gguf",
+                title="Local GGUF",
                 group="local",
                 canListModels=True,
                 canInfer=False,
-                available=llama_available,
+                available=gguf_available,
             ),
             ContractProviderItem(
                 id="transformers-local",
@@ -815,16 +819,20 @@ async def public_provider_discovery() -> List[ContractProviderItem]:
     return await provider_discovery()
 
 
-@router.get("/local/llama/models", response_model=List[ContractModelInfo])
-async def contract_llama_models() -> List[ContractModelInfo]:
-    base = Path(os.getenv("LLAMA_CPP_MODELS_DIR", "./models/gguf")).resolve()
+@router.get("/local/gguf/models", response_model=List[ContractModelInfo])
+async def contract_gguf_models() -> List[ContractModelInfo]:
+    base = Path(
+        os.getenv("KARI_LOCAL_GGUF_MODELS_DIR")
+        or os.getenv("KARI_MODEL_DIR")
+        or "./models/gguf"
+    ).resolve()
     if not base.exists():
         return []
     return _list_gguf(base)
 
-@public_router.get("/local/llama/models", response_model=List[ContractModelInfo])
-async def public_llama_models() -> List[ContractModelInfo]:
-    return await contract_llama_models()
+@public_router.get("/local/gguf/models", response_model=List[ContractModelInfo])
+async def public_gguf_models() -> List[ContractModelInfo]:
+    return await contract_gguf_models()
 
 
 @router.get("/local/transformers/models", response_model=List[ContractModelInfo])
@@ -1815,8 +1823,8 @@ async def get_provider_notifications():
                 id="2",
                 type="warning",
                 title="Local Model Performance",
-                message="Llama.cpp models are running slower than expected",
-                provider_id="llama-cpp",
+                message="Local GGUF models are running slower than expected",
+                provider_id="local_gguf",
                 timestamp=time.time() - 7200,  # 2 hours ago
                 read=False
             )

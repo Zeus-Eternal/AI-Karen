@@ -33,9 +33,10 @@ class UserProfile:
     assignments: Dict[str, ModelAssignment] = field(default_factory=dict)
     fallback_chain: List[str] = field(
         default_factory=lambda: [
+            "builtin_vllm",
+            "builtin_transformers",
             "openai",
             "deepseek",
-            "llamacpp",
             "huggingface",
             "gemini",
         ]
@@ -248,7 +249,7 @@ class UserProfilesManager:
                 "chat": ModelAssignment("chat", "openai", "gpt-4o-mini"),
                 "code": ModelAssignment("code", "deepseek", "deepseek-coder"),
                 "reasoning": ModelAssignment("reasoning", "openai", "gpt-4o"),
-                "summarization": ModelAssignment("summarization", "llamacpp", "auto"),
+                "summarization": ModelAssignment("summarization", "builtin_transformers", "auto"),
             },
             is_active=True,
         )

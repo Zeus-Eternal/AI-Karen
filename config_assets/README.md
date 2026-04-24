@@ -37,9 +37,9 @@ This directory contains the **static configuration assets** for AI-Karen. These 
     "database": 0
   },
   "llm": {
-    "default_provider": "llamacpp",
+    "default_provider": "local_gguf",
     "default_model": "Phi-3-mini-4k-instruct-q4.gguf",
-    "fallback_chain": ["llamacpp", "openai", "gemini"]
+    "fallback_chain": ["local_gguf", "openai", "gemini"]
   },
   "security": {
     "jwt_secret": "...",
@@ -155,7 +155,7 @@ authentication:
 profiles:
   default:
     providers:
-      chat: "llamacpp"
+      chat: "local_gguf"
       code: "deepseek"
       reasoning: "openai"
     fallback: "openai"
@@ -171,13 +171,13 @@ profiles:
 
 **Usage**: Loaded by `load_llm_profiles_config()` and used by the profile manager for user-specific provider routing.
 
-#### `llamacpp/config.json`
-**Purpose**: Configuration specific to llama.cpp model runtime.
+#### `local-gguf/config.json`
+**Purpose**: Configuration specific to the local GGUF model runtime.
 
 **Structure**:
 ```json
 {
-  "model_path": "/models/llama-cpp/Phi-3-mini-4k-instruct-q4.gguf",
+  "model_path": "/models/local-gguf/Phi-3-mini-4k-instruct-q4.gguf",
   "download_url": "https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-gguf",
   "size_mb": 2300,
   "host": "localhost",
@@ -196,7 +196,7 @@ profiles:
 }
 ```
 
-**Usage**: Loaded by `load_llamacpp_config()` and used by the llama.cpp runtime manager for model execution.
+**Usage**: Loaded by `load_local_gguf_config()` and used by the local GGUF runtime manager for model execution.
 
 ### Monitoring Configuration
 

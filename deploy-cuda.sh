@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # AI-Karen CUDA Deployment Script
-# This script sets up and deploys AI-Karen with CUDA-enabled llama.cpp
+# This script sets up and deploys AI-Karen with CUDA-enabled local GGUF
 
 set -e
 
@@ -39,36 +39,36 @@ echo "✅ Docker and NVIDIA runtime are properly configured"
 
 # Create necessary directories
 echo "📁 Creating directories..."
-mkdir -p models/llama-cpp
-mkdir -p logs/llamacpp
-mkdir -p config/llamacpp
+mkdir -p models/local-gguf
+mkdir -p logs/local-gguf
+mkdir -p config/local-gguf
 
 # Copy configuration files if they don't exist
-if [ ! -f config/llamacpp/config.json ]; then
-    echo "📋 Copying llama.cpp configuration..."
-    cp config/llamacpp/config.json config/llamacpp/config.json.backup
+if [ ! -f config/local-gguf/config.json ]; then
+    echo "📋 Copying local GGUF configuration..."
+    cp config/local-gguf/config.json config/local-gguf/config.json.backup
 fi
 
-# Update llama.cpp config to use GPU
-echo "⚙️  Updating llama.cpp configuration for GPU..."
-jq '.n_gpu_layers = -1 | .main_gpu = 0 | .offload_kqv = true | .flash_attn = true' config/llamacpp/config.json > config/llamacpp/config.json.tmp
-mv config/llamacpp/config.json.tmp config/llamacpp/config.json
+# Update local GGUF config to use GPU
+echo "⚙️  Updating local GGUF configuration for GPU..."
+jq '.n_gpu_layers = -1 | .main_gpu = 0 | .offload_kqv = true | .flash_attn = true' config/local-gguf/config.json > config/local-gguf/config.json.tmp
+mv config/local-gguf/config.json.tmp config/local-gguf/config.json
 
 # Set environment variables
 export CUDA_VISIBLE_DEVICES=0
-export KARI_LLAMACPP_HOST=llamacpp-cuda
-export KARI_LLAMACPP_PORT=8080
-export KARI_LLAMACPP_USE_CUDA=true
+export KARI_LOCAL_GGUF_HOST=local-gguf-cuda
+export KARI_LOCAL_GGUF_PORT=8080
+export KARI_LOCAL_GGUF_USE_CUDA=true
 
 echo "🔧 Environment variables set:"
 echo "   CUDA_VISIBLE_DEVICES: $CUDA_VISIBLE_DEVICES"
-echo "   KARI_LLAMACPP_HOST: $KARI_LLAMACPP_HOST"
-echo "   KARI_LLAMACPP_PORT: $KARI_LLAMACPP_PORT"
-echo "   KARI_LLAMACPP_USE_CUDA: $KARI_LLAMACPP_USE_CUDA"
+echo "   KARI_LOCAL_GGUF_HOST: $KARI_LOCAL_GGUF_HOST"
+echo "   KARI_LOCAL_GGUF_PORT: $KARI_LOCAL_GGUF_PORT"
+echo "   KARI_LOCAL_GGUF_USE_CUDA: $KARI_LOCAL_GGUF_USE_CUDA"
 
 # Pull Docker images
 echo "📦 Pulling Docker images..."
-$DOCKER_COMPOSE_CMD -f docker-compose.cuda.yml pull llamacpp-cuda
+$DOCKER_COMPOSE_CMD -f docker-compose.cuda.yml pull local-gguf-cuda
 
 # Build AI-Karen image
 echo "🏗️  Building AI-Karen image..."

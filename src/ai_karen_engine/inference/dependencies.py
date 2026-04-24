@@ -8,7 +8,7 @@ from functools import lru_cache
 from typing import Optional
 
 from ai_karen_engine.inference.factory import (
-    get_llamacpp_runtime as _get_llamacpp_runtime,
+    get_local_gguf_runtime as _get_local_gguf_runtime,
     get_transformers_runtime as _get_transformers_runtime,
     get_model_store as _get_model_store,
     get_inference_service_factory,
@@ -17,24 +17,24 @@ from ai_karen_engine.inference.factory import (
 
 # Runtime dependencies
 @lru_cache()
-def get_llamacpp_runtime_dependency():
+def get_local_gguf_runtime_dependency():
     """
-    FastAPI dependency for LlamaCpp runtime.
+    FastAPI dependency for the local GGUF runtime.
 
     Returns:
-        LlamaCppRuntime instance or None if unavailable
+        Runtime instance or None if unavailable
 
     Usage:
-        @app.post("/generate/llamacpp")
+        @app.post("/generate/local-gguf")
         def generate(
             prompt: str,
-            runtime: LlamaCppRuntime = Depends(get_llamacpp_runtime_dependency)
+            runtime = Depends(get_local_gguf_runtime_dependency)
         ):
             if not runtime:
-                raise HTTPException(status_code=503, detail="LlamaCpp runtime unavailable")
+                raise HTTPException(status_code=503, detail="Local GGUF runtime unavailable")
             return runtime.generate(prompt)
     """
-    return _get_llamacpp_runtime()
+    return _get_local_gguf_runtime()
 
 
 @lru_cache()
@@ -175,7 +175,7 @@ def get_any_available_runtime():
 
 __all__ = [
     # Runtime dependencies
-    "get_llamacpp_runtime_dependency",
+    "get_local_gguf_runtime_dependency",
     "get_transformers_runtime_dependency",
     # Model store dependency
     "get_model_store_dependency",

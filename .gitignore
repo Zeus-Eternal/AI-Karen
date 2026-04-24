@@ -19,7 +19,7 @@
 config/secrets/*
 config/archive/auth/*
 .ruff_cache
-/models/llama-cpp
+/models/local-gguf
 # testing
 /coverage
 

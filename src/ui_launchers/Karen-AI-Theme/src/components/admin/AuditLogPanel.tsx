@@ -38,8 +38,8 @@ const mockAuditLog: AuditEntry[] = [
     timestamp: new Date(Date.now() - 5 * 60000).toISOString(),
     action: "Model configuration updated",
     actor: "admin@example.com",
-    target: "llama-cpp / Phi-3-mini-4k-instruct-q4.gguf",
-    details: "Changed default provider from ollama to llama-cpp",
+    target: "local GGUF / Phi-3-mini-4k-instruct-q4.gguf",
+    details: "Changed default provider from ollama to local GGUF",
     category: "model",
   },
   {

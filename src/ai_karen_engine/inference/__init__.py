@@ -2,7 +2,6 @@
 Inference Engine
 
 Production-ready inference system with support for multiple runtimes:
-- llama.cpp: GGUF models with CPU/GPU support
 - Transformers: HuggingFace safetensors models
 - Core Helpers: Utility models
 
@@ -12,12 +11,6 @@ Features:
 - Factory pattern for centralized initialization
 - Health monitoring and resource tracking
 """
-
-# Import runtimes (with graceful fallback)
-try:
-    from .llamacpp_runtime import LlamaCppRuntime
-except ImportError:
-    LlamaCppRuntime = None
 
 try:
     from .transformers_runtime import TransformersRuntime
@@ -40,14 +33,12 @@ from .factory import (
     InferenceServiceConfig,
     InferenceServiceFactory,
     get_inference_service_factory,
-    get_llamacpp_runtime,
     get_transformers_runtime,
     get_model_store,
 )
 
 # Import dependencies for FastAPI dependency injection
 from .dependencies import (
-    get_llamacpp_runtime_dependency,
     get_transformers_runtime_dependency,
     get_model_store_dependency,
     get_inference_factory_dependency,
@@ -57,8 +48,6 @@ from .dependencies import (
 )
 
 __all__ = [
-    # Runtimes
-    "LlamaCppRuntime",
     "TransformersRuntime",
     "CoreHelpersRuntime",
     # Model Store
@@ -68,11 +57,9 @@ __all__ = [
     "InferenceServiceFactory",
     "get_inference_service_factory",
     # Factory convenience functions
-    "get_llamacpp_runtime",
     "get_transformers_runtime",
     "get_model_store",
     # Dependencies (FastAPI)
-    "get_llamacpp_runtime_dependency",
     "get_transformers_runtime_dependency",
     "get_model_store_dependency",
     "get_inference_factory_dependency",

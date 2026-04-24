@@ -102,11 +102,10 @@ export const normalizeProviderName = (provider?: string | null): string => {
   if (!value) return '';
   if (
     value === 'local' ||
-    value === 'llama-cpp' ||
-    value === 'llama_cpp' ||
-    value === 'llama.cpp'
+    value === 'local_gguf' ||
+    value === 'local-gguf'
   ) {
-    return 'llamacpp';
+    return 'local_gguf';
   }
   return value;
 };
@@ -162,8 +161,8 @@ const getFriendlyProviderLabel = (
     return 'Local Emergency Fallback';
   }
 
-  if (normalizedProvider === 'llamacpp') {
-    return 'llama.cpp';
+  if (normalizedProvider === 'local_gguf') {
+    return 'Local GGUF';
   }
 
   return rawProvider;
@@ -248,11 +247,11 @@ export const deriveDegradedPresentation = (
   const actualModel = getFriendlyModelLabel(llm?.model_id, llm?.model_name);
   const normalizedActualProvider = normalizeProviderName(actualProvider);
   const normalizedRequestedProvider = normalizeProviderName(requestedProvider);
-  const isLlamaCppBackedFallback =
+  const isLocalGgufBackedFallback =
     normalizedActualProvider === 'fallback' &&
-    actualModelId.toLowerCase().startsWith('llamacpp:');
-  const actualProviderLabel = isLlamaCppBackedFallback
-    ? 'llama.cpp'
+    actualModelId.toLowerCase().startsWith('local_gguf:');
+  const actualProviderLabel = isLocalGgufBackedFallback
+    ? 'Local GGUF'
     : getFriendlyProviderLabel(actualProvider);
   const fallbackTargetLabel = getFallbackTargetLabel(actualProviderLabel, actualModel);
   const preferredFailureReason = String(llm?.preferred_failure_reason || '').trim();
@@ -284,8 +283,8 @@ export const deriveDegradedPresentation = (
     ? 'Provider policy blocked this response.'
     : ollamaHostRuntimeUnavailable
       ? `Ollama host runtime is unavailable from the API container, so Karen switched to ${fallbackTargetLabel}.`
-    : requestedProvider && isLlamaCppBackedFallback && normalizedRequestedProvider === 'llamacpp'
-      ? `${requestedProvider} primary path failed, recovered via local llama.cpp fallback path${actualModel ? ` (${actualModel})` : ''}.`
+    : requestedProvider && isLocalGgufBackedFallback && normalizedRequestedProvider === 'local_gguf'
+      ? `${requestedProvider} primary path failed, recovered via local GGUF fallback path${actualModel ? ` (${actualModel})` : ''}.`
     : requestedProvider && actualProvider && providerOrModelChanged
       ? `${requestedProvider} failed, switched to ${fallbackTargetLabel}.`
       : requestedProvider && failureReasonLower.includes('rate limit')

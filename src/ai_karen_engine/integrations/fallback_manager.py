@@ -643,7 +643,7 @@ class FallbackManager:
             return 1.5
         elif runtime == "transformers":
             return 2.0
-        elif runtime == "llama.cpp":
+        elif runtime == "local_gguf":
             return 1.0
         elif runtime == "core_helpers":
             return 0.3

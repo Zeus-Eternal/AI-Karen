@@ -191,7 +191,7 @@ class HelperModels:
             # Initialize default model for scaffolding
             from ai_karen_engine.integrations.llm_registry import get_registry
             registry = get_registry()
-            self.default_model_provider = registry.get_provider("llamacpp")
+            self.default_model_provider = registry.get_provider("builtin_transformers")
 
             # Initialize DistilBERT for classification
             from ai_karen_engine.core.memory.signals.nlp_service_manager import nlp_service_manager
@@ -773,11 +773,11 @@ class KROOrchestrator:
             logger.error(f"KIRE routing failed: {e}")
             # Fallback to default
             return {
-                "provider": "llamacpp",
-                "model": "Phi-3-mini-4k-instruct-q4.gguf",
+                "provider": "builtin_vllm",
+                "model": "auto",
                 "reasoning": f"KIRE routing failed: {e}",
                 "confidence": 0.5,
-                "fallback_chain": ["llamacpp"],
+                "fallback_chain": ["builtin_vllm", "builtin_transformers"],
             }
 
     async def _execute_plan(

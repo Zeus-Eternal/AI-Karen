@@ -1,5 +1,11 @@
 """Model runtime domain for defaults, selection, and embedding governance."""
 
+from .provider_endpoint import (
+    BUILTIN_PROVIDER_ENDPOINTS,
+    ProviderEndpoint,
+    ProviderEndpointStatus,
+    ProviderEndpointType,
+)
 from .model_discovery_service import (
     DiscoveryProgress,
     DiscoveryStatus,
@@ -20,8 +26,12 @@ from .provider_registry_service import (
 __all__ = [
     "DiscoveryProgress",
     "DiscoveryStatus",
+    "BUILTIN_PROVIDER_ENDPOINTS",
     "ModelDiscoveryService",
     "ModelSummary",
+    "ProviderEndpoint",
+    "ProviderEndpointStatus",
+    "ProviderEndpointType",
     "get_model_discovery_service",
     "initialize_model_discovery_service",
     "FallbackChain",

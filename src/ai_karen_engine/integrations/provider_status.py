@@ -26,8 +26,8 @@ class ProviderHealth:
             health_status = provider_info.get("health_status", "unknown")
             
             # Consider "healthy" and "unknown" as healthy for local providers
-            # This allows local providers like llamacpp to work even if not explicitly health-checked
-            if provider_name == "llamacpp" and health_status in ["healthy", "unknown"]:
+            # This allows local providers to work even if not explicitly health-checked
+            if provider_name == "local_gguf" and health_status in ["healthy", "unknown"]:
                 return True
             
             return health_status == "healthy"
@@ -69,4 +69,3 @@ def collect_provider_statuses() -> Dict[str, Any]:
 
 
 __all__ = ["collect_provider_statuses", "ProviderHealth"]
-

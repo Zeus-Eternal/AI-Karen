@@ -36,15 +36,17 @@ def load_permissions_config() -> Dict[str, Any]:
     return {}
 
 
-def load_llamacpp_config() -> Dict[str, Any]:
-    """Load llama.cpp configuration from config_assets/llamacpp/config.json."""
-    config_path = Path("config_assets/llamacpp/config.json")
+def load_local_model_runtime_config() -> Dict[str, Any]:
+    """Load optional local model runtime configuration."""
+    config_path = Path("config_assets/model_runtime/config.json")
     if config_path.exists():
         try:
             with open(config_path, "r", encoding="utf-8") as f:
                 return json.load(f)
         except Exception as e:
-            logger.warning(f"Failed to load llama.cpp config from {config_path}: {e}")
+            logger.warning(
+                f"Failed to load local model runtime config from {config_path}: {e}"
+            )
     return {}
 
 

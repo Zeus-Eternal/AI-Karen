@@ -5,7 +5,7 @@ This module implements an intelligent routing system that selects the optimal LL
 and runtime based on user preferences, task requirements, privacy constraints, and performance needs.
 
 Key Features:
-- Policy-based routing: privacy/context → llama.cpp, interactive → Transformers, flexibility → Transformers
+- Policy-based routing: privacy/context → local_gguf, interactive → Transformers, flexibility → Transformers
 - Tiered fallback strategy: user preference → system defaults → local models → degraded mode
 - Explainable routing with dry-run capabilities for debugging
 - Privacy-aware routing for sensitive operations
@@ -244,7 +244,7 @@ def _get_default_routing_policy() -> RoutingPolicy:
             TaskType.CODE: "transformers",
             TaskType.REASONING: "transformers",
             TaskType.EMBEDDING: "transformers",
-            TaskType.SUMMARIZATION: "llama.cpp",
+            TaskType.SUMMARIZATION: "local_gguf",
             TaskType.TRANSLATION: "transformers",
             TaskType.CREATIVE: "transformers",
             TaskType.ANALYSIS: "transformers",
@@ -259,9 +259,9 @@ def _get_default_routing_policy() -> RoutingPolicy:
         },
         
         privacy_runtime_map={
-            PrivacyLevel.PUBLIC: ["transformers", "llama.cpp", "core_helpers"],
-            PrivacyLevel.INTERNAL: ["transformers", "llama.cpp", "core_helpers"],
-            PrivacyLevel.CONFIDENTIAL: ["llama.cpp", "core_helpers"],
+            PrivacyLevel.PUBLIC: ["transformers", "local_gguf", "core_helpers"],
+            PrivacyLevel.INTERNAL: ["transformers", "local_gguf", "core_helpers"],
+            PrivacyLevel.CONFIDENTIAL: ["local_gguf", "core_helpers"],
             PrivacyLevel.RESTRICTED: ["core_helpers"],
         },
         
@@ -275,12 +275,12 @@ def _get_default_routing_policy() -> RoutingPolicy:
         performance_runtime_map={
             PerformanceRequirement.INTERACTIVE: "transformers",
             PerformanceRequirement.BATCH: "transformers",
-            PerformanceRequirement.BACKGROUND: "llama.cpp",
+            PerformanceRequirement.BACKGROUND: "local_gguf",
         },
         
         # Fallback chains
         fallback_providers=["local", "huggingface"],
-        fallback_runtimes=["llama.cpp", "core_helpers"],
+        fallback_runtimes=["local_gguf", "core_helpers"],
         
         # Decision weights
         privacy_weight=0.4,
@@ -1214,7 +1214,7 @@ class IntelligentLLMRouter:
     def _local_fallback_selection(self, request: RoutingRequest) -> Optional[RouteDecision]:
         """Select local models as fallback with capability-aware routing."""
         local_providers = ["local", "huggingface"]
-        local_runtimes = ["llama.cpp", "transformers"]
+        local_runtimes = ["local_gguf", "transformers"]
         
         # Filter local providers by capability requirements
         capability_compatible_providers = []
@@ -1315,7 +1315,7 @@ class IntelligentLLMRouter:
             return perf_runtime
         
         # Default fallback
-        return self.policy.fallback_runtimes[0] if self.policy.fallback_runtimes else "llama.cpp"
+        return self.policy.fallback_runtimes[0] if self.policy.fallback_runtimes else "local_gguf"
     
     def _is_provider_healthy(self, provider: str) -> bool:
         """Check if a provider is healthy."""
@@ -1440,7 +1440,7 @@ class IntelligentLLMRouter:
             return 1.5  # API latency
         elif runtime == "transformers":
             return 2.0  # Medium CPU/GPU inference
-        elif runtime == "llama.cpp":
+        elif runtime == "local_gguf":
             return 1.0  # Efficient CPU inference
         elif runtime == "core_helpers":
             return 0.3  # Very fast but limited
@@ -1903,7 +1903,7 @@ class IntelligentLLMRouter:
         result["decision"] = {
             "provider": selected_provider,
             "model": model_id,
-            "runtime": "llama.cpp",
+            "runtime": "local_gguf",
         }
         
         return result

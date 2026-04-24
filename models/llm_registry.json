@@ -1,8 +1,8 @@
 [
   {
-    "name": "llamacpp",
-    "provider_class": "LlamaCppProvider",
-    "description": "Local llama-cpp-python for running open-source models",
+    "name": "local_gguf",
+    "provider_class": "OpenAICompatibleProvider",
+    "description": "Local OpenAI-compatible endpoint for open-source models",
     "supports_streaming": true,
     "supports_embeddings": true,
     "requires_api_key": false,
@@ -108,9 +108,9 @@
     "error_message": null
   },
   {
-    "name": "llamacpp-optimized",
-    "provider_class": "OptimizedLlamaCppProvider",
-    "description": "Optimized local llama-cpp-python with better async support and performance",
+    "name": "local_gguf_optimized",
+    "provider_class": "OpenAICompatibleProvider",
+    "description": "Optimized local OpenAI-compatible endpoint with better async support and performance",
     "supports_streaming": true,
     "supports_embeddings": true,
     "requires_api_key": false,

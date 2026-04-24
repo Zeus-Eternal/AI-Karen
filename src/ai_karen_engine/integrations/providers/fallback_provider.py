@@ -1,8 +1,8 @@
 """Enhanced fallback provider with local model support.
 
 This provider acts as an intelligent fallback when primary LLM providers fail.
-It prioritizes local downloaded models (transformers, llama-cpp) before falling
-back to deterministic responses, ensuring real AI responses even in offline mode.
+It prioritizes local transformers models before falling back to deterministic
+responses, ensuring real AI responses even in offline mode.
 """
 
 from __future__ import annotations
@@ -116,16 +116,6 @@ class FallbackProvider(LLMProviderBase):
             # Resolve relative to app root if possible
             base_path = Path(os.getcwd()) / base_path
 
-        # Check for llama-cpp models
-        llama_path = base_path / "llama-cpp"
-        if llama_path.exists():
-            gguf_files = list(llama_path.glob("*.gguf"))
-            for gguf in gguf_files:
-                # Skip zero-size files
-                if gguf.stat().st_size > 1000:
-                    models[f"llamacpp_{gguf.stem}"] = str(gguf)
-                    logger.debug(f"Found llama-cpp model: {gguf.name}")
-
         # Check for transformers models
         transformers_path = base_path / "transformers"
         if transformers_path.exists():
@@ -143,69 +133,6 @@ class FallbackProvider(LLMProviderBase):
 
         logger.info(f"Discovered {len(models)} local models: {list(models.keys())}")
         return models
-
-    # Removed direct llama.cpp runtime ownership here. The registry-owned
-    # `llamacpp` provider is now the single authoritative local GGUF path.
-    def _try_local_llamacpp(
-        self, messages: Union[str, List[Dict[str, str]]], **kwargs: Any
-    ) -> Optional[str]:
-        """Delegate local GGUF generation to the authoritative registry provider."""
-        try:
-            from ai_karen_engine.integrations.llm_registry import get_registry
-
-            requested_model = kwargs.get("model")
-            if not requested_model:
-                try:
-                    from ai_karen_engine.config.config_manager import get_default_model
-
-                    requested_model = get_default_model("llamacpp")
-                except Exception:
-                    requested_model = None
-
-            registry = get_registry()
-            llamacpp_provider = registry.get_provider("llamacpp", model=requested_model)
-            if not llamacpp_provider:
-                logger.debug("Authoritative llamacpp provider unavailable")
-                return None
-
-            if isinstance(messages, list):
-                prepared_messages = self._prepare_local_messages(messages)
-                logger.info(
-                    "Generating chat with %d/%d trimmed messages using authoritative llamacpp provider",
-                    len(prepared_messages),
-                    len(messages),
-                )
-                runtime = getattr(llamacpp_provider, "runtime", None)
-                if runtime and hasattr(runtime, "chat"):
-                    response = runtime.chat(
-                        prepared_messages,
-                        max_tokens=384,
-                        temperature=0.7,
-                        top_p=0.9,
-                    )
-                else:
-                    raise GenerationFailed(
-                        "Authoritative llamacpp provider does not expose chat runtime."
-                    )
-            else:
-                logger.info(
-                    "Generating completion for prompt (len=%d) using authoritative llamacpp provider",
-                    len(messages),
-                )
-                response = llamacpp_provider.generate_text(messages, **kwargs)
-
-            if response and len(response.strip()) > 0:
-                model_path = getattr(llamacpp_provider, "model_path", None)
-                model_name = (
-                    Path(model_path).stem
-                    if model_path
-                    else str(requested_model or "local")
-                )
-                self._current_model_id = f"llamacpp:{model_name}"
-                return response
-        except Exception as e:
-            logger.warning("Authoritative llamacpp provider failed: %s", e)
-        return None
 
     # Shared cache for transformers runtimes across instances to prevent OOM
     _transformers_runtimes: Dict[str, Any] = {}
@@ -340,10 +267,8 @@ class FallbackProvider(LLMProviderBase):
             **kwargs: Additional parameters.
 
         Fallback hierarchy:
-        1. Try registered llamacpp provider (if available)
-        2. Try local llama-cpp through the authoritative registry provider
-        3. Try local transformers models
-        4. Fall back to deterministic response
+        1. Try local transformers models
+        2. Fall back to deterministic response
         """
 
         start = datetime.utcnow()
@@ -359,66 +284,7 @@ class FallbackProvider(LLMProviderBase):
 
         logger.info(f"FallbackProvider invoked with {log_desc}")
 
-        # Step 1: Try registered llamacpp provider
-        try:
-            from ai_karen_engine.integrations.llm_registry import get_registry
-
-            registry = get_registry()
-            llamacpp_provider = registry.get_provider("llamacpp")
-
-            if llamacpp_provider:
-                logger.info("Attempting to use registered llamacpp provider")
-                real_response = None
-
-                if isinstance(prompt, list):
-                    prepared_messages = self._prepare_local_messages(prompt)
-                    runtime = getattr(llamacpp_provider, "runtime", None)
-                    if runtime and hasattr(runtime, "chat"):
-                        real_response = runtime.chat(prepared_messages, **kwargs)
-                    elif hasattr(llamacpp_provider, "generate_chat"):
-                        real_response = llamacpp_provider.generate_chat(
-                            prepared_messages, **kwargs
-                        )  # type: ignore[attr-defined]
-                    elif hasattr(llamacpp_provider, "generate_response"):
-                        real_response = llamacpp_provider.generate_response(
-                            prepared_messages, **kwargs
-                        )  # type: ignore[attr-defined]
-                else:
-                    real_response = llamacpp_provider.generate_text(prompt, **kwargs)
-
-                if real_response and len(real_response.strip()) > 0:
-                    logger.info("✓ Successfully used registered llamacpp provider")
-                    return self._record_success(
-                        real_response,
-                        start,
-                        "registered_llamacpp",
-                        model_id="llamacpp:local",
-                    )
-        except Exception as e:
-            error_details.append(f"Registered llamacpp: {str(e)}")
-            logger.debug(f"Registered llamacpp provider failed: {e}")
-
-        # Step 2: Retry through the authoritative local llamacpp path.
-        # This keeps fallback behavior on the same provider/runtime authority
-        # while still allowing trimmed-message degraded execution semantics.
-        try:
-            logger.info("Attempting authoritative local llama-cpp fallback path")
-            local_llama_response = self._try_local_llamacpp(prompt, **kwargs)
-            if local_llama_response:
-                logger.info(
-                    "✓ Successfully used authoritative local llama-cpp fallback path"
-                )
-                return self._record_success(
-                    local_llama_response,
-                    start,
-                    "registered_llamacpp",
-                    model_id=getattr(self, "_current_model_id", "llamacpp:local"),
-                )
-        except Exception as e:
-            error_details.append(f"Local llama-cpp: {str(e)}")
-            logger.debug(f"Local llama-cpp failed: {e}")
-
-        # Step 4: Try local transformers models
+        # Step 1: Try local transformers models
         if not isinstance(prompt, list):
             try:
                 logger.info("Attempting to use local transformers models")
@@ -437,7 +303,7 @@ class FallbackProvider(LLMProviderBase):
                 error_details.append(f"Local transformers: {str(e)}")
                 logger.debug(f"Local transformers failed: {e}")
 
-        # Step 5: Intelligent deterministic fallback based on errors
+        # Step 2: Intelligent deterministic fallback based on errors
         logger.warning(
             f"All model attempts failed. Using intelligent fallback. Errors: {error_details}"
         )
@@ -620,8 +486,6 @@ The system is working to restore full AI capabilities."""
             "local_models_available": len(local_model_list),
             "local_model_names": local_model_list,
             "fallback_hierarchy": [
-                "registered_llamacpp",
-                "local_llamacpp",
                 "local_transformers",
                 "intelligent_fallback",
             ],

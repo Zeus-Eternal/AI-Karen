@@ -5,8 +5,8 @@ from typing import Any
 
 __all__ = [
     "HuggingFaceProvider",
-    "LlamaCppProvider",
     "OpenAIProvider",
+    "OpenAICompatibleProvider",
     "GeminiProvider",
     "DeepseekProvider",
     "CopilotKitProvider",
@@ -24,8 +24,8 @@ def __getattr__(name: str) -> Any:
 
     module_name = {
         "HuggingFaceProvider": "ai_karen_engine.integrations.providers.huggingface_provider",
-        "LlamaCppProvider": "ai_karen_engine.integrations.providers.llamacpp_provider",
         "OpenAIProvider": "ai_karen_engine.integrations.providers.openai_provider",
+        "OpenAICompatibleProvider": "ai_karen_engine.integrations.providers.openai_compatible_provider",
         "GeminiProvider": "ai_karen_engine.integrations.providers.gemini_provider",
         "DeepseekProvider": "ai_karen_engine.integrations.providers.deepseek_provider",
         "CopilotKitProvider": "ai_karen_engine.integrations.providers.copilotkit_provider",

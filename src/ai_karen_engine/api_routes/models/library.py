@@ -351,7 +351,7 @@ async def get_available_models(
     Get all available models from the model library.
 
     Supports filtering by:
-    - provider: Filter by model provider (e.g., 'llama-cpp', 'huggingface')
+    - provider: Filter by model provider (e.g., 'local_gguf', 'huggingface')
     - status: Filter by model status ('local', 'available', 'downloading', 'error')
     - capability: Filter by model capability (e.g., 'chat', 'text-generation')
 
@@ -443,7 +443,7 @@ async def get_available_models(
                                 "",
                                 "metadata_cache",
                                 "downloads",
-                                "llama-cpp",
+                                "local-gguf",
                                 "transformers",
                             ]
                             or mid.startswith("./models/")
@@ -457,7 +457,7 @@ async def get_available_models(
                         capabilities = list(entry.get("capabilities") or [])
                         if not capabilities:
                             # Add default capabilities based on provider/type and name
-                            if prov in ["llama-cpp", "llama-gguf"] or mid.endswith(
+                            if prov in ["local_gguf", "llama-gguf"] or mid.endswith(
                                 ".gguf"
                             ):
                                 capabilities = [
@@ -575,7 +575,7 @@ async def get_available_models(
                             ModelInfoResponse(
                                 id=mid,
                                 name=pdata.get("name", mid),
-                                provider=pdata.get("provider", "llama-cpp"),
+                                provider=pdata.get("provider", "local_gguf"),
                                 size=int(pdata.get("size") or 0),
                                 description=pdata.get("description"),
                                 capabilities=list(pdata.get("capabilities") or []),

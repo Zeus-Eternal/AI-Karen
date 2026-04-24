@@ -51,7 +51,7 @@ class TaskAnalyzer:
     _PROVIDER_CAPABILITIES: Dict[str, List[str]] = {
         "openai": ["text", "reasoning", "function_calling", "streaming"],
         "deepseek": ["text", "code", "reasoning"],
-        "llamacpp": ["text"],
+        "local_gguf": ["text"],
         "huggingface": ["text", "embeddings"],
         "gemini": ["text", "vision"],
     }
@@ -259,4 +259,3 @@ class TaskAnalyzer:
     def provider_supports(self, provider: str, required_caps: List[str]) -> bool:
         caps = self._PROVIDER_CAPABILITIES.get(provider.lower(), ["text"])  # assume at least text
         return all(c in caps for c in required_caps)
-

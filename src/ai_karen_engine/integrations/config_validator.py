@@ -106,7 +106,7 @@ class ConfigurationValidator:
             "google-generativeai": "pip install google-generativeai",
             "transformers": "pip install transformers",
             "torch": "pip install torch",
-            "llama-cpp-python": "pip install llama-cpp-python",
+            "local-gguf-runtime": "runtime bundled with AI Karen",
             "requests": "pip install requests",
             "numpy": "pip install numpy",
             "scipy": "pip install scipy",
@@ -439,7 +439,7 @@ class ConfigurationValidator:
             # Try alternative import names
             alt_names = {
                 "google-generativeai": "google.generativeai",
-                "llama-cpp-python": "llama_cpp",
+                "local-gguf-runtime": "ai_karen_engine.inference.local_gguf_runtime",
                 "scikit-learn": "sklearn",
             }
 

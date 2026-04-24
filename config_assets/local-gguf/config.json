@@ -1,5 +1,5 @@
 {
-  "model_path": "./models/llama-cpp/Phi-3-mini-4k-instruct-q4.gguf",
+  "model_path": "./models/local-gguf/Phi-3-mini-4k-instruct-q4.gguf",
   "download_url": "https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-gguf/resolve/main/Phi-3-mini-4k-instruct-q4.gguf",
   "size_mb": 669,
   "description": "Default local GGUF model for basic tasks",
@@ -21,7 +21,7 @@
   "memory_threshold_mb": 100,
   "cpu_threshold_percent": 90,
   "server_bin": "/media/zeus/Development7/GitHub/serverKent/serverKent/.bin/llama-server",
-  "log_dir": "./logs/llamacpp",
+  "log_dir": "./logs/local-gguf",
   "model_search_paths": [
     "./models",
     "/models"

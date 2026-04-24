@@ -1,15 +1,15 @@
 services:
-  # CUDA-enabled llama.cpp service for GPU acceleration
-  llamacpp-cuda:
+  # CUDA-enabled local GGUF service for GPU acceleration
+  local-gguf-cuda:
     image: m1dnyt3/llama-cpp:server-cuda-12.9
-    container_name: ai-karen-llamacpp
+    container_name: ai-karen-local-gguf
     environment:
       - CUDA_VISIBLE_DEVICES=0
       - HUGGING_FACE_HUB_TOKEN=${HUGGING_FACE_HUB_TOKEN}
     volumes:
       - ./models:/app/models
-      - ./logs/llamacpp:/app/logs
-      - ./config/llamacpp:/app/config
+      - ./logs/local-gguf:/app/logs
+      - ./config/local-gguf:/app/config
     ports:
       - "8081:8080"  # Separate port for CUDA version
     deploy:
@@ -29,7 +29,7 @@ services:
     command: >
       --host 0.0.0.0
       --port 8080
-      --model ./models/llama-cpp/Phi-3-mini-4k-instruct-q4.gguf
+      --model ./models/local-gguf/Phi-3-mini-4k-instruct-q4.gguf
       --n-gpu-layers -1
       --n-ctx 4096
       --n-batch 512
@@ -45,9 +45,9 @@ services:
         PROFILE: runtime-cuda
     container_name: ai-karen-app
     environment:
-      - KARI_LLAMACPP_HOST=llamacpp-cuda
-      - KARI_LLAMACPP_PORT=8080
-      - KARI_LLAMACPP_USE_CUDA=true
+      - KARI_LOCAL_GGUF_HOST=local-gguf-cuda
+      - KARI_LOCAL_GGUF_PORT=8080
+      - KARI_LOCAL_GGUF_USE_CUDA=true
       - PYTHONPATH=/app/src
     volumes:
       - ./src:/app/src
@@ -58,7 +58,7 @@ services:
       - "8000:8000"
     restart: unless-stopped
     depends_on:
-      llamacpp-cuda:
+      local-gguf-cuda:
         condition: service_healthy
     networks:
       - ai-karen-network

@@ -467,7 +467,7 @@ class ExecutionPool:
         before any Ollama call is attempted.
         """
         normalized = (model_id or "").strip().lower()
-        return normalized.startswith(("local:", "llama-cpp:", "llamacpp:"))
+        return normalized.startswith(("local:", "local_gguf:"))
 
     @staticmethod
     def _is_resource_pressure_error(error: Exception) -> bool:
@@ -809,8 +809,7 @@ class LLMOrchestrator:
         localish_providers = {
             "fallback",
             "local",
-            "llamacpp",
-            "llama-cpp",
+            "local_gguf",
             "transformers",
             "huggingface-local",
         }
@@ -840,7 +839,7 @@ class LLMOrchestrator:
         """Register local models as fallback options."""
         try:
             from pathlib import Path
-            from ai_karen_engine.inference.llamacpp_runtime import LlamaCppRuntime
+            from ai_karen_engine.inference.local_gguf_runtime import LocalGGUFRuntime
             
             # First, register the SmallLanguageModelService if enabled
             try:
@@ -924,13 +923,13 @@ class LLMOrchestrator:
             except Exception as e:
                 logger.warning(f"Failed to register SmallLanguageModelService: {e}")
             
-            # Check if llama-cpp-python is available
-            if not LlamaCppRuntime.is_available():
-                logger.debug("llama-cpp-python not available, skipping local model registration")
+            # Check if the local GGUF runtime is available
+            if not LocalGGUFRuntime.is_available():
+                logger.debug("Local GGUF runtime not available, skipping local model registration")
                 return
             
             # Discover any local GGUF models dynamically
-            models_dir = Path("models/llama-cpp")
+            models_dir = Path("models/local-gguf")
             ggufs = []
             if models_dir.exists():
                 try:
@@ -960,7 +959,7 @@ class LLMOrchestrator:
                     
                     def generate_text(self, prompt: str, **kwargs) -> str:
                         if not self.runtime:
-                            self.runtime = LlamaCppRuntime(
+                            self.runtime = LocalGGUFRuntime(
                                 model_path=self.model_path,
                                 n_ctx=2048,
                                 n_batch=512,
@@ -996,7 +995,7 @@ class LLMOrchestrator:
                         self.registry.register(model_id, local_provider, capabilities, weight=10, tags=["local", "fallback"])
                 logger.info(f"Successfully registered local model: {model_id}")
             else:
-                logger.debug("No local GGUF models found under models/llama-cpp/")
+                logger.debug("No local GGUF models found under models/local-gguf/")
                 
         except Exception as e:
             logger.warning(f"Failed to register local models: {e}")
@@ -1018,7 +1017,7 @@ class LLMOrchestrator:
                 # In production, we might want to skip this if it causes hangs
                 try:
                     # Try to call generate_text with a timeout if it's a wrapper
-                    # but for llama-cpp it's likely blocking.
+                    # Local providers may block; keep warmup best-effort.
                     provider.generate_text("hello", max_tokens=1)
                 except Exception as e:
                     logger.debug(f"Minimal generation warmup failed for {model_id}: {e}")
@@ -1106,15 +1105,14 @@ class LLMOrchestrator:
         aliases: List[str] = [raw]
         normalized = raw.replace("_", "-").lower()
         canonical_map = {
-            "llama-cpp": "llamacpp",
-            "llama_cpp": "llamacpp",
-            "llamacpp": "llamacpp",
+            "local-gguf": "local_gguf",
+            "local_gguf": "local_gguf",
             "local": "local",
         }
         canonical = canonical_map.get(normalized)
         if canonical and canonical not in aliases:
             aliases.append(canonical)
-        if canonical == "llamacpp" and "local" not in aliases:
+        if canonical == "local_gguf" and "local" not in aliases:
             aliases.append("local")
         return aliases
 
@@ -1696,9 +1694,9 @@ class LLMOrchestrator:
                 
         target_model = model.model
         
-        # LlamaCpp specific streaming bridge
+        # Local GGUF specific streaming bridge
         if hasattr(target_model, "chat") and kwargs.get("stream"):
-            # LlamaCppRuntime returns an iterator when stream=True
+            # Local GGUF runtime returns an iterator when stream=True
             def sync_stream():
                 mock_messages = [{"role": "user", "content": prompt}]
                 return target_model.chat(

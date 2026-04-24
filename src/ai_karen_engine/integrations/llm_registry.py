@@ -158,8 +158,8 @@ class LLMRegistry:
         self._registrations: Dict[str, ProviderRegistration] = {}
         self._model_entries: Dict[str, ModelEntry] = {}
         self._priorities: List[str] = [
-            "llamacpp-optimized",
-            "llamacpp",
+            "builtin_vllm",
+            "builtin_transformers",
             "ollama",
             "openai",
             "zai",
@@ -517,13 +517,22 @@ class LLMRegistry:
         """Register all built-in LLM providers."""
         builtin_providers = [
             {
-                "name": "llamacpp",
-                "provider_class": "LlamaCppProvider",
-                "description": "Local llama-cpp-python for running open-source models",
+                "name": "builtin_vllm",
+                "provider_class": "OpenAICompatibleProvider",
+                "description": "Built-in vLLM text serving runtime",
                 "supports_streaming": True,
+                "supports_embeddings": False,
+                "requires_api_key": False,
+                "default_model": "auto",
+            },
+            {
+                "name": "builtin_transformers",
+                "provider_class": "OpenAICompatibleProvider",
+                "description": "Built-in Transformers runtime for local embeddings and fallback text generation",
+                "supports_streaming": False,
                 "supports_embeddings": True,
                 "requires_api_key": False,
-                "default_model": "Phi-3-mini-4k-instruct-q4.gguf",
+                "default_model": "auto",
             },
             {
                 "name": "ollama",
@@ -770,8 +779,8 @@ class LLMRegistry:
             return canonical
 
         normalized = raw.lower().replace("_", "-")
-        if normalized == "local" and "llamacpp" in self._registrations:
-            return "llamacpp"
+        if normalized == "local" and "builtin_vllm" in self._registrations:
+            return "builtin_vllm"
 
         return raw
 
@@ -846,20 +855,6 @@ class LLMRegistry:
                     ):
                         init_kwargs["provider_name"] = resolved_name
 
-                    # Translate llamacpp model id to a concrete model_path when possible
-                    if resolved_name == "llamacpp":
-                        # If a specific GGUF model was selected, resolve to a verified file path
-                        model_id = init_kwargs.get("model")
-                        if model_id and "model_path" not in init_kwargs:
-                            resolved = self._resolve_llamacpp_model_path_by_id(model_id)
-                            if resolved:
-                                init_kwargs["model_path"] = resolved
-                            else:
-                                logger.error(
-                                    f"Unable to resolve verified GGUF for model_id '{model_id}'"
-                                )
-                                return None
-
                     if registration.provider_class == "CopilotKitProvider":
                         model_name = (
                             init_kwargs.get("model") or registration.default_model
@@ -924,8 +919,6 @@ class LLMRegistry:
         """Remove cached provider instances for a provider so new config/secrets take effect."""
         canonical = self._resolve_provider_alias(name)
         prefixes = {f"{canonical}|"}
-        if canonical == "llamacpp":
-            prefixes.update({"llama-cpp|", "llama.cpp|", "llama_cpp|", "local|"})
         stale_keys = [
             cache_key
             for cache_key in self._providers.keys()
@@ -1098,7 +1091,7 @@ class LLMRegistry:
         return provider_cls
 
     # -----------------------------
-    # Llama.cpp model resolution & verification
+    # Local GGUF model resolution & verification
     # -----------------------------
     def _is_probably_valid_gguf(self, file_path: Path) -> bool:
         try:
@@ -1121,56 +1114,6 @@ class LLMRegistry:
                 return key
         return None
 
-    def _resolve_llamacpp_model_path_by_id(self, model_id: str) -> Optional[str]:
-        """Resolve a llama.cpp model_id to a verified local GGUF file path."""
-        try:
-            normalized_model_id = str(model_id).strip()
-            normalized_stem = Path(normalized_model_id).stem
-
-            # Prefer model registry entry
-            entry_key = self._find_model_entry_key_by_id(normalized_model_id)
-            if entry_key is None and normalized_stem != normalized_model_id:
-                entry_key = self._find_model_entry_key_by_id(normalized_stem)
-            if entry_key:
-                entry = self._model_entries[entry_key]
-                if entry.library == "llama-cpp":
-                    p = Path(entry.install_path)
-                    # Validate file header quickly
-                    if self._is_probably_valid_gguf(p):
-                        # Try integrity verification when file list/checksums are present
-                        try:
-                            result = self.verify_model_integrity(entry_key)
-                            if result.get("status") in {
-                                "verified",
-                                "missing",
-                                "corrupted",
-                            }:
-                                # Even if some files in registry are missing, the main file is header-checked
-                                return str(p)
-                        except Exception:
-                            return str(p)
-            # Fallback: look in models/llama-cpp for matching filename
-            search_dir = Path("models/llama-cpp")
-            direct_candidates = [
-                search_dir / normalized_model_id,
-                search_dir / normalized_stem,
-                search_dir / f"{normalized_stem}.gguf",
-            ]
-            for candidate in direct_candidates:
-                if self._is_probably_valid_gguf(candidate):
-                    return str(candidate)
-
-            if search_dir.exists():
-                for candidate in search_dir.glob("*.gguf"):
-                    if (
-                        candidate.stem == normalized_stem
-                        and self._is_probably_valid_gguf(candidate)
-                    ):
-                        return str(candidate)
-        except Exception:
-            pass
-        return None
-
     def list_providers(self) -> List[str]:
         """Get list of registered provider names."""
         return list(self._registrations.keys())
@@ -1180,22 +1123,22 @@ class LLMRegistry:
         # Define built-in providers that should always be available
         builtin_providers = [
             {
-                "name": "llamacpp",
-                "provider_class": "LlamaCppProvider",
-                "description": "Local llama-cpp-python for running open-source models",
+                "name": "builtin_vllm",
+                "provider_class": "OpenAICompatibleProvider",
+                "description": "Built-in vLLM text serving runtime",
                 "supports_streaming": True,
-                "supports_embeddings": True,
+                "supports_embeddings": False,
                 "requires_api_key": False,
-                "default_model": "Phi-3-mini-4k-instruct-q4.gguf",
+                "default_model": "auto",
             },
             {
-                "name": "llamacpp-optimized",
-                "provider_class": "LlamaCppProviderOptimized",
-                "description": "Optimized local llama-cpp-python with better async support and performance",
-                "supports_streaming": True,
+                "name": "builtin_transformers",
+                "provider_class": "OpenAICompatibleProvider",
+                "description": "Built-in Transformers runtime for local embeddings and fallback text generation",
+                "supports_streaming": False,
                 "supports_embeddings": True,
                 "requires_api_key": False,
-                "default_model": "Phi-3-mini-4k-instruct-q4.gguf",
+                "default_model": "auto",
             },
         ]
 
@@ -1205,19 +1148,11 @@ class LLMRegistry:
                 provider_name = provider_config["name"]
                 if provider_name not in self._registrations:
                     try:
-                        # Import provider classes dynamically
-                        if provider_name == "llamacpp":
-                            from .providers.llamacpp_provider import LlamaCppProvider
+                        from .providers.openai_compatible_provider import (
+                            OpenAICompatibleProvider,
+                        )
 
-                            provider_class = LlamaCppProvider
-                        elif provider_name == "llamacpp-optimized":
-                            from .providers.llamacpp_provider_optimized import (
-                                OptimizedLlamaCppProvider,
-                            )
-
-                            provider_class = OptimizedLlamaCppProvider
-                        else:
-                            continue
+                        provider_class = OpenAICompatibleProvider
 
                         # Register the provider (already thread-safe)
                         self.register_provider(
@@ -1250,7 +1185,7 @@ class LLMRegistry:
         self.ensure_builtin_providers_registered()
 
         # Verify critical providers are available
-        critical_providers = ["llamacpp", "llamacpp-optimized", "fallback"]
+        critical_providers = ["builtin_vllm", "builtin_transformers", "fallback"]
         for provider_name in critical_providers:
             if provider_name not in self._registrations:
                 logger.warning(
@@ -1458,7 +1393,8 @@ class LLMRegistry:
     def _get_library_for_provider(self, provider_name: str) -> Optional[str]:
         """Get the library type for a provider."""
         provider_library_map = {
-            "llamacpp": "llama-cpp",
+            "builtin_vllm": "vllm",
+            "builtin_transformers": "transformers",
             "huggingface": "transformers",
             "openai": None,  # API-based, no local models
             "gemini": None,  # API-based, no local models
@@ -1626,15 +1562,15 @@ class LLMRegistry:
         if not self.llm_settings_path.exists():
             # Return default settings
             return {
-                "provider": "llamacpp",
-                "model": "gpt-3.5-turbo",
+                "provider": "builtin_vllm",
+                "model": "auto",
                 "api_key": None,
                 "base_url": None,
                 "temperature": 0.7,
                 "max_tokens": 2048,
                 "timeout": 30,
                 "max_retries": 3,
-                "fallback_providers": ["openai", "gemini", "deepseek"],
+                "fallback_providers": ["builtin_transformers", "openai", "gemini", "deepseek"],
                 "provider_configs": {},
             }
 
@@ -1651,34 +1587,33 @@ class LLMRegistry:
         """Update provider configurations based on installed models."""
         provider_configs = settings.get("provider_configs", {})
 
-        # Update llamacpp provider with GGUF models (requirement 2.2)
-        llamacpp_models = []
-        llamacpp_model_path = None
+        # Update built-in Transformers provider with local models.
+        transformers_models = []
+        transformers_model_path = None
 
         for model_key, entry in self._model_entries.items():
-            if entry.library == "llama-cpp":
-                llamacpp_models.append(entry.model_id)
-                if llamacpp_model_path is None:
-                    llamacpp_model_path = str(Path(entry.install_path).parent)
+            if entry.library == "vllm":
+                transformers_models.append(entry.model_id)
+                if transformers_model_path is None:
+                    transformers_model_path = str(Path(entry.install_path).parent)
 
-        if llamacpp_models:
-            if "llamacpp" not in provider_configs:
-                provider_configs["llamacpp"] = {}
+        if transformers_models:
+            if "builtin_transformers" not in provider_configs:
+                provider_configs["builtin_transformers"] = {}
 
-            # In-process llama-cpp is the default; don't imply an external server
-            provider_configs["llamacpp"].update(
+            provider_configs["builtin_transformers"].update(
                 {
-                    "models": llamacpp_models,
-                    "model_path": llamacpp_model_path,
+                    "models": transformers_models,
+                    "model_path": transformers_model_path,
                     "context_length": 4096,
                 }
             )
 
             # Update default model if not set or if current model is not available
-            if settings.get("provider") == "llamacpp":
+            if settings.get("provider") == "builtin_transformers":
                 current_model = settings.get("model")
-                if not current_model or current_model not in llamacpp_models:
-                    settings["model"] = llamacpp_models[0]
+                if not current_model or current_model not in transformers_models:
+                    settings["model"] = transformers_models[0]
 
         # Update HuggingFace provider with Transformers models (requirement 2.3)
         hf_models = []
@@ -1778,7 +1713,7 @@ class LLMRegistry:
     def _get_provider_for_library(self, library: str) -> Optional[str]:
         """Get the appropriate provider name for a library."""
         library_provider_map = {
-            "llama-cpp": "llamacpp",
+            "vllm": "builtin_vllm",
             "transformers": "huggingface",
             "spacy": "huggingface",  # spaCy models can be used through HF
             "sklearn": None,  # sklearn models don't use LLM providers
@@ -1803,7 +1738,7 @@ class LLMRegistry:
             load_model_fn = getattr(provider, "load_model", None)
             if callable(load_model_fn) and entry.install_path:
                 model_path = Path(entry.install_path)
-                if entry.library == "llama-cpp":
+                if entry.library == "vllm":
                     # For GGUF models, load the .gguf file
                     gguf_files = list(model_path.glob("*.gguf"))
                     if gguf_files:
@@ -1922,19 +1857,15 @@ class LLMRegistry:
             }
 
             # Add provider-specific validation info
-            if provider_name == "llamacpp":
-                # Check for GGUF models
-                gguf_models = [
-                    k for k, e in provider_models.items() if e.library == "llama-cpp"
-                ]
-                basic_health["models"]["gguf_models"] = len(gguf_models)
+            if provider_name in {"builtin_vllm", "builtin_transformers"}:
+                local_models = [k for k, e in provider_models.items() if e.library in {"vllm", "transformers"}]
+                basic_health["models"]["local_models"] = len(local_models)
 
-                # Check model directory
-                models_dir = Path("models/llama-cpp")
+                models_dir = Path("models/transformers")
                 basic_health["models"]["models_directory_exists"] = models_dir.exists()
                 if models_dir.exists():
-                    gguf_files = list(models_dir.glob("*.gguf"))
-                    basic_health["models"]["gguf_files_on_disk"] = len(gguf_files)
+                    model_files = list(models_dir.glob("*"))
+                    basic_health["models"]["files_on_disk"] = len(model_files)
 
             elif provider_name == "huggingface":
                 # Check for transformers models
@@ -2000,7 +1931,8 @@ class LLMRegistry:
                         provider_models.append(entry.model_id)
 
                 if model_name not in provider_models and provider_name in [
-                    "llamacpp",
+                    "builtin_transformers",
+                    "builtin_vllm",
                     "huggingface",
                 ]:
                     return {
@@ -2020,7 +1952,7 @@ class LLMRegistry:
                     }
 
                 # Validate provider-specific config
-                if config_provider == "llamacpp":
+                if config_provider in {"builtin_transformers", "builtin_vllm"}:
                     model_path = config.get("model_path")
                     if model_path and not Path(model_path).exists():
                         return {
@@ -2125,7 +2057,7 @@ class LLMRegistry:
             ):
                 try:
                     model_path = Path(entry.install_path)
-                    if entry.library == "llama-cpp":
+                    if entry.library == "vllm":
                         # Find GGUF file
                         gguf_files = list(model_path.glob("*.gguf"))
                         load_model_fn = getattr(provider, "load_model", None)
