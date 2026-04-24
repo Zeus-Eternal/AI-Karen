@@ -32,7 +32,7 @@ from ai_karen_engine.core.memory.memory_service import WebUIMemoryService
 
 # Simple auth imports
 from ai_karen_engine.core.services.dependencies import bypass_user_context_func
-from ai_karen_engine.memory.internal.training_audit_logger import get_training_audit_logger
+from ai_karen_engine.services.audit.training_audit_logger import get_training_audit_logger
 
 logger = logging.getLogger(__name__)
 

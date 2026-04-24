@@ -18,7 +18,7 @@ from ai_karen_engine.services.plugin_discovery import (
     get_plugin_registry,
     initialize_plugin_registry,
 )
-from ai_karen_engine.memory.internal.plugin_execution import (
+from ai_karen_engine.services.plugin_execution import (
     PluginExecutionEngine,
     ExecutionRequest,
     ExecutionResult,

@@ -31,8 +31,8 @@ from ai_karen_engine.database.memory_manager import (
     MemoryManager,
     MemoryQuery,
 )
-from ai_karen_engine.memory.internal.memory_policy import DecayTier, MemoryPolicyManager
-from ai_karen_engine.memory.internal.memory_writeback import (
+from ai_karen_engine.core.memory.memory_policy import DecayTier, MemoryPolicyManager
+from ai_karen_engine.core.memory.memory_writeback import (
     InteractionType,
     MemoryWritebackSystem,
     ShardUsageType,
