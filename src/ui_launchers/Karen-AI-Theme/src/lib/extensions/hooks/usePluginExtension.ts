@@ -4,6 +4,20 @@ import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '@/lib/useAuth';
 import { authService } from '@/lib/auth';
 
+export class PluginExtensionError extends Error {
+  status: number;
+  details: string;
+  retryAfterSeconds?: number;
+
+  constructor(status: number, statusText: string, details: string, retryAfterSeconds?: number) {
+    super(`Extension execution failed: ${statusText}${details ? ` - ${details}` : ''}`);
+    this.name = 'PluginExtensionError';
+    this.status = status;
+    this.details = details;
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
+
 export interface ExtensionAPI {
   execute: (command: any) => Promise<any>;
   getStatus: () => Promise<{ isReady: boolean; error?: string }>;
@@ -30,21 +44,31 @@ export function usePluginExtension(pluginId: string): UsePluginExtensionReturn {
   const api: ExtensionAPI = {
     execute: async (command: any) => {
       try {
-        const response = await fetch('/api/extensions/execute', {
+        const response = await fetch(`/api/plugins/${pluginId}/execute`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             ...(authService.getAccessToken() ? { Authorization: `Bearer ${authService.getAccessToken()}` } : {})
           },
           body: JSON.stringify({
-            plugin_id: pluginId,
-            command
+            plugin_name: pluginId,
+            parameters: command
           })
         });
 
         if (!response.ok) {
           const errorText = await response.text();
-          throw new Error(`Extension execution failed: ${response.statusText} - ${errorText}`);
+          const retryAfterHeader = response.headers.get('Retry-After');
+          const retryAfterSeconds = retryAfterHeader && !Number.isNaN(Number(retryAfterHeader))
+            ? Number(retryAfterHeader)
+            : undefined;
+
+          throw new PluginExtensionError(
+            response.status,
+            response.statusText,
+            errorText,
+            retryAfterSeconds
+          );
         }
 
         return await response.json();
@@ -57,7 +81,7 @@ export function usePluginExtension(pluginId: string): UsePluginExtensionReturn {
 
     getStatus: async () => {
       try {
-        const response = await fetch('/api/extensions/status', {
+        const response = await fetch('/api/plugins/health', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -66,12 +90,12 @@ export function usePluginExtension(pluginId: string): UsePluginExtensionReturn {
         });
 
         if (!response.ok) {
-          throw new Error(`Failed to get extension status: ${response.statusText}`);
+          throw new Error(`Failed to get plugin status: ${response.statusText}`);
         }
 
         const data = await response.json();
         return {
-          isReady: data.ready || false,
+          isReady: data.status === 'healthy',
           error: data.error || null
         };
       } catch (err) {

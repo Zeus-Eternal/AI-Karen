@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { Bot, Loader2 } from 'lucide-react';
+import { getRuntimeDisplayName, getRuntimeGroupLabel } from '@/lib/chat-response';
 import type { ProviderDetails } from '../types';
 
 export type { ProviderDetails };
@@ -35,6 +36,13 @@ export const ProviderSettingsModal = ({
 
     const activeProviderDetails = selectableProviders.find(p => p.id === localProvider);
     const providerModels = activeProviderDetails?.models || [];
+    const groupedProviders = useMemo(() => {
+      const builtInProviders = selectableProviders.filter((provider) => provider.id === 'builtin_vllm');
+      const localProviders = selectableProviders.filter((provider) => getRuntimeGroupLabel(provider.id) === 'Local Runtime');
+      const thirdPartyProviders = selectableProviders.filter((provider) => getRuntimeGroupLabel(provider.id) === 'External Endpoint');
+      const customProviders = selectableProviders.filter((provider) => getRuntimeGroupLabel(provider.id) === 'Custom');
+      return { builtInProviders, localProviders, thirdPartyProviders, customProviders };
+    }, [selectableProviders]);
 
     useEffect(() => {
       if (!isOpen || !activeProviderDetails) {
@@ -52,14 +60,14 @@ export const ProviderSettingsModal = ({
     return (
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogTrigger asChild>
-          <Button 
-            variant="outline" 
-            className="flex items-center gap-2 h-9 px-3 border border-input bg-background hover:bg-accent hover:text-accent-foreground font-medium"
-          >
-            <Bot className="h-4 w-4" />
-            PROVIDER
-          </Button>
-        </DialogTrigger>
+            <Button
+              variant="outline"
+              className="flex items-center gap-2 h-9 px-3 border border-input bg-background hover:bg-accent hover:text-accent-foreground font-medium"
+            >
+              <Bot className="h-4 w-4" />
+            MODELS
+            </Button>
+          </DialogTrigger>
         <DialogContent className="sm:max-w-[850px] gap-0 p-0 overflow-hidden">
           <DialogHeader className="sr-only">
             <DialogTitle>AI Provider Settings</DialogTitle>
@@ -70,30 +78,100 @@ export const ProviderSettingsModal = ({
           <div className="flex h-[600px]">
             {/* Sidebar: Provider Selection */}
             <div className="w-[180px] bg-muted/30 border-r border-border p-3 flex flex-col gap-1 overflow-y-auto">
-              <div className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground mb-2 px-2">AI Providers</div>
-              {selectableProviders.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => {
-                    setLocalProvider(p.id);
-                  }}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors text-left ${
-                    localProvider === p.id 
-                      ? 'bg-primary text-primary-foreground font-medium' 
-                      : 'hover:bg-muted text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <Bot className={`h-4 w-4 ${localProvider === p.id ? 'opacity-100' : 'opacity-60'}`} />
-                  <span className="truncate">{p.display_name}</span>
-                </button>
-              ))}
+              <div className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground mb-2 px-2">Runtime Providers</div>
+              <div className="space-y-2">
+                {groupedProviders.builtInProviders.length > 0 && (
+                  <div className="space-y-1">
+                    <div className="px-2 text-[9px] uppercase tracking-[0.2em] text-muted-foreground">Built-in Runtime</div>
+                    {groupedProviders.builtInProviders.map((p) => (
+                      <button
+                        key={p.id}
+                        onClick={() => {
+                          setLocalProvider(p.id);
+                        }}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors text-left w-full ${
+                          localProvider === p.id
+                            ? 'bg-primary text-primary-foreground font-medium'
+                            : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        <Bot className={`h-4 w-4 ${localProvider === p.id ? 'opacity-100' : 'opacity-60'}`} />
+                        <span className="truncate">{getRuntimeDisplayName(p.id, p.display_name)}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {groupedProviders.localProviders.length > 0 && (
+                  <div className="space-y-1">
+                    <div className="px-2 text-[9px] uppercase tracking-[0.2em] text-muted-foreground">Local Providers</div>
+                    {groupedProviders.localProviders.map((p) => (
+                      <button
+                        key={p.id}
+                        onClick={() => {
+                          setLocalProvider(p.id);
+                        }}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors text-left w-full ${
+                          localProvider === p.id
+                            ? 'bg-primary text-primary-foreground font-medium'
+                            : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        <Bot className={`h-4 w-4 ${localProvider === p.id ? 'opacity-100' : 'opacity-60'}`} />
+                        <span className="truncate">{getRuntimeDisplayName(p.id, p.display_name)}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {groupedProviders.thirdPartyProviders.length > 0 && (
+                  <div className="space-y-1">
+                    <div className="px-2 text-[9px] uppercase tracking-[0.2em] text-muted-foreground">Third-Party Providers</div>
+                    {groupedProviders.thirdPartyProviders.map((p) => (
+                      <button
+                        key={p.id}
+                        onClick={() => {
+                          setLocalProvider(p.id);
+                        }}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors text-left w-full ${
+                          localProvider === p.id
+                            ? 'bg-primary text-primary-foreground font-medium'
+                            : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        <Bot className={`h-4 w-4 ${localProvider === p.id ? 'opacity-100' : 'opacity-60'}`} />
+                        <span className="truncate">{getRuntimeDisplayName(p.id, p.display_name)}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {groupedProviders.customProviders.length > 0 && (
+                  <div className="space-y-1">
+                    <div className="px-2 text-[9px] uppercase tracking-[0.2em] text-muted-foreground">Custom Integrations</div>
+                    {groupedProviders.customProviders.map((p) => (
+                      <button
+                        key={p.id}
+                        onClick={() => {
+                          setLocalProvider(p.id);
+                        }}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors text-left w-full ${
+                          localProvider === p.id
+                            ? 'bg-primary text-primary-foreground font-medium'
+                            : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        <Bot className={`h-4 w-4 ${localProvider === p.id ? 'opacity-100' : 'opacity-60'}`} />
+                        <span className="truncate">{getRuntimeDisplayName(p.id, p.display_name)}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col min-w-0">
               <DialogHeader className="p-6 pb-2">
                 <DialogTitle className="flex items-center gap-2">
-                  {activeProviderDetails?.display_name || 'Select Provider'} Models
+                  {getRuntimeDisplayName(activeProviderDetails?.id || '', activeProviderDetails?.display_name || '') || 'Select Runtime'} Models
                 </DialogTitle>
                 <DialogDescription className="text-xs">
                   Choose from the providers and models already configured in settings.

@@ -66,9 +66,9 @@ echo "   KARI_LOCAL_GGUF_HOST: $KARI_LOCAL_GGUF_HOST"
 echo "   KARI_LOCAL_GGUF_PORT: $KARI_LOCAL_GGUF_PORT"
 echo "   KARI_LOCAL_GGUF_USE_CUDA: $KARI_LOCAL_GGUF_USE_CUDA"
 
-# Pull Docker images
-echo "📦 Pulling Docker images..."
-$DOCKER_COMPOSE_CMD -f docker-compose.cuda.yml pull local-gguf-cuda
+# Build Docker images
+echo "📦 Building Docker images..."
+$DOCKER_COMPOSE_CMD -f docker-compose.cuda.yml build local-gguf-cuda ai-karen
 
 # Build AI-Karen image
 echo "🏗️  Building AI-Karen image..."

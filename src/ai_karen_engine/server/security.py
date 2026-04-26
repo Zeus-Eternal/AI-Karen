@@ -499,6 +499,13 @@ def require_background_tasks_dep(
     return auth_manager.require_background_tasks(token)
 
 
+# Backwards-compatible aliases used by the app factory.
+require_extension_read = require_extension_read_dep
+require_extension_write = require_extension_write_dep
+require_extension_admin = require_extension_admin_dep
+require_background_tasks = require_background_tasks_dep
+
+
 def validate_environment_security() -> Dict[str, Any]:
     """Validate environment security configuration."""
     issues = []
@@ -526,14 +533,21 @@ def validate_environment_security() -> Dict[str, Any]:
                 issues.append("Default extension API key detected in production")
 
         # Check SSL configuration
-        try:
-            ssl_context = get_ssl_context()
-            if ssl_context:
-                logger.info("SSL context configured successfully")
-            else:
-                issues.append("SSL context configuration failed")
-        except Exception as e:
-            issues.append(f"SSL configuration error: {e}")
+        cert_path = os.getenv("SSL_CERT_FILE", "cert.pem")
+        key_path = os.getenv("SSL_KEY_FILE", "key.pem")
+        if os.path.exists(cert_path) and os.path.exists(key_path):
+            try:
+                ssl_context = get_ssl_context()
+                if ssl_context:
+                    logger.info("SSL context configured successfully")
+                else:
+                    issues.append("SSL context configuration failed")
+            except Exception as e:
+                issues.append(f"SSL configuration error: {e}")
+        else:
+            logger.info(
+                "SSL certificate files not present; skipping SSL context validation"
+            )
 
         # Check debug mode in production
         if settings.debug and settings.environment.lower() == "production":
@@ -557,12 +571,17 @@ def validate_environment_security() -> Dict[str, Any]:
         return {
             "overall_status": overall_status,
             "secrets_validation": {
-                "secret_key_secure": settings.secret_key
-                != "super-secret-key-change-me",
-                "extension_secret_key_secure": settings.extension_secret_key
-                != "dev-extension-secret-key-change-in-production",
-                "extension_api_key_secure": settings.extension_api_key
-                != "dev-extension-api-key-change-in-production",
+                "secret_key_secure": {
+                    "valid": settings.secret_key != "super-secret-key-change-me"
+                },
+                "extension_secret_key_secure": {
+                    "valid": settings.extension_secret_key
+                    != "dev-extension-secret-key-change-in-production"
+                },
+                "extension_api_key_secure": {
+                    "valid": settings.extension_api_key
+                    != "dev-extension-api-key-change-in-production"
+                },
             },
             "issues": issues,
             "environment": settings.environment,

@@ -41,6 +41,7 @@ import {
 type SequenceTask = {
   name: string;
   instructions?: string;
+  id?: string;
 };
 
 /**
@@ -50,7 +51,9 @@ type SequenceTask = {
 export default function SequencesPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [jobs, setJobs] = React.useState<Job[]>([]);
+  const [availableTasks, setAvailableTasks] = React.useState<Task[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [isTasksLoading, setIsTasksLoading] = React.useState(true);
   const [errorMsg, setErrorMsg] = React.useState("");
 
   // State for the creation form
@@ -80,40 +83,48 @@ export default function SequencesPage() {
     }
   }, [isAuthenticated]);
 
-  React.  useEffect(() => {
+  const fetchTasks = useCallback(async () => {
+    if (!isAuthenticated) {
+      setAvailableTasks([]);
+      setIsTasksLoading(false);
+      return;
+    }
+
+    setIsTasksLoading(true);
+    try {
+      const { apiClient } = await import('@/lib/api');
+      const data: Task[] = await apiClient.get<Task[]>('/api/tasks/');
+      setAvailableTasks(data || []);
+    } catch (err) {
+      console.error("Failed to fetch tasks for sequences:", err);
+    } finally {
+      setIsTasksLoading(false);
+    }
+  }, [isAuthenticated]);
+
+  React.useEffect(() => {
     if (isAuthLoading) {
       return;
     }
     fetchJobs();
-  }, [isAuthenticated, isAuthLoading, fetchJobs]);
+    fetchTasks();
+  }, [isAuthenticated, isAuthLoading, fetchJobs, fetchTasks]);
 
-  const definedTasks = [
-    { name: "Generate Weekly Sales Report", description: "Queries the sales database and formats it into a PDF." },
-    { name: "Post Daily Facebook Summary", description: "Generates a summary of news and posts it to Facebook." },
-    { name: "Check Urgent Emails", description: "Scans Gmail for emails from specific senders or with keywords." },
-    { name: "Web Research", description: "Performs web research on a given topic using search engines." },
-    { name: "Write Article Draft", description: "Writes a draft of an article based on provided input or research." },
-    { name: "Generate Header Image", description: "Uses an AI image generator to create a header image." },
-  ];
-  
   // State for the task list
-  const [newJobTasks, setNewJobTasks] = React.useState<SequenceTask[]>([
-      { name: "Web Research", instructions: "{'topic': 'Latest AI advancements'}" },
-      { name: "Write Article Draft", instructions: "Use a formal tone, 500 words." },
-  ]);
+  const [newJobTasks, setNewJobTasks] = React.useState<SequenceTask[]>([]);
 
   // State for the instruction editing dialog
   const [editingConfig, setEditingConfig] = React.useState<{ taskName: string; instructions: string; onSave: (newInstructions: string) => void; } | null>(null);
   const [tempInstructions, setTempInstructions] = React.useState("");
 
-  const handleAddTaskToJob = (taskName: string) => {
-    if (!newJobTasks.some(task => task.name === taskName)) {
-      setNewJobTasks([...newJobTasks, { name: taskName, instructions: '' }]);
-    }
+  const handleAddTaskToJob = (task: Task) => {
+    setNewJobTasks([...newJobTasks, { name: task.name, instructions: task.instructions || '', id: task.id }]);
   };
 
-  const handleRemoveTaskFromJob = (taskName: string) => {
-    setNewJobTasks(newJobTasks.filter(task => task.name !== taskName));
+  const handleRemoveTaskFromJob = (index: number) => {
+    const updated = [...newJobTasks];
+    updated.splice(index, 1);
+    setNewJobTasks(updated);
   };
   
   const openInstructionEditor = (taskName: string, instructions: string, onSave: (newInstructions: string) => void) => {
@@ -152,6 +163,7 @@ export default function SequencesPage() {
       const { apiClient } = await import('@/lib/api');
       await apiClient.post(`/api/automation/jobs/${id}/execute`, {});
       alert("Job execution started.");
+      fetchJobs();
     } catch (err: unknown) {
       alert("Failed to execute job: " + (err as Error).message);
     }
@@ -198,9 +210,9 @@ export default function SequencesPage() {
         <div className="flex items-center space-x-3">
           <Workflow className="h-8 w-8 text-primary" />
           <div>
-            <h2 className="text-2xl font-semibold tracking-tight">Jobs</h2>
+            <h2 className="text-2xl font-semibold tracking-tight">Jobs & Sequences</h2>
             <p className="text-sm text-muted-foreground">
-              Chain tasks together to orchestrate multiple agents in powerful workflows.
+              Orchestrate multiple tasks into a single persistent workflow.
             </p>
           </div>
         </div>
@@ -216,7 +228,7 @@ export default function SequencesPage() {
           {/* Job List */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Defined Jobs</h3>
+              <h3 className="text-lg font-semibold">Active Job Definitions</h3>
               <Button variant="outline" size="sm" onClick={fetchJobs} disabled={isAuthLoading || !isAuthenticated}>Refresh</Button>
             </div>
             
@@ -231,7 +243,10 @@ export default function SequencesPage() {
                 <CardHeader>
                   <div className="flex justify-between items-start">
                     <div>
-                      <CardTitle className="text-base">{job.name}</CardTitle>
+                      <div className="flex items-center gap-2">
+                        <CardTitle className="text-base">{job.name}</CardTitle>
+                        <Badge variant="outline" className="text-[10px]">{job.id}</Badge>
+                      </div>
                       <CardDescription className="text-xs">{job.description}</CardDescription>
                     </div>
                     <div className="flex items-center space-x-1">
@@ -256,7 +271,7 @@ export default function SequencesPage() {
                           <Badge variant="secondary" className="px-3 py-1 text-xs">{task.name}</Badge>
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">
                               <Bot className="h-3 w-3" />
-                              <span>{task.agent}</span>
+                              <span>{task.agent || "Default Agent"}</span>
                           </div>
                         </div>
                         {job.tasks && i < job.tasks.length - 1 && (
@@ -266,8 +281,13 @@ export default function SequencesPage() {
                     ))}
                   </div>
                 </CardContent>
-                <CardFooter className="text-xs text-muted-foreground pt-4">
-                  Trigger: {job.trigger}
+                <CardFooter className="text-xs text-muted-foreground pt-4 border-t flex justify-between">
+                  <span>Trigger: <strong className="text-foreground">{job.trigger}</strong></span>
+                  {job.status && (
+                    <Badge variant={job.status === 'Success' ? 'default' : job.status === 'Failed' ? 'destructive' : 'secondary'}>
+                      {job.status}
+                    </Badge>
+                  )}
                 </CardFooter>
               </Card>
             ))}
@@ -277,8 +297,8 @@ export default function SequencesPage() {
           <div className="lg:col-span-1">
             <Card className="sticky top-20">
               <CardHeader>
-                <CardTitle className="flex items-center"><FilePlus2 className="mr-2 h-5 w-5"/>Create New Job</CardTitle>
-                <CardDescription>Build a workflow by chaining tasks.</CardDescription>
+                <CardTitle className="flex items-center"><FilePlus2 className="mr-2 h-5 w-5"/>Define New Job</CardTitle>
+                <CardDescription>Chain existing tasks into a sequence.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-1.5">
@@ -310,15 +330,15 @@ export default function SequencesPage() {
                     />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Add Tasks to the Chain</Label>
+                  <Label>Workflow Chain (Steps)</Label>
                   <div className="p-3 border rounded-md h-64 overflow-y-auto space-y-2 bg-muted/30">
                       {newJobTasks.length === 0 ? (
-                          <p className="text-xs text-center text-muted-foreground py-2">No tasks in job. Click &quot;Add Task&quot; to begin.</p>
+                          <p className="text-xs text-center text-muted-foreground py-2">No tasks in job. Click &quot;Add Task Step&quot; to begin.</p>
                       ) : (
                           newJobTasks.map((task, index) => (
-                          <div key={task.name} className="flex items-center space-x-2 p-2 rounded-md bg-background border">
+                          <div key={`${task.name}-${index}`} className="flex items-center space-x-2 p-2 rounded-md bg-background border">
                               <GripVertical className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-sm flex-1">{task.name}</span>
+                              <span className="text-sm flex-1 truncate">{task.name}</span>
                               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openInstructionEditor(task.name, task.instructions || '', (newInstructions) => {
                                 const updatedTasks = [...newJobTasks];
                                 updatedTasks[index].instructions = newInstructions;
@@ -326,7 +346,7 @@ export default function SequencesPage() {
                               })}>
                                 <Settings className="h-4 w-4 text-muted-foreground hover:text-primary"/>
                               </Button>
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleRemoveTaskFromJob(task.name)}>
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleRemoveTaskFromJob(index)}>
                                 <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive"/>
                               </Button>
                           </div>
@@ -335,33 +355,32 @@ export default function SequencesPage() {
                   </div>
                   <Dialog>
                     <DialogTrigger asChild>
-                        <Button variant="outline" className="w-full mt-2">
+                        <Button variant="outline" className="w-full mt-2" disabled={isTasksLoading || availableTasks.length === 0}>
                             <PlusCircle className="mr-2 h-4 w-4" />
-                            Add Task Step
+                            {isTasksLoading ? "Loading Tasks..." : "Add Task Step"}
                         </Button>
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Add Task to Job</DialogTitle>
+                            <DialogTitle>Add Step to Sequence</DialogTitle>
                             <DialogDescription>
-                                Select a pre-defined task to add to the chain. You can configure it after adding.
+                                Select a live task to add to the chain.
                             </DialogDescription>
                         </DialogHeader>
                         <div className="py-2 max-h-[50vh] overflow-y-auto">
                             <div className="flex flex-col space-y-2">
-                                {definedTasks.map(task => (
-                                <div key={task.name} className="flex items-center justify-between p-3 rounded-md border bg-muted/40">
+                                {availableTasks.map(task => (
+                                <div key={task.id} className="flex items-center justify-between p-3 rounded-md border bg-muted/40">
                                     <div className="flex-1 pr-4">
                                         <div className="flex items-center space-x-3">
                                             <ScrollText className="h-4 w-4 text-muted-foreground" />
                                             <p className="text-sm font-medium">{task.name}</p>
                                         </div>
-                                        <p className="text-xs text-muted-foreground mt-1 pl-7">{task.description}</p>
+                                        <p className="text-xs text-muted-foreground mt-1 pl-7 truncate">{task.description}</p>
                                     </div>
                                     <Button 
                                     size="sm"
-                                    onClick={() => handleAddTaskToJob(task.name)}
-                                    disabled={newJobTasks.some(t => t.name === task.name)}
+                                    onClick={() => handleAddTaskToJob(task)}
                                     variant="secondary"
                                     >
                                     <PlusCircle className="mr-2 h-4 w-4" />
@@ -381,9 +400,9 @@ export default function SequencesPage() {
                 </div>
               </CardContent>
               <CardFooter>
-                <Button className="w-full" onClick={handleCreateJob}>
+                <Button className="w-full" onClick={handleCreateJob} disabled={newJobTasks.length === 0}>
                   <PlusCircle className="mr-2 h-4 w-4" />
-                  Save Job
+                  Save Job Definition
                 </Button>
               </CardFooter>
             </Card>
@@ -392,9 +411,9 @@ export default function SequencesPage() {
 
         <Alert>
           <Info className="h-4 w-4" />
-          <AlertTitle>Developer Insight: Live Wiring</AlertTitle>
+          <AlertTitle>System Integrity</AlertTitle>
           <AlertDescription>
-            This dashboard is officially wired up to the AI Karen Backend `/api/automation/jobs` endpoint. Jobs created above persist into memory and can be executed dynamically.
+            This dashboard is synchronized with the AI Karen backend. Job sequences are executed through the live LangGraph runtime and persist across restarts.
           </AlertDescription>
         </Alert>
       </div>

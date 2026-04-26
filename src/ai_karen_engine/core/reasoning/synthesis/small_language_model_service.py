@@ -142,7 +142,12 @@ def _get_local_model_client():
                 stream: bool = False,
                 **kwargs: Any,
             ) -> str:
-                return self._provider.generate_text(
+                from ai_karen_engine.core.model_runtime.model_manager import (
+                    ModelManager,
+                )
+
+                return ModelManager.invoke_provider_sync(
+                    self._provider,
                     messages,
                     max_tokens=max_tokens,
                     temperature=temperature,

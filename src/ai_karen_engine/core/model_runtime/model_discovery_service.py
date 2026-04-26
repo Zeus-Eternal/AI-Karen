@@ -1,633 +1,461 @@
-"""
-Model Discovery Service
+from __future__ import annotations
 
-Integrated service that combines model discovery and validation to provide
-a comprehensive model management system. This service acts as the main
-interface for discovering, validating, and organizing models.
-
-This service implements Requirements 7.1 and 7.2 from the intelligent response
-optimization spec by providing a unified interface for model discovery and validation.
-"""
-
-import logging
 import asyncio
-import time
-from pathlib import Path
-from typing import Dict, List, Optional, Any, Union, Tuple
-from dataclasses import dataclass
-from enum import Enum
+import logging
 import threading
+import time
+from collections import Counter, defaultdict
+from dataclasses import asdict, dataclass, field
+from enum import Enum
+from pathlib import Path
+from typing import Any, Iterable, Mapping, Optional
 
-from ai_karen_engine.services.models.discovery.model_discovery_engine import (
-    ModelDiscoveryEngine,
-    ModelInfo,
-    ModelType,
-    ModalityType,
-    ModelCategory,
-    ModelSpecialization,
-    ModelStatus,
-)
-from ai_karen_engine.services.models.discovery.model_validation_system import (
-    ModelValidationSystem,
-    ValidationLevel,
-    ValidationResult,
-    ValidationReport,
-)
+from ai_karen_engine.config.config_asset_loaders import load_model_runtime_discovery_config
 
-logger = logging.getLogger("kari.model_discovery_service")
+from .local_model_discovery import discover_local_model_candidates
+from .model_registry_writer import write_model_registry_cache
+from .model_validation import validate_model_record
 
-class DiscoveryStatus(Enum):
-    """Discovery process status."""
+logger = logging.getLogger(__name__)
+
+
+class DiscoveryStatus(str, Enum):
     IDLE = "idle"
-    DISCOVERING = "discovering"
-    VALIDATING = "validating"
-    COMPLETE = "complete"
+    SCANNING = "scanning"
+    READY = "ready"
+    DEGRADED = "degraded"
     ERROR = "error"
 
-@dataclass
-class DiscoveryProgress:
-    """Progress information for discovery process."""
-    status: DiscoveryStatus
-    total_models: int
-    discovered_models: int
-    validated_models: int
-    current_operation: str
-    start_time: float
-    estimated_completion: Optional[float] = None
-    errors: List[str] = None
 
-@dataclass
+@dataclass(frozen=True)
+class DiscoveryProgress:
+    status: DiscoveryStatus
+    total_scanned: int = 0
+    discovered_models: int = 0
+    skipped_models: int = 0
+    last_path: Optional[str] = None
+    message: str = ""
+
+
+@dataclass(frozen=True)
+class _ValueWrapper:
+    value: str
+
+
+@dataclass(frozen=True)
+class DiscoveryModality:
+    type: _ValueWrapper
+    input_supported: bool = True
+    output_supported: bool = True
+    formats: tuple[str, ...] = field(default_factory=tuple)
+    max_size: Optional[int] = None
+
+
+@dataclass(frozen=True)
+class DiscoveryMetadata:
+    parameters: Optional[dict[str, Any]] = None
+    quantization: Optional[str] = None
+    memory_requirement: Optional[float] = None
+    context_length: Optional[int] = None
+    license: Optional[str] = None
+    version: Optional[str] = None
+    author: Optional[str] = None
+    description: Optional[str] = None
+    use_cases: tuple[str, ...] = field(default_factory=tuple)
+    language_support: tuple[str, ...] = field(default_factory=tuple)
+    specialized_domains: tuple[str, ...] = field(default_factory=tuple)
+    supported_formats: tuple[str, ...] = field(default_factory=tuple)
+
+
+@dataclass(frozen=True)
+class DiscoveryRequirements:
+    min_ram_gb: float = 0.0
+    recommended_ram_gb: float = 0.0
+    min_vram_gb: Optional[float] = None
+    recommended_vram_gb: Optional[float] = None
+    cpu_cores: int = 1
+    gpu_required: bool = False
+    disk_space_gb: float = 0.0
+    supported_platforms: tuple[str, ...] = field(default_factory=tuple)
+
+
+@dataclass(frozen=True)
 class ModelSummary:
-    """Summary information about a discovered model."""
-    id: str
+    model_id: str
     name: str
     display_name: str
-    type: str
-    category: str
-    size_gb: float
-    status: str
-    validation_result: Optional[str]
-    capabilities: List[str]
-    tags: List[str]
     path: str
-    last_updated: float
+    relative_path: str
+    model_format: str
+    artifact_kind: str
+    capabilities: tuple[str, ...] = field(default_factory=tuple)
+    compatible_runtimes: tuple[str, ...] = field(default_factory=tuple)
+    preferred_runtime: str = "openai_compatible"
+    compatibility_confidence: str = "external_only"
+    model_type: str = "unknown"
+    architectures: tuple[str, ...] = field(default_factory=tuple)
+    tokenizer_present: bool = False
+    weights_present: bool = False
+    metadata_files: tuple[str, ...] = field(default_factory=tuple)
+    quantization: Optional[str] = None
+    dtype: Optional[str] = None
+    max_context: Optional[int] = None
+    size_bytes: int = 0
+    estimated_vram_gb: Optional[float] = None
+    adapter_only: bool = False
+    base_model_ref: Optional[str] = None
+    security_flags: tuple[str, ...] = field(default_factory=tuple)
+    runtime_notes: tuple[str, ...] = field(default_factory=tuple)
+    _status: str = "available"
+
+    @classmethod
+    def from_record(cls, record: Mapping[str, Any]) -> "ModelSummary":
+        return cls(
+            model_id=str(record.get("model_id") or record.get("path") or record.get("display_name") or ""),
+            name=str(record.get("name") or record.get("display_name") or record.get("model_id") or ""),
+            display_name=str(record.get("display_name") or record.get("name") or record.get("model_id") or ""),
+            path=str(record.get("path") or ""),
+            relative_path=str(record.get("relative_path") or ""),
+            model_format=str(record.get("model_format") or "unknown"),
+            artifact_kind=str(record.get("artifact_kind") or "unknown"),
+            capabilities=tuple(record.get("capabilities") or ()),
+            compatible_runtimes=tuple(record.get("compatible_runtimes") or ()),
+            preferred_runtime=str(record.get("preferred_runtime") or "openai_compatible"),
+            compatibility_confidence=str(record.get("compatibility_confidence") or "external_only"),
+            model_type=str(record.get("model_type") or "unknown"),
+            architectures=tuple(record.get("architectures") or ()),
+            tokenizer_present=bool(record.get("tokenizer_present", False)),
+            weights_present=bool(record.get("weights_present", False)),
+            metadata_files=tuple(record.get("metadata_files") or ()),
+            quantization=record.get("quantization"),
+            dtype=record.get("dtype"),
+            max_context=record.get("max_context"),
+            size_bytes=int(record.get("size_bytes") or 0),
+            estimated_vram_gb=record.get("estimated_vram_gb"),
+            adapter_only=bool(record.get("adapter_only", False)),
+            base_model_ref=record.get("base_model_ref"),
+            security_flags=tuple(record.get("security_flags") or ()),
+            runtime_notes=tuple(record.get("runtime_notes") or ()),
+            _status=str(record.get("status") or "available"),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        payload = asdict(self)
+        payload["capabilities"] = list(self.capabilities)
+        payload["compatible_runtimes"] = list(self.compatible_runtimes)
+        payload["architectures"] = list(self.architectures)
+        payload["metadata_files"] = list(self.metadata_files)
+        payload["security_flags"] = list(self.security_flags)
+        payload["runtime_notes"] = list(self.runtime_notes)
+        payload["status"] = self.status.value
+        return payload
+
+    @property
+    def id(self) -> str:
+        return self.model_id
+
+    @property
+    def type(self) -> _ValueWrapper:
+        if "embedding" in self.capabilities:
+            value = "embedding"
+        elif "reranking" in self.capabilities:
+            value = "reranker"
+        elif self.model_format == "gguf":
+            value = "local_gguf"
+        elif "external_endpoint" in self.capabilities:
+            value = "openai_compatible"
+        else:
+            value = "transformers"
+        return _ValueWrapper(value)
+
+    @property
+    def category(self) -> _ValueWrapper:
+        if "embedding" in self.capabilities:
+            return _ValueWrapper("embedding")
+        if "reranking" in self.capabilities:
+            return _ValueWrapper("reranking")
+        if self.model_format == "gguf":
+            return _ValueWrapper("local")
+        return _ValueWrapper("general")
+
+    @property
+    def modalities(self) -> list[DiscoveryModality]:
+        formats = tuple(self.metadata_files)
+        modality_type = "text"
+        if "embedding" in self.capabilities:
+            modality_type = "text"
+        elif "vlm_helper" in self.capabilities:
+            modality_type = "multimodal"
+        return [DiscoveryModality(type=_ValueWrapper(modality_type), formats=formats)]
+
+    @property
+    def metadata(self) -> DiscoveryMetadata:
+        description = " ".join(self.runtime_notes) or None
+        memory_requirement = self.estimated_vram_gb
+        return DiscoveryMetadata(
+            quantization=self.quantization,
+            memory_requirement=memory_requirement,
+            context_length=self.max_context,
+            description=description,
+            use_cases=tuple(self.capabilities),
+            supported_formats=tuple(self.compatible_runtimes),
+        )
+
+    @property
+    def tags(self) -> list[str]:
+        return list(self.capabilities)
+
+    @property
+    def specialization(self) -> list[_ValueWrapper]:
+        specializations: list[str] = []
+        if "embedding" in self.capabilities:
+            specializations.append("embedding")
+        if "reranking" in self.capabilities:
+            specializations.append("reranking")
+        if "classification" in self.capabilities:
+            specializations.append("classification")
+        return [_ValueWrapper(value) for value in specializations]
+
+    @property
+    def status_obj(self) -> _ValueWrapper:
+        return _ValueWrapper(self._status)
+
+    @property
+    def status(self) -> _ValueWrapper:
+        return _ValueWrapper(self._status)
+
+    @property
+    def size(self) -> int:
+        return int(self.size_bytes)
+
+    @property
+    def requirements(self) -> DiscoveryRequirements:
+        disk_space_gb = round(self.size_bytes / (1024 ** 3), 2) if self.size_bytes else 0.0
+        return DiscoveryRequirements(
+            recommended_vram_gb=self.estimated_vram_gb,
+            disk_space_gb=disk_space_gb,
+            supported_platforms=("linux", "windows", "macos"),
+        )
+
 
 class ModelDiscoveryService:
-    """Integrated model discovery and validation service."""
-    
-    def __init__(self, 
-                 models_root: str = "models",
-                 discovery_cache_dir: str = "models/.discovery_cache",
-                 validation_cache_dir: str = "models/.validation_cache"):
-        self.models_root = Path(models_root)
-        
-        # Initialize discovery and validation systems
-        self.discovery_engine = ModelDiscoveryEngine(
-            models_root=models_root,
-            cache_dir=discovery_cache_dir
-        )
-        self.validation_system = ModelValidationSystem(
-            cache_dir=validation_cache_dir
-        )
-        
-        # Service state
-        self._lock = threading.RLock()
-        self._discovery_progress = DiscoveryProgress(
-            status=DiscoveryStatus.IDLE,
-            total_models=0,
-            discovered_models=0,
-            validated_models=0,
-            current_operation="",
-            start_time=0.0,
-            errors=[]
-        )
-        
-        # Model registry
-        self._models: Dict[str, ModelInfo] = {}
-        self._validation_reports: Dict[str, ValidationReport] = {}
-        
-        # Background task management
-        self._discovery_task: Optional[asyncio.Task] = None
-        self._auto_refresh_enabled = False
-        self._auto_refresh_interval = 3600  # 1 hour
-        
-        logger.info("ModelDiscoveryService initialized")
-    
-    async def discover_and_validate_all_models(self, 
-                                             validation_level: ValidationLevel = ValidationLevel.STANDARD,
-                                             auto_validate: bool = True) -> DiscoveryProgress:
-        """Discover all models and optionally validate them."""
-        if self._discovery_progress.status in [DiscoveryStatus.DISCOVERING, DiscoveryStatus.VALIDATING]:
-            logger.warning("Discovery already in progress")
-            return self._discovery_progress
-        
-        logger.info(f"Starting model discovery and validation (level: {validation_level.value})")
-        
-        with self._lock:
-            self._discovery_progress = DiscoveryProgress(
-                status=DiscoveryStatus.DISCOVERING,
-                total_models=0,
-                discovered_models=0,
-                validated_models=0,
-                current_operation="Initializing discovery...",
-                start_time=time.time(),
-                errors=[]
-            )
-        
-        try:
-            # Phase 1: Discovery
-            await self._update_progress("Discovering models...")
-            discovered_models = await self.discovery_engine.discover_all_models()
-            
-            with self._lock:
-                self._models = {model.id: model for model in discovered_models}
-                self._discovery_progress.total_models = len(discovered_models)
-                self._discovery_progress.discovered_models = len(discovered_models)
-            
-            logger.info(f"Discovered {len(discovered_models)} models")
-            
-            # Phase 2: Validation (if enabled)
-            if auto_validate and discovered_models:
-                with self._lock:
-                    self._discovery_progress.status = DiscoveryStatus.VALIDATING
-                
-                await self._update_progress("Validating models...")
-                validation_reports = await self.validation_system.validate_multiple_models(
-                    discovered_models, validation_level, max_concurrent=2
-                )
-                
-                with self._lock:
-                    self._validation_reports = {report.model_id: report for report in validation_reports}
-                    self._discovery_progress.validated_models = len(validation_reports)
-                
-                # Update model statuses based on validation
-                await self._update_model_statuses_from_validation()
-                
-                logger.info(f"Validated {len(validation_reports)} models")
-            
-            # Complete
-            with self._lock:
-                self._discovery_progress.status = DiscoveryStatus.COMPLETE
-                self._discovery_progress.current_operation = "Discovery complete"
-            
-            logger.info("Model discovery and validation completed successfully")
-            
-        except Exception as e:
-            logger.error(f"Discovery and validation failed: {e}")
-            with self._lock:
-                self._discovery_progress.status = DiscoveryStatus.ERROR
-                self._discovery_progress.current_operation = f"Error: {str(e)}"
-                self._discovery_progress.errors.append(str(e))
-        
-        return self._discovery_progress
-    
-    async def _update_progress(self, operation: str):
-        """Update discovery progress."""
-        with self._lock:
-            self._discovery_progress.current_operation = operation
-            
-            # Estimate completion time
-            if self._discovery_progress.total_models > 0:
-                elapsed = time.time() - self._discovery_progress.start_time
-                progress_ratio = (self._discovery_progress.discovered_models + 
-                                self._discovery_progress.validated_models) / (self._discovery_progress.total_models * 2)
-                if progress_ratio > 0:
-                    estimated_total_time = elapsed / progress_ratio
-                    self._discovery_progress.estimated_completion = (
-                        self._discovery_progress.start_time + estimated_total_time
-                    )
-    
-    async def _update_model_statuses_from_validation(self):
-        """Update model statuses based on validation results."""
-        with self._lock:
-            for model_id, report in self._validation_reports.items():
-                if model_id in self._models:
-                    model = self._models[model_id]
-                    
-                    # Update status based on validation result
-                    if report.overall_result == ValidationResult.INVALID:
-                        model.status = ModelStatus.ERROR
-                    elif report.overall_result == ValidationResult.WARNING:
-                        model.status = ModelStatus.AVAILABLE
-                    else:
-                        model.status = ModelStatus.AVAILABLE
-    
-    async def refresh_model_discovery(self, 
-                                    validation_level: ValidationLevel = ValidationLevel.STANDARD) -> DiscoveryProgress:
-        """Refresh model discovery and validation."""
-        logger.info("Refreshing model discovery")
-        
-        # Clear existing data
-        with self._lock:
-            self._models.clear()
-            self._validation_reports.clear()
-        
-        # Refresh discovery engine
-        await self.discovery_engine.refresh_model_registry()
-        
-        # Re-discover and validate
-        return await self.discover_and_validate_all_models(validation_level)
-    
-    def get_all_models(self) -> List[ModelInfo]:
-        """Get all discovered models."""
-        with self._lock:
-            return list(self._models.values())
-    
-    def get_model_by_id(self, model_id: str) -> Optional[ModelInfo]:
-        """Get a specific model by ID."""
-        with self._lock:
-            return self._models.get(model_id)
-    
-    def get_validation_report(self, model_id: str) -> Optional[ValidationReport]:
-        """Get validation report for a model."""
-        with self._lock:
-            return self._validation_reports.get(model_id)
-    
-    def get_models_by_category(self, category: ModelCategory) -> List[ModelInfo]:
-        """Get models filtered by category."""
-        with self._lock:
-            return [model for model in self._models.values() if model.category == category]
-    
-    def get_models_by_type(self, model_type: ModelType) -> List[ModelInfo]:
-        """Get models filtered by type."""
-        with self._lock:
-            return [model for model in self._models.values() if model.type == model_type]
-    
-    def get_models_by_modality(self, modality: ModalityType) -> List[ModelInfo]:
-        """Get models that support a specific modality."""
-        with self._lock:
-            return [
-                model for model in self._models.values()
-                if any(mod.type == modality for mod in model.modalities)
-            ]
-    
-    def get_models_by_specialization(self, specialization: ModelSpecialization) -> List[ModelInfo]:
-        """Get models with a specific specialization."""
-        with self._lock:
-            return [
-                model for model in self._models.values()
-                if specialization in model.specialization
-            ]
-    
-    def search_models(self, 
-                     query: str = "",
-                     category: Optional[ModelCategory] = None,
-                     model_type: Optional[ModelType] = None,
-                     modality: Optional[ModalityType] = None,
-                     specialization: Optional[ModelSpecialization] = None,
-                     tags: Optional[List[str]] = None,
-                     max_size_gb: Optional[float] = None,
-                     validation_status: Optional[ValidationResult] = None) -> List[ModelInfo]:
-        """Search models with multiple filters."""
-        with self._lock:
-            models = list(self._models.values())
-        
-        # Apply filters
-        if query:
-            query_lower = query.lower()
-            models = [
-                model for model in models
-                if (query_lower in model.name.lower() or
-                    query_lower in model.display_name.lower() or
-                    query_lower in (model.metadata.description or "").lower() or
-                    any(query_lower in tag.lower() for tag in model.tags))
-            ]
-        
-        if category:
-            models = [model for model in models if model.category == category]
-        
-        if model_type:
-            models = [model for model in models if model.type == model_type]
-        
-        if modality:
-            models = [
-                model for model in models
-                if any(mod.type == modality for mod in model.modalities)
-            ]
-        
-        if specialization:
-            models = [
-                model for model in models
-                if specialization in model.specialization
-            ]
-        
-        if tags:
-            models = [
-                model for model in models
-                if any(tag in model.tags for tag in tags)
-            ]
-        
-        if max_size_gb:
-            max_size_bytes = max_size_gb * (1024**3)
-            models = [model for model in models if model.size <= max_size_bytes]
-        
-        if validation_status:
-            models = [
-                model for model in models
-                if (model.id in self._validation_reports and
-                    self._validation_reports[model.id].overall_result == validation_status)
-            ]
-        
-        return models
-    
-    def get_model_summaries(self) -> List[ModelSummary]:
-        """Get summary information for all models."""
-        summaries = []
-        
-        with self._lock:
-            for model in self._models.values():
-                validation_report = self._validation_reports.get(model.id)
-                
-                summary = ModelSummary(
-                    id=model.id,
-                    name=model.name,
-                    display_name=model.display_name,
-                    type=model.type.value,
-                    category=model.category.value,
-                    size_gb=model.size / (1024**3),
-                    status=model.status.value,
-                    validation_result=validation_report.overall_result.value if validation_report else None,
-                    capabilities=model.capabilities,
-                    tags=model.tags,
-                    path=model.path,
-                    last_updated=model.last_updated
-                )
-                summaries.append(summary)
-        
-        return summaries
-    
-    def get_discovery_progress(self) -> DiscoveryProgress:
-        """Get current discovery progress."""
-        with self._lock:
-            return self._discovery_progress
-    
-    def get_discovery_statistics(self) -> Dict[str, Any]:
-        """Get comprehensive discovery statistics."""
-        with self._lock:
-            models = list(self._models.values())
-            reports = list(self._validation_reports.values())
-        
-        if not models:
-            return {
-                "total_models": 0,
-                "discovery_complete": self._discovery_progress.status == DiscoveryStatus.COMPLETE
-            }
-        
-        # Model statistics
-        categories = {}
-        types = {}
-        statuses = {}
-        specializations = {}
-        
-        for model in models:
-            # Categories
-            cat = model.category.value
-            categories[cat] = categories.get(cat, 0) + 1
-            
-            # Types
-            typ = model.type.value
-            types[typ] = types.get(typ, 0) + 1
-            
-            # Statuses
-            stat = model.status.value
-            statuses[stat] = statuses.get(stat, 0) + 1
-            
-            # Specializations
-            for spec in model.specialization:
-                spec_val = spec.value
-                specializations[spec_val] = specializations.get(spec_val, 0) + 1
-        
-        # Validation statistics
-        validation_results = {}
-        validation_issues = {"error": 0, "warning": 0, "info": 0}
-        
-        for report in reports:
-            result = report.overall_result.value
-            validation_results[result] = validation_results.get(result, 0) + 1
-            
-            for issue in report.issues:
-                validation_issues[issue.severity] += 1
-        
-        # Size statistics
-        total_size = sum(model.size for model in models)
-        avg_size = total_size / len(models) if models else 0
-        
-        return {
-            "total_models": len(models),
-            "categories": categories,
-            "types": types,
-            "statuses": statuses,
-            "specializations": specializations,
-            "validation_results": validation_results,
-            "validation_issues": validation_issues,
-            "total_size_gb": total_size / (1024**3),
-            "average_size_gb": avg_size / (1024**3),
-            "discovery_status": self._discovery_progress.status.value,
-            "discovery_complete": self._discovery_progress.status == DiscoveryStatus.COMPLETE,
-            "last_discovery_time": self._discovery_progress.start_time,
-            "models_root": str(self.models_root)
-        }
-    
-    async def validate_model(self, 
-                           model_id: str, 
-                           validation_level: ValidationLevel = ValidationLevel.STANDARD,
-                           force_refresh: bool = False) -> Optional[ValidationReport]:
-        """Validate a specific model."""
-        model = self.get_model_by_id(model_id)
-        if not model:
-            logger.warning(f"Model {model_id} not found for validation")
-            return None
-        
-        logger.info(f"Validating model {model_id} at {validation_level.value} level")
-        
-        report = await self.validation_system.validate_model(
-            model, validation_level, force_refresh
-        )
-        
-        # Update cached report
-        with self._lock:
-            self._validation_reports[model_id] = report
-        
-        # Update model status
-        if report.overall_result == ValidationResult.INVALID:
-            model.status = ModelStatus.ERROR
-        elif report.overall_result == ValidationResult.WARNING:
-            model.status = ModelStatus.AVAILABLE
-        else:
-            model.status = ModelStatus.AVAILABLE
-        
-        return report
-    
-    async def get_compatible_models(self, 
-                                  hardware_constraints: Optional[Dict[str, Any]] = None,
-                                  modality_requirements: Optional[List[ModalityType]] = None,
-                                  specialization_preferences: Optional[List[ModelSpecialization]] = None) -> List[ModelInfo]:
-        """Get models compatible with given constraints and requirements."""
-        with self._lock:
-            models = list(self._models.values())
-        
-        compatible_models = []
-        
-        for model in models:
-            # Check hardware constraints
-            if hardware_constraints:
-                requirements = model.requirements
-                
-                # RAM check
-                available_ram = hardware_constraints.get("ram_gb", 0)
-                if available_ram < requirements.min_ram_gb:
-                    continue
-                
-                # GPU check
-                has_gpu = hardware_constraints.get("has_gpu", False)
-                if requirements.gpu_required and not has_gpu:
-                    continue
-                
-                # VRAM check
-                if requirements.min_vram_gb:
-                    available_vram = hardware_constraints.get("vram_gb", 0)
-                    if available_vram < requirements.min_vram_gb:
-                        continue
-                
-                # CPU cores check
-                available_cores = hardware_constraints.get("cpu_cores", 1)
-                if available_cores < requirements.cpu_cores:
-                    continue
-            
-            # Check modality requirements
-            if modality_requirements:
-                model_modalities = {mod.type for mod in model.modalities}
-                if not all(req in model_modalities for req in modality_requirements):
-                    continue
-            
-            # Check specialization preferences (at least one match)
-            if specialization_preferences:
-                if not any(pref in model.specialization for pref in specialization_preferences):
-                    continue
-            
-            compatible_models.append(model)
-        
-        return compatible_models
-    
-    async def get_recommended_models(self, 
-                                   use_case: str,
-                                   max_models: int = 5) -> List[Tuple[ModelInfo, float]]:
-        """Get recommended models for a specific use case with confidence scores."""
-        with self._lock:
-            models = list(self._models.values())
-        
-        recommendations = []
-        use_case_lower = use_case.lower()
-        
-        for model in models:
-            score = 0.0
-            
-            # Score based on use cases in metadata
-            if model.metadata.use_cases:
-                for model_use_case in model.metadata.use_cases:
-                    if use_case_lower in model_use_case.lower():
-                        score += 0.3
-            
-            # Score based on specializations
-            specialization_scores = {
-                "chat": ["chat", "conversation", "dialog"],
-                "code": ["code", "programming", "development"],
-                "reasoning": ["reasoning", "logic", "analysis"],
-                "creative": ["creative", "writing", "story"],
-                "general": ["general", "assistant", "help"]
-            }
-            
-            for spec in model.specialization:
-                spec_keywords = specialization_scores.get(spec.value, [])
-                if any(keyword in use_case_lower for keyword in spec_keywords):
-                    score += 0.2
-            
-            # Score based on tags
-            for tag in model.tags:
-                if tag.lower() in use_case_lower:
-                    score += 0.1
-            
-            # Score based on capabilities
-            for capability in model.capabilities:
-                if any(word in capability.lower() for word in use_case_lower.split()):
-                    score += 0.1
-            
-            # Bonus for validated models
-            if model.id in self._validation_reports:
-                report = self._validation_reports[model.id]
-                if report.overall_result == ValidationResult.VALID:
-                    score += 0.2
-                elif report.overall_result == ValidationResult.WARNING:
-                    score += 0.1
-            
-            # Penalty for error status
-            if model.status == ModelStatus.ERROR:
-                score *= 0.1
-            
-            if score > 0:
-                recommendations.append((model, score))
-        
-        # Sort by score and return top recommendations
-        recommendations.sort(key=lambda x: x[1], reverse=True)
-        return recommendations[:max_models]
-    
-    def enable_auto_refresh(self, interval_seconds: int = 3600):
-        """Enable automatic model discovery refresh."""
-        self._auto_refresh_enabled = True
-        self._auto_refresh_interval = interval_seconds
-        logger.info(f"Auto-refresh enabled with {interval_seconds}s interval")
-    
-    def disable_auto_refresh(self):
-        """Disable automatic model discovery refresh."""
-        self._auto_refresh_enabled = False
-        logger.info("Auto-refresh disabled")
-    
-    async def cleanup(self):
-        """Cleanup resources."""
-        logger.info("Cleaning up ModelDiscoveryService")
-        
-        # Cancel any running discovery task
-        if self._discovery_task and not self._discovery_task.done():
-            self._discovery_task.cancel()
-            try:
-                await self._discovery_task
-            except asyncio.CancelledError:
-                pass
-        
-        # Cleanup subsystems
-        self.discovery_engine.cleanup()
-        self.validation_system.cleanup()
-        
-        logger.info("ModelDiscoveryService cleanup completed")
-    
-    def __del__(self):
-        """Destructor to ensure cleanup."""
-        try:
-            if hasattr(self, 'discovery_engine'):
-                self.discovery_engine.cleanup()
-            if hasattr(self, 'validation_system'):
-                self.validation_system.cleanup()
-        except Exception:
-            pass  # Ignore cleanup errors in destructor
+    """Core-owned discovery authority for local runtime metadata."""
 
-# Global instance
-_model_discovery_service: Optional[ModelDiscoveryService] = None
-_service_lock = threading.RLock()
+    def __init__(self, discovery_config: Mapping[str, Any] | None = None) -> None:
+        self._config = dict(discovery_config or load_model_runtime_discovery_config())
+        self._models: list[ModelSummary] = []
+        self._status = DiscoveryStatus.IDLE
+        self._progress = DiscoveryProgress(status=DiscoveryStatus.IDLE)
+        self._last_updated = 0.0
+        self._lock = threading.RLock()
+
+    def _primary_root(self) -> Path:
+        model_root = self._config.get("model_root")
+        if model_root:
+            return Path(str(model_root))
+        roots = self._config.get("model_roots") or []
+        if roots:
+            return Path(str(roots[0]))
+        return Path("models")
+
+    def _scan(self) -> list[ModelSummary]:
+        records = discover_local_model_candidates(self._primary_root(), self._config)
+        summaries: list[ModelSummary] = []
+        skipped = 0
+        for record in records:
+            validation = validate_model_record(record, self._config)
+            if not validation.valid:
+                skipped += 1
+                record = dict(record)
+                record["status"] = "degraded"
+                record["security_flags"] = list(sorted(set(record.get("security_flags") or []) | set(validation.security_flags)))
+            elif validation.warnings:
+                record = dict(record)
+                record["status"] = "degraded"
+                record["security_flags"] = list(sorted(set(record.get("security_flags") or []) | set(validation.security_flags)))
+            summaries.append(ModelSummary.from_record(record))
+
+        summaries.sort(key=lambda item: (item.model_format, item.display_name.lower()))
+        self._progress = DiscoveryProgress(
+            status=DiscoveryStatus.READY if summaries else DiscoveryStatus.DEGRADED,
+            total_scanned=len(records),
+            discovered_models=len(summaries),
+            skipped_models=skipped,
+            last_path=summaries[-1].path if summaries else None,
+            message="Discovery completed" if summaries else "No local models discovered",
+        )
+        self._status = self._progress.status
+        self._last_updated = time.time()
+        self._models = summaries
+
+        try:
+            write_model_registry_cache([summary.to_dict() for summary in summaries], self._config)
+        except Exception as exc:  # pragma: no cover - cache persistence is best-effort
+            logger.debug("Model registry cache write skipped: %s", exc)
+
+        return summaries
+
+    async def discover_all_models(self, force_refresh: bool = False) -> list[ModelSummary]:
+        with self._lock:
+            if self._models and not force_refresh:
+                return list(self._models)
+            self._status = DiscoveryStatus.SCANNING
+            self._progress = DiscoveryProgress(status=DiscoveryStatus.SCANNING)
+
+        return self._scan()
+
+    def get_all_models(self, force_refresh: bool = False) -> list[ModelSummary]:
+        if self._models and not force_refresh:
+            return list(self._models)
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(self.discover_all_models(force_refresh=force_refresh))
+        return list(self._models)
+
+    def get_models(
+        self,
+        *,
+        model_format: str | None = None,
+        runtime: str | None = None,
+        capability: str | None = None,
+    ) -> list[ModelSummary]:
+        models = self.get_all_models()
+        if model_format:
+            model_format = model_format.lower()
+            models = [item for item in models if item.model_format.lower() == model_format]
+        if runtime:
+            runtime = runtime.lower()
+            models = [item for item in models if runtime in {entry.lower() for entry in item.compatible_runtimes}]
+        if capability:
+            capability = capability.lower()
+            models = [item for item in models if capability in {entry.lower() for entry in item.capabilities}]
+        return models
+
+    def get_model(self, model_id: str) -> Optional[ModelSummary]:
+        model_id = str(model_id or "").strip()
+        if not model_id:
+            return None
+        for model in self.get_all_models():
+            if model.model_id == model_id or model.name == model_id or model.display_name == model_id:
+                return model
+        return None
+
+    def search_models(
+        self,
+        query: str = "",
+        category: str | None = None,
+        model_type: str | None = None,
+        modality: str | None = None,
+        specialization: str | None = None,
+        tags: Iterable[str] | None = None,
+        max_size_gb: float | None = None,
+    ) -> list[ModelSummary]:
+        query = str(query or "").strip().lower()
+        tags = {str(tag).strip().lower() for tag in (tags or []) if str(tag).strip()}
+        models = self.get_all_models()
+
+        def matches(model: ModelSummary) -> bool:
+            haystack = " ".join(
+                [
+                    model.model_id,
+                    model.name,
+                    model.display_name,
+                    model.model_format,
+                    model.artifact_kind,
+                    " ".join(model.capabilities),
+                    " ".join(model.security_flags),
+                ]
+            ).lower()
+            if query and query not in haystack:
+                return False
+            if category and model.category.value.lower() != str(category).lower():
+                return False
+            if model_type and model.type.value.lower() != str(model_type).lower():
+                return False
+            if modality:
+                if modality.lower() not in {item.type.value.lower() for item in model.modalities}:
+                    return False
+            if specialization:
+                if specialization.lower() not in {item.value.lower() for item in model.specialization}:
+                    return False
+            if tags and not tags.issubset({tag.lower() for tag in model.tags}):
+                return False
+            if max_size_gb is not None and (model.size_bytes / (1024 ** 3)) > max_size_gb:
+                return False
+            return True
+
+        return [model for model in models if matches(model)]
+
+    async def get_recommended_models(
+        self,
+        use_case: str,
+        max_models: int = 5,
+    ) -> list[tuple[ModelSummary, float]]:
+        use_case = str(use_case or "").strip().lower()
+        scored: list[tuple[ModelSummary, float]] = []
+        for model in self.get_all_models():
+            score = 0.5
+            caps = {cap.lower() for cap in model.capabilities}
+            if use_case in caps:
+                score += 0.3
+            if use_case and use_case in " ".join(model.runtime_notes).lower():
+                score += 0.1
+            if model.preferred_runtime == "builtin_vllm":
+                score += 0.1
+            scored.append((model, min(score, 1.0)))
+        scored.sort(key=lambda item: item[1], reverse=True)
+        return scored[:max_models]
+
+    async def refresh_model_discovery(self) -> DiscoveryProgress:
+        with self._lock:
+            self._status = DiscoveryStatus.SCANNING
+            self._progress = DiscoveryProgress(status=DiscoveryStatus.SCANNING)
+            self._models = []
+        self._scan()
+        return self._progress
+
+    def get_discovery_progress(self) -> DiscoveryProgress:
+        return self._progress
+
+    def get_discovery_statistics(self) -> dict[str, Any]:
+        models = self.get_all_models()
+        by_format = Counter(model.model_format for model in models)
+        by_runtime: dict[str, int] = defaultdict(int)
+        by_capability: dict[str, int] = defaultdict(int)
+        for model in models:
+            for runtime in model.compatible_runtimes:
+                by_runtime[runtime] += 1
+            for capability in model.capabilities:
+                by_capability[capability] += 1
+        return {
+            "status": self._status.value,
+            "discovery_status": self._status.value,
+            "total_models": len(models),
+            "formats": dict(by_format),
+            "runtimes": dict(by_runtime),
+            "capabilities": dict(by_capability),
+            "categories": dict(Counter(model.category.value for model in models)),
+            "types": dict(Counter(model.type.value for model in models)),
+            "specializations": dict(Counter(spec.value for model in models for spec in model.specialization)),
+            "last_discovery_time": self._last_updated,
+            "progress": asdict(self._progress),
+        }
+
+
+_MODEL_DISCOVERY_SERVICE: ModelDiscoveryService | None = None
+
 
 def get_model_discovery_service() -> ModelDiscoveryService:
-    """Get the global model discovery service instance."""
-    global _model_discovery_service
-    if _model_discovery_service is None:
-        with _service_lock:
-            if _model_discovery_service is None:
-                _model_discovery_service = ModelDiscoveryService()
-    return _model_discovery_service
+    global _MODEL_DISCOVERY_SERVICE
+    if _MODEL_DISCOVERY_SERVICE is None:
+        _MODEL_DISCOVERY_SERVICE = ModelDiscoveryService()
+    return _MODEL_DISCOVERY_SERVICE
 
-def initialize_model_discovery_service(models_directory: Optional[Path] = None) -> ModelDiscoveryService:
-    """Initialize the global model discovery service with custom directory."""
-    global _model_discovery_service
-    with _service_lock:
-        _model_discovery_service = ModelDiscoveryService(
-            models_root=str(models_directory) if models_directory else "models"
-        )
-    return _model_discovery_service
+
+def initialize_model_discovery_service(
+    discovery_config: Mapping[str, Any] | None = None,
+) -> ModelDiscoveryService:
+    global _MODEL_DISCOVERY_SERVICE
+    _MODEL_DISCOVERY_SERVICE = ModelDiscoveryService(discovery_config)
+    return _MODEL_DISCOVERY_SERVICE

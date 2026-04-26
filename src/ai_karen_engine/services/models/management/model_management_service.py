@@ -18,9 +18,9 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any, Set
 from pathlib import Path
 
-from ..discovery.model_discovery_engine import (
-    ModelDiscoveryEngine,
-    get_model_discovery_engine,
+from ai_karen_engine.core.model_runtime.model_discovery_service import (
+    ModelDiscoveryService,
+    get_model_discovery_service,
 )
 from ..routing.intelligent_model_router import (
     ModelRouter,
@@ -57,7 +57,7 @@ class IntegratedModelManager:
         self.logger = logging.getLogger("kari.integrated_model_manager")
         
         # Core services
-        self.discovery_engine = get_model_discovery_engine()
+        self.discovery_engine = get_model_discovery_service()
         self.model_router = get_model_router()
         self.profile_manager = get_profile_manager()
         self.connection_manager = get_connection_manager(self.model_router)

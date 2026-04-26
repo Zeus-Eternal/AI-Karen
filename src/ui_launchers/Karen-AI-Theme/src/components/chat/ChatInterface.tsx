@@ -15,6 +15,8 @@ import {
   normalizeProviderName,
 } from '@/lib/chat-response';
 import { formatModelSwitchError } from '@/lib/model-switch-errors';
+import { getRuntimeDisplayName } from '@/lib/chat-response';
+import { normalizeModelSettingsResponse, type RuntimeSettingsResponse } from '@/lib/model-runtime-inventory';
 import { toast } from "@/hooks/use-toast";
 // Constants and utilities
 import { getStreamingStatus } from './const/getStreamingStatus';
@@ -89,11 +91,7 @@ interface ProviderDetails {
   }>;
 }
 
-interface ModelSettingsResponse {
-  selected_provider: string;
-  selected_model: string;
-  providers: ProviderDetails[];
-}
+type ModelSettingsResponse = RuntimeSettingsResponse;
 
 // Session Context
 const SessionContext = createContext<SessionContextType | undefined>(undefined);
@@ -202,9 +200,26 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
     setError(null);
     
     try {
-      // Load session metadata and history
-      // We use the same endpoint for both since ConversationResponse includes all metadata
-      const conversationResponse = await apiClient.post<ConversationResponse>(`/api/conversations/ensure-session/${sessionId}`);
+      // Load session metadata and history.
+      // We use the same endpoint for both since ConversationResponse includes all metadata.
+      let conversationResponse: ConversationResponse | null = null;
+      const maxAttempts = 2;
+      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        try {
+          conversationResponse = await apiClient.post<ConversationResponse>(`/api/conversations/ensure-session/${sessionId}`);
+          break;
+        } catch (attemptErr) {
+          const isRateLimited = attemptErr instanceof ApiError && attemptErr.status === 429;
+          if (!isRateLimited || attempt === maxAttempts) {
+            throw attemptErr;
+          }
+          await new Promise((resolve) => window.setTimeout(resolve, getRateLimitDelayMs(attemptErr, 1200)));
+        }
+      }
+
+      if (!conversationResponse) {
+        throw new Error('Unable to load session.');
+      }
       
       const session: Session = {
         id: sessionId,
@@ -231,11 +246,15 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
       })));
       
     } catch (err) {
-      console.error('Failed to load session:', err);
+      if (!(err instanceof ApiError && err.status === 429)) {
+        console.error('Failed to load session:', err);
+      }
 
       // If session not found (404), explicit recovery
       if (err instanceof ApiError && err.status === 404) {
         console.warn('Session was not found on server, starting fresh.');
+      } else if (err instanceof ApiError && err.status === 429) {
+        console.warn('Session load was rate-limited, starting fresh session.');
       }
       
       setError('Failed to load session. Starting fresh chat.');
@@ -729,29 +748,7 @@ export default function ChatInterface() {
   const [speechRecognitionSupported, setSpeechRecognitionSupported] = useState(true);
   const [shouldSubmitVoiceInput, setShouldSubmitVoiceInput] = useState(false);
   const [isSuggestingStarter, setIsSuggestingStarter] = useState(false);
-  const [modelSettings, setModelSettings] = useState<{
-    selected_provider: string;
-    selected_model: string;
-    providers: Array<{
-      id: string;
-      display_name: string;
-      description?: string;
-      provider_type?: string;
-      selectable?: boolean;
-      requires_api_key?: boolean;
-      api_key_configured?: boolean;
-      base_url?: string | null;
-      default_base_url?: string | null;
-      default_model?: string | null;
-      selected_model?: string | null;
-      supports_base_url_override?: boolean;
-      models: Array<{
-        id: string;
-        name: string;
-        source?: string;
-      }>;
-    }>;
-  } | null>(null);
+  const [modelSettings, setModelSettings] = useState<RuntimeSettingsResponse | null>(null);
   const [selectedProvider, setSelectedProvider] = useState('');
   const [selectedModel, setSelectedModel] = useState('');
   const [isUpdatingModelSelection, setIsUpdatingModelSelection] = useState(false);
@@ -776,49 +773,13 @@ export default function ChatInterface() {
     fallbackPath?: string;
   }>({ active: false });
 
-  const normalizeProviderModels = useCallback((response: ModelSettingsResponse) => {
-    const allowedProviders = response.providers
-      .filter((provider) => provider.selectable !== false)
-      .map((provider) => {
-        const configuredModels = (provider.models || []).filter(
-          (model) => model.source !== 'discovered'
-        );
-        const fallbackModelId =
-          provider.selected_model ||
-          provider.default_model ||
-          (response.selected_provider === provider.id ? response.selected_model : null) ||
-          '';
-        return {
-          ...provider,
-          models:
-            configuredModels.length > 0
-              ? configuredModels
-              : fallbackModelId
-                ? [{ id: fallbackModelId, name: fallbackModelId, source: 'saved' }]
-                : [],
-        };
-      });
-
-    const resolvedProvider =
-      allowedProviders.find((provider) => provider.id === response.selected_provider)?.id ||
-      allowedProviders[0]?.id ||
-      '';
-    const resolvedModel =
-      allowedProviders.find((provider) => provider.id === resolvedProvider)?.selected_model ||
-      allowedProviders.find((provider) => provider.id === resolvedProvider)?.models[0]?.id ||
-      response.selected_model ||
-      '';
-
-    return { allowedProviders, resolvedProvider, resolvedModel };
-  }, []);
-
   const loadModelSettings = useCallback(async () => {
     try {
       const response = await apiClient.get<ModelSettingsResponse>('/api/settings/model');
+      const normalized = normalizeModelSettingsResponse(response);
       setModelSettings(response);
-      const { resolvedProvider, resolvedModel } = normalizeProviderModels(response);
-      setSelectedProvider(resolvedProvider);
-      setSelectedModel(resolvedModel);
+      setSelectedProvider(normalized.selected_provider);
+      setSelectedModel(normalized.selected_model);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         return;
@@ -829,7 +790,7 @@ export default function ChatInterface() {
         variant: 'destructive',
       });
     }
-  }, [normalizeProviderModels, toast]);
+  }, [toast]);
 
   useEffect(() => {
     if (isAuthLoading) {
@@ -1762,30 +1723,8 @@ export default function ChatInterface() {
 
   // Selectable providers
   const selectableProviders = useMemo(() => {
-    const providers = modelSettings?.providers ?? [];
-    return providers
-      .filter((provider) => provider.selectable !== false)
-      .map((provider) => {
-        const configuredModels = (provider.models || []).filter((model) => model.source !== 'discovered');
-        const fallbackModelId =
-          provider.selected_model ||
-          provider.default_model ||
-          (modelSettings?.selected_provider === provider.id
-            ? modelSettings?.selected_model
-            : null) ||
-          '';
-        return {
-          ...provider,
-          models: configuredModels.length > 0
-            ? configuredModels
-            : (
-                fallbackModelId
-                  ? [{ id: fallbackModelId, name: fallbackModelId, source: 'saved' }]
-                  : []
-              ),
-        };
-       });
-    }, [modelSettings]);
+    return modelSettings ? normalizeModelSettingsResponse(modelSettings).selectableProviders : [];
+  }, [modelSettings]);
 
   // Apply model selection
   const applyModelSelection = useCallback(async (providerId: string, modelId: string) => {
@@ -1827,26 +1766,24 @@ export default function ChatInterface() {
         model: modelId,
       });
 
-      setModelSettings(response as ModelSettingsResponse);
-      const { resolvedProvider, resolvedModel } = normalizeProviderModels(
-        response as ModelSettingsResponse
-      );
-      setSelectedProvider(resolvedProvider);
-      setSelectedModel(resolvedModel);
+      const normalized = normalizeModelSettingsResponse(response as RuntimeSettingsResponse);
+      setModelSettings(response as RuntimeSettingsResponse);
+      setSelectedProvider(normalized.selected_provider);
+      setSelectedModel(normalized.selected_model);
       toast({
         title: 'Settings applied',
-        description: `Karen is now using ${modelId} via ${provider.display_name}.`,
+        description: `Karen is now using ${modelId} via ${getRuntimeDisplayName(provider.id, provider.display_name)}.`,
       });
     } catch (err) {
       toast({
         title: 'Model switch failed',
-        description: formatModelSwitchError(err, provider.display_name),
+        description: formatModelSwitchError(err, getRuntimeDisplayName(provider.id, provider.display_name)),
         variant: 'destructive',
       });
     } finally {
       setIsUpdatingModelSelection(false);
     }
-  }, [modelSettings, normalizeProviderModels, setModelSettings, setSelectedProvider, setSelectedModel, setIsUpdatingModelSelection, toast]);
+  }, [modelSettings, setModelSettings, setSelectedProvider, setSelectedModel, setIsUpdatingModelSelection, toast]);
   
   return (
     <div className="flex flex-col flex-1">

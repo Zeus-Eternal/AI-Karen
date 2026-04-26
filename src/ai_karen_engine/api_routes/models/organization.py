@@ -30,14 +30,6 @@ from ai_karen_engine.services.models.recommendation.model_recommendation_engine 
     RecommendationStrategy,
     FilterCriteria,
 )
-from ai_karen_engine.services.models.discovery.model_discovery_engine import (
-    ModelInfo,
-    ModelType,
-    ModalityType,
-    ModelCategory,
-    ModelSpecialization,
-    ModelStatus,
-)
 from ai_karen_engine.utils.dependency_checks import import_fastapi, import_pydantic
 
 APIRouter, Depends, HTTPException, Query = import_fastapi(
@@ -48,6 +40,34 @@ BaseModel, Field = import_pydantic("BaseModel", "Field")
 logger = logging.getLogger("kari.model_organization_routes")
 
 router = APIRouter(prefix="/api/models", tags=["model-organization"])
+
+
+def _value(item: Any) -> Any:
+    return getattr(item, "value", item)
+
+
+def _model_modality_types(model: Any) -> List[str]:
+    return [str(_value(mod.type)) for mod in getattr(model, "modalities", [])]
+
+
+def _model_specializations(model: Any) -> List[str]:
+    return [str(_value(spec)) for spec in getattr(model, "specialization", [])]
+
+
+def _model_category(model: Any) -> str:
+    return str(_value(getattr(model, "category", "general")))
+
+
+def _model_provider(model: Any) -> str:
+    return str(_value(getattr(model, "type", "unknown")))
+
+
+def _model_status(model: Any) -> str:
+    return str(_value(getattr(model, "status", "available")))
+
+
+def _model_metadata(model: Any) -> Any:
+    return getattr(model, "metadata", None)
 
 
 # Request/Response Models
@@ -177,51 +197,49 @@ async def get_all_discovered_models(
         # Convert models to response format
         model_responses = []
         for model in models:
-            # Convert modalities to dict format
-            modalities = []
-            for modality in model.modalities:
-                modalities.append(
-                    {
-                        "type": modality.type.value,
-                        "input_supported": modality.input_supported,
-                        "output_supported": modality.output_supported,
-                        "formats": modality.formats,
-                        "max_size": modality.max_size,
-                    }
-                )
+            modalities = [
+                {
+                    "type": str(_value(modality.type)),
+                    "input_supported": modality.input_supported,
+                    "output_supported": modality.output_supported,
+                    "formats": list(modality.formats),
+                    "max_size": modality.max_size,
+                }
+                for modality in getattr(model, "modalities", [])
+            ]
 
-            # Build metadata dict
+            metadata_obj = _model_metadata(model)
             metadata = {
-                "parameters": model.metadata.parameters,
-                "quantization": model.metadata.quantization,
-                "memory_requirement": model.metadata.memory_requirement,
-                "context_length": model.metadata.context_length,
-                "license": model.metadata.license,
-                "version": model.metadata.version,
-                "author": model.metadata.author,
-                "description": model.metadata.description,
-                "use_cases": model.metadata.use_cases,
-                "language_support": model.metadata.language_support,
-                "specialized_domains": model.metadata.specialized_domains,
-                "supported_formats": model.metadata.supported_formats,
+                "parameters": getattr(metadata_obj, "parameters", None),
+                "quantization": getattr(metadata_obj, "quantization", None),
+                "memory_requirement": getattr(metadata_obj, "memory_requirement", None),
+                "context_length": getattr(metadata_obj, "context_length", None),
+                "license": getattr(metadata_obj, "license", None),
+                "version": getattr(metadata_obj, "version", None),
+                "author": getattr(metadata_obj, "author", None),
+                "description": getattr(metadata_obj, "description", None),
+                "use_cases": list(getattr(metadata_obj, "use_cases", ()) or ()),
+                "language_support": list(getattr(metadata_obj, "language_support", ()) or ()),
+                "specialized_domains": list(getattr(metadata_obj, "specialized_domains", ()) or ()),
+                "supported_formats": list(getattr(metadata_obj, "supported_formats", ()) or ()),
             }
 
             model_response = ModelInfoResponse(
                 id=model.id,
                 name=model.name,
                 display_name=model.display_name,
-                provider=model.type.value,
-                type=model.type.value,
-                category=model.category.value,
-                size=model.size,
-                description=model.metadata.description or "",
-                capabilities=model.capabilities,
+                provider=_model_provider(model),
+                type=_model_provider(model),
+                category=_model_category(model),
+                size=int(getattr(model, "size_bytes", 0)),
+                description=getattr(metadata_obj, "description", "") or "",
+                capabilities=list(getattr(model, "capabilities", [])),
                 modalities=modalities,
-                status=model.status.value,
+                status=_model_status(model),
                 metadata=metadata,
                 local_path=model.path,
-                tags=model.tags,
-                specialization=[spec.value for spec in model.specialization],
+                tags=list(getattr(model, "tags", [])),
+                specialization=_model_specializations(model),
                 performance_metrics=None,  # Will be populated by performance monitoring
             )
             model_responses.append(model_response)
@@ -235,25 +253,23 @@ async def get_all_discovered_models(
 
         for model in models:
             # Categories
-            cat = model.category.value
+            cat = _model_category(model)
             categories[cat] = categories.get(cat, 0) + 1
 
             # Providers
-            prov = model.type.value
+            prov = _model_provider(model)
             providers[prov] = providers.get(prov, 0) + 1
 
             # Modalities
-            for mod in model.modalities:
-                mod_type = mod.type.value
+            for mod_type in _model_modality_types(model):
                 modalities_count[mod_type] = modalities_count.get(mod_type, 0) + 1
 
             # Specializations
-            for spec in model.specialization:
-                spec_val = spec.value
+            for spec_val in _model_specializations(model):
                 specializations[spec_val] = specializations.get(spec_val, 0) + 1
 
             # Status
-            status = model.status.value
+            status = _model_status(model)
             status_counts[status] = status_counts.get(status, 0) + 1
 
         return ModelDiscoveryResponse(
@@ -290,45 +306,13 @@ async def filter_discovered_models(
         logger.info(f"Filtering models with criteria: {filter_request}")
 
         # Convert filter request to discovery service parameters
-        modality = None
-        if filter_request.modality:
-            try:
-                modality = ModalityType(filter_request.modality.lower())
-            except ValueError:
-                pass
-
-        specialization = None
-        if filter_request.specialization:
-            try:
-                specialization = ModelSpecialization(
-                    filter_request.specialization.lower()
-                )
-            except ValueError:
-                pass
-
-        category = None
-        if filter_request.category:
-            try:
-                category = ModelCategory(filter_request.category.lower())
-            except ValueError:
-                pass
-
-        model_type = None
-        if filter_request.provider:
-            try:
-                model_type = ModelType(
-                    filter_request.provider.lower().replace("-", "_")
-                )
-            except ValueError:
-                pass
-
         # Search models using discovery service
         filtered_models = discovery_service.search_models(
             query=filter_request.search_query or "",
-            category=category,
-            model_type=model_type,
-            modality=modality,
-            specialization=specialization,
+            category=filter_request.category,
+            model_type=filter_request.provider,
+            modality=filter_request.modality,
+            specialization=filter_request.specialization,
             tags=filter_request.tags,
             max_size_gb=filter_request.max_size / (1024**3)
             if filter_request.max_size
@@ -340,7 +324,7 @@ async def filter_discovered_models(
             filtered_models = [
                 model
                 for model in filtered_models
-                if model.status.value == filter_request.status
+                if _model_status(model) == filter_request.status
             ]
 
         if filter_request.capability:
@@ -357,55 +341,54 @@ async def filter_discovered_models(
             filtered_models = [
                 model
                 for model in filtered_models
-                if model.status == ModelStatus.AVAILABLE
+                if _model_status(model) == "available"
             ]
 
         # Convert to response format (similar to get_all_discovered_models)
         model_responses = []
         for model in filtered_models:
-            modalities = []
-            for modality in model.modalities:
-                modalities.append(
-                    {
-                        "type": modality.type.value,
-                        "input_supported": modality.input_supported,
-                        "output_supported": modality.output_supported,
-                        "formats": modality.formats,
-                        "max_size": modality.max_size,
-                    }
-                )
-
+            modalities = [
+                {
+                    "type": str(_value(modality.type)),
+                    "input_supported": modality.input_supported,
+                    "output_supported": modality.output_supported,
+                    "formats": list(modality.formats),
+                    "max_size": modality.max_size,
+                }
+                for modality in getattr(model, "modalities", [])
+            ]
+            metadata_obj = _model_metadata(model)
             metadata = {
-                "parameters": model.metadata.parameters,
-                "quantization": model.metadata.quantization,
-                "memory_requirement": model.metadata.memory_requirement,
-                "context_length": model.metadata.context_length,
-                "license": model.metadata.license,
-                "version": model.metadata.version,
-                "author": model.metadata.author,
-                "description": model.metadata.description,
-                "use_cases": model.metadata.use_cases,
-                "language_support": model.metadata.language_support,
-                "specialized_domains": model.metadata.specialized_domains,
-                "supported_formats": model.metadata.supported_formats,
+                "parameters": getattr(metadata_obj, "parameters", None),
+                "quantization": getattr(metadata_obj, "quantization", None),
+                "memory_requirement": getattr(metadata_obj, "memory_requirement", None),
+                "context_length": getattr(metadata_obj, "context_length", None),
+                "license": getattr(metadata_obj, "license", None),
+                "version": getattr(metadata_obj, "version", None),
+                "author": getattr(metadata_obj, "author", None),
+                "description": getattr(metadata_obj, "description", None),
+                "use_cases": list(getattr(metadata_obj, "use_cases", ()) or ()),
+                "language_support": list(getattr(metadata_obj, "language_support", ()) or ()),
+                "specialized_domains": list(getattr(metadata_obj, "specialized_domains", ()) or ()),
+                "supported_formats": list(getattr(metadata_obj, "supported_formats", ()) or ()),
             }
 
             model_response = ModelInfoResponse(
                 id=model.id,
                 name=model.name,
                 display_name=model.display_name,
-                provider=model.type.value,
-                type=model.type.value,
-                category=model.category.value,
-                size=model.size,
-                description=model.metadata.description or "",
-                capabilities=model.capabilities,
+                provider=_model_provider(model),
+                type=_model_provider(model),
+                category=_model_category(model),
+                size=int(getattr(model, "size_bytes", 0)),
+                description=getattr(metadata_obj, "description", "") or "",
+                capabilities=list(getattr(model, "capabilities", [])),
                 modalities=modalities,
-                status=model.status.value,
+                status=_model_status(model),
                 metadata=metadata,
                 local_path=model.path,
-                tags=model.tags,
-                specialization=[spec.value for spec in model.specialization],
+                tags=list(getattr(model, "tags", [])),
+                specialization=_model_specializations(model),
             )
             model_responses.append(model_response)
 
@@ -417,21 +400,19 @@ async def filter_discovered_models(
         status_counts = {}
 
         for model in filtered_models:
-            cat = model.category.value
+            cat = _model_category(model)
             categories[cat] = categories.get(cat, 0) + 1
 
-            prov = model.type.value
+            prov = _model_provider(model)
             providers[prov] = providers.get(prov, 0) + 1
 
-            for mod in model.modalities:
-                mod_type = mod.type.value
+            for mod_type in _model_modality_types(model):
                 modalities_count[mod_type] = modalities_count.get(mod_type, 0) + 1
 
-            for spec in model.specialization:
-                spec_val = spec.value
+            for spec_val in _model_specializations(model):
                 specializations[spec_val] = specializations.get(spec_val, 0) + 1
 
-            status = model.status.value
+            status = _model_status(model)
             status_counts[status] = status_counts.get(status, 0) + 1
 
         return ModelDiscoveryResponse(

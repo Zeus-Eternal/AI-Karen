@@ -8,7 +8,7 @@
   "author": "Kari Team",
   "license": "MIT",
   "entrypoint": "handler:MainExtension",
-  "category": "plugins",
+  "category": "productivity",
   "tags": ["time", "date", "clock", "stopwatch", "alarm", "timezone", "prompt-first"],
   "capabilities": {
     "provides_ui": true,

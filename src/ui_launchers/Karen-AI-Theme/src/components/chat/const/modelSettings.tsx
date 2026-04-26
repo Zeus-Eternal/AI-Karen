@@ -42,11 +42,16 @@ export function useModelSettings() {
         const allowedProviders = response.providers
           .filter((item) => item.selectable !== false)
           .map((item) => {
-            const configuredModels = (item.models || []).filter((model: { id: string; name: string; source?: string }) => model.source !== 'discovered');
+            const seen = new Set<string>();
+            const normalizedModels = (item.models || []).filter((model: { id: string; name: string; source?: string }) => {
+              if (!model.id || seen.has(model.id)) return false;
+              seen.add(model.id);
+              return true;
+            });
             return {
               ...item,
-              models: configuredModels.length > 0
-                ? configuredModels
+              models: normalizedModels.length > 0
+                ? normalizedModels
                 : (
                     item.selected_model || item.default_model
                       ? [{ id: item.selected_model || item.default_model || '', name: item.selected_model || item.default_model || '', source: 'saved' }]
@@ -85,7 +90,12 @@ export function useModelSettings() {
       return providers
         .filter((provider) => provider.selectable !== false)
         .map((provider) => {
-          const configuredModels = (provider.models || []).filter((model) => model.source !== 'discovered');
+          const seen = new Set<string>();
+          const normalizedModels = (provider.models || []).filter((model) => {
+            if (!model.id || seen.has(model.id)) return false;
+            seen.add(model.id);
+            return true;
+          });
           const fallbackModelId =
             provider.selected_model ||
             provider.default_model ||
@@ -95,8 +105,8 @@ export function useModelSettings() {
             '';
           return {
             ...provider,
-            models: configuredModels.length > 0
-              ? configuredModels
+            models: normalizedModels.length > 0
+              ? normalizedModels
               : (
                   fallbackModelId
                     ? [{ id: fallbackModelId, name: fallbackModelId, source: 'saved' }]

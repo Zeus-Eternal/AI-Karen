@@ -45,6 +45,40 @@ _cron_db: Dict[str, Dict[str, Any]] = {}
 _cron_executor_task: Optional[asyncio.Task] = None
 
 
+def get_cron_summary() -> Dict[str, Any]:
+    """Get a summary of cron jobs for statistics."""
+    jobs = list(_cron_db.values())
+    enabled_jobs = [j for j in jobs if j.get("enabled")]
+    
+    next_job = None
+    next_job_time = None
+    
+    if enabled_jobs:
+        # Find the one that runs soonest
+        # nextRun is a string like "2026-04-24 09:00 UTC"
+        sorted_jobs = []
+        for j in enabled_jobs:
+            nr = _get_next_run(j["schedule"])
+            if nr and nr != "Unknown" and "Invalid" not in nr:
+                try:
+                    dt = datetime.strptime(nr, "%Y-%m-%d %H:%M UTC")
+                    sorted_jobs.append((j, dt))
+                except:
+                    pass
+        
+        if sorted_jobs:
+            sorted_jobs.sort(key=lambda x: x[1])
+            next_job = sorted_jobs[0][0]["taskName"]
+            next_job_time = sorted_jobs[0][1].strftime("%Y-%m-%d %H:%M UTC")
+
+    return {
+        "total_cron_jobs": len(jobs),
+        "enabled_cron_jobs": len(enabled_jobs),
+        "next_job": next_job,
+        "next_job_time": next_job_time
+    }
+
+
 def _get_next_run(schedule: str) -> str:
     if not CRONITER_AVAILABLE:
         return "Unknown (croniter unavailable)"

@@ -1,8 +1,12 @@
 import { useState, useCallback, useEffect } from 'react';
 import { TimeQueryApi } from '../services/timeQueryApi';
-import { AlarmItem } from '../types';
+import type { AlarmItem, AlarmCreateParams } from '../types';
+import { PluginExtensionError } from '@/lib/extensions/hooks/usePluginExtension';
 
-export const useAlarms = (api: TimeQueryApi) => {
+const isRateLimitError = (error: unknown) =>
+  error instanceof PluginExtensionError && error.status === 429;
+
+export function useAlarms(api: TimeQueryApi) {
   const [alarms, setAlarms] = useState<AlarmItem[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -14,30 +18,32 @@ export const useAlarms = (api: TimeQueryApi) => {
         setAlarms(res.alarms);
       }
     } catch (e) {
-      console.error(e);
+      if (!isRateLimitError(e)) {
+        console.error(e);
+      }
     } finally {
       setLoading(false);
     }
   }, [api]);
 
-  const createAlarm = async (data: any) => {
+  const createAlarm = useCallback(async (data: AlarmCreateParams) => {
     await api.createAlarm(data);
     await fetchAlarms();
-  };
+  }, [api, fetchAlarms]);
 
-  const deleteAlarm = async (id: string) => {
+  const deleteAlarm = useCallback(async (id: string) => {
     await api.deleteAlarm(id);
     await fetchAlarms();
-  };
+  }, [api, fetchAlarms]);
 
-  const toggleAlarm = async (id: string, enabled: boolean) => {
+  const toggleAlarm = useCallback(async (id: string, enabled: boolean) => {
     await api.setAlarmStatus(id, enabled);
     await fetchAlarms();
-  };
+  }, [api, fetchAlarms]);
 
   useEffect(() => {
     fetchAlarms();
   }, [fetchAlarms]);
 
   return { alarms, loading, fetchAlarms, createAlarm, deleteAlarm, toggleAlarm };
-};
+}

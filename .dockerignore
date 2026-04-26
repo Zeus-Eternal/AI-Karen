@@ -1,5 +1,14 @@
 # Ignore development and temporary files
 .git
+.gemini
+.goose
+.kilo
+.kiro
+.next
+.pytest_cache
+.ruff_cache
+.venv
+.virEnv
 .gitignore
 .env*
 *.log
@@ -12,14 +21,28 @@ htmlcov/
 
 # Ignore node modules and build artifacts
 node_modules/
+.*/node_modules/
 .next/
 build/
 dist/
 
 # Ignore model files (too large for container)
 models/
+model_cache/
 *.gguf
 *.bin
+
+# Ignore generated runtime/data directories that should not be baked into the image
+cache/
+data/
+logs/
+backups/
+runtime_refactor_reports/
+*.db
+*.sqlite
+*.sqlite3
+server.log
+*.log
 
 # Ignore archives and backups
 archives/

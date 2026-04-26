@@ -72,10 +72,10 @@ class DirectoryAnalyzer:
         # Individual plugins that need to be moved
         self.plugin_categories = {
             "examples": ["hello_world", "sandbox_fail"],
-            "core": ["time_query", "weather_query", "tui_fallback"],
+            "productivity": ["time_query", "weather_query", "tui_fallback"],
             "automation": ["autonomous_task_handler", "git_merge_safe"],
             "ai": ["hf_llm", "fine_tune_lnm", "llm_services"],
-            "integrations": ["desktop_agent", "k8s_scale", "llm_manager"],
+            "integration": ["desktop_agent", "k8s_scale", "llm_manager"],
         }
         
         # Import path mappings

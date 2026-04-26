@@ -62,7 +62,19 @@ class CanonicalStructureValidator:
     """Validates that plugins follow the canonical structure."""
 
     # Valid categories according to authority model
-    VALID_CATEGORIES = {"plugins", "sys_extensions", "channels"}
+    VALID_CATEGORIES = {
+        "plugins",
+        "sys_extensions",
+        "channels",
+        "analytics",
+        "automation",
+        "communication",
+        "development",
+        "experimental",
+        "integration",
+        "productivity",
+        "security",
+    }
 
     # Required canonical paths
     CANONICAL_PATHS = {
@@ -359,7 +371,7 @@ class CanonicalStructureValidator:
                 "id": plugin_name,
                 "name": plugin_name,
                 "version": "1.0.0",
-                "category": "plugins",
+                "category": "integration",
                 "display_name": plugin_name.replace("-", " ").title(),
                 "description": f"Auto-generated manifest for {plugin_name}",
                 "extension_type": "tool_plugin",

@@ -1,6 +1,6 @@
 {
-  "provider": "builtin_vllm",
-  "model": "auto",
+  "provider": "ollama",
+  "model": "starcoder:128k",
   "use_memory": true,
   "context_length": 512,
   "decay": 0.1,
@@ -36,14 +36,14 @@
       "backup_registry": true
     }
   },
-  "last_selected_model": "Phi-3-mini-4k-instruct-q4.gguf",
+  "last_selected_model": "starcoder:128k",
   "model_providers": {
     "zai": {
       "last_model": "glm-4.7",
       "base_url": "https://api.z.ai/api/coding/paas/v4"
     },
     "builtin_vllm": {
-      "last_model": "auto",
+      "last_model": "/app/models/transformers/microsoft--DialoGPT-medium",
       "base_url": "http://localhost:8080/v1"
     },
     "openai": {

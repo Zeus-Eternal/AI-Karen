@@ -111,11 +111,11 @@ class KIREKROIntegration:
                 # Initialize Model Discovery
                 if self.config.enable_model_discovery:
                     try:
-                        from ai_karen_engine.services.models.discovery.model_discovery_engine import (
-                            ModelDiscoveryEngine,
+                        from ai_karen_engine.core.model_runtime.model_discovery_service import (
+                            get_model_discovery_service,
                         )
 
-                        self.model_discovery = ModelDiscoveryEngine()
+                        self.model_discovery = get_model_discovery_service()
                         await self.model_discovery.discover_all_models()
                         stats = self.model_discovery.get_discovery_statistics()
                         logger.info(

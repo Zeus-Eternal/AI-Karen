@@ -107,7 +107,70 @@ export const normalizeProviderName = (provider?: string | null): string => {
   ) {
     return 'local_gguf';
   }
+  if (
+    value === 'ollama' ||
+    value === 'llamacpp' ||
+    value === 'llama_cpp' ||
+    value === 'llama-cpp' ||
+    value === 'llama.cpp'
+  ) {
+    return 'local_gguf';
+  }
+  if (value === 'builtin-vllm' || value === 'vllm') {
+    return 'builtin_vllm';
+  }
+  if (value === 'builtin-transformers' || value === 'transformers') {
+    return 'builtin_transformers';
+  }
+  if (value === 'openai-compatible' || value === 'openai_compatible') {
+    return 'openai_compatible';
+  }
   return value;
+};
+
+export const isBuiltInRuntimeProvider = (provider?: string | null): boolean => {
+  const normalized = normalizeProviderName(provider);
+  return normalized === 'builtin_vllm' || normalized === 'builtin_transformers';
+};
+
+export const isLocalRuntimeProvider = (provider?: string | null): boolean => {
+  const normalized = normalizeProviderName(provider);
+  return normalized === 'local_gguf' || normalized === 'ollama';
+};
+
+export const isOpenAiCompatibleProvider = (provider?: string | null): boolean => {
+  return normalizeProviderName(provider) === 'openai_compatible';
+};
+
+export const getRuntimeDisplayName = (
+  provider?: string | null,
+  displayName?: string | null,
+): string => {
+  const normalized = normalizeProviderName(provider);
+  const explicit = String(displayName || '').trim();
+  if (normalized === 'builtin_vllm') return 'vLLM';
+  if (normalized === 'builtin_transformers') return 'Transformers';
+  if (normalized === 'openai_compatible') return explicit || 'OpenAI-Compatible Endpoint';
+  if (normalized === 'local_gguf') return explicit || 'Local Runtime';
+  if (normalized === 'fallback') return 'Local Emergency Fallback';
+  return explicit || String(provider || '').trim();
+};
+
+export const getRuntimeGroupLabel = (provider?: string | null): string => {
+  const normalized = normalizeProviderName(provider);
+  if (normalized === 'builtin_vllm' || normalized === 'builtin_transformers') {
+    return 'Built-in Runtime';
+  }
+  if (normalized === 'openai_compatible' || normalized === 'openai') {
+    return 'External Endpoint';
+  }
+  if (normalized === 'local_gguf' || normalized === 'ollama') {
+    return 'Local Runtime';
+  }
+  if (normalized === 'fallback') {
+    return 'Fallback';
+  }
+  return 'Custom';
 };
 
 export const normalizeModelName = (model?: string | null): string => {
@@ -150,22 +213,7 @@ const KAREN_FALLBACK_MODEL_IDS = new Set([
 const getFriendlyProviderLabel = (
   provider?: string | null,
 ): string => {
-  const rawProvider = String(provider || '').trim();
-  const normalizedProvider = normalizeProviderName(rawProvider);
-
-  if (!normalizedProvider) {
-    return '';
-  }
-
-  if (normalizedProvider === 'fallback') {
-    return 'Local Emergency Fallback';
-  }
-
-  if (normalizedProvider === 'local_gguf') {
-    return 'Local GGUF';
-  }
-
-  return rawProvider;
+  return getRuntimeDisplayName(provider, provider);
 };
 
 const getFriendlyModelLabel = (
@@ -251,7 +299,7 @@ export const deriveDegradedPresentation = (
     normalizedActualProvider === 'fallback' &&
     actualModelId.toLowerCase().startsWith('local_gguf:');
   const actualProviderLabel = isLocalGgufBackedFallback
-    ? 'Local GGUF'
+    ? 'Local Runtime'
     : getFriendlyProviderLabel(actualProvider);
   const fallbackTargetLabel = getFallbackTargetLabel(actualProviderLabel, actualModel);
   const preferredFailureReason = String(llm?.preferred_failure_reason || '').trim();
@@ -259,7 +307,7 @@ export const deriveDegradedPresentation = (
   const failureReasonLower = failureReason.toLowerCase();
   const normalizedRequestedModel = normalizeModelName(requestedModel);
   const normalizedActualModel = normalizeModelName(llm?.model_id || llm?.model_name || actualModel);
-  const ollamaHostRuntimeUnavailable =
+  const localHostRuntimeUnavailable =
     normalizedRequestedProvider === 'ollama' && (
       failureReasonLower.includes('host.docker.internal') ||
       failureReasonLower.includes('172.17.0.1') ||
@@ -281,10 +329,10 @@ export const deriveDegradedPresentation = (
           : '';
   const degradedBannerText = isSafetyBlocked
     ? 'Provider policy blocked this response.'
-    : ollamaHostRuntimeUnavailable
-      ? `Ollama host runtime is unavailable from the API container, so Karen switched to ${fallbackTargetLabel}.`
+    : localHostRuntimeUnavailable
+      ? `Local runtime is unavailable from the API container, so Karen switched to ${fallbackTargetLabel}.`
     : requestedProvider && isLocalGgufBackedFallback && normalizedRequestedProvider === 'local_gguf'
-      ? `${requestedProvider} primary path failed, recovered via local GGUF fallback path${actualModel ? ` (${actualModel})` : ''}.`
+      ? `${requestedProvider} primary path failed, recovered via local runtime fallback path${actualModel ? ` (${actualModel})` : ''}.`
     : requestedProvider && actualProvider && providerOrModelChanged
       ? `${requestedProvider} failed, switched to ${fallbackTargetLabel}.`
       : requestedProvider && failureReasonLower.includes('rate limit')

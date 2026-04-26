@@ -578,7 +578,7 @@ class UIInstallerService:
             with open(package_info.manifest_path, "r") as f:
                 manifest = json.load(f)
 
-            category = manifest.get("category", "plugins")
+            category = manifest.get("category", "integration")
             manifest_results = self.manifest_enforcer.validate_plugin_manifests(
                 category, plugin_id
             )

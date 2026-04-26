@@ -1,15 +1,22 @@
 services:
   # CUDA-enabled local GGUF service for GPU acceleration
   local-gguf-cuda:
-    image: m1dnyt3/llama-cpp:server-cuda-12.9
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROFILE: runtime-cuda
     container_name: ai-karen-local-gguf
     environment:
       - CUDA_VISIBLE_DEVICES=0
       - HUGGING_FACE_HUB_TOKEN=${HUGGING_FACE_HUB_TOKEN}
+      - KARI_MODEL_PATH=/app/models/local-gguf/Phi-3-mini-4k-instruct-q4.gguf
+      - KARI_MODEL_NAME=Phi-3-mini-4k-instruct-q4.gguf
     volumes:
       - ./models:/app/models
       - ./logs/local-gguf:/app/logs
       - ./config/local-gguf:/app/config
+      - ./src:/app/src
     ports:
       - "8081:8080"  # Separate port for CUDA version
     deploy:
@@ -26,15 +33,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    command: >
-      --host 0.0.0.0
-      --port 8080
-      --model ./models/local-gguf/Phi-3-mini-4k-instruct-q4.gguf
-      --n-gpu-layers -1
-      --n-ctx 4096
-      --n-batch 512
-      --n-threads 8
-      --verbose
+    command: ["python", "-m", "ai_karen_engine.inference.local_gguf_server"]
 
   # Main AI-Karen application (CPU fallback)
   ai-karen:

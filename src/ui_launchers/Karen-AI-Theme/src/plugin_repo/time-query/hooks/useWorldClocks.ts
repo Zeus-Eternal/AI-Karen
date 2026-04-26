@@ -1,11 +1,16 @@
 import { useState, useCallback, useEffect } from 'react';
 import { TimeQueryApi } from '../services/timeQueryApi';
 import { ClockItem, TimePayload } from '../types';
+import { PluginExtensionError } from '@/lib/extensions/hooks/usePluginExtension';
 
-export const useWorldClocks = (api: TimeQueryApi) => {
+function isRateLimitError(error: unknown): boolean {
+  return error instanceof PluginExtensionError && error.status === 429;
+}
+
+export function useWorldClocks(api: TimeQueryApi) {
   const [multiClocksData, setMultiClocksData] = useState<ClockItem[]>([]);
   const [worldTimeData, setWorldTimeData] = useState<TimePayload | null>(null);
-  
+
   const fetchClocks = useCallback(async () => {
     try {
       const res = await api.listMultiClocks();
@@ -13,11 +18,13 @@ export const useWorldClocks = (api: TimeQueryApi) => {
         setMultiClocksData(res.clocks);
       }
     } catch (e) {
-      console.error(e);
+      if (!isRateLimitError(e)) {
+        console.error(e);
+      }
     }
   }, [api]);
 
-  const searchWorldTime = async (query: string) => {
+  const searchWorldTime = useCallback(async (query: string): Promise<TimePayload | null> => {
     try {
       const res = await api.getWorldTime(query);
       if (res && res.status === 'success') {
@@ -26,34 +33,34 @@ export const useWorldClocks = (api: TimeQueryApi) => {
       }
       return null;
     } catch (e) {
-      console.error(e);
+      if (!isRateLimitError(e)) {
+        console.error(e);
+      }
       return null;
     }
-  };
+  }, [api]);
 
-  const addClock = async (timezone: string) => {
+  const addClock = useCallback(async (timezone: string) => {
     await api.addMultiClock(timezone);
     await fetchClocks();
-  };
+  }, [api, fetchClocks]);
 
-  const removeClock = async (timezone: string) => {
-    // Assuming timezone acts as clock_id here due to simplicity of legacy, though ideally it should be ID.
-    // Let's pass timezone. Let backend remove it.
+  const removeClock = useCallback(async (timezone: string) => {
     await api.removeMultiClock(timezone);
     await fetchClocks();
-  };
+  }, [api, fetchClocks]);
 
   useEffect(() => {
     fetchClocks();
   }, [fetchClocks]);
 
-  return { 
-    multiClocksData, 
-    savedClocks: multiClocksData, // Alias for backward compatibility
-    worldTimeData, 
-    searchWorldTime, 
-    addClock, 
-    removeClock, 
-    refreshClocks: fetchClocks 
+  return {
+    multiClocksData,
+    savedClocks: multiClocksData,
+    worldTimeData,
+    searchWorldTime,
+    addClock,
+    removeClock,
+    refreshClocks: fetchClocks
   };
-};
+}

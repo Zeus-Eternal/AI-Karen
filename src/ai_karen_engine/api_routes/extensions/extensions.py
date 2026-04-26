@@ -64,7 +64,7 @@ class ExtensionStatusAPI(BaseModel):
     menu_contributions: List[Dict[str, Any]] = Field(default_factory=list)
     tags: List[str] = Field(default_factory=list)
     purpose: str | None = Field(default=None)
-    category: str = Field(default="plugins")
+    category: str = Field(default="integration")
     has_component: bool = Field(default=False)
 
 
@@ -156,7 +156,7 @@ async def install_extension(request: InstallRequest):
             install_ui,
         )
 
-        result = install_ui(request.plugin_id, "plugins")
+        result = install_ui(request.plugin_id, "integration")
         return {
             "success": result.status.value == "success",
             "message": result.message,

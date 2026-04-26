@@ -36,18 +36,23 @@ def load_permissions_config() -> Dict[str, Any]:
     return {}
 
 
-def load_local_model_runtime_config() -> Dict[str, Any]:
-    """Load optional local model runtime configuration."""
-    config_path = Path("config_assets/model_runtime/config.json")
+def load_model_runtime_discovery_config() -> Dict[str, Any]:
+    """Load model runtime discovery configuration."""
+    config_path = Path("config_assets/model_runtime_discovery.json")
     if config_path.exists():
         try:
             with open(config_path, "r", encoding="utf-8") as f:
                 return json.load(f)
         except Exception as e:
             logger.warning(
-                f"Failed to load local model runtime config from {config_path}: {e}"
+                f"Failed to load model runtime discovery config from {config_path}: {e}"
             )
     return {}
+
+
+def load_local_model_runtime_config() -> Dict[str, Any]:
+    """Backward-compatible alias for the discovery config loader."""
+    return load_model_runtime_discovery_config()
 
 
 def load_extension_configs() -> List[Dict[str, Any]]:

@@ -36,7 +36,9 @@ from ai_karen_engine.config.llm_provider_config import (
     ProviderType,
     get_provider_config_manager,
 )
-from ai_karen_engine.config.model_registry import list_local_gguf_models
+from ai_karen_engine.core.model_runtime.model_discovery_service import (
+    get_model_discovery_service,
+)
 from ai_karen_engine.integrations.llm_registry import get_registry
 from ai_karen_engine.services.formatting.settings_manager import get_settings_manager
 from ai_karen_engine.models.secret_manager import get_secret_manager
@@ -127,6 +129,11 @@ class ProviderModelPayload(BaseModel):
     supports_functions: bool = False
     supports_vision: bool = False
     source: str = "configured"
+    compatible_runtimes: List[str] = Field(default_factory=list)
+    preferred_runtime: Optional[str] = None
+    compatibility_confidence: Optional[str] = None
+    model_format: Optional[str] = None
+    artifact_kind: Optional[str] = None
 
 
 class ProviderPayload(BaseModel):
@@ -495,6 +502,11 @@ def _model_to_payload(
         supports_functions=model.supports_functions,
         supports_vision=model.supports_vision,
         source=source,
+        compatible_runtimes=[],
+        preferred_runtime=None,
+        compatibility_confidence=None,
+        model_format=None,
+        artifact_kind=None,
     )
 
 
@@ -507,6 +519,8 @@ def _infer_family(model_id: str) -> str:
 
 def _normalize_provider_id(provider_id: Optional[str]) -> str:
     value = str(provider_id or "").strip().lower()
+    if value in {"builtin-vllm", "vllm"}:
+        return "builtin_vllm"
     if value in {"localgguf", "local_gguf"}:
         return "local_gguf"
     return value
@@ -539,6 +553,11 @@ def _make_model_payload(
     supports_functions: bool = False,
     supports_vision: bool = False,
     source: str = "discovered",
+    compatible_runtimes: Optional[List[str]] = None,
+    preferred_runtime: Optional[str] = None,
+    compatibility_confidence: Optional[str] = None,
+    model_format: Optional[str] = None,
+    artifact_kind: Optional[str] = None,
 ) -> ProviderModelPayload:
     return ProviderModelPayload(
         id=model_id,
@@ -551,6 +570,11 @@ def _make_model_payload(
         supports_functions=supports_functions,
         supports_vision=supports_vision,
         source=source,
+        compatible_runtimes=list(compatible_runtimes or []),
+        preferred_runtime=preferred_runtime,
+        compatibility_confidence=compatibility_confidence,
+        model_format=model_format,
+        artifact_kind=artifact_kind,
     )
 
 
@@ -728,10 +752,10 @@ def _discover_local_gguf_models(base_url: Optional[str]) -> List[ProviderModelPa
     models: List[ProviderModelPayload] = []
     seen: set[str] = set()
 
-    for model_name in list_local_gguf_models():
-        if model_name.startswith("<") and model_name.endswith(">"):
-            continue
-        if model_name in seen:
+    discovery_service = get_model_discovery_service()
+    for model in discovery_service.get_models(model_format="gguf"):
+        model_name = model.display_name or model.name or model.model_id
+        if not model_name or model_name in seen:
             continue
         seen.add(model_name)
         models.append(
@@ -739,7 +763,7 @@ def _discover_local_gguf_models(base_url: Optional[str]) -> List[ProviderModelPa
                 model_name,
                 name=model_name,
                 family=_infer_family(model_name),
-                capabilities=["local", "gguf"],
+                capabilities=sorted(set(model.capabilities) | {"local", "gguf"}),
             )
         )
 
@@ -760,6 +784,55 @@ def _discover_local_gguf_models(base_url: Optional[str]) -> List[ProviderModelPa
         except Exception as exc:  # pragma: no cover - local service optional
             logger.debug("Local GGUF server discovery skipped: %s", exc)
 
+    return models
+
+
+def _discover_local_vllm_models() -> List[ProviderModelPayload]:
+    discovery_service = get_model_discovery_service()
+    models: List[ProviderModelPayload] = []
+    seen: set[str] = set()
+
+    for model in discovery_service.get_models(runtime="vllm"):
+        model_id = model.model_id or model.display_name or model.name
+        if not model_id or model_id in seen:
+            continue
+        if str(model.model_type or "").lower() != "text_generation":
+            continue
+        if "vllm" not in {runtime.lower() for runtime in model.compatible_runtimes}:
+            continue
+        seen.add(model_id)
+        compatible_runtimes = list(model.compatible_runtimes or [])
+        if "vllm" not in {runtime.lower() for runtime in compatible_runtimes}:
+            compatible_runtimes.append("vllm")
+        models.append(
+            _make_model_payload(
+                model_id,
+                name=model.display_name or model.name or model_id,
+                family=_infer_family(model_id),
+                context_length=model.max_context,
+                capabilities=sorted(set(model.capabilities) | {"local", "vllm"}),
+                supports_streaming=True,
+                supports_functions="tool_use" in set(model.capabilities),
+                supports_vision="vision" in set(model.capabilities)
+                or "vlm_helper" in set(model.capabilities),
+                source="discovered",
+                compatible_runtimes=compatible_runtimes,
+                preferred_runtime=model.preferred_runtime,
+                compatibility_confidence=model.compatibility_confidence,
+                model_format=model.model_format,
+                artifact_kind=model.artifact_kind,
+            )
+        )
+
+    models.sort(
+        key=lambda item: (
+            0 if (item.preferred_runtime or "").lower() == "vllm" else 1,
+            0 if "vllm" in {runtime.lower() for runtime in item.compatible_runtimes} else 1,
+            item.model_format or "",
+            item.artifact_kind or "",
+            item.name.lower(),
+        )
+    )
     return models
 
 
@@ -784,6 +857,10 @@ def _configured_models(provider: ProviderConfig) -> List[ProviderModelPayload]:
 def _load_provider_models(
     provider: ProviderConfig, override: Dict[str, Any]
 ) -> List[ProviderModelPayload]:
+    if provider.name == "builtin_vllm":
+        discovered = _discover_local_vllm_models()
+        return discovered or _configured_models(provider)
+
     if provider.name == "ollama":
         return _discover_ollama_models(_resolve_provider_base_url(provider, override))
 
@@ -829,7 +906,10 @@ def _build_provider_payload(
 
     # Keep settings reads lightweight and deterministic.
     # Explicit model discovery happens via /providers/{provider_id}/models.
-    models = _configured_models(provider)
+    if provider.name == "builtin_vllm":
+        models = _discover_local_vllm_models() or _configured_models(provider)
+    else:
+        models = _configured_models(provider)
 
     if provider_selected_model and all(
         model.id != provider_selected_model for model in models
@@ -902,7 +982,7 @@ def _build_response() -> ModelSettingsResponse:
     settings = get_settings_manager()
     provider_manager = get_provider_config_manager()
     selected_provider = _normalize_provider_id(
-        settings.get_setting("provider", "ollama") or "ollama"
+        settings.get_setting("provider", "builtin_vllm") or "builtin_vllm"
     )
     selected_model = str(settings.get_setting("model", "") or "")
 
@@ -922,7 +1002,7 @@ def _build_response() -> ModelSettingsResponse:
     valid_provider_ids = {provider.id for provider in providers}
     if providers and selected_provider not in valid_provider_ids:
         selected_provider = next(
-            (provider.id for provider in providers if provider.id == "ollama"),
+            (provider.id for provider in providers if provider.id == "builtin_vllm"),
             providers[0].id,
         )
 

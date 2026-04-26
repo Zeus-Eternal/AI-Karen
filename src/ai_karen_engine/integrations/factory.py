@@ -181,9 +181,11 @@ class IntegrationServiceFactory:
             return None
 
         try:
-            from ai_karen_engine.integrations.model_discovery import ModelDiscoveryEngine
+            from ai_karen_engine.core.model_runtime.model_discovery_service import (
+                get_model_discovery_service,
+            )
 
-            discovery = ModelDiscoveryEngine()
+            discovery = get_model_discovery_service()
             self._services["model_discovery"] = discovery
             logger.info("Model discovery service created successfully")
             return discovery

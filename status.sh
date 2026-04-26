@@ -31,7 +31,7 @@ else
 fi
 
 # Check if CUDA services are running
-if docker ps | grep -q "ai-karen-llamacpp"; then
+if docker ps | grep -q "ai-karen-local-gguf"; then
     echo "🔥 CUDA Service: RUNNING"
 else
     echo "🧊 CUDA Service: NOT RUNNING (Expected in CPU mode)"
@@ -39,10 +39,10 @@ fi
 
 echo ""
 echo "📊 Quick Stats:"
-echo "   Model: Phi-3-mini-4k-instruct-q4.gguf"
-echo "   Config: $(jq -r '.n_gpu_layers' config/llamacpp/config.json) GPU layers"
-echo "   Threads: $(jq -r '.n_threads' config/llamacpp/config.json) CPU threads"
-echo "   Context: $(jq -r '.n_ctx' config/llamacpp/config.json) tokens"
+echo "   Model: local-gguf"
+echo "   Config: $(jq -r '.n_gpu_layers' config_assets/local-gguf/config.json) GPU layers"
+echo "   Threads: $(jq -r '.n_threads' config_assets/local-gguf/config.json) CPU threads"
+echo "   Context: $(jq -r '.n_ctx' config_assets/local-gguf/config.json) tokens"
 
 echo ""
 echo "🔧 Management Commands:"

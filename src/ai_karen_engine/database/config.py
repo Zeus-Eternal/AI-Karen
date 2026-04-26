@@ -13,6 +13,8 @@ from typing import Optional, Dict, Any, List
 from urllib.parse import urlparse, parse_qs
 import re
 
+from ai_karen_engine.config import Settings
+
 logger = logging.getLogger(__name__)
 
 

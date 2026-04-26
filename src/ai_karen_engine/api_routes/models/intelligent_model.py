@@ -9,6 +9,7 @@ Requirements implemented: 7.3, 7.4, 7.5, 8.4
 
 import asyncio
 import logging
+from enum import Enum
 from typing import Any, Dict, List, Optional
 from pathlib import Path
 
@@ -24,7 +25,6 @@ from ai_karen_engine.services.models.recommendation.model_recommendation_engine 
 from ai_karen_engine.services.orchestration.reasoning_preservation_layer import (
     get_reasoning_preservation_layer, ReasoningComponent
 )
-from ai_karen_engine.services.models.discovery.model_discovery_engine import ModalityType
 from ai_karen_engine.utils.dependency_checks import import_fastapi, import_pydantic
 
 APIRouter, Depends, HTTPException = import_fastapi(
@@ -35,6 +35,14 @@ BaseModel, Field = import_pydantic("BaseModel", "Field")
 logger = logging.getLogger("kari.intelligent_model_routes")
 
 router = APIRouter(tags=["intelligent-models"])
+
+
+class ModalityType(str, Enum):
+    TEXT = "text"
+    IMAGE = "image"
+    AUDIO = "audio"
+    VIDEO = "video"
+    MULTIMODAL = "multimodal"
 
 # Request/Response Models
 class ModelConnectionRequest(BaseModel):

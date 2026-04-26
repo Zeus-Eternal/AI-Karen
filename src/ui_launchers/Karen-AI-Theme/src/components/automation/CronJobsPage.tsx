@@ -170,10 +170,10 @@ export default function CronJobsPage() {
       </div>
       
       <Alert>
-        <AlertTriangle className="h-4 w-4" />
+        <Clock className="h-4 w-4" />
         <AlertTitle>Scheduler Connected</AlertTitle>
         <AlertDescription>
-          Jobs created below are saved to backend memory and evaluated in real-time. Use the toggles to enable or disable live workflows. Note: mock data may be shown if none are configured.
+          Jobs created below are saved to backend memory and evaluated in real-time. Use the toggles to enable or disable live workflows.
         </AlertDescription>
       </Alert>
 
@@ -182,7 +182,7 @@ export default function CronJobsPage() {
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Authentication Required</AlertTitle>
           <AlertDescription>
-            Sign in to manage cron jobs. The page will continue to show mock data until a session is restored.
+            Sign in to manage cron jobs. Your session must be active to sync with the backend scheduler.
           </AlertDescription>
         </Alert>
       )}

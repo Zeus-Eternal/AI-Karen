@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "model_roots": [
+    "models",
+    "models/transformers",
+    "models/local-gguf",
+    "models/onnx"
+  ],
+  "format_signatures": {
+    "gguf": [".gguf"],
+    "onnx": [".onnx"],
+    "transformers": ["config.json", "tokenizer.json", "tokenizer_config.json", "generation_config.json"],
+    "adapter": ["adapter_config.json"],
+    "sentence_transformer": ["modules.json", "1_Pooling/config.json"]
+  },
+  "metadata_files": [
+    "config.json",
+    "generation_config.json",
+    "tokenizer.json",
+    "tokenizer_config.json",
+    "adapter_config.json",
+    "modules.json",
+    "1_Pooling/config.json",
+    "preprocessor_config.json",
+    "processor_config.json"
+  ],
+  "runtime_rules": {
+    "transformers": {
+      "compatible_runtimes": ["builtin_vllm", "builtin_transformers"],
+      "preferred_runtime": "builtin_vllm",
+      "fallback_runtime": "builtin_transformers"
+    },
+    "gguf": {
+      "compatible_runtimes": ["openai_compatible"],
+      "preferred_runtime": "openai_compatible",
+      "external_only": true
+    },
+    "onnx": {
+      "compatible_runtimes": ["builtin_transformers"],
+      "preferred_runtime": "builtin_transformers"
+    }
+  },
+  "security_policy": {
+    "deny_unknown_formats": false,
+    "external_endpoint_only_formats": ["gguf"],
+    "require_tokenizer_for_transformers": true,
+    "require_weights_for_transformers": true
+  },
+  "cache": {
+    "enabled": true,
+    "path": "models/.runtime_registry/local_models.generated.json",
+    "schema_version": 1
+  }
+}

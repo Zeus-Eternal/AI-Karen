@@ -1,11 +1,16 @@
 import { useState, useCallback, useEffect } from 'react';
 import { TimeQueryApi } from '../services/timeQueryApi';
 import { ClockItem, TimePayload } from '../types';
+import { PluginExtensionError } from '@/lib/extensions/hooks/usePluginExtension';
+
+function isRateLimitError(error: unknown): boolean {
+  return error instanceof PluginExtensionError && error.status === 429;
+}
 
 export const useWorldClocks = (api: TimeQueryApi) => {
   const [multiClocksData, setMultiClocksData] = useState<ClockItem[]>([]);
   const [worldTimeData, setWorldTimeData] = useState<TimePayload | null>(null);
-  
+
   const fetchClocks = useCallback(async () => {
     try {
       const res = await api.listMultiClocks();
@@ -13,7 +18,9 @@ export const useWorldClocks = (api: TimeQueryApi) => {
         setMultiClocksData(res.clocks);
       }
     } catch (e) {
-      console.error(e);
+      if (!isRateLimitError(e)) {
+        console.error(e);
+      }
     }
   }, [api]);
 
@@ -26,7 +33,9 @@ export const useWorldClocks = (api: TimeQueryApi) => {
       }
       return null;
     } catch (e) {
-      console.error(e);
+      if (!isRateLimitError(e)) {
+        console.error(e);
+      }
       return null;
     }
   };

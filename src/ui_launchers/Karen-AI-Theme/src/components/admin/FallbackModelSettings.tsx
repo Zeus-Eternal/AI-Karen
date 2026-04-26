@@ -1,44 +1,21 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/api";
 import { Bot, Cpu, RefreshCw, Save, Loader2, AlertTriangle, CheckCircle2, Globe, Clock } from "lucide-react";
+import { getRuntimeDisplayName, isLocalRuntimeProvider } from "@/lib/chat-response";
+import { normalizeModelSettingsResponse, type RuntimeSettingsResponse } from "@/lib/model-runtime-inventory";
 
-type ProviderInfo = {
-  id: string;
-  display_name: string;
-  base_url?: string | null;
-  default_base_url?: string | null;
-  runtime_source?: "host" | "container" | null;
-  runtime_options?: Array<{
-    source: "host" | "container";
-    label: string;
-    base_url: string;
-    available: boolean;
-    status: string;
-    message: string;
-    setup_command?: string | null;
-  }>;
-  models: Array<{
-    id: string;
-    name: string;
-  }>;
-};
-
-type ModelSettingsResponse = {
-  selected_provider: string;
-  selected_model: string;
-  providers: ProviderInfo[];
-};
+type ModelSettingsResponse = RuntimeSettingsResponse;
 
 export default function FallbackModelSettings() {
   const { toast } = useToast();
@@ -56,11 +33,12 @@ export default function FallbackModelSettings() {
     setIsLoading(true);
     try {
       const response = await apiClient.get<ModelSettingsResponse>("/api/settings/model");
+      const normalized = normalizeModelSettingsResponse(response);
       setSettings(response);
-      setSelectedProvider(response.selected_provider || response.providers[0]?.id || "");
-      setSelectedModel(response.selected_model || "");
-      const provider = response.providers.find(p => p.id === response.selected_provider);
-      if (provider?.id === "ollama") {
+      setSelectedProvider(normalized.selected_provider || normalized.providers[0]?.id || "");
+      setSelectedModel(normalized.selected_model || "");
+      const provider = normalized.providers.find(p => p.id === normalized.selected_provider);
+      if (isLocalRuntimeProvider(provider?.id)) {
         setRuntimeSource(provider.runtime_source === "container" ? "container" : "host");
       }
       setBaseUrl((provider?.base_url || provider?.default_base_url || "").replace(/\/api$/, ""));
@@ -79,14 +57,27 @@ export default function FallbackModelSettings() {
     void loadSettings();
   }, [loadSettings]);
 
-  const currentProvider = settings?.providers.find(p => p.id === selectedProvider);
+  const normalizedSettings = settings ? normalizeModelSettingsResponse(settings) : null;
+  const groupedProviders = useMemo(() => {
+    if (!normalizedSettings) {
+      return null;
+    }
+    return {
+      builtInProviders: normalizedSettings.builtInProviders,
+      localProviders: normalizedSettings.localProviders,
+      thirdPartyProviders: normalizedSettings.thirdPartyProviders,
+      customProviders: normalizedSettings.customProviders,
+      systemFallbackProvider: normalizedSettings.systemFallbackProvider,
+    };
+  }, [normalizedSettings]);
+  const currentProvider = normalizedSettings?.providers.find(p => p.id === selectedProvider);
   const availableModels = currentProvider?.models ?? [];
-  const selectedRuntimeOption = currentProvider?.id === "ollama"
+  const selectedRuntimeOption = isLocalRuntimeProvider(currentProvider?.id)
     ? currentProvider.runtime_options?.find((option) => option.source === runtimeSource)
     : null;
 
   useEffect(() => {
-    if (currentProvider?.id !== "ollama") return;
+    if (!isLocalRuntimeProvider(currentProvider?.id)) return;
     const option = currentProvider.runtime_options?.find((item) => item.source === runtimeSource);
     if (option) {
       setBaseUrl((option.base_url || "").replace(/\/api$/, ""));
@@ -101,14 +92,15 @@ export default function FallbackModelSettings() {
         provider: selectedProvider,
         model: selectedModel,
         base_url: baseUrl || undefined,
-        runtime_source: currentProvider?.id === "ollama" ? runtimeSource : undefined,
+        runtime_source: isLocalRuntimeProvider(currentProvider?.id) ? runtimeSource : undefined,
       });
+      const normalized = normalizeModelSettingsResponse(response);
       setSettings(response);
-      setSelectedProvider(response.selected_provider);
-      setSelectedModel(response.selected_model);
+      setSelectedProvider(normalized.selected_provider);
+      setSelectedModel(normalized.selected_model);
       toast({
         title: "Model settings saved",
-        description: `Active model set to ${response.selected_model} via ${response.selected_provider}.`,
+        description: `Active model set to ${normalized.selected_model} via ${normalized.selected_provider}.`,
       });
     } catch {
       toast({
@@ -145,10 +137,10 @@ export default function FallbackModelSettings() {
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground uppercase tracking-wider">Provider</Label>
+              <Label className="text-xs text-muted-foreground uppercase tracking-wider">Runtime</Label>
               <div className="flex items-center gap-2">
                 <Badge variant="secondary" className="text-sm px-3 py-1">
-                  {settings?.selected_provider || "Not set"}
+                  {getRuntimeDisplayName(settings?.selected_provider || "", settings?.selected_provider || "Not set")}
                 </Badge>
               </div>
             </div>
@@ -161,19 +153,29 @@ export default function FallbackModelSettings() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground uppercase tracking-wider">Available Providers</Label>
+              <Label className="text-xs text-muted-foreground uppercase tracking-wider">Available Runtimes</Label>
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-sm px-3 py-1">
-                  {settings?.providers.length || 0} configured
+                  {normalizedSettings?.providers.length || 0} configured
                 </Badge>
               </div>
             </div>
-            {currentProvider?.id === "ollama" && selectedRuntimeOption && (
+            {isLocalRuntimeProvider(currentProvider?.id) && selectedRuntimeOption && (
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wider">Runtime Source</Label>
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary" className="text-sm px-3 py-1">
                     {selectedRuntimeOption.label}
+                  </Badge>
+                </div>
+              </div>
+            )}
+            {groupedProviders?.systemFallbackProvider && (
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider">Automatic Fallback</Label>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-sm px-3 py-1">
+                    {groupedProviders.systemFallbackProvider.runtime_display_name}
                   </Badge>
                 </div>
               </div>
@@ -197,12 +199,12 @@ export default function FallbackModelSettings() {
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="admin-provider" className="flex items-center gap-1.5">
-                <Bot className="h-3.5 w-3.5" /> Provider
+                <Bot className="h-3.5 w-3.5" /> Runtime
               </Label>
               <Select value={selectedProvider} onValueChange={(value) => {
                 setSelectedProvider(value);
-                const provider = settings?.providers.find(p => p.id === value);
-                if (provider?.id === "ollama") {
+                const provider = normalizedSettings?.providers.find(p => p.id === value);
+                if (isLocalRuntimeProvider(provider?.id)) {
                   setRuntimeSource(provider.runtime_source === "container" ? "container" : "host");
                 }
                 setSelectedModel(provider?.models[0]?.id || "");
@@ -212,11 +214,46 @@ export default function FallbackModelSettings() {
                   <SelectValue placeholder="Select provider" />
                 </SelectTrigger>
                 <SelectContent>
-                  {settings?.providers.map((provider) => (
-                    <SelectItem key={provider.id} value={provider.id}>
-                      {provider.display_name}
-                    </SelectItem>
-                  ))}
+                  {groupedProviders?.builtInProviders.length ? (
+                    <SelectGroup>
+                      <SelectLabel>Built-in Runtime</SelectLabel>
+                      {groupedProviders.builtInProviders.map((provider) => (
+                        <SelectItem key={provider.id} value={provider.id}>
+                          {getRuntimeDisplayName(provider.id, provider.display_name)}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  ) : null}
+                  {groupedProviders?.localProviders.length ? (
+                    <SelectGroup>
+                      <SelectLabel>Local Providers</SelectLabel>
+                      {groupedProviders.localProviders.map((provider) => (
+                        <SelectItem key={provider.id} value={provider.id}>
+                          {getRuntimeDisplayName(provider.id, provider.display_name)}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  ) : null}
+                  {groupedProviders?.thirdPartyProviders.length ? (
+                    <SelectGroup>
+                      <SelectLabel>Third-Party Providers</SelectLabel>
+                      {groupedProviders.thirdPartyProviders.map((provider) => (
+                        <SelectItem key={provider.id} value={provider.id}>
+                          {getRuntimeDisplayName(provider.id, provider.display_name)}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  ) : null}
+                  {groupedProviders?.customProviders.length ? (
+                    <SelectGroup>
+                      <SelectLabel>Custom Integrations</SelectLabel>
+                      {groupedProviders.customProviders.map((provider) => (
+                        <SelectItem key={provider.id} value={provider.id}>
+                          {getRuntimeDisplayName(provider.id, provider.display_name)}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  ) : null}
                 </SelectContent>
               </Select>
             </div>
@@ -240,10 +277,10 @@ export default function FallbackModelSettings() {
             </div>
           </div>
 
-          {currentProvider?.id === "ollama" && (
+          {isLocalRuntimeProvider(currentProvider?.id) && (
             <div className="space-y-3">
               <Label className="flex items-center gap-1.5">
-                <Globe className="h-3.5 w-3.5" /> Ollama Runtime Source
+                <Globe className="h-3.5 w-3.5" /> Runtime Source
               </Label>
               <Select value={runtimeSource} onValueChange={(value: "host" | "container") => setRuntimeSource(value)}>
                 <SelectTrigger>
@@ -285,11 +322,11 @@ export default function FallbackModelSettings() {
               onChange={(e) => setBaseUrl(e.target.value)}
               placeholder="http://host.docker.internal:11434"
               className="font-mono text-sm"
-              readOnly={currentProvider?.id === "ollama"}
+              readOnly={isLocalRuntimeProvider(currentProvider?.id)}
             />
             <p className="text-xs text-muted-foreground">
-              {currentProvider?.id === "ollama"
-                ? "For Ollama, the runtime source determines the API endpoint."
+              {isLocalRuntimeProvider(currentProvider?.id)
+                ? "For local runtimes, the runtime source determines the API endpoint."
                 : "Override the provider&apos;s default API endpoint."}
             </p>
           </div>
@@ -345,12 +382,102 @@ export default function FallbackModelSettings() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {settings?.providers.map((provider) => (
-              <div key={provider.id} className="p-4 rounded-xl border border-border/50 bg-muted/20 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-semibold text-sm">{provider.display_name}</h4>
-                    {provider.id === settings.selected_provider && (
+          {groupedProviders?.builtInProviders.length ? (
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Built-in Runtime</h4>
+              {groupedProviders.builtInProviders.map((provider) => (
+                <div key={provider.id} className="p-4 rounded-xl border border-border/50 bg-muted/20 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-semibold text-sm">{getRuntimeDisplayName(provider.id, provider.display_name)}</h4>
+                      {provider.id === normalizedSettings?.selected_provider && (
+                        <Badge className="text-[10px] bg-emerald-500/10 text-emerald-500 border-emerald-500/20">Active</Badge>
+                      )}
+                    </div>
+                    <code className="text-[10px] text-muted-foreground font-mono">{provider.id}</code>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {provider.models.map((model) => (
+                      <Badge
+                        key={model.id}
+                        variant={model.id === normalizedSettings?.selected_model && provider.id === normalizedSettings?.selected_provider ? "default" : "outline"}
+                        className="text-[10px] cursor-default"
+                      >
+                        {model.name}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {groupedProviders?.localProviders.length ? (
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Local Providers</h4>
+              {groupedProviders.localProviders.map((provider) => (
+                <div key={provider.id} className="p-4 rounded-xl border border-border/50 bg-muted/20 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-semibold text-sm">{getRuntimeDisplayName(provider.id, provider.display_name)}</h4>
+                      {provider.id === normalizedSettings?.selected_provider && (
+                        <Badge className="text-[10px] bg-emerald-500/10 text-emerald-500 border-emerald-500/20">Active</Badge>
+                      )}
+                    </div>
+                    <code className="text-[10px] text-muted-foreground font-mono">{provider.id}</code>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {provider.models.map((model) => (
+                      <Badge
+                        key={model.id}
+                        variant={model.id === normalizedSettings?.selected_model && provider.id === normalizedSettings?.selected_provider ? "default" : "outline"}
+                        className="text-[10px] cursor-default"
+                      >
+                        {model.name}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {groupedProviders?.thirdPartyProviders.length ? (
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Third-Party Providers</h4>
+              {groupedProviders.thirdPartyProviders.map((provider) => (
+                <div key={provider.id} className="p-4 rounded-xl border border-border/50 bg-muted/20 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-semibold text-sm">{getRuntimeDisplayName(provider.id, provider.display_name)}</h4>
+                      {provider.id === normalizedSettings?.selected_provider && (
+                        <Badge className="text-[10px] bg-emerald-500/10 text-emerald-500 border-emerald-500/20">Active</Badge>
+                      )}
+                    </div>
+                    <code className="text-[10px] text-muted-foreground font-mono">{provider.id}</code>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {provider.models.map((model) => (
+                      <Badge
+                        key={model.id}
+                        variant={model.id === normalizedSettings?.selected_model && provider.id === normalizedSettings?.selected_provider ? "default" : "outline"}
+                        className="text-[10px] cursor-default"
+                      >
+                        {model.name}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {groupedProviders?.customProviders.length ? (
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Custom Integrations</h4>
+              {groupedProviders.customProviders.map((provider) => (
+                <div key={provider.id} className="p-4 rounded-xl border border-border/50 bg-muted/20 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-semibold text-sm">{getRuntimeDisplayName(provider.id, provider.display_name)}</h4>
+                    {provider.id === normalizedSettings?.selected_provider && (
                       <Badge className="text-[10px] bg-emerald-500/10 text-emerald-500 border-emerald-500/20">Active</Badge>
                     )}
                   </div>
@@ -361,7 +488,7 @@ export default function FallbackModelSettings() {
                     {provider.base_url || provider.default_base_url}
                   </p>
                 )}
-                {provider.id === "ollama" && provider.runtime_options?.length ? (
+                {isLocalRuntimeProvider(provider.id) && provider.runtime_options?.length ? (
                   <div className="flex flex-wrap gap-1.5 mt-1">
                     {provider.runtime_options.map((option) => (
                       <Badge key={option.source} variant="outline" className="text-[10px]">
@@ -374,7 +501,7 @@ export default function FallbackModelSettings() {
                   {provider.models.map((model) => (
                     <Badge
                       key={model.id}
-                      variant={model.id === settings.selected_model && provider.id === settings.selected_provider ? "default" : "outline"}
+                      variant={model.id === normalizedSettings?.selected_model && provider.id === normalizedSettings?.selected_provider ? "default" : "outline"}
                       className="text-[10px] cursor-default"
                     >
                       {model.name}
@@ -385,9 +512,11 @@ export default function FallbackModelSettings() {
                       <AlertTriangle className="h-3 w-3 text-amber-500" /> No models available
                     </span>
                   )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+          ) : null}
           </div>
         </CardContent>
       </Card>

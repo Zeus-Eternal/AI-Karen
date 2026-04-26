@@ -65,13 +65,18 @@ def _resolve_log_dir() -> Path:
     return fallback
 
 LOG_DIR = _resolve_log_dir()
+_handlers = [logging.StreamHandler()]
+try:
+    _handlers.insert(0, logging.FileHandler(LOG_DIR / "automation.log"))
+except OSError as exc:
+    # Containerized deployments may mount the home directory read-only.
+    # Keep startup alive and fall back to stdout logging only.
+    print(f"automation_manager: file logging disabled: {exc}")
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler(LOG_DIR / "automation.log"),
-        logging.StreamHandler(),
-    ],
+    handlers=_handlers,
 )
 log = logging.getLogger("automation_manager")
 log.setLevel(logging.INFO)

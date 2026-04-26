@@ -23,7 +23,7 @@ Used by the discovery service to register the plugin in the database.
   "display_name": "My Great Plugin",
   "version": "1.0.0",
   "entrypoint": "handler:MainExtension",
-  "category": "plugins",
+  "category": "productivity",
   "author": "Your Name",
   "license": "MIT",
   "capabilities": {

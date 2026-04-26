@@ -49,7 +49,7 @@ class ModelSummary:
     last_modified: Optional[datetime] = None
     likes: Optional[int] = None
     downloads: Optional[int] = None
-    library_name: Optional[str] = None
+    storage_key: Optional[str] = None
     tags: List[str] = field(default_factory=list)
     total_size: Optional[int] = None
     description: Optional[str] = None
@@ -60,7 +60,7 @@ class ModelInfo:
     model_id: str
     owner: str
     repository: str
-    library: str
+    storage_key: str
     files: List[Dict[str, Union[str, int]]] = field(default_factory=list)
     total_size: int = 0
     last_modified: Optional[datetime] = None
@@ -80,7 +80,7 @@ class DownloadRequest:
     exclude_patterns: Optional[List[str]] = None
     pin: bool = False
     force_redownload: bool = False
-    library_override: Optional[str] = None
+    storage_key: Optional[str] = None
 
 
 @dataclass
@@ -314,7 +314,7 @@ class ModelOrchestratorService:
                     last_modified=self._parse_dt(entry.get("last_modified")),
                     likes=entry.get("likes"),
                     downloads=entry.get("downloads"),
-                    library_name=entry.get("library"),
+                        storage_key=entry.get("storage_key"),
                     tags=list(entry.get("tags") or []),
                     total_size=int(entry.get("total_size") or 0),
                     description=entry.get("description"),
@@ -341,7 +341,7 @@ class ModelOrchestratorService:
                 model_id=model_id,
                 owner=owner,
                 repository=repo,
-                library=entry.get("library", "unknown"),
+                storage_key=entry.get("storage_key", "unknown"),
                 files=files,
                 total_size=total_size,
                 last_modified=self._parse_dt(entry.get("last_modified")),
@@ -389,7 +389,7 @@ class ModelOrchestratorService:
             model_id=model_id,
             owner=owner,
             repository=repo,
-            library=getattr(remote, "library_name", None) or "unknown",
+            storage_key=getattr(remote, "library_name", None) or "unknown",
             files=files,
             total_size=total_size,
             last_modified=getattr(remote, "last_modified", None),
@@ -412,8 +412,8 @@ class ModelOrchestratorService:
         start = time.perf_counter()
         revision = req.revision or "main"
 
-        library = req.library_override or "transformers"
-        install_root = self.models_root / library
+        storage_key = req.storage_key or "transformers"
+        install_root = self.models_root / storage_key
         install_path = install_root / f"{owner}--{repo}" / revision
 
         try:
@@ -456,7 +456,7 @@ class ModelOrchestratorService:
             "model_id": req.model_id,
             "owner": owner,
             "repository": repo,
-            "library": library,
+            "storage_key": storage_key,
             "revision": revision,
             "install_path": str(install_path),
             "files": files,
@@ -526,12 +526,12 @@ class ModelOrchestratorService:
     def get_available_models(self, provider: Optional[str] = None) -> List[Dict[str, Any]]:
         results: List[Dict[str, Any]] = []
         for model_id, entry in self._registry.items():
-            if provider and entry.get("library") != provider:
+            if provider and entry.get("storage_key") != provider:
                 continue
             results.append(
                 {
                     "id": model_id,
-                    "provider": entry.get("library"),
+                    "provider": entry.get("storage_key"),
                     "name": model_id,
                     "revision": entry.get("revision"),
                 }

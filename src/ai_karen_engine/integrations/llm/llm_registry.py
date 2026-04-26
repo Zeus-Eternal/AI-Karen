@@ -12,6 +12,7 @@ from ai_karen_engine.integrations.llm_registry import (
     LLMRegistry as GlobalRegistry,
     get_registry,
 )
+from ai_karen_engine.core.model_runtime.model_manager import ModelManager
 
 logger = logging.getLogger(__name__)
 
@@ -58,8 +59,11 @@ class LLMRegistry:
             )
             start = time.perf_counter()
             try:
-                text = await asyncio.to_thread(
-                    provider.generate_text, prompt, model=model, **kwargs
+                text = await ModelManager.invoke_provider(
+                    provider,
+                    prompt,
+                    model=model,
+                    **kwargs,
                 )
                 latency = int((time.perf_counter() - start) * 1000)
                 meta = {"provider": name.title(), "model": model, "latency_ms": latency}

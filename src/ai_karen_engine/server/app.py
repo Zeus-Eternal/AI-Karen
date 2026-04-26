@@ -78,6 +78,8 @@ except ImportError as canonical_error:
             legacy_error,
         )
 
+initialize_extension_system = initialize_extensions
+
 # Initialize logging EARLY to ensure all subsequent imports use configured loggers
 configure_logging()
 

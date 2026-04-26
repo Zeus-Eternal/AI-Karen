@@ -19,14 +19,18 @@ from enum import Enum
 from pathlib import Path
 import json
 
-from ..discovery.model_discovery_engine import (
-    ModelDiscoveryEngine,
+from ai_karen_engine.core.model_runtime.model_discovery_service import (
+    ModelDiscoveryService,
+    ModelSummary,
+    get_model_discovery_service,
+)
+from ai_karen_engine.core.model_runtime.provider_registry_service import get_provider_registry_service, ProviderCapability
+from ai_karen_engine.services.models.discovery.model_discovery_engine import (
     ModelInfo,
     ModelType,
     ModalityType,
     ModelCategory,
 )
-from ai_karen_engine.core.model_runtime.provider_registry_service import get_provider_registry_service, ProviderCapability
 from .llm_router_service import LLMRouter, ChatRequest, RoutingPolicy
 from ai_karen_engine.integrations.llm_router import IntelligentLLMRouter, RoutingRequest, TaskType
 from ai_karen_engine.integrations.registry import get_registry
@@ -53,7 +57,7 @@ class ModelConnection:
     """Represents a connection to a specific model."""
     model_id: str
     provider: str
-    model_info: ModelInfo
+    model_info: Any
     status: ConnectionStatus
     connection_time: Optional[float] = None
     last_used: Optional[float] = None
@@ -109,7 +113,7 @@ class ModelRouter:
         self.preserve_existing_routing = preserve_existing_routing
         
         # Initialize core components
-        self.discovery_engine = ModelDiscoveryEngine(models_root) if enable_discovery else None
+        self.discovery_engine = get_model_discovery_service() if enable_discovery else None
         self.provider_registry = get_provider_registry_service()
         self.llm_registry = get_registry()
         
@@ -153,7 +157,7 @@ class ModelRouter:
         
         logger.info("Model Router initialization complete")
     
-    async def _initialize_model_connections(self, models: List[ModelInfo]):
+    async def _initialize_model_connections(self, models: List[ModelSummary]):
         """Initialize connections for discovered models."""
         with self._lock:
             for model in models:

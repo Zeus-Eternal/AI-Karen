@@ -20,6 +20,7 @@ from ai_karen_engine.models.web_api_error_responses import (
 )
 from ai_karen_engine.auth.session import get_current_user
 from ai_karen_engine.services.plugin_service import PluginService
+from ai_karen_engine.services.plugin_execution import ExecutionStatus
 
 # REMOVED: RBAC access control - replaced with simple role checking
 router = APIRouter(tags=["plugins"])
@@ -124,14 +125,20 @@ async def _execute_plugin_logic(
             session_id=request.session_id,
         )
 
+        # Convert ExecutionResult.status to success boolean
+        # ExecutionStatus.COMPLETED = "completed", other statuses indicate failure
+        success = result.status.value == "completed"
+
         return PluginExecutionResponse(
-            success=result.success,
+            success=success,
             result=result.result,
-            stdout=result.stdout,
-            stderr=result.stderr,
+            stdout=getattr(result, "stdout", None),
+            stderr=getattr(result, "stderr", None),
             error=result.error,
             execution_time=result.execution_time,
-            timestamp=result.timestamp.astimezone(timezone.utc).isoformat(),
+            timestamp=result.completed_at.astimezone(timezone.utc).isoformat()
+            if result.completed_at
+            else datetime.now(timezone.utc).isoformat(),
             plugin_name=plugin_name,
             session_id=request.session_id,
         )

@@ -25,9 +25,13 @@ class ProviderHealth:
             # Check health status from registry
             health_status = provider_info.get("health_status", "unknown")
             
-            # Consider "healthy" and "unknown" as healthy for local providers
-            # This allows local providers to work even if not explicitly health-checked
-            if provider_name == "local_gguf" and health_status in ["healthy", "unknown"]:
+            # Consider built-in local runtimes healthy when their status is not
+            # explicitly unhealthy so routing can prefer them before falling back.
+            if provider_name in {
+                "local_gguf",
+                "builtin_vllm",
+                "builtin_transformers",
+            } and health_status in ["healthy", "unknown", "degraded"]:
                 return True
             
             return health_status == "healthy"

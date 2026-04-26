@@ -208,12 +208,11 @@ def create_app() -> FastAPI:
             except Exception as exc:
                 logger.warning(f"Extension system initialization error: {exc}")
 
-        app.add_event_handler("startup", initialize_extension_system)
+        app.router.on_startup.append(initialize_extension_system)
     else:
         logger.info("Extension system disabled")
 
     # Add extension system shutdown handler
-    @app.on_event("shutdown")
     async def shutdown_extension_health_monitoring():
         """Shutdown extension health monitoring on application shutdown."""
         try:
@@ -225,6 +224,8 @@ def create_app() -> FastAPI:
             logger.info("Extension health monitoring shutdown completed")
         except Exception as e:
             logger.warning(f"Extension health monitoring shutdown error: {e}")
+
+    app.router.on_shutdown.append(shutdown_extension_health_monitoring)
 
     # Note: Copilot routes are now handled through server/routers.py
     # The copilot_router is included with prefix="/api/copilot" which creates

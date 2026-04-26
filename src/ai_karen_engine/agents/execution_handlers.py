@@ -13,6 +13,8 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
+from ai_karen_engine.core.model_runtime.model_manager import ModelManager
+
 from .models import (
     AgentConfig,
     AgentError,
@@ -127,10 +129,11 @@ class NativeExecutionHandler(BaseExecutionHandler):
             provider = provider_result["provider"]
             
             # Execute the request
-            response_text = await provider.generate_text(
-                prompt=request.message,
+            response_text = await ModelManager.invoke_provider(
+                provider,
+                request.message,
                 context=request.context or {},
-                config=request.config.custom_config if request.config else {}
+                config=request.config.custom_config if request.config else {},
             )
             
             processing_time = (datetime.utcnow() - start_time).total_seconds()
@@ -192,10 +195,11 @@ class NativeExecutionHandler(BaseExecutionHandler):
             provider = provider_result["provider"]
             
             # Stream the response
-            async for chunk_text in provider.generate_text_stream(
-                prompt=request.message,
+            async for chunk_text in ModelManager.stream_provider(
+                provider,
+                request.message,
                 context=request.context or {},
-                config=request.config.custom_config if request.config else {}
+                config=request.config.custom_config if request.config else {},
             ):
                 yield StreamChunk(
                     content=chunk_text,

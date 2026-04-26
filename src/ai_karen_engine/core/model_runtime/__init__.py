@@ -14,6 +14,12 @@ from .model_discovery_service import (
     get_model_discovery_service,
     initialize_model_discovery_service,
 )
+from .model_manager import (
+    ModelManager,
+    RuntimeSelection,
+    get_model_manager,
+    initialize_model_manager,
+)
 from .provider_registry_service import (
     FallbackChain,
     ProviderCapability,
@@ -29,11 +35,15 @@ __all__ = [
     "BUILTIN_PROVIDER_ENDPOINTS",
     "ModelDiscoveryService",
     "ModelSummary",
+    "ModelManager",
+    "RuntimeSelection",
     "ProviderEndpoint",
     "ProviderEndpointStatus",
     "ProviderEndpointType",
+    "get_model_manager",
     "get_model_discovery_service",
     "initialize_model_discovery_service",
+    "initialize_model_manager",
     "FallbackChain",
     "ProviderCapability",
     "ProviderRegistryService",

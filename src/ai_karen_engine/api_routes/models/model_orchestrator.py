@@ -27,6 +27,7 @@ from fastapi.responses import JSONResponse
 from ai_karen_engine.error_tracking import get_model_orchestrator_error_tracker
 from ai_karen_engine.health import get_model_orchestrator_health_checker
 from ai_karen_engine.monitoring import get_model_orchestrator_metrics
+from ai_karen_engine.core.model_runtime.model_download_control_service import get_model_download_control_service
 from ai_karen_engine.services.models.management.model_orchestrator_service import (
     ModelOrchestratorService,
     ModelOrchestratorError,
@@ -117,6 +118,9 @@ class ModelDownloadRequest(BaseModel):
 
     model_id: str = Field(..., description="Model identifier (owner/repo)")
     revision: Optional[str] = Field(None, description="Model revision/commit hash")
+    channel_id: Optional[str] = Field(
+        None, description="Download channel identifier"
+    )
     include_patterns: Optional[List[str]] = Field(
         None, description="File patterns to include"
     )
@@ -127,8 +131,14 @@ class ModelDownloadRequest(BaseModel):
     force_redownload: bool = Field(
         False, description="Force redownload even if model exists"
     )
-    library_override: Optional[str] = Field(
-        None, description="Override library detection"
+    storage_key: Optional[str] = Field(
+        None, description="Override storage namespace"
+    )
+    trust_remote_code: bool = Field(
+        False, description="Allow remote code execution for trusted downloads"
+    )
+    accept_license: bool = Field(
+        False, description="Record license acceptance for gated model downloads"
     )
 
 
@@ -159,7 +169,7 @@ class ModelSummaryResponse(BaseModel):
     last_modified: Optional[datetime]
     likes: Optional[int]
     downloads: Optional[int]
-    library_name: Optional[str]
+    storage_key: Optional[str]
     tags: List[str]
     total_size: Optional[int] = None
     description: Optional[str] = None
@@ -171,7 +181,7 @@ class ModelInfoResponse(BaseModel):
     model_id: str
     owner: str
     repository: str
-    library: str
+    storage_key: str
     files: List[Dict[str, Union[str, int]]]
     total_size: int
     last_modified: Optional[datetime]
@@ -204,6 +214,118 @@ class ModelRemoveResponse(BaseModel):
     warnings: List[str]
     metadata: Dict[str, Any]
     message: str
+
+
+class DownloadChannelResponse(BaseModel):
+    id: str
+    label: str
+    group: str
+    storage_key: str
+    enabled: bool
+    description: str
+    model_families: List[str] = Field(default_factory=list)
+    modalities: List[str] = Field(default_factory=list)
+    admin_only: bool = False
+    locked_by_master: bool = False
+    effective_enabled: bool = False
+
+
+class DownloadPolicyResponse(BaseModel):
+    master_enabled: bool
+    core_runtime_enabled: bool
+    plugin_channels_enabled: bool
+    image_channels_enabled: bool
+    audio_channels_enabled: bool
+    vision_channels_enabled: bool
+    gguf_external_enabled: bool
+    trust_remote_code: bool
+    block_new_downloads: bool
+    pause_active_downloads: bool
+    quarantine_failed_models: bool
+    require_license_acceptance: bool
+    max_concurrent_downloads: int
+
+
+class DownloadPolicyUpdateRequest(BaseModel):
+    master_enabled: Optional[bool] = None
+    core_runtime_enabled: Optional[bool] = None
+    plugin_channels_enabled: Optional[bool] = None
+    image_channels_enabled: Optional[bool] = None
+    audio_channels_enabled: Optional[bool] = None
+    vision_channels_enabled: Optional[bool] = None
+    gguf_external_enabled: Optional[bool] = None
+    trust_remote_code: Optional[bool] = None
+    block_new_downloads: Optional[bool] = None
+    pause_active_downloads: Optional[bool] = None
+    quarantine_failed_models: Optional[bool] = None
+    require_license_acceptance: Optional[bool] = None
+    max_concurrent_downloads: Optional[int] = Field(default=None, ge=1, le=8)
+
+
+class DownloadValidationRequest(BaseModel):
+    model_id: str
+    revision: Optional[str] = None
+    channel_id: Optional[str] = None
+    trust_remote_code: bool = False
+    accept_license: bool = False
+    include_patterns: Optional[List[str]] = None
+    exclude_patterns: Optional[List[str]] = None
+
+
+class DownloadValidationResponse(BaseModel):
+    allowed: bool
+    channel_id: str
+    model_id: str
+    revision: Optional[str] = None
+    storage_key: Optional[str] = None
+    install_path: Optional[str] = None
+    detected_runtime: Optional[str] = None
+    detected_modality: Optional[str] = None
+    warnings: List[str] = Field(default_factory=list)
+    blocking_reasons: List[str] = Field(default_factory=list)
+    license_required: bool = False
+    trust_remote_code_allowed: bool = False
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class DownloadJobResponse(BaseModel):
+    job_id: str
+    model_id: str
+    revision: Optional[str] = None
+    channel_id: str
+    storage_key: Optional[str] = None
+    status: str
+    progress: float
+    message: str
+    error: Optional[str] = None
+    result: Optional[Dict[str, Any]] = None
+    created_at: str
+    updated_at: str
+    requested_by: Optional[str] = None
+    trust_remote_code: bool = False
+    license_accepted: bool = False
+    include_patterns: Optional[List[str]] = None
+    exclude_patterns: Optional[List[str]] = None
+    pin: bool = False
+    force_redownload: bool = False
+    pause_requested: bool = False
+    cancel_requested: bool = False
+    warnings: List[str] = Field(default_factory=list)
+    detected_runtime: Optional[str] = None
+    detected_modality: Optional[str] = None
+    install_path: Optional[str] = None
+    channel: Optional[DownloadChannelResponse] = None
+
+
+class InstalledModelsResponse(BaseModel):
+    models: List[Dict[str, Any]] = Field(default_factory=list)
+    total: int = 0
+    statistics: Dict[str, Any] = Field(default_factory=dict)
+
+
+class DiscoverySnapshotResponse(BaseModel):
+    progress: Dict[str, Any] = Field(default_factory=dict)
+    statistics: Dict[str, Any] = Field(default_factory=dict)
 
 
 # Security and authentication dependencies
@@ -308,7 +430,7 @@ async def list_models(
                     last_modified=model.last_modified,
                     likes=model.likes,
                     downloads=model.downloads,
-                    library_name=model.library_name,
+                    storage_key=model.storage_key,
                     tags=model.tags,
                     total_size=model.total_size,
                     description=model.description,
@@ -359,7 +481,7 @@ async def get_model_info(
             model_id=model_info.model_id,
             owner=model_info.owner,
             repository=model_info.repository,
-            library=model_info.library,
+            storage_key=model_info.storage_key,
             files=model_info.files,
             total_size=model_info.total_size,
             last_modified=model_info.last_modified,
@@ -383,8 +505,6 @@ async def get_model_info(
 @router.post("/download", response_model=Dict[str, str])
 async def download_model(
     download_request: ModelDownloadRequest,
-    http_request: Request,
-    background_tasks: BackgroundTasks,
     current_user=Depends(get_current_user),
 ):
     """
@@ -402,34 +522,24 @@ async def download_model(
                 status_code=403, detail="Insufficient permissions to download models"
             )
 
-        # Simple audit logging (removed complex audit)
         logger.info(
-            f"User {current_user.get('user_id')} downloading model {download_request.model_id}"
+            "User %s downloading model %s",
+            current_user.get("user_id"),
+            download_request.model_id,
         )
 
-        # Create job for tracking
-        job_id = str(uuid.uuid4())
-        job = {
-            "job_id": job_id,
-            "status": "pending",
-            "progress": 0.0,
-            "message": f"Starting download of {download_request.model_id}",
-            "error": None,
-            "result": None,
-            "created_at": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc),
+        service = get_model_download_control_service()
+        job = await service.start_download(download_request.model_dump(), current_user)
+        return {
+            "job_id": job["job_id"],
+            "message": "Download queued",
+            "status": job["status"],
         }
-        _active_jobs[job_id] = job
-
-        # Start download in background
-        background_tasks.add_task(
-            _handle_model_download, job_id, download_request, current_user, http_request
-        )
-
-        return {"job_id": job_id, "message": "Download started"}
 
     except HTTPException:
         raise
+    except ModelOrchestratorError as e:
+        raise handle_orchestrator_error(e)
     except Exception as e:
         logger.error(f"Failed to start model download: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -583,6 +693,182 @@ async def cancel_job(job_id: str, current_user=Depends(get_current_user)):
     return {"message": "Job cancelled successfully"}
 
 
+# Download control plane endpoints
+
+
+def _user_has_role(user: Any, *roles: str) -> bool:
+    if hasattr(user, "has_role") and callable(getattr(user, "has_role")):
+        try:
+            return bool(user.has_role(*roles))
+        except Exception:
+            pass
+    user_roles = {str(role).lower() for role in (user.get("roles") or [])}
+    return any(role.lower() in user_roles for role in roles)
+
+
+def _serialize_download_job(job_payload: Optional[Dict[str, Any]]) -> DownloadJobResponse:
+    if not job_payload:
+        raise HTTPException(status_code=404, detail="Job not found")
+    channel_payload = job_payload.get("channel")
+    channel = (
+        DownloadChannelResponse(**channel_payload)
+        if isinstance(channel_payload, dict)
+        else None
+    )
+    return DownloadJobResponse(
+        job_id=job_payload["job_id"],
+        model_id=job_payload["model_id"],
+        revision=job_payload.get("revision"),
+        channel_id=job_payload["channel_id"],
+        storage_key=job_payload.get("storage_key"),
+        status=job_payload["status"],
+        progress=float(job_payload.get("progress") or 0.0),
+        message=job_payload.get("message") or "",
+        error=job_payload.get("error"),
+        result=job_payload.get("result"),
+        created_at=str(job_payload.get("created_at") or ""),
+        updated_at=str(job_payload.get("updated_at") or ""),
+        requested_by=job_payload.get("requested_by"),
+        trust_remote_code=bool(job_payload.get("trust_remote_code", False)),
+        license_accepted=bool(job_payload.get("license_accepted", False)),
+        include_patterns=job_payload.get("include_patterns"),
+        exclude_patterns=job_payload.get("exclude_patterns"),
+        pin=bool(job_payload.get("pin", False)),
+        force_redownload=bool(job_payload.get("force_redownload", False)),
+        pause_requested=bool(job_payload.get("pause_requested", False)),
+        cancel_requested=bool(job_payload.get("cancel_requested", False)),
+        warnings=list(job_payload.get("warnings") or []),
+        detected_runtime=job_payload.get("detected_runtime"),
+        detected_modality=job_payload.get("detected_modality"),
+        install_path=job_payload.get("install_path"),
+        channel=channel,
+    )
+
+
+@router.get("/download/channels", response_model=Dict[str, Any])
+async def get_download_channels(current_user=Depends(get_current_user)):
+    service = get_model_download_control_service()
+    return await service.get_channels()
+
+
+@router.get("/download/policy", response_model=DownloadPolicyResponse)
+async def get_download_policy(current_user=Depends(get_current_user)):
+    service = get_model_download_control_service()
+    policy = await service.get_policy()
+    return DownloadPolicyResponse(**policy)
+
+
+@router.put("/download/policy", response_model=DownloadPolicyResponse)
+async def update_download_policy(
+    request: DownloadPolicyUpdateRequest,
+    current_user=Depends(get_current_user),
+):
+    if not _user_has_role(current_user, "admin", "super_admin"):
+        raise HTTPException(
+            status_code=403, detail="Administrator access is required to update download policy"
+        )
+    service = get_model_download_control_service()
+    policy = await service.update_policy(request.model_dump(exclude_none=True))
+    return DownloadPolicyResponse(**policy)
+
+
+@router.post("/download/validate", response_model=DownloadValidationResponse)
+async def validate_model_download(
+    request: DownloadValidationRequest,
+    current_user=Depends(get_current_user),
+):
+    service = get_model_download_control_service()
+    validation = await service.validate_download(
+        model_id=request.model_id,
+        revision=request.revision,
+        channel_id=request.channel_id,
+        trust_remote_code=request.trust_remote_code,
+        accept_license=request.accept_license,
+        include_patterns=request.include_patterns,
+        exclude_patterns=request.exclude_patterns,
+    )
+    return DownloadValidationResponse(**validation.to_dict())
+
+
+@router.get("/download/jobs", response_model=List[DownloadJobResponse])
+async def list_download_jobs(
+    status: Optional[str] = Query(None, description="Filter by job status"),
+    limit: int = Query(100, ge=1, le=200, description="Maximum number of jobs to return"),
+    current_user=Depends(get_current_user),
+):
+    service = get_model_download_control_service()
+    jobs = service.list_jobs(status=status, limit=limit)
+    return [_serialize_download_job(job) for job in jobs]
+
+
+@router.get("/download/jobs/{job_id}", response_model=DownloadJobResponse)
+async def get_download_job(
+    job_id: str,
+    current_user=Depends(get_current_user),
+):
+    service = get_model_download_control_service()
+    return _serialize_download_job(service.get_job(job_id))
+
+
+@router.post("/download/jobs/{job_id}/cancel", response_model=DownloadJobResponse)
+async def cancel_download_job(
+    job_id: str,
+    current_user=Depends(get_current_user),
+):
+    service = get_model_download_control_service()
+    try:
+        job = await service.cancel_job(job_id)
+        return _serialize_download_job(job)
+    except ModelOrchestratorError as exc:
+        raise handle_orchestrator_error(exc)
+
+
+@router.post("/download/jobs/{job_id}/pause", response_model=DownloadJobResponse)
+async def pause_download_job(
+    job_id: str,
+    current_user=Depends(get_current_user),
+):
+    service = get_model_download_control_service()
+    try:
+        job = await service.pause_job(job_id)
+        return _serialize_download_job(job)
+    except ModelOrchestratorError as exc:
+        raise handle_orchestrator_error(exc)
+
+
+@router.post("/download/jobs/{job_id}/resume", response_model=DownloadJobResponse)
+async def resume_download_job(
+    job_id: str,
+    current_user=Depends(get_current_user),
+):
+    service = get_model_download_control_service()
+    try:
+        job = await service.resume_job(job_id)
+        return _serialize_download_job(job)
+    except ModelOrchestratorError as exc:
+        raise handle_orchestrator_error(exc)
+
+
+@router.get("/installed", response_model=InstalledModelsResponse)
+async def get_installed_models(
+    force_refresh: bool = Query(False, description="Force a fresh discovery scan"),
+    current_user=Depends(get_current_user),
+):
+    service = get_model_download_control_service()
+    payload = await service.get_installed_models(force_refresh=force_refresh)
+    return InstalledModelsResponse(**payload)
+
+
+@router.get("/discovery", response_model=DiscoverySnapshotResponse)
+async def get_model_discovery_snapshot(
+    force_refresh: bool = Query(False, description="Force a fresh discovery scan"),
+    current_user=Depends(get_current_user),
+):
+    service = get_model_download_control_service()
+    payload = await service.get_discovery_snapshot(force_refresh=force_refresh)
+    return DiscoverySnapshotResponse(**payload)
+
+
 # Background task handlers
 
 
@@ -610,7 +896,7 @@ async def _handle_model_download(
             exclude_patterns=request.exclude_patterns,
             pin=request.pin,
             force_redownload=request.force_redownload,
-            library_override=request.library_override,
+            storage_key=request.storage_key,
         )
 
         # Perform download

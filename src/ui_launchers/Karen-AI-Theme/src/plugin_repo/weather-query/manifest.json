@@ -3,7 +3,7 @@
   "name": "weather-query",
   "version": "1.0.0",
   "plugin_id": "weather-query",
-  "category": "plugins",
+  "category": "productivity",
   "gui_manifest_version": "1.0",
   "display_name": "Weather",
   "description": "Frontend GUI package for the Weather plugin in Karen-AI-Theme.",

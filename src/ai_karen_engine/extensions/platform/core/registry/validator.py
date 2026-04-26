@@ -550,11 +550,15 @@ class ExtensionValidator:
             "integration",
             "productivity",
             "security",
+            "plugins",
+            "sys_extensions",
+            "channels",
         ]
         if manifest.category and manifest.category not in valid_categories:
+            standard_cats = ["analytics", "automation", "communication", "development", "experimental", "integration", "productivity", "security"]
             self.warnings.append(
                 f"Extension category '{manifest.category}' is not standard. "
-                f"Consider using: {', '.join(valid_categories)}"
+                f"Consider using one of: {', '.join(standard_cats)}"
             )
 
     def _validate_new_api_endpoint_integration(

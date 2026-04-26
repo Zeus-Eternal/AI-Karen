@@ -27,7 +27,7 @@ from ai_karen_engine.services.models.management.model_connection_manager import 
 from ai_karen_engine.services.models.recommendation.model_recommendation_engine import (
     ModelRecommendationEngine, get_recommendation_engine
 )
-from ai_karen_engine.services.models.discovery.model_discovery_engine import get_model_discovery_engine
+from ai_karen_engine.core.model_runtime.model_discovery_service import get_model_discovery_service
 from ai_karen_engine.services.database.cache.smart_cache_manager import get_smart_cache_manager
 from ai_karen_engine.services.formatting.response_performance_metrics import (
     get_performance_metrics_service,
@@ -88,7 +88,7 @@ class ReasoningPreservationLayer:
         
         # Integration with optimization services
         try:
-            self.model_discovery_engine = get_model_discovery_engine()
+            self.model_discovery_engine = get_model_discovery_service()
         except Exception as e:
             logger.warning(f"Model discovery engine not available: {e}")
             self.model_discovery_engine = None

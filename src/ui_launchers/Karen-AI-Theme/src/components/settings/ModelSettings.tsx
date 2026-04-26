@@ -32,12 +32,22 @@ import { useToast } from '@/hooks/use-toast';
 import { ApiError, apiClient } from '@/lib/api';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
+import {
+  getRuntimeDisplayName,
+  isLocalRuntimeProvider,
+} from '@/lib/chat-response';
+import { normalizeModelSettingsResponse, type RuntimeSettingsResponse } from '@/lib/model-runtime-inventory';
 
 interface ProviderModel {
   id: string;
   name: string;
   family: string;
   source: string;
+  compatible_runtimes?: string[];
+  preferred_runtime?: string | null;
+  compatibility_confidence?: string | null;
+  model_format?: string | null;
+  artifact_kind?: string | null;
 }
 
 interface ProviderDetails {
@@ -78,11 +88,7 @@ interface ProviderDetails {
   }>;
 }
 
-interface ModelSettingsResponse {
-  selected_provider: string;
-  selected_model: string;
-  providers: ProviderDetails[];
-}
+type ModelSettingsResponse = RuntimeSettingsResponse;
 
 interface ProviderModelsResponse {
   provider: string;
@@ -90,7 +96,7 @@ interface ProviderModelsResponse {
   models: ProviderModel[];
 }
 
-interface OllamaTagsResponse {
+interface LocalRuntimeTagsResponse {
   models?: Array<{
     name?: string;
     model?: string;
@@ -98,13 +104,6 @@ interface OllamaTagsResponse {
       family?: string;
     };
   }>;
-}
-
-function buildProviderGroups(providers: ProviderDetails[]) {
-  const localProviders = providers.filter((p) => p.provider_type === 'local');
-  const customProviders = providers.filter((p) => p.id === 'custom' || p.provider_type === 'custom' || p.supports_custom_auth);
-  const cloudProviders = providers.filter((p) => p.provider_type !== 'local' && !customProviders.some((custom) => custom.id === p.id));
-  return { localProviders, cloudProviders, customProviders };
 }
 
 function formatErrorMessage(error: unknown, fallback: string): string {
@@ -128,12 +127,33 @@ function formatProviderCredentialMessage(providerName: string, message: string):
   return `${providerName} validation failed: ${trimmed}`;
 }
 
-function normalizeLocalOllamaAddress(address: string): string {
+function isVllmCompatibleModel(model: ProviderModel): boolean {
+  const preferredRuntime = String(model.preferred_runtime || '').toLowerCase();
+  if (preferredRuntime === 'vllm' || preferredRuntime === 'builtin_vllm') {
+    return true;
+  }
+  const compatibleRuntimes = (model.compatible_runtimes || []).map((runtime) => String(runtime).toLowerCase());
+  return compatibleRuntimes.includes('vllm') || compatibleRuntimes.includes('builtin_vllm');
+}
+
+function sortProviderModels(models: ProviderModel[]): ProviderModel[] {
+  return [...models].sort((left, right) => {
+    const leftScore = isVllmCompatibleModel(left) ? 0 : 1;
+    const rightScore = isVllmCompatibleModel(right) ? 0 : 1;
+    if (leftScore !== rightScore) return leftScore - rightScore;
+    const leftRuntime = String(left.preferred_runtime || left.model_format || '').toLowerCase();
+    const rightRuntime = String(right.preferred_runtime || right.model_format || '').toLowerCase();
+    if (leftRuntime !== rightRuntime) return leftRuntime.localeCompare(rightRuntime);
+    return left.name.localeCompare(right.name);
+  });
+}
+
+function normalizeLocalRuntimeAddress(address: string): string {
   return (address.trim() || 'http://localhost:11434').replace(/\/api\/?$/, '').replace(/\/$/, '');
 }
 
-function normalizeConfiguredOllamaAddress(address?: string | null): string {
-  const normalized = normalizeLocalOllamaAddress(address || 'http://host.docker.internal:11434');
+function normalizeConfiguredLocalRuntimeAddress(address?: string | null): string {
+  const normalized = normalizeLocalRuntimeAddress(address || 'http://host.docker.internal:11434');
   try {
     const parsed = new URL(normalized);
     if (parsed.hostname === 'ollama') {
@@ -147,20 +167,20 @@ function normalizeConfiguredOllamaAddress(address?: string | null): string {
   return normalized;
 }
 
-function canUseLocalOllamaAddress(address?: string): boolean {
+function canUseLocalRuntimeAddress(address?: string): boolean {
   if (!address?.trim()) return false;
   try {
-    const parsed = new URL(normalizeConfiguredOllamaAddress(address));
+    const parsed = new URL(normalizeConfiguredLocalRuntimeAddress(address));
     return ['localhost', '127.0.0.1'].includes(parsed.hostname);
   } catch {
-    const normalized = normalizeConfiguredOllamaAddress(address);
+    const normalized = normalizeConfiguredLocalRuntimeAddress(address);
     return normalized.startsWith('http://localhost') || normalized.startsWith('http://127.0.0.1');
   }
 }
 
-async function parseOllamaModels(response: Response): Promise<ProviderModel[]> {
-  if (!response.ok) throw new Error(`Ollama returned HTTP ${response.status}`);
-  const data = await response.json() as OllamaTagsResponse;
+async function parseLocalRuntimeModels(response: Response): Promise<ProviderModel[]> {
+  if (!response.ok) throw new Error(`Local runtime returned HTTP ${response.status}`);
+  const data = await response.json() as LocalRuntimeTagsResponse;
   const rawModels = Array.isArray(data.models) ? data.models : [];
   return rawModels.map((m) => {
     const id = m.name?.trim() || m.model?.trim() || '';
@@ -169,19 +189,19 @@ async function parseOllamaModels(response: Response): Promise<ProviderModel[]> {
   }).filter((m): m is ProviderModel => m !== null);
 }
 
-async function loadLocalOllamaModels(address: string): Promise<ProviderModel[]> {
-  const normalized = normalizeConfiguredOllamaAddress(address);
+async function loadLocalRuntimeModels(address: string): Promise<ProviderModel[]> {
+  const normalized = normalizeConfiguredLocalRuntimeAddress(address);
   try {
-    return parseOllamaModels(await fetch(`/api/ollama/tags?base_url=${encodeURIComponent(normalized)}`, { cache: 'no-store' }));
+    return parseLocalRuntimeModels(await fetch(`/api/ollama/tags?base_url=${encodeURIComponent(normalized)}`, { cache: 'no-store' }));
   } catch {
-    return await parseOllamaModels(await fetch(`${normalized}/api/tags`, { cache: 'no-store' }));
+    return await parseLocalRuntimeModels(await fetch(`${normalized}/api/tags`, { cache: 'no-store' }));
   }
 }
 
 export default function ModelSettings() {
   const isMobile = useIsMobile();
   const [settings, setSettings] = useState<ModelSettingsResponse | null>(null);
-  const [selectedProvider, setSelectedProvider] = useState('ollama');
+  const [selectedProvider, setSelectedProvider] = useState('builtin_vllm');
   const [selectedModel, setSelectedModel] = useState('');
   const [runtimeSource, setRuntimeSource] = useState<'host' | 'container'>('host');
   const [baseUrl, setBaseUrl] = useState('');
@@ -213,16 +233,22 @@ export default function ModelSettings() {
   const validationRequestId = useRef(0);
   const { toast } = useToast();
 
-  const selectedProviderDetails = useMemo(() => {
-    return settings?.providers.find((p) => p.id === selectedProvider) ?? null;
-  }, [selectedProvider, settings]);
+  const normalizedSettings = useMemo(
+    () => (settings ? normalizeModelSettingsResponse(settings) : null),
+    [settings],
+  );
 
-  const providerGroups = useMemo(() => {
-    return buildProviderGroups(settings?.providers ?? []);
-  }, [settings]);
+  const selectedProviderDetails = useMemo(() => {
+    return normalizedSettings?.providers.find((p) => p.id === selectedProvider) ?? null;
+  }, [normalizedSettings, selectedProvider]);
+
+  const selectedProviderLabel = useMemo(() => {
+    if (!selectedProviderDetails) return '';
+    return getRuntimeDisplayName(selectedProviderDetails.id, selectedProviderDetails.display_name);
+  }, [selectedProviderDetails]);
 
   const selectedRuntimeOption = useMemo(() => {
-    if (selectedProviderDetails?.id !== 'ollama') return null;
+    if (!isLocalRuntimeProvider(selectedProviderDetails?.id)) return null;
     return selectedProviderDetails.runtime_options?.find((option) => option.source === runtimeSource) ?? null;
   }, [selectedProviderDetails, runtimeSource]);
 
@@ -230,9 +256,10 @@ export default function ModelSettings() {
     setIsLoading(true);
     try {
       const response = await apiClient.get<ModelSettingsResponse>('/api/settings/model');
+      const normalized = normalizeModelSettingsResponse(response);
       setSettings(response);
-      setSelectedProvider(response.selected_provider || response.providers[0]?.id || 'ollama');
-      setSelectedModel(response.selected_model || '');
+      setSelectedProvider(normalized.selected_provider);
+      setSelectedModel(normalized.selected_model);
     } catch (error) {
       toast({
         title: 'Unable to load model settings',
@@ -248,14 +275,14 @@ export default function ModelSettings() {
     if (!providerId) return;
     setIsLoadingModels(true);
     try {
-      if (providerId === 'ollama' && canUseLocalOllamaAddress(providerBaseUrl)) {
-        const models = await loadLocalOllamaModels(providerBaseUrl || '');
-        setAvailableModels(models);
+      if (isLocalRuntimeProvider(providerId) && canUseLocalRuntimeAddress(providerBaseUrl)) {
+        const models = await loadLocalRuntimeModels(providerBaseUrl || '');
+        setAvailableModels(sortProviderModels(models));
         return;
       }
       const query = providerBaseUrl?.trim() ? `?base_url=${encodeURIComponent(providerBaseUrl.trim())}` : '';
       const response = await apiClient.get<ProviderModelsResponse>(`/api/settings/model/providers/${providerId}/models${query}`);
-      setAvailableModels(response.models);
+      setAvailableModels(sortProviderModels(response.models));
     } catch (error) {
       setAvailableModels(selectedProviderDetails?.models ?? []);
       toast({
@@ -273,13 +300,13 @@ export default function ModelSettings() {
   useEffect(() => {
     if (!selectedProviderDetails) return;
     const providerDefaultModel = selectedProviderDetails.selected_model || selectedProviderDetails.default_model || selectedProviderDetails.models[0]?.id || '';
-    const providerBaseUrl = selectedProviderDetails.id === 'ollama'
-      ? normalizeConfiguredOllamaAddress(selectedProviderDetails.base_url || selectedProviderDetails.default_base_url || '')
+    const providerBaseUrl = isLocalRuntimeProvider(selectedProviderDetails.id)
+      ? normalizeConfiguredLocalRuntimeAddress(selectedProviderDetails.base_url || selectedProviderDetails.default_base_url || '')
       : (selectedProviderDetails.base_url || selectedProviderDetails.default_base_url || '');
-    if (selectedProviderDetails.id === 'ollama') {
+    if (isLocalRuntimeProvider(selectedProviderDetails.id)) {
       setRuntimeSource(selectedProviderDetails.runtime_source === 'container' ? 'container' : 'host');
     }
-    setBaseUrl(selectedProviderDetails.id === 'ollama' ? providerBaseUrl.replace(/\/api$/, '') : providerBaseUrl);
+    setBaseUrl(isLocalRuntimeProvider(selectedProviderDetails.id) ? providerBaseUrl.replace(/\/api$/, '') : providerBaseUrl);
     setApiKey('');
     setIsEditingApiKey(false);
     setApiKeyValidationState('idle');
@@ -292,9 +319,9 @@ export default function ModelSettings() {
   }, [selectedProviderDetails, loadProviderModels]);
 
   useEffect(() => {
-    if (selectedProviderDetails?.id !== 'ollama') return;
+    if (!isLocalRuntimeProvider(selectedProviderDetails?.id)) return;
     if (!selectedRuntimeOption) return;
-    const derivedBaseUrl = normalizeConfiguredOllamaAddress(selectedRuntimeOption.base_url);
+    const derivedBaseUrl = normalizeConfiguredLocalRuntimeAddress(selectedRuntimeOption.base_url);
     setBaseUrl(derivedBaseUrl.replace(/\/api$/, ''));
   }, [selectedProviderDetails, selectedRuntimeOption]);
 
@@ -307,12 +334,12 @@ export default function ModelSettings() {
     const candidateKey = apiKey.trim();
     if (!candidateKey) {
       setApiKeyValidationState(selectedProviderDetails.api_key_configured ? 'valid' : 'idle');
-      setApiKeyValidationMessage(selectedProviderDetails.api_key_configured ? `${selectedProviderDetails.display_name} key is stored.` : '');
+      setApiKeyValidationMessage(selectedProviderDetails.api_key_configured ? `${selectedProviderLabel || selectedProviderDetails.display_name} key is stored.` : '');
       return;
     }
     const currentRequestId = ++validationRequestId.current;
     setApiKeyValidationState('validating');
-    setApiKeyValidationMessage(`Validating ${selectedProviderDetails.display_name} key...`);
+    setApiKeyValidationMessage(`Validating ${selectedProviderLabel || selectedProviderDetails.display_name} key...`);
 
     const timeoutId = window.setTimeout(async () => {
       try {
@@ -327,15 +354,15 @@ export default function ModelSettings() {
         setApiKeyValidationMessage(
           response.valid
             ? response.message
-            : formatProviderCredentialMessage(selectedProviderDetails.display_name, response.message),
+            : formatProviderCredentialMessage(selectedProviderLabel || selectedProviderDetails.display_name, response.message),
         );
       } catch (error) {
         if (validationRequestId.current !== currentRequestId) return;
         setApiKeyValidationState('invalid');
         setApiKeyValidationMessage(
           formatProviderCredentialMessage(
-            selectedProviderDetails.display_name,
-            formatErrorMessage(error, `Unable to validate ${selectedProviderDetails.display_name} key.`),
+            selectedProviderLabel || selectedProviderDetails.display_name,
+            formatErrorMessage(error, `Unable to validate ${selectedProviderLabel || selectedProviderDetails.display_name} key.`),
           ),
         );
       }
@@ -347,7 +374,7 @@ export default function ModelSettings() {
     if (!selectedProviderDetails?.requires_api_key) return true;
 
     if (apiKeyValidationState === 'validating') {
-      const message = `Validation for ${selectedProviderDetails.display_name} is still in progress. Wait for it to finish before saving.`;
+      const message = `Validation for ${selectedProviderLabel || selectedProviderDetails.display_name} is still in progress. Wait for it to finish before saving.`;
       setApiKeyValidationState('invalid');
       setApiKeyValidationMessage(message);
       toast({ title: 'Credential check still running', description: message, variant: 'destructive' });
@@ -363,12 +390,12 @@ export default function ModelSettings() {
       });
 
       if (!response.valid) {
-        const message = formatProviderCredentialMessage(selectedProviderDetails.display_name, response.message);
+        const message = formatProviderCredentialMessage(selectedProviderLabel || selectedProviderDetails.display_name, response.message);
         setApiKeyValidationState('invalid');
         setApiKeyValidationMessage(message);
         setIsEditingApiKey(true);
         toast({
-          title: `${selectedProviderDetails.display_name} credential rejected`,
+          title: `${selectedProviderLabel || selectedProviderDetails.display_name} credential rejected`,
           description: message,
           variant: 'destructive',
         });
@@ -380,14 +407,14 @@ export default function ModelSettings() {
       return true;
     } catch (error) {
       const message = formatProviderCredentialMessage(
-        selectedProviderDetails.display_name,
-        formatErrorMessage(error, `Unable to validate ${selectedProviderDetails.display_name} key.`),
+        selectedProviderLabel || selectedProviderDetails.display_name,
+        formatErrorMessage(error, `Unable to validate ${selectedProviderLabel || selectedProviderDetails.display_name} key.`),
       );
       setApiKeyValidationState('invalid');
       setApiKeyValidationMessage(message);
       setIsEditingApiKey(true);
       toast({
-        title: `${selectedProviderDetails.display_name} credential rejected`,
+        title: `${selectedProviderLabel || selectedProviderDetails.display_name} credential rejected`,
         description: message,
         variant: 'destructive',
       });
@@ -408,28 +435,28 @@ export default function ModelSettings() {
         const credentialsValid = await validateProviderCredentialsBeforeSave();
         if (!credentialsValid) return;
       } else if (submittedApiKey && apiKeyValidationState === 'invalid') {
-        throw new Error(apiKeyValidationMessage || `${selectedProviderDetails.display_name} API key validation failed.`);
+        throw new Error(apiKeyValidationMessage || `${selectedProviderLabel || selectedProviderDetails.display_name} API key validation failed.`);
       }
       const response = await apiClient.put<ModelSettingsResponse>('/api/settings/model', {
         provider: selectedProvider,
         model: selectedModel.trim(),
         base_url: selectedProviderDetails.supports_base_url_override ? baseUrl.trim() : undefined,
-        runtime_source: selectedProviderDetails.id === 'ollama' ? runtimeSource : undefined,
+        runtime_source: isLocalRuntimeProvider(selectedProviderDetails.id) ? runtimeSource : undefined,
         api_key: submittedApiKey || undefined,
         api_key_header: selectedProviderDetails.supports_custom_auth ? apiKeyHeader.trim() : undefined,
         api_key_prefix: selectedProviderDetails.supports_custom_auth ? apiKeyPrefix : undefined,
       });
       setSettings(response);
-      toast({ title: 'Model settings saved', description: `${selectedProviderDetails.display_name} is configured.` });
+      toast({ title: 'Model settings saved', description: `${selectedProviderLabel || selectedProviderDetails.display_name} is configured.` });
     } catch (error) {
       const message = formatProviderCredentialMessage(
-        selectedProviderDetails.display_name,
+        selectedProviderLabel || selectedProviderDetails.display_name,
         formatErrorMessage(error, 'Karen could not save configuration.'),
       );
       setApiKeyValidationState('invalid');
       setApiKeyValidationMessage(message);
       setIsEditingApiKey(true);
-      toast({ title: `Save failed for ${selectedProviderDetails.display_name}`, description: message, variant: 'destructive' });
+      toast({ title: `Save failed for ${selectedProviderLabel || selectedProviderDetails.display_name}`, description: message, variant: 'destructive' });
     } finally { setIsSaving(false); }
   };
 
@@ -440,12 +467,12 @@ export default function ModelSettings() {
       const response = await apiClient.put<ModelSettingsResponse>('/api/settings/model', {
         provider: selectedProvider,
         model: selectedModel.trim(),
-        runtime_source: selectedProviderDetails?.id === 'ollama' ? runtimeSource : undefined,
+        runtime_source: isLocalRuntimeProvider(selectedProviderDetails?.id) ? runtimeSource : undefined,
         clear_api_key: true,
       });
       setSettings(response);
       setApiKey('');
-      toast({ title: 'API key removed', description: `${selectedProviderDetails.display_name} credentials cleared.` });
+      toast({ title: 'API key removed', description: `${selectedProviderLabel || selectedProviderDetails.display_name} credentials cleared.` });
     } catch (error) {
       toast({ title: 'Unable to clear API key', description: formatErrorMessage(error, 'Failed to clear credential.'), variant: 'destructive' });
     } finally { setIsClearingKey(false); }
@@ -576,44 +603,56 @@ export default function ModelSettings() {
                   </SelectTrigger>
                   <SelectContent className="max-h-[min(80vh,500px)]">
                     <SelectGroup>
-                      <SelectLabel className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground"><ShieldCheck className="h-3 w-3" /> Managed Cloud</SelectLabel>
-                      {providerGroups.cloudProviders.map((p) => (
+                      <SelectLabel className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground"><Server className="h-3 w-3" /> Built-in Runtime</SelectLabel>
+                      {normalizedSettings?.builtInProviders.map((p) => (
                         <SelectItem key={p.id} value={p.id} className="cursor-pointer py-3 hover:bg-primary/5">
                           <div className="flex items-center gap-3">
-                            <span className="font-semibold">{p.display_name}</span>
-                            <Badge variant="outline" className="h-5 text-[9px] font-bold uppercase tracking-widest text-primary/70">Frontier</Badge>
+                            <span className="font-semibold">{getRuntimeDisplayName(p.id, p.display_name)}</span>
+                            <Badge variant="outline" className="h-5 text-[9px] font-bold uppercase tracking-widest text-primary/70">Core</Badge>
                           </div>
                         </SelectItem>
                       ))}
                     </SelectGroup>
                     <SelectSeparator className="my-2" />
                     <SelectGroup>
-                      <SelectLabel className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground"><HardDrive className="h-3 w-3" /> Local Runtimes</SelectLabel>
-                      {providerGroups.localProviders.map((p) => (
+                      <SelectLabel className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground"><HardDrive className="h-3 w-3" /> Local Providers</SelectLabel>
+                      {normalizedSettings?.localProviders.map((p) => (
                         <SelectItem key={p.id} value={p.id} className="cursor-pointer py-3">
                           <div className="flex items-center gap-3">
-                            <span className="font-semibold">{p.display_name}</span>
-                            <Badge variant="outline" className="h-5 text-[9px] font-bold uppercase tracking-widest text-emerald-600/70">Private</Badge>
+                            <span className="font-semibold">{getRuntimeDisplayName(p.id, p.display_name)}</span>
+                            <Badge variant="outline" className="h-5 text-[9px] font-bold uppercase tracking-widest text-emerald-600/70">Local</Badge>
                           </div>
                         </SelectItem>
                       ))}
                     </SelectGroup>
-                    {providerGroups.customProviders.length > 0 && (
+                    <SelectSeparator className="my-2" />
+                    <SelectGroup>
+                      <SelectLabel className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground"><HardDrive className="h-3 w-3" /> Third-Party Providers</SelectLabel>
+                      {normalizedSettings?.thirdPartyProviders.map((p) => (
+                        <SelectItem key={p.id} value={p.id} className="cursor-pointer py-3">
+                          <div className="flex items-center gap-3">
+                            <span className="font-semibold">{getRuntimeDisplayName(p.id, p.display_name)}</span>
+                            <Badge variant="outline" className="h-5 text-[9px] font-bold uppercase tracking-widest text-emerald-600/70">Third-Party</Badge>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                    {normalizedSettings?.customProviders.length ? (
                       <>
                         <SelectSeparator className="my-2" />
                         <SelectGroup>
                           <SelectLabel className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground"><Settings2 className="h-3 w-3" /> Custom Integrations</SelectLabel>
-                          {providerGroups.customProviders.map((p) => (
+                          {normalizedSettings?.customProviders.map((p) => (
                             <SelectItem key={p.id} value={p.id} className="cursor-pointer py-3">
                               <div className="flex items-center gap-3">
-                                <span className="font-semibold">{p.display_name}</span>
+                                <span className="font-semibold">{getRuntimeDisplayName(p.id, p.display_name)}</span>
                                 <Badge variant="outline" className="h-5 text-[9px] font-bold uppercase tracking-widest text-purple-600/70">API</Badge>
                               </div>
                             </SelectItem>
                           ))}
                         </SelectGroup>
                       </>
-                    )}
+                    ) : null}
                   </SelectContent>
                 </Select>
               </div>
@@ -626,10 +665,10 @@ export default function ModelSettings() {
                   <div className="grid gap-8">
                     {/* Endpoint & Discovery Row */}
                       <div className="grid gap-6 md:grid-cols-2">
-                        {selectedProviderDetails.id === 'ollama' ? (
+                        {isLocalRuntimeProvider(selectedProviderDetails.id) ? (
                           <div className="space-y-3 md:col-span-2">
-                            <Label htmlFor="ollama-runtime-source" className="flex items-center gap-2 font-semibold">
-                              <Server className="h-4 w-4 text-primary" /> Ollama Runtime Source
+                            <Label htmlFor="runtime-source" className="flex items-center gap-2 font-semibold">
+                              <Server className="h-4 w-4 text-primary" /> Runtime Source
                             </Label>
                             <Select
                               value={runtimeSource}
@@ -637,14 +676,14 @@ export default function ModelSettings() {
                                 setRuntimeSource(value);
                                 const nextOption = selectedProviderDetails.runtime_options?.find((option) => option.source === value);
                                 if (nextOption) {
-                                  const nextBaseUrl = normalizeConfiguredOllamaAddress(nextOption.base_url);
+                                  const nextBaseUrl = normalizeConfiguredLocalRuntimeAddress(nextOption.base_url);
                                   setBaseUrl(nextBaseUrl.replace(/\/api$/, ''));
-                                  void loadProviderModels('ollama', nextBaseUrl);
+                                  void loadProviderModels(selectedProviderDetails.id, nextBaseUrl);
                                 }
                               }}
                             >
-                              <SelectTrigger id="ollama-runtime-source" className="h-11 bg-muted/20">
-                                <SelectValue placeholder="Choose Ollama runtime" />
+                              <SelectTrigger id="runtime-source" className="h-11 bg-muted/20">
+                                <SelectValue placeholder="Choose runtime source" />
                               </SelectTrigger>
                               <SelectContent>
                                 {(selectedProviderDetails.runtime_options ?? []).map((option) => (
@@ -750,7 +789,7 @@ export default function ModelSettings() {
                               </Button>
                             )}
                           </div>
-                          
+
                           <div className="relative">
                             <Input
                               id="api-key"
@@ -758,7 +797,7 @@ export default function ModelSettings() {
                               value={isEditingApiKey ? apiKey : (apiKey || selectedProviderDetails.api_key_masked || '')}
                               onFocus={() => setIsEditingApiKey(true)}
                               onChange={(e) => setApiKey(e.target.value)}
-                              placeholder={`Enter ${selectedProviderDetails.display_name} API Secret...`}
+                              placeholder={`Enter ${selectedProviderLabel || selectedProviderDetails.display_name} API Secret...`}
                               className="h-12 border-border/60 bg-background/50 pr-10 font-mono text-sm leading-relaxed tracking-widest transition-all focus:border-primary/40 focus:ring-primary/10"
                             />
                             <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
@@ -767,13 +806,18 @@ export default function ModelSettings() {
                               {apiKeyValidationState === 'invalid' && <XCircle className="h-4 w-4 text-destructive" />}
                             </div>
                           </div>
-                          
+
                           {apiKeyValidationMessage && (
-                            <div className={cn("flex items-center gap-2 text-xs font-medium px-2 py-1.5 rounded-lg border", 
+                            <div className={cn("flex items-center gap-2 text-xs font-medium px-2 py-1.5 rounded-lg border",
                               apiKeyValidationState === 'valid' ? "bg-emerald-50/10 border-emerald-500/20 text-emerald-600" : "bg-destructive/5 border-destructive/20 text-destructive")}>
                               <Info className="h-3 w-3 shrink-0" /> {apiKeyValidationMessage}
                             </div>
                           )}
+                        </div>
+                      )}
+                      {normalizedSettings?.systemFallbackProvider && (
+                        <div className="rounded-2xl border border-dashed border-border/50 bg-muted/5 p-4 text-xs text-muted-foreground md:col-span-2">
+                          Automatic fallback runtime: <span className="font-semibold text-foreground">{normalizedSettings.systemFallbackProvider.runtime_display_name}</span>
                         </div>
                       )}
                     </div>
@@ -800,7 +844,7 @@ export default function ModelSettings() {
                     <ShieldCheck className="h-4 w-4 text-primary" />
                   </div>
                   <div>
-                    <CardTitle className="text-sm font-bold uppercase tracking-widest">{selectedProviderDetails.display_name}</CardTitle>
+                    <CardTitle className="text-sm font-bold uppercase tracking-widest">{selectedProviderLabel || selectedProviderDetails.display_name}</CardTitle>
                     <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight">Active Node Status</p>
                   </div>
                 </div>
@@ -828,10 +872,16 @@ export default function ModelSettings() {
                         <span className="max-w-[120px] truncate font-mono text-primary/70">{selectedProviderDetails.selected_model}</span>
                       </div>
                     )}
-                    {selectedProviderDetails.id === 'ollama' && selectedRuntimeOption && (
+                    {isLocalRuntimeProvider(selectedProviderDetails.id) && selectedRuntimeOption && (
                       <div className="flex items-center justify-between text-xs font-semibold">
                         <span className="text-muted-foreground">Runtime Source</span>
                         <span className="uppercase tracking-widest text-primary/80">{selectedRuntimeOption.label}</span>
+                      </div>
+                    )}
+                    {normalizedSettings?.systemFallbackProvider && (
+                      <div className="flex items-center justify-between text-xs font-semibold">
+                        <span className="text-muted-foreground">Automatic Fallback</span>
+                        <span className="uppercase tracking-widest text-primary/80">{normalizedSettings.systemFallbackProvider.runtime_display_name}</span>
                       </div>
                     )}
                   </div>

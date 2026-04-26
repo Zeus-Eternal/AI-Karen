@@ -18,6 +18,11 @@ except ImportError:
     TransformersRuntime = None
 
 try:
+    from .vllm_runtime import VLLMRuntime
+except ImportError:
+    VLLMRuntime = None
+
+try:
     from .core_helpers_runtime import CoreHelpersRuntime
 except ImportError:
     CoreHelpersRuntime = None
@@ -49,6 +54,7 @@ from .dependencies import (
 
 __all__ = [
     "TransformersRuntime",
+    "VLLMRuntime",
     "CoreHelpersRuntime",
     # Model Store
     "ModelStore",

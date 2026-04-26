@@ -6,7 +6,7 @@
   "display_name": "Time Query",
   "version": "0.2.0",
   "description": "App-wide time authority: current time, world clocks, stopwatches, alarms, and timezone conversions.",
-  "category": "plugins",
+  "category": "productivity",
   "intent": "time_query",
   "capabilities": {
     "provides_ui": true,

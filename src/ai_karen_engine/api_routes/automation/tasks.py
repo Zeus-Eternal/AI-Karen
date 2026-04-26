@@ -57,6 +57,27 @@ class TaskDefinitionResponse(TaskDefinitionRequest):
 _tasks_db: Dict[str, Dict[str, Any]] = {}
 
 
+def get_tasks_summary() -> Dict[str, Any]:
+    """Get a summary of tasks for statistics."""
+    tasks = list(_tasks_db.values())
+    now = datetime.utcnow()
+    today_start = datetime(now.year, now.month, now.day)
+    
+    tasks_today = 0
+    for t in tasks:
+        # Check if it was updated/run today
+        updated_at = t.get("updated_at")
+        if isinstance(updated_at, datetime) and updated_at >= today_start:
+            tasks_today += t.get("runCount", 0)
+            
+    return {
+        "total_definitions": len(tasks),
+        "tasks_run_today": tasks_today,
+        "active_tasks": len([t for t in tasks if t.get("status") == "Running"]),
+        "failed_tasks": len([t for t in tasks if t.get("status") == "Failed"])
+    }
+
+
 def _slugify_task_type(name: str) -> str:
     slug = "".join(ch.lower() if ch.isalnum() else "_" for ch in name).strip("_")
     while "__" in slug:

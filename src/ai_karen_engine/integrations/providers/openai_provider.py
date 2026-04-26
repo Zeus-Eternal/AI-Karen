@@ -75,12 +75,20 @@ class OpenAIProvider(LLMProviderBase):
             self.openai = openai
 
             if not self.api_key:
-                self.initialization_error = (
-                    f"No {self.display_name} API key provided. "
-                    f"Set {self.api_key_env_var} environment variable."
-                )
-                logger.warning(self.initialization_error)
-                return
+                if self.provider_name == "builtin_vllm":
+                    # Local vLLM deployments may not require auth. Use a
+                    # placeholder key so the OpenAI client can initialize.
+                    self.api_key = "EMPTY"
+                    logger.info(
+                        "No vLLM API key provided; initializing unauthenticated local vLLM client"
+                    )
+                else:
+                    self.initialization_error = (
+                        f"No {self.display_name} API key provided. "
+                        f"Set {self.api_key_env_var} environment variable."
+                    )
+                    logger.warning(self.initialization_error)
+                    return
 
             # Initialize client with custom settings
             client_kwargs = {
@@ -95,7 +103,8 @@ class OpenAIProvider(LLMProviderBase):
             self.client = openai.OpenAI(**client_kwargs)
 
             # Validate API key by making a simple request
-            self._validate_api_key()
+            if self.provider_name != "builtin_vllm":
+                self._validate_api_key()
 
         except ImportError:
             self.initialization_error = f"{self.display_name} client dependency not installed. Install with: pip install openai"

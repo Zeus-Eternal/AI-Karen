@@ -34,6 +34,8 @@ DEFAULT_OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
 # Canonical provider identifier aliases (UI/API/runtime should all use these).
 PROVIDER_NAME_ALIASES: Dict[str, str] = {
+    "builtin-vllm": "builtin_vllm",
+    "vllm": "builtin_vllm",
 }
 
 # Canonical provider class names with module ownership.
@@ -54,6 +56,7 @@ PROVIDER_CLASS_ALIASES: Dict[str, str] = {
 
 # Shared settings UI order, centralized here to avoid route-level drift.
 MODEL_SETTINGS_PROVIDER_ORDER: List[str] = [
+    "builtin_vllm",
     "openai",
     "anthropic",
     "gemini",
@@ -736,6 +739,9 @@ class LLMProviderConfigManager:
 
     def _save_provider_config(self, config: ProviderConfig) -> None:
         """Save a provider configuration to disk"""
+        if config.name.startswith("builtin_"):
+            return
+
         config_file = self.config_dir / f"{config.name}.json"
 
         try:
@@ -985,6 +991,33 @@ class LLMProviderConfigManager:
         )
         self.add_provider(huggingface_config)
 
+        vllm_config = ProviderConfig(
+            name="builtin_vllm",
+            display_name="vLLM",
+            description="Primary built-in runtime for high-throughput text generation and streaming.",
+            provider_type=ProviderType.LOCAL,
+            priority=95,
+            models=[
+                ProviderModel(
+                    id="auto",
+                    name="Auto",
+                    family="vllm",
+                    capabilities={"text", "conversation", "chat"},
+                    context_length=32768,
+                    max_tokens=4096,
+                    supports_streaming=True,
+                )
+            ],
+            default_model="auto",
+            capabilities={"streaming", "chat_completion", "text_generation"},
+            limits=ProviderLimits(
+                concurrent_requests=12,
+                max_context_length=32768,
+                max_output_tokens=4096,
+            ),
+        )
+        self.add_provider(vllm_config)
+
         # Ollama remains a supported local runtime option alongside local GGUF runtimes.
 
         logger.info("Created default LLM provider configurations")
@@ -993,6 +1026,31 @@ class LLMProviderConfigManager:
         """Create any additional default providers that are not already configured."""
 
         additional_configs = [
+            ProviderConfig(
+                name="builtin_vllm",
+                display_name="vLLM",
+                description="Primary built-in runtime for high-throughput text generation and streaming.",
+                provider_type=ProviderType.LOCAL,
+                priority=95,
+                models=[
+                    ProviderModel(
+                        id="auto",
+                        name="Auto",
+                        family="vllm",
+                        capabilities={"text", "conversation", "chat"},
+                        context_length=32768,
+                        max_tokens=4096,
+                        supports_streaming=True,
+                    )
+                ],
+                default_model="auto",
+                capabilities={"streaming", "chat_completion", "text_generation"},
+                limits=ProviderLimits(
+                    concurrent_requests=12,
+                    max_context_length=32768,
+                    max_output_tokens=4096,
+                ),
+            ),
             ProviderConfig(
                 name="anthropic",
                 display_name="Anthropic Claude",

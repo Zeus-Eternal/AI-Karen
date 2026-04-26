@@ -1,6 +1,10 @@
 import { useState, useCallback, useEffect } from 'react';
 import { TimeQueryApi } from '../services/timeQueryApi';
 import { AlarmItem } from '../types';
+import { PluginExtensionError } from '@/lib/extensions/hooks/usePluginExtension';
+
+const isRateLimitError = (error: unknown) =>
+  error instanceof PluginExtensionError && error.status === 429;
 
 export const useAlarms = (api: TimeQueryApi) => {
   const [alarms, setAlarms] = useState<AlarmItem[]>([]);
@@ -14,7 +18,9 @@ export const useAlarms = (api: TimeQueryApi) => {
         setAlarms(res.alarms);
       }
     } catch (e) {
-      console.error(e);
+      if (!isRateLimitError(e)) {
+        console.error(e);
+      }
     } finally {
       setLoading(false);
     }

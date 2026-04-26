@@ -25,19 +25,12 @@ ENV CC=/usr/bin/gcc \
     CXX=/usr/bin/g++ \
     CMAKE_ARGS="-DLLAMA_METAL=off -DLLAMA_CUBLAS=off -DLLAMA_BLAS=off"
 
-# Copy pyproject.toml and poetry.lock
-COPY pyproject.toml poetry.lock* ./
+# Copy dependency manifest
+COPY requirements.txt ./
 
-# Configure Poetry to not create a virtual environment
-RUN poetry config virtualenvs.create false
-
-# Install dependencies
-RUN poetry config installer.max-workers 4
-RUN poetry config installer.parallel true
-# Install dependencies with retries and longer timeout
-RUN poetry install --no-interaction --no-ansi --only main --no-root || \
-    poetry install --no-interaction --no-ansi --only main --no-root || \
-    poetry install --no-interaction --no-ansi --only main --no-root
+# Install dependencies directly from requirements.txt
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir -r requirements.txt
 # Ensure common spaCy model is available in the image to avoid runtime downloads
 RUN python -m spacy download en_core_web_sm || true
 
@@ -50,19 +43,12 @@ ENV CC=/usr/bin/gcc \
     CXX=/usr/bin/g++ \
     CMAKE_ARGS="-DLLAMA_METAL=off -DLLAMA_CUBLAS=off -DLLAMA_BLAS=on -DLLAMA_BLAS_VENDOR=OpenBLAS"
 
-# Copy pyproject.toml and poetry.lock
-COPY pyproject.toml poetry.lock* ./
+# Copy dependency manifest
+COPY requirements.txt ./
 
-# Configure Poetry to not create a virtual environment
-RUN poetry config virtualenvs.create false
-
-# Install dependencies
-RUN poetry config installer.max-workers 4
-RUN poetry config installer.parallel true
-# Install dependencies with retries and longer timeout
-RUN poetry install --no-interaction --no-ansi --only main --no-root || \
-    poetry install --no-interaction --no-ansi --only main --no-root || \
-    poetry install --no-interaction --no-ansi --only main --no-root
+# Install dependencies directly from requirements.txt
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir -r requirements.txt
 # Ensure common spaCy model is available in the image to avoid runtime downloads
 RUN python -m spacy download en_core_web_sm || true
 
@@ -92,20 +78,16 @@ ENV CC=/usr/bin/gcc \
     CXX=/usr/bin/g++ \
     CMAKE_ARGS="-DGGML_CUDA=on -DLLAMA_CUBLAS=on -DLLAMA_METAL=off -DLLAMA_BLAS=off"
 
-COPY pyproject.toml poetry.lock* ./
+# Copy dependency manifest
+COPY requirements.txt ./
 
-RUN poetry config virtualenvs.create false
-RUN poetry config installer.max-workers 4
-RUN poetry config installer.parallel true
-RUN poetry install --no-interaction --no-ansi --only main --no-root || \
-    poetry install --no-interaction --no-ansi --only main --no-root || \
-    poetry install --no-interaction --no-ansi --only main --no-root
+RUN pip install --no-cache-dir -r requirements.txt
 RUN python -m spacy download en_core_web_sm || true
 
 # -----------------------------
 # Final stage (select by target)
 # -----------------------------
-FROM ${PROFILE}
+FROM ${PROFILE} AS app
 WORKDIR /app
 
 # Set PYTHONPATH to include src directory
@@ -113,10 +95,6 @@ ENV PYTHONPATH=/app:/app/src:$PYTHONPATH
 
 # Copy application code
 COPY . .
-RUN pip install -e .
-
-# Make memory service initialization script executable
-RUN chmod +x scripts/init_memory_service.py
 
 # Create necessary directories
 RUN mkdir -p /app/models /app/logs /app/backups /app/certs
@@ -140,4 +118,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -fsS http://localhost:8000/health || exit 1
 
 # Start command with plugin initialization and uvloop/httptools
-CMD ["bash", "-c", "python scripts/init_db_schema.py && uvicorn server.app:create_app --factory --host 0.0.0.0 --port 8000 --loop uvloop --http httptools"]
+CMD ["python", "start.py"]

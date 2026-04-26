@@ -437,21 +437,25 @@ class AuthService {
           throw new Error('No refresh token available');
         }
 
-        const response = await this.fetchWithTimeout('/api/auth/refresh', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+      const response = await this.fetchWithTimeout('/api/auth/refresh', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
           credentials: 'include',
           body: JSON.stringify({ refresh_token: refreshToken }),
         });
 
-        if (!response.ok) {
-          if (response.status === 401) {
-            this.refreshBlockedUntil = Date.now() + this.REFRESH_RETRY_COOLDOWN_MS;
-          }
-          throw new Error(await this.getErrorMessage(response, 'Token refresh failed'));
+      if (!response.ok) {
+        const errorMessage = await this.getErrorMessage(response, 'Token refresh failed');
+        if (response.status === 401 || response.status === 403) {
+          this.refreshBlockedUntil = Date.now() + this.REFRESH_RETRY_COOLDOWN_MS;
+          console.warn('[AuthService] Refresh token rejected; clearing local auth state.');
+          this.clearAuth();
+          return '';
         }
+        throw new Error(errorMessage);
+      }
 
         const data = await response.json();
         localStorage.setItem('access_token', data.access_token);
@@ -459,15 +463,20 @@ class AuthService {
         this.refreshBlockedUntil = 0;
         
         return data.access_token;
-      } catch (error) {
-        console.error('Token refresh error:', error);
-        // Hard refresh failure should be terminal for this local session
+    } catch (error) {
+      if (error instanceof Error && /invalid refresh token/i.test(error.message)) {
+        console.warn('[AuthService] Invalid refresh token; clearing local auth state.');
         this.clearAuth();
-        throw error;
-      } finally {
-        this.refreshInFlight = null;
+        return '';
       }
-    })();
+      console.error('Token refresh error:', error);
+      // Hard refresh failure should be terminal for this local session
+      this.clearAuth();
+      throw error;
+    } finally {
+      this.refreshInFlight = null;
+    }
+  })();
 
     return this.refreshInFlight;
   }
@@ -774,8 +783,11 @@ class AuthService {
     }
 
     if (this.isTokenExpired(accessToken)) {
-      await this.refreshToken();
-      return this.getAccessToken()!;
+      const refreshedToken = await this.refreshToken();
+      if (refreshedToken) {
+        return refreshedToken;
+      }
+      return '';
     }
 
     return accessToken;

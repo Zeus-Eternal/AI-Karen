@@ -1,9 +1,9 @@
 """Configuration helpers and model registry utilities."""
 
-from ai_karen_engine.config import model_registry
-from ai_karen_engine.config.config_asset_loaders import (
+from .config_asset_loaders import (
     load_optimization_config,
     load_permissions_config,
+    load_model_runtime_discovery_config,
     load_local_model_runtime_config,
     load_extension_configs,
     load_memory_policy_config,
@@ -11,11 +11,13 @@ from ai_karen_engine.config.config_asset_loaders import (
     load_performance_config,
     load_deployment_config,
 )
+from ai_karen_engine.server.config import Settings
 
 __all__ = [
-    "model_registry",
+    "Settings",
     "load_optimization_config",
     "load_permissions_config",
+    load_model_runtime_discovery_config,
     load_local_model_runtime_config,
     load_extension_configs,
     load_memory_policy_config,

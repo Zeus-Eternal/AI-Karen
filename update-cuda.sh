@@ -19,7 +19,7 @@ echo "🛑 Stopping current deployment..."
 
 # Pull latest images
 echo "📦 Pulling latest images..."
-docker-compose -f docker-compose.cuda.yml pull llamacpp-cuda
+docker-compose -f docker-compose.cuda.yml pull ai-karen-local-gguf-cuda
 
 # Build updated AI-Karen image
 echo "🏗️  Building updated AI-Karen image..."

@@ -6,6 +6,7 @@ This service manages database connections and pooling.
 
 import logging
 import asyncio
+from functools import lru_cache
 from typing import Any, Dict, List, Optional, Union
 from dataclasses import dataclass
 import time
@@ -215,3 +216,9 @@ class DatabaseConnectionManager:
         """Close a specific connection pool."""
         # Implementation would close actual pool
         pass
+
+
+@lru_cache()
+def get_database_manager(config: Optional[Dict[str, Any]] = None) -> DatabaseConnectionManager:
+    """Return a cached database connection manager."""
+    return DatabaseConnectionManager(config or {})

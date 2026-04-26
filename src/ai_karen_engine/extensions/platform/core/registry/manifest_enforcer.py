@@ -331,7 +331,7 @@ class ManifestStandardsEnforcer:
             "id": "Use a unique identifier for the plugin",
             "name": "Use a descriptive name for the plugin",
             "version": "Use semantic versioning (e.g., 1.0.0)",
-            "category": "Use one of: plugins, sys_extensions, channels",
+            "category": "Use one of: analytics, automation, communication, development, experimental, integration, productivity, security, plugins, sys_extensions, channels",
             "entrypoint": "Format as 'module:function_name'",
             "capabilities.provides_ui": "Set to true if plugin provides UI components",
             "ui.has_component": "Set to true if plugin has UI components",

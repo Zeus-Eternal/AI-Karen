@@ -7,7 +7,7 @@ import {
   Bot,
   Cog,
   GraduationCap,
-  KeyRound,
+  HardDrive,
   MessageSquareMore,
   Shield,
   Speaker,
@@ -17,8 +17,8 @@ import {
 
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import ApiKeyManager from "./ApiKeyManager";
 import BehaviorSettings from "./BehaviorSettings";
+import ModelDownloads from "./ModelDownloads";
 import ModelSettings from "./ModelSettings";
 import NotificationSettings from "./NotificationSettings";
 import OptimizationSettings from "./OptimizationSettings";
@@ -73,7 +73,7 @@ export default function SettingsDialog({ inSheet = false, adminMode = false }: S
         label: "Models & Runtime",
         sections: [
           { id: "model", label: "Model", icon: Bot, render: () => <ModelSettings /> },
-          { id: "api-keys", label: "API Keys", icon: KeyRound, render: () => <ApiKeyManager /> },
+          { id: "model-downloads", label: "Model Downloads", icon: HardDrive, render: () => <ModelDownloads adminMode={adminMode} /> },
         ],
       },
     ];
@@ -208,4 +208,3 @@ export default function SettingsDialog({ inSheet = false, adminMode = false }: S
     </div>
   );
 }
-

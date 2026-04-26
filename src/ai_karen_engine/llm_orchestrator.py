@@ -1018,7 +1018,15 @@ class LLMOrchestrator:
                 try:
                     # Try to call generate_text with a timeout if it's a wrapper
                     # Local providers may block; keep warmup best-effort.
-                    provider.generate_text("hello", max_tokens=1)
+                    from ai_karen_engine.core.model_runtime.model_manager import (
+                        ModelManager,
+                    )
+
+                    ModelManager.invoke_provider_sync(
+                        provider,
+                        "hello",
+                        max_tokens=1,
+                    )
                 except Exception as e:
                     logger.debug(f"Minimal generation warmup failed for {model_id}: {e}")
                     return None

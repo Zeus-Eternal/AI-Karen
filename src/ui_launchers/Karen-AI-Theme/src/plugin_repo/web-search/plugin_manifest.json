@@ -7,7 +7,7 @@
   "description": "Unified web search capability with multiple search modes (general, news, docs, deep research, structured extract, weather, stock market).",
   "author": "Kari Team",
   "license": "MIT",
-  "category": "plugins",
+  "category": "integration",
   "capabilities": {
     "provides_ui": true,
     "provides_api": true,

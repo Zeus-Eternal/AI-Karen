@@ -20,8 +20,9 @@ import hashlib
 from ai_karen_engine.services.intelligent_model_router import (
     ModelRouter, get_model_router
 )
-from ai_karen_engine.services.models.discovery.model_discovery_engine import (
-    ModelDiscoveryEngine, get_model_discovery_engine
+from ai_karen_engine.core.model_runtime.model_discovery_service import (
+    ModelDiscoveryService,
+    get_model_discovery_service,
 )
 from ai_karen_engine.core.memory.profile_synthesis.profile_manager import (
     ProfileManager, get_profile_manager
@@ -64,7 +65,7 @@ class IntelligentScaffoldingService:
         
         # Core services
         self.model_router = get_model_router()
-        self.model_discovery = get_model_discovery_engine()
+        self.model_discovery = get_model_discovery_service()
         self.profile_manager = get_profile_manager()
         
         # Model selection cache

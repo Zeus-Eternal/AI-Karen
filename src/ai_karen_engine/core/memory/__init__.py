@@ -16,9 +16,30 @@ from .ledger_models import (
     MemoryRelation, ReinforcementEvent, ContradictionEvent,
     ProjectionStatus, ConsentScope, RetentionPolicy
 )
-from .profile_synthesis import get_profile_service, ProfileService
-from .retrieval import get_retrieval_router, HybridRetrievalRouter
-from .evaluation import get_eval_harness, MemoryEvalHarness
+
+try:
+    from .profile_synthesis import get_profile_service, ProfileService
+except ImportError:
+    get_profile_service = None
+    ProfileService = None
+
+try:
+    from .retrieval import get_retrieval_router, HybridRetrievalRouter
+except ImportError:
+    get_retrieval_router = None
+    HybridRetrievalRouter = None
+
+get_eval_harness = None
+MemoryEvalHarness = None
+
+try:
+    from .evaluation import get_eval_harness as _get_eval_harness, MemoryEvalHarness as _MemoryEvalHarness
+except ImportError:
+    _get_eval_harness = None
+    _MemoryEvalHarness = None
+else:
+    get_eval_harness = _get_eval_harness
+    MemoryEvalHarness = _MemoryEvalHarness
 
 __all__ = [
     "get_memory_manager",

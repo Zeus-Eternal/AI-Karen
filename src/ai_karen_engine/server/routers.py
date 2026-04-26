@@ -125,17 +125,8 @@ from ai_karen_engine.api_routes.monitoring.health import router as health_router
 from ai_karen_engine.api_routes.models.management import (
     router as model_management_router,
 )
-from ai_karen_engine.api_routes.models.huggingface import (
-    router as enhanced_huggingface_router,
-)
 from ai_karen_engine.api_routes.automation.scheduler import router as scheduler_router
 from ai_karen_engine.api_routes.public.public import router as public_router
-from ai_karen_engine.api_routes.models.library import (
-    router as model_library_router,
-)
-from ai_karen_engine.api_routes.models.library import (
-    public_router as model_library_public_router,
-)
 from ai_karen_engine.api_routes.models.model_orchestrator import (
     router as model_orchestrator_router,
 )
@@ -451,13 +442,8 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
     # to expose endpoints like "/api/health" and "/api/health/degraded-mode".
     app.include_router(health_router, prefix="/api", tags=["health"])
     app.include_router(model_management_router, tags=["model-management"])
-    app.include_router(
-        enhanced_huggingface_router, prefix="/api", tags=["enhanced-huggingface"]
-    )
     app.include_router(scheduler_router, tags=["scheduler"])
     app.include_router(public_router, tags=["public"])
-    app.include_router(model_library_router, tags=["model-library"])
-    app.include_router(model_library_public_router, tags=["model-library-public"])
     app.include_router(model_orchestrator_router, tags=["model-orchestrator"])
     app.include_router(validation_metrics_router, tags=["validation-metrics"])
     app.include_router(performance_routes, tags=["performance"])
