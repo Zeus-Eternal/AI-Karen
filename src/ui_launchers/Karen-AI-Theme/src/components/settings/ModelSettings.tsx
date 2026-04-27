@@ -34,7 +34,6 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import {
   getRuntimeDisplayName,
-  isLocalRuntimeProvider,
 } from '@/lib/chat-response';
 import { normalizeModelSettingsResponse, type RuntimeSettingsResponse } from '@/lib/model-runtime-inventory';
 
@@ -192,7 +191,7 @@ async function parseLocalRuntimeModels(response: Response): Promise<ProviderMode
 async function loadLocalRuntimeModels(address: string): Promise<ProviderModel[]> {
   const normalized = normalizeConfiguredLocalRuntimeAddress(address);
   try {
-    return parseLocalRuntimeModels(await fetch(`/api/ollama/tags?base_url=${encodeURIComponent(normalized)}`, { cache: 'no-store' }));
+    return parseLocalRuntimeModels(await fetch(`${normalized}/api/tags`, { cache: 'no-store' }));
   } catch {
     return await parseLocalRuntimeModels(await fetch(`${normalized}/api/tags`, { cache: 'no-store' }));
   }
@@ -247,10 +246,12 @@ export default function ModelSettings() {
     return getRuntimeDisplayName(selectedProviderDetails.id, selectedProviderDetails.display_name);
   }, [selectedProviderDetails]);
 
+  const usesRuntimeOptions = Boolean(selectedProviderDetails?.runtime_options?.length);
+
   const selectedRuntimeOption = useMemo(() => {
-    if (!isLocalRuntimeProvider(selectedProviderDetails?.id)) return null;
-    return selectedProviderDetails.runtime_options?.find((option) => option.source === runtimeSource) ?? null;
-  }, [selectedProviderDetails, runtimeSource]);
+    if (!usesRuntimeOptions) return null;
+    return selectedProviderDetails?.runtime_options?.find((option) => option.source === runtimeSource) ?? null;
+  }, [selectedProviderDetails, runtimeSource, usesRuntimeOptions]);
 
   const loadSettings = useCallback(async () => {
     setIsLoading(true);
@@ -275,11 +276,6 @@ export default function ModelSettings() {
     if (!providerId) return;
     setIsLoadingModels(true);
     try {
-      if (isLocalRuntimeProvider(providerId) && canUseLocalRuntimeAddress(providerBaseUrl)) {
-        const models = await loadLocalRuntimeModels(providerBaseUrl || '');
-        setAvailableModels(sortProviderModels(models));
-        return;
-      }
       const query = providerBaseUrl?.trim() ? `?base_url=${encodeURIComponent(providerBaseUrl.trim())}` : '';
       const response = await apiClient.get<ProviderModelsResponse>(`/api/settings/model/providers/${providerId}/models${query}`);
       setAvailableModels(sortProviderModels(response.models));
@@ -300,13 +296,13 @@ export default function ModelSettings() {
   useEffect(() => {
     if (!selectedProviderDetails) return;
     const providerDefaultModel = selectedProviderDetails.selected_model || selectedProviderDetails.default_model || selectedProviderDetails.models[0]?.id || '';
-    const providerBaseUrl = isLocalRuntimeProvider(selectedProviderDetails.id)
+    const providerBaseUrl = usesRuntimeOptions
       ? normalizeConfiguredLocalRuntimeAddress(selectedProviderDetails.base_url || selectedProviderDetails.default_base_url || '')
       : (selectedProviderDetails.base_url || selectedProviderDetails.default_base_url || '');
-    if (isLocalRuntimeProvider(selectedProviderDetails.id)) {
+    if (usesRuntimeOptions) {
       setRuntimeSource(selectedProviderDetails.runtime_source === 'container' ? 'container' : 'host');
     }
-    setBaseUrl(isLocalRuntimeProvider(selectedProviderDetails.id) ? providerBaseUrl.replace(/\/api$/, '') : providerBaseUrl);
+    setBaseUrl(usesRuntimeOptions ? providerBaseUrl.replace(/\/api$/, '') : providerBaseUrl);
     setApiKey('');
     setIsEditingApiKey(false);
     setApiKeyValidationState('idle');
@@ -316,14 +312,14 @@ export default function ModelSettings() {
     setAvailableModels(selectedProviderDetails.models);
     setSelectedModel(providerDefaultModel);
     void loadProviderModels(selectedProviderDetails.id, providerBaseUrl);
-  }, [selectedProviderDetails, loadProviderModels]);
+  }, [selectedProviderDetails, loadProviderModels, usesRuntimeOptions]);
 
   useEffect(() => {
-    if (!isLocalRuntimeProvider(selectedProviderDetails?.id)) return;
+    if (!usesRuntimeOptions) return;
     if (!selectedRuntimeOption) return;
     const derivedBaseUrl = normalizeConfiguredLocalRuntimeAddress(selectedRuntimeOption.base_url);
     setBaseUrl(derivedBaseUrl.replace(/\/api$/, ''));
-  }, [selectedProviderDetails, selectedRuntimeOption]);
+  }, [selectedProviderDetails, selectedRuntimeOption, usesRuntimeOptions]);
 
   useEffect(() => {
     if (!selectedProviderDetails?.requires_api_key) {
@@ -441,7 +437,7 @@ export default function ModelSettings() {
         provider: selectedProvider,
         model: selectedModel.trim(),
         base_url: selectedProviderDetails.supports_base_url_override ? baseUrl.trim() : undefined,
-        runtime_source: isLocalRuntimeProvider(selectedProviderDetails.id) ? runtimeSource : undefined,
+        runtime_source: usesRuntimeOptions ? runtimeSource : undefined,
         api_key: submittedApiKey || undefined,
         api_key_header: selectedProviderDetails.supports_custom_auth ? apiKeyHeader.trim() : undefined,
         api_key_prefix: selectedProviderDetails.supports_custom_auth ? apiKeyPrefix : undefined,
@@ -467,7 +463,7 @@ export default function ModelSettings() {
       const response = await apiClient.put<ModelSettingsResponse>('/api/settings/model', {
         provider: selectedProvider,
         model: selectedModel.trim(),
-        runtime_source: isLocalRuntimeProvider(selectedProviderDetails?.id) ? runtimeSource : undefined,
+        runtime_source: usesRuntimeOptions ? runtimeSource : undefined,
         clear_api_key: true,
       });
       setSettings(response);
@@ -609,6 +605,11 @@ export default function ModelSettings() {
                           <div className="flex items-center gap-3">
                             <span className="font-semibold">{getRuntimeDisplayName(p.id, p.display_name)}</span>
                             <Badge variant="outline" className="h-5 text-[9px] font-bold uppercase tracking-widest text-primary/70">Core</Badge>
+                            {p.selectable === false ? (
+                              <Badge variant="outline" className="h-5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/70">
+                                Locked
+                              </Badge>
+                            ) : null}
                           </div>
                         </SelectItem>
                       ))}
@@ -621,6 +622,11 @@ export default function ModelSettings() {
                           <div className="flex items-center gap-3">
                             <span className="font-semibold">{getRuntimeDisplayName(p.id, p.display_name)}</span>
                             <Badge variant="outline" className="h-5 text-[9px] font-bold uppercase tracking-widest text-emerald-600/70">Local</Badge>
+                            {p.selectable === false ? (
+                              <Badge variant="outline" className="h-5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/70">
+                                Locked
+                              </Badge>
+                            ) : null}
                           </div>
                         </SelectItem>
                       ))}
@@ -633,6 +639,11 @@ export default function ModelSettings() {
                           <div className="flex items-center gap-3">
                             <span className="font-semibold">{getRuntimeDisplayName(p.id, p.display_name)}</span>
                             <Badge variant="outline" className="h-5 text-[9px] font-bold uppercase tracking-widest text-emerald-600/70">Third-Party</Badge>
+                            {p.selectable === false ? (
+                              <Badge variant="outline" className="h-5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/70">
+                                Locked
+                              </Badge>
+                            ) : null}
                           </div>
                         </SelectItem>
                       ))}
@@ -647,6 +658,11 @@ export default function ModelSettings() {
                               <div className="flex items-center gap-3">
                                 <span className="font-semibold">{getRuntimeDisplayName(p.id, p.display_name)}</span>
                                 <Badge variant="outline" className="h-5 text-[9px] font-bold uppercase tracking-widest text-purple-600/70">API</Badge>
+                                {p.selectable === false ? (
+                                  <Badge variant="outline" className="h-5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/70">
+                                    Locked
+                                  </Badge>
+                                ) : null}
                               </div>
                             </SelectItem>
                           ))}
@@ -665,7 +681,7 @@ export default function ModelSettings() {
                   <div className="grid gap-8">
                     {/* Endpoint & Discovery Row */}
                       <div className="grid gap-6 md:grid-cols-2">
-                        {isLocalRuntimeProvider(selectedProviderDetails.id) ? (
+                        {usesRuntimeOptions ? (
                           <div className="space-y-3 md:col-span-2">
                             <Label htmlFor="runtime-source" className="flex items-center gap-2 font-semibold">
                               <Server className="h-4 w-4 text-primary" /> Runtime Source
@@ -872,7 +888,7 @@ export default function ModelSettings() {
                         <span className="max-w-[120px] truncate font-mono text-primary/70">{selectedProviderDetails.selected_model}</span>
                       </div>
                     )}
-                    {isLocalRuntimeProvider(selectedProviderDetails.id) && selectedRuntimeOption && (
+                    {usesRuntimeOptions && selectedRuntimeOption && (
                       <div className="flex items-center justify-between text-xs font-semibold">
                         <span className="text-muted-foreground">Runtime Source</span>
                         <span className="uppercase tracking-widest text-primary/80">{selectedRuntimeOption.label}</span>

@@ -5,6 +5,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from '@/providers/theme-provider';
 import { PluginRegistryProvider } from '@/plugin_host/registry';
+import { MessageInjectionProvider } from '@/providers/MessageInjectionProvider';
 
 const inter = Inter({
   variable: '--font-sans',
@@ -33,8 +34,10 @@ export default function RootLayout({
       <body className={`${inter.variable} ${robotoMono.variable} font-sans antialiased`}>
         <ThemeProvider>
           <PluginRegistryProvider>
-            {children}
-            <Toaster />
+            <MessageInjectionProvider>
+              {children}
+              <Toaster />
+            </MessageInjectionProvider>
           </PluginRegistryProvider>
         </ThemeProvider>
       </body>

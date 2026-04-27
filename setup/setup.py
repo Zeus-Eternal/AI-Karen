@@ -32,7 +32,7 @@ setup(
     },
     install_requires=[
         "click>=8.0.0",
-        "fastapi>=0.68.0",
+        "fastapi>=0.136.1",
         "uvicorn>=0.15.0",
         "pydantic>=1.8.0",
         "requests>=2.25.0",

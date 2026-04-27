@@ -209,6 +209,21 @@ class CoreHelpersRuntime:
         except Exception as e:
             logger.error(f"Generation failed in degraded mode: {e}")
             return self._fallback_response(prompt)
+
+    def generate_response(self, prompt: str, **kwargs) -> str:
+        """Compatibility alias for runtime managers."""
+        result = self.generate(prompt, **kwargs)
+        if isinstance(result, str):
+            return result
+        return self._fallback_response(prompt)
+
+    def stream_generate(self, prompt: str, **kwargs) -> Iterator[str]:
+        """Compatibility alias for runtime managers."""
+        result = self.generate(prompt, stream=True, **kwargs)
+        if hasattr(result, "__iter__"):
+            yield from result
+            return
+        yield self._fallback_response(prompt)
     
     def _complete_generate(self, prompt: str, **params) -> str:
         """Generate complete response."""

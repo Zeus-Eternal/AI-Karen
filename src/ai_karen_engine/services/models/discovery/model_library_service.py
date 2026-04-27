@@ -831,14 +831,14 @@ class ModelLibraryService:
         """Force refresh the model cache and return cache statistics."""
         with self._cache_lock:
             old_count = len(self._model_cache.get("all", []))
-            
-            # Clear cache
+
+            # Clear cache before rebuilding outside the lock path to avoid deadlock.
             self._model_cache.clear()
             self._cache_timestamp = None
-            
-            # Rebuild cache
-            models = self.get_available_models(force_refresh=True)
-            
+
+        models = self.get_available_models(force_refresh=True)
+
+        with self._cache_lock:
             return {
                 "cache_refreshed": True,
                 "timestamp": self._cache_timestamp,
@@ -901,7 +901,7 @@ class ModelLibraryService:
             else:
                 logger.warning(f"Unsupported hash type: {hash_type}")
                 return False
-            
+
             # Validate file exists and is readable
             if not file_path.exists():
                 logger.error(f"File not found for checksum validation: {file_path}")

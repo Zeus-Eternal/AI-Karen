@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { Bot, Loader2 } from 'lucide-react';
-import { getRuntimeDisplayName, getRuntimeGroupLabel } from '@/lib/chat-response';
+import { getRuntimeDisplayName } from '@/lib/chat-response';
+import { getRuntimeProviderBucket } from '@/lib/model-runtime-inventory';
 import type { ProviderDetails } from '../types';
 
 export type { ProviderDetails };
@@ -37,10 +38,10 @@ export const ProviderSettingsModal = ({
     const activeProviderDetails = selectableProviders.find(p => p.id === localProvider);
     const providerModels = activeProviderDetails?.models || [];
     const groupedProviders = useMemo(() => {
-      const builtInProviders = selectableProviders.filter((provider) => provider.id === 'builtin_vllm');
-      const localProviders = selectableProviders.filter((provider) => getRuntimeGroupLabel(provider.id) === 'Local Runtime');
-      const thirdPartyProviders = selectableProviders.filter((provider) => getRuntimeGroupLabel(provider.id) === 'External Endpoint');
-      const customProviders = selectableProviders.filter((provider) => getRuntimeGroupLabel(provider.id) === 'Custom');
+      const builtInProviders = selectableProviders.filter((provider) => getRuntimeProviderBucket(provider) === 'builtIn');
+      const localProviders = selectableProviders.filter((provider) => getRuntimeProviderBucket(provider) === 'local');
+      const thirdPartyProviders = selectableProviders.filter((provider) => getRuntimeProviderBucket(provider) === 'thirdParty');
+      const customProviders = selectableProviders.filter((provider) => getRuntimeProviderBucket(provider) === 'custom');
       return { builtInProviders, localProviders, thirdPartyProviders, customProviders };
     }, [selectableProviders]);
 

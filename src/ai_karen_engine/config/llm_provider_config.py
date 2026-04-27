@@ -56,6 +56,7 @@ PROVIDER_CLASS_ALIASES: Dict[str, str] = {
 
 # Shared settings UI order, centralized here to avoid route-level drift.
 MODEL_SETTINGS_PROVIDER_ORDER: List[str] = [
+    "builtin_transformers",
     "builtin_vllm",
     "openai",
     "anthropic",
@@ -561,17 +562,60 @@ class LLMProviderConfigManager:
             self._api_keys = {}
         self._api_keys[provider_name] = api_key
 
+    def _read_secret_api_key(self, secret_name: str) -> Optional[str]:
+        """Read a stored API key from the secret manager or environment."""
+        try:
+            from ai_karen_engine.models.secret_manager import get_secret_manager
+        except Exception:
+            get_secret_manager = None  # type: ignore[assignment]
+
+        if get_secret_manager is not None:
+            try:
+                secret_manager = get_secret_manager()
+                secret_value = secret_manager.get_secret(secret_name)
+                if secret_value:
+                    return secret_value
+            except Exception:
+                logger.debug(
+                    "Secret manager lookup failed for %s", secret_name, exc_info=True
+                )
+
+        env_value = os.getenv(secret_name)
+        if env_value:
+            return env_value
+
+        return None
+
     def get_api_key(self, provider_name: str) -> Optional[str]:
         """Get API key for a provider"""
         if hasattr(self, "_api_keys"):
-            return self._api_keys.get(provider_name)
+            stored_value = self._api_keys.get(provider_name)
+            if stored_value:
+                return stored_value
 
-        # Fallback to environment variable
         config = self.get_provider(provider_name)
-        if config and config.authentication.api_key_env_var:
-            return os.getenv(config.authentication.api_key_env_var)
+        if not config or not config.authentication.api_key_env_var:
+            return None
 
-        return None
+        return self._read_secret_api_key(config.authentication.api_key_env_var)
+
+    def has_api_key(self, provider_name: str) -> bool:
+        """Return ``True`` when a provider has a configured API key."""
+        return bool(self.get_api_key(provider_name))
+
+    def is_provider_configured(self, provider_name: str) -> bool:
+        """Return ``True`` when a provider is enabled and ready for runtime use."""
+        config = self.get_provider(provider_name)
+        if not config or not config.enabled:
+            return False
+
+        if config.authentication.type in {
+            AuthenticationType.API_KEY,
+            AuthenticationType.CUSTOM,
+        }:
+            return self.has_api_key(provider_name)
+
+        return True
 
     # ---------- Configuration Validation ----------
 
@@ -941,6 +985,33 @@ class LLMProviderConfigManager:
         )
         self.add_provider(deepseek_config)
 
+        transformers_config = ProviderConfig(
+            name="builtin_transformers",
+            display_name="Transformers",
+            description="Built-in Transformers runtime for local embeddings and fallback text generation",
+            provider_type=ProviderType.LOCAL,
+            priority=96,
+            models=[
+                ProviderModel(
+                    id="auto",
+                    name="Auto",
+                    family="transformers",
+                    capabilities={"text", "embedding", "classification", "summarization"},
+                    context_length=32768,
+                    max_tokens=4096,
+                    supports_streaming=False,
+                )
+            ],
+            default_model="auto",
+            capabilities={"embeddings", "text_generation"},
+            limits=ProviderLimits(
+                concurrent_requests=4,
+                max_context_length=32768,
+                max_output_tokens=4096,
+            ),
+        )
+        self.add_provider(transformers_config)
+
         # HuggingFace Provider
         huggingface_config = ProviderConfig(
             name="huggingface",
@@ -1026,6 +1097,31 @@ class LLMProviderConfigManager:
         """Create any additional default providers that are not already configured."""
 
         additional_configs = [
+            ProviderConfig(
+                name="builtin_transformers",
+                display_name="Transformers",
+                description="Built-in Transformers runtime for local embeddings and fallback text generation",
+                provider_type=ProviderType.LOCAL,
+                priority=96,
+                models=[
+                    ProviderModel(
+                        id="auto",
+                        name="Auto",
+                        family="transformers",
+                        capabilities={"text", "embedding", "classification", "summarization"},
+                        context_length=32768,
+                        max_tokens=4096,
+                        supports_streaming=False,
+                    )
+                ],
+                default_model="auto",
+                capabilities={"embeddings", "text_generation"},
+                limits=ProviderLimits(
+                    concurrent_requests=4,
+                    max_context_length=32768,
+                    max_output_tokens=4096,
+                ),
+            ),
             ProviderConfig(
                 name="builtin_vllm",
                 display_name="vLLM",

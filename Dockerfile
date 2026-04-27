@@ -12,6 +12,17 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
     pkg-config \
+    libnss3 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdrm2 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    libgbm1 \
+    libasound2 \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Poetry
@@ -31,6 +42,10 @@ COPY requirements.txt ./
 # Install dependencies directly from requirements.txt
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install --no-cache-dir -r requirements.txt
+
+# Install playwright browsers
+RUN playwright install chromium && playwright install-deps chromium
+
 # Ensure common spaCy model is available in the image to avoid runtime downloads
 RUN python -m spacy download en_core_web_sm || true
 
@@ -49,6 +64,10 @@ COPY requirements.txt ./
 # Install dependencies directly from requirements.txt
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install --no-cache-dir -r requirements.txt
+
+# Install playwright browsers
+RUN playwright install chromium && playwright install-deps chromium
+
 # Ensure common spaCy model is available in the image to avoid runtime downloads
 RUN python -m spacy download en_core_web_sm || true
 
@@ -68,6 +87,17 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     build-essential \
     cmake \
     pkg-config \
+    libnss3 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdrm2 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    libgbm1 \
+    libasound2 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 && \
@@ -82,6 +112,10 @@ ENV CC=/usr/bin/gcc \
 COPY requirements.txt ./
 
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Install playwright browsers
+RUN playwright install chromium && playwright install-deps chromium
+
 RUN python -m spacy download en_core_web_sm || true
 
 # -----------------------------

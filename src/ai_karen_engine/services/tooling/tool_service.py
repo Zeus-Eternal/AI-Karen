@@ -650,13 +650,6 @@ class ToolService:
         except Exception as e:
             logger.warning(f"Failed to register production tools: {e}")
 
-        try:
-            from ai_karen_engine.tools.weather_tool import register_weather_tool
-
-            register_weather_tool(self)
-        except Exception as e:
-            logger.debug(f"Weather tool bootstrap skipped: {e}")
-    
     async def execute_tool(self, tool_input: ToolInput) -> ToolOutput:
         """
         Execute a tool with caching and error handling.

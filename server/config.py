@@ -128,6 +128,7 @@ class Settings(BaseSettings):
     debug: bool = Field(default_factory=_default_debug, env="KARI_DEBUG_MODE")
     plugin_dir: str = "/app/plugins"
     llm_refresh_interval: int = 3600
+    enable_model_degraded_fallback: bool = Field(default=True, env="KARI_ENABLE_MODEL_DEGRADED_FALLBACK")
     
     # Performance Optimization Settings
     enable_performance_optimization: bool = Field(default=True, env="ENABLE_PERFORMANCE_OPTIMIZATION")

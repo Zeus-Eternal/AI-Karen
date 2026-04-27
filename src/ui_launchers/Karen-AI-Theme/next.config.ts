@@ -33,11 +33,16 @@ const devOriginCandidates = [
   process.env.APP_URL,
 ];
 
-const privateInterfaceHosts = Object.values(os.networkInterfaces())
-  .flat()
-  .filter((address): address is NonNullable<typeof address> => Boolean(address))
-  .filter((address) => address.family === 'IPv4' && !address.internal)
-  .map((address) => address.address);
+let privateInterfaceHosts: string[] = [];
+try {
+  privateInterfaceHosts = Object.values(os.networkInterfaces())
+    .flat()
+    .filter((address): address is NonNullable<typeof address> => Boolean(address))
+    .filter((address) => address.family === 'IPv4' && !address.internal)
+    .map((address) => address.address);
+} catch (error) {
+  console.warn('⚠️ [Next.js Configuration] Failed to read network interfaces; continuing without private interface origins.', error);
+}
 
 const allowedDevOrigins = Array.from(
   new Set(

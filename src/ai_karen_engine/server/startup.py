@@ -22,6 +22,18 @@ logger = logging.getLogger(__name__)
 _registry_refresh_task: Optional[asyncio.Task] = None
 _startup_init_task: Optional[asyncio.Task] = None
 _optimization_enabled: bool = True
+_core_services_initialized: bool = False
+_core_services_init_lock: Optional[asyncio.Lock] = None
+
+
+def _get_app_settings(app: FastAPI) -> Any:
+    settings = getattr(app.state, "settings", None)
+    if settings is not None:
+        return settings
+
+    from ai_karen_engine.config import Settings
+
+    return Settings()
 
 
 async def init_database() -> None:
@@ -163,6 +175,26 @@ async def init_ai_services(settings: Any) -> None:
                 logger.info("Basic initialization completed")
         else:
             raise
+
+
+async def ensure_core_services_initialized() -> None:
+    """Initialize core services once so chat dependencies are available before requests."""
+    global _core_services_initialized, _core_services_init_lock
+
+    if _core_services_initialized:
+        return
+
+    if _core_services_init_lock is None:
+        _core_services_init_lock = asyncio.Lock()
+
+    async with _core_services_init_lock:
+        if _core_services_initialized:
+            return
+
+        from ai_karen_engine.core.services.service_registry import initialize_services
+
+        await initialize_services()
+        _core_services_initialized = True
 
 
 async def cleanup_ai_services() -> None:
@@ -354,9 +386,7 @@ async def init_extension_database_service(app: FastAPI) -> None:
         from ai_karen_engine.extensions.database_service import (
             initialize_database_service,
         )
-        from ai_karen_engine.config import Settings
-
-        settings = Settings()
+        settings = _get_app_settings(app)
         database_url = settings.database_url
 
         # Initialize extension database service
@@ -384,9 +414,7 @@ async def init_extension_service_recovery(app: FastAPI) -> None:
         from ai_karen_engine.services.enhanced_database_health_monitor import (
             get_enhanced_database_health_monitor,
         )
-        from ai_karen_engine.config import Settings
-
-        settings = Settings()
+        settings = _get_app_settings(app)
 
         # Get existing components for integration
         database_config = get_database_config(settings)
@@ -538,27 +566,51 @@ async def on_startup_with_extensions(settings: Any, app: FastAPI) -> None:
     logger.info("Starting Kari AI Server in %s mode", settings.environment)
     await init_database()
 
-    # Initialize extension monitoring and recovery systems
-    await init_extension_monitoring(app)
-    await init_extension_health_monitor(app)
-    await init_extension_database_service(app)
-    await init_extension_service_recovery(app)
-
-    # Warm local LLM stack if configured
-    await warm_local_llm_stack(app)
-
-    # Fast-startup mode: don't block server readiness on heavy init
     fast_start = os.getenv(
         "KARI_FAST_STARTUP", os.getenv("FAST_STARTUP", "true")
     ).lower() in ("1", "true", "yes")
-    if fast_start and (settings.environment or "").lower() in (
+    lazy_environment = (settings.environment or "").lower() in (
         "development",
         "dev",
         "local",
-    ):
-        logger.info("⚡ Fast startup enabled: initializing AI services in background")
-        _startup_init_task = asyncio.create_task(init_ai_services(settings))
+    )
+
+    # Make sure chat-critical services are ready before the app starts serving.
+    await ensure_core_services_initialized()
+
+    if fast_start and lazy_environment:
+        logger.info(
+            "⚡ Fast startup enabled: deferring extension and AI initialization to background"
+        )
+
+        async def _background_startup_init() -> None:
+            try:
+                await init_extension_monitoring(app)
+                await init_extension_health_monitor(app)
+                await init_extension_database_service(app)
+                await init_extension_service_recovery(app)
+                await warm_local_llm_stack(app)
+                await init_ai_services(settings)
+                logger.info("✅ Deferred startup initialization completed")
+            except asyncio.CancelledError:
+                logger.info("Deferred startup initialization cancelled")
+                raise
+            except Exception as e:
+                logger.error(
+                    "Deferred startup initialization failed: %s", e, exc_info=True
+                )
+
+        _startup_init_task = asyncio.create_task(_background_startup_init())
     else:
+        # Initialize extension monitoring and recovery systems
+        await init_extension_monitoring(app)
+        await init_extension_health_monitor(app)
+        await init_extension_database_service(app)
+        await init_extension_service_recovery(app)
+
+        # Warm local LLM stack if configured
+        await warm_local_llm_stack(app)
+
         try:
             await init_ai_services(settings)
         except Exception as e:
@@ -655,48 +707,6 @@ async def init_extensions_for_production(
         return False
 
 
-async def initialize_extension_system(app: FastAPI) -> None:
-    """Initialize the production extension system and monitoring."""
-    # Skip if database is not available
-    if not getattr(app.state, "database_available", False):
-        logger.info("Skipping extension system initialization (database not available)")
-        return
-
-    try:
-        success = await init_extensions_for_production(
-            app=app,
-            extension_root="extensions",
-            db_session=None,
-            plugin_router=None,
-        )
-        if not success:
-            logger.warning("Extension system initialization unsuccessful")
-            return
-
-        # Initialize extension health monitoring once the manager is available
-        try:
-            from ai_karen_engine.extensions.health_monitor import (
-                initialize_extension_health_monitor,
-            )
-
-            extension_system = getattr(app.state, "extension_system", None)
-            extension_manager = (
-                extension_system.get_extension_manager()
-                if extension_system
-                and hasattr(extension_system, "get_extension_manager")
-                else None
-            )
-            if extension_manager:
-                await initialize_extension_health_monitor(extension_manager)
-                logger.info("Extension health monitoring initialized")
-            else:
-                logger.warning("Extension manager unavailable")
-        except Exception as monitor_error:
-            logger.warning(f"Extension health monitoring failed: {monitor_error}")
-    except Exception as exc:
-        logger.warning(f"Extension system initialization error: {exc}")
-
-
 async def on_shutdown_with_extensions(app: FastAPI) -> None:
     """Enhanced shutdown with extension cleanup"""
     global _startup_init_task
@@ -790,9 +800,7 @@ def register_startup_tasks(app: FastAPI) -> None:
         """Initialize database configuration with enhanced settings"""
         try:
             from ai_karen_engine.services.database_config import get_database_config
-            from ai_karen_engine.config import Settings
-
-            settings = Settings()
+            settings = _get_app_settings(app)
             db_config = get_database_config(settings)
 
             # Initialize database with enhanced configuration
@@ -831,7 +839,7 @@ def register_startup_tasks(app: FastAPI) -> None:
 
                 async def _bg_init():
                     try:
-                        result = initialize_llm_providers()
+                        result = await asyncio.to_thread(initialize_llm_providers)
                         logger.info(
                             "LLM providers initialized (background)",
                             extra={
@@ -876,28 +884,14 @@ def register_startup_tasks(app: FastAPI) -> None:
             ).lower() in ("1", "true", "yes")
 
             if enable_memory:
-                from ai_karen_engine.core.services.service_registry import initialize_services
-
                 if fast:
                     logger.info(
-                        "⚡ Fast startup: deferring memory service initialization to background"
+                        "⚡ Fast startup: ensuring memory service initialization before background tasks"
                     )
-
-                    async def _bg_init_memory() -> None:
-                        try:
-                            await initialize_services()
-                            logger.info(
-                                "Memory service initialized successfully (background)"
-                            )
-                        except Exception as e:
-                            logger.warning(
-                                f"Background memory service initialization failed: {e}"
-                            )
-
-                    asyncio.create_task(_bg_init_memory())
+                    await ensure_core_services_initialized()
                 else:
                     logger.info("Initializing memory service...")
-                    await initialize_services()
+                    await ensure_core_services_initialized()
                     logger.info("Memory service initialized successfully")
             else:
                 logger.info(
@@ -917,9 +911,7 @@ def register_shutdown_tasks(app: FastAPI) -> None:
         try:
             logger.info("Starting database shutdown process")
             from ai_karen_engine.services.database_config import get_database_config
-            from ai_karen_engine.config import Settings
-
-            settings = Settings()
+            settings = _get_app_settings(app)
             db_config = get_database_config(settings)
             await db_config.cleanup()
             logger.info("Database shutdown completed successfully")

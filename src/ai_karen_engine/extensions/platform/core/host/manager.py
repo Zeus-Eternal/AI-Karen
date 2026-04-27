@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -29,19 +30,30 @@ class ExtensionManager:
         self.use_new_architecture = use_new_architecture
         self.loader = ExtensionLoader(str(self.extension_root))
         self.registry = get_registry()
+        self._discovery_lock = asyncio.Lock()
+        self._discovery_cache: Optional[Dict[str, Any]] = None
 
     def get_extension_by_name(self, name: str) -> Optional[ExtensionRecord]:
         """Get an extension record by its name."""
         return self.registry.get_extension(name)
 
-    async def discover_extensions(self) -> Dict[str, Any]:
-        await self.registry.refresh()
-        manifests: Dict[str, Any] = {}
-        for extension_id in self.registry.list_discovered():
-            metadata = self.registry.get_metadata(extension_id)
-            if metadata and hasattr(metadata, "manifest_path"):
-                manifests[extension_id] = self.loader.load_manifest(extension_id)
-        return manifests
+    async def discover_extensions(self, force_refresh: bool = False) -> Dict[str, Any]:
+        if not force_refresh and self._discovery_cache is not None:
+            return dict(self._discovery_cache)
+
+        async with self._discovery_lock:
+            if not force_refresh and self._discovery_cache is not None:
+                return dict(self._discovery_cache)
+
+            await self.registry.refresh()
+            manifests: Dict[str, Any] = {}
+            for extension_id in self.registry.list_discovered():
+                metadata = self.registry.get_metadata(extension_id)
+                if metadata and hasattr(metadata, "manifest_path"):
+                    manifests[extension_id] = self.loader.load_manifest(extension_id)
+
+            self._discovery_cache = dict(manifests)
+            return dict(manifests)
 
     async def load_extension(self, extension_name: str) -> Optional[ExtensionRecord]:
         instance = self.loader.load_extension(extension_name)
@@ -60,6 +72,7 @@ class ExtensionManager:
         instance = loaded.get(extension_name)
         if instance and hasattr(instance, "_shutdown"):
             await instance._shutdown()
+        
+        # Use the public API of the registry instead of private attribute access
         self.loader._loaded_extensions.pop(extension_name, None)
-        self.registry._extensions.pop(extension_name, None)
-        return True
+        return self.registry.unload_extension(extension_name)

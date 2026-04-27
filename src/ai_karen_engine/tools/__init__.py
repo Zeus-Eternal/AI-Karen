@@ -48,9 +48,6 @@ from ai_karen_engine.tools.data_analysis_tool import (
     get_data_analysis_tool,
 )
 
-# Import weather tool
-from ai_karen_engine.tools.weather_tool import WeatherTool, get_weather_tool_info, register_weather_tool as initialize_weather_tools
-
 __all__ = [
     # Tool categories
     "interpreters",
@@ -62,10 +59,6 @@ __all__ = [
     "FileSystemTool",
     "TextProcessingTool",
     "DataAnalysisTool",
-    # Weather tools
-    "WeatherTool",
-    "get_weather_tool_info",
-    "initialize_weather_tools",
     # Tool registration
     "get_production_tools",
     "register_production_tools",

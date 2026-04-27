@@ -1,0 +1,52 @@
+{
+  "plugin_id": "intelligent-search",
+  "plugin_name": "Intelligent Search",
+  "plugin_version": "2.0.0",
+  "menu": [
+    {
+      "id": "intelligent-search-sidebar",
+      "placement": "sidebar.plugins",
+      "label": "Intelligent Search",
+      "icon": "search",
+      "order": 50,
+      "mode": "general",
+      "modes": [
+        {
+          "id": "general",
+          "label": "General",
+          "description": "General purpose web search"
+        },
+        {
+          "id": "news",
+          "label": "News",
+          "description": "News-focused search"
+        },
+        {
+          "id": "docs",
+          "label": "Documentation",
+          "description": "Technical documentation search"
+        },
+        {
+          "id": "deep_research",
+          "label": "Deep Research",
+          "description": "In-depth research"
+        },
+        {
+          "id": "structured_extract",
+          "label": "Structured Extract",
+          "description": "Structured data extraction"
+        },
+        {
+          "id": "weather",
+          "label": "Weather",
+          "description": "Weather information"
+        },
+        {
+          "id": "stock_market",
+          "label": "Stock Market",
+          "description": "Stock market search"
+        }
+      ]
+    }
+  ]
+}

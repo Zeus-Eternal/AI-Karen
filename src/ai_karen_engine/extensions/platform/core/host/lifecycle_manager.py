@@ -261,6 +261,10 @@ class PluginLifecycleManager:
                 # Remove from loaded extensions
                 self.loader._loaded_extensions.pop(plugin_name, None)
 
+            # Remove the runtime registry entry as well so the plugin overview
+            # stops surfacing stale records after uninstall.
+            self.registry.unload_extension(plugin_name)
+
             # Remove plugin from filesystem
             await self.package_manager.remove_plugin_from_filesystem(
                 plugin_name, backup

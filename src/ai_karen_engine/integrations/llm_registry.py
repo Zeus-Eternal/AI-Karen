@@ -518,7 +518,7 @@ class LLMRegistry:
         builtin_providers = [
             {
                 "name": "builtin_vllm",
-                "provider_class": "OpenAICompatibleProvider",
+                "provider_class": "TransformersRuntime",
                 "description": "Built-in vLLM text serving runtime",
                 "supports_streaming": True,
                 "supports_embeddings": False,
@@ -527,7 +527,7 @@ class LLMRegistry:
             },
             {
                 "name": "builtin_transformers",
-                "provider_class": "OpenAICompatibleProvider",
+                "provider_class": "TransformersRuntime",
                 "description": "Built-in Transformers runtime for local embeddings and fallback text generation",
                 "supports_streaming": False,
                 "supports_embeddings": True,
@@ -784,6 +784,54 @@ class LLMRegistry:
 
         return raw
 
+    def _get_provider_config_manager(self):
+        """Lazy-load the provider config manager used to resolve credentials."""
+        try:
+            from ai_karen_engine.config.llm_provider_config import (
+                get_provider_config_manager,
+            )
+
+            return get_provider_config_manager()
+        except Exception:
+            return None
+
+    def _provider_is_configured(
+        self, name: str, init_kwargs: Optional[Dict[str, Any]] = None
+    ) -> bool:
+        """Return ``True`` when a provider is configured for runtime use."""
+        registration = self._registrations.get(name)
+        if not registration:
+            return False
+
+        if not registration.requires_api_key:
+            return True
+
+        if init_kwargs:
+            direct_api_key = init_kwargs.get("api_key") or init_kwargs.get(
+                "api_token"
+            )
+            if isinstance(direct_api_key, str):
+                if direct_api_key.strip():
+                    return True
+            elif direct_api_key:
+                return True
+
+        config_mgr = self._get_provider_config_manager()
+        if config_mgr is not None:
+            try:
+                provider_config = config_mgr.get_provider(name)
+                if provider_config is not None:
+                    return config_mgr.is_provider_configured(name)
+            except Exception:
+                logger.debug(
+                    "Provider configuration lookup failed for %s",
+                    name,
+                    exc_info=True,
+                )
+
+        env_var = f"{name.upper().replace('-', '_')}_API_KEY"
+        return bool(os.getenv(env_var))
+
     def get_provider(self, name: str, **init_kwargs) -> Optional[LLMProviderBase]:
         """
         Get provider instance by name.
@@ -814,30 +862,48 @@ class LLMRegistry:
                         )
                         return None
 
+                registration = self._registrations[resolved_name]
+
+                if registration.requires_api_key and not self._provider_is_configured(
+                    resolved_name, init_kwargs
+                ):
+                    logger.debug(
+                        "Skipping provider '%s' because it is not configured",
+                        resolved_name,
+                    )
+                    with _registry_lock:
+                        stale_keys = [
+                            cache_key
+                            for cache_key in self._providers.keys()
+                            if cache_key.startswith(f"{resolved_name}|")
+                        ]
+                        for cache_key in stale_keys:
+                            self._providers.pop(cache_key, None)
+                    return None
+
                 # Build cache key including model so different model inits are not conflated
-                model_key = (
-                    init_kwargs.get("model")
-                    or self._registrations[resolved_name].default_model
-                    or ""
-                )
+                model_key = init_kwargs.get("model") or registration.default_model or ""
                 cache_key = f"{resolved_name}|{model_key}"
 
                 # Return cached instance if available, unless it is a stale failed instance
                 if cache_key in self._providers:
                     cached = self._providers[cache_key]
-                    if not getattr(cached, "initialization_error", None):
+                    init_error = getattr(cached, "initialization_error", None)
+                    is_local_fallback = resolved_name in ["builtin_vllm", "builtin_transformers"]
+
+                    if not init_error or is_local_fallback:
                         return cached
+
                     logger.info(
                         "Discarding stale cached provider instance for %s (model=%s) due to initialization error: %s",
                         resolved_name,
                         model_key,
-                        getattr(cached, "initialization_error", None),
+                        init_error,
                     )
                     with _registry_lock:
                         self._providers.pop(cache_key, None)
 
                 # Create new instance
-                registration = self._registrations[resolved_name]
                 provider_class = self._get_provider_class(registration.provider_class)
 
                 if provider_class:
@@ -1124,7 +1190,7 @@ class LLMRegistry:
         builtin_providers = [
             {
                 "name": "builtin_vllm",
-                "provider_class": "OpenAICompatibleProvider",
+                "provider_class": "TransformersRuntime",
                 "description": "Built-in vLLM text serving runtime",
                 "supports_streaming": True,
                 "supports_embeddings": False,
@@ -1133,7 +1199,7 @@ class LLMRegistry:
             },
             {
                 "name": "builtin_transformers",
-                "provider_class": "OpenAICompatibleProvider",
+                "provider_class": "TransformersRuntime",
                 "description": "Built-in Transformers runtime for local embeddings and fallback text generation",
                 "supports_streaming": False,
                 "supports_embeddings": True,
@@ -1148,11 +1214,26 @@ class LLMRegistry:
                 provider_name = provider_config["name"]
                 if provider_name not in self._registrations:
                     try:
-                        from .providers.openai_compatible_provider import (
-                            OpenAICompatibleProvider,
-                        )
+                        # Resolve provider class based on configuration
+                        provider_class_name = provider_config["provider_class"]
 
-                        provider_class = OpenAICompatibleProvider
+                        # Import the correct provider class
+                        if provider_class_name == "TransformersRuntime":
+                            from ai_karen_engine.inference.transformers_runtime import (
+                                TransformersRuntime,
+                            )
+                            provider_class = TransformersRuntime
+                        elif provider_class_name == "OpenAICompatibleProvider":
+                            from .providers.openai_compatible_provider import (
+                                OpenAICompatibleProvider,
+                            )
+                            provider_class = OpenAICompatibleProvider
+                        elif provider_class_name == "OllamaProvider":
+                            from .providers.ollama_provider import OllamaProvider
+                            provider_class = OllamaProvider
+                        else:
+                            # Fallback to trying to resolve the class
+                            provider_class = self._resolve_provider_class(provider_class_name)
 
                         # Register the provider (already thread-safe)
                         self.register_provider(
@@ -1209,6 +1290,8 @@ class LLMRegistry:
         for name in self._priorities:
             if name not in self._registrations:
                 continue
+            if not self._provider_is_configured(name):
+                continue
             if healthy_only and self._registrations[name].health_status not in (
                 "healthy",
                 "unknown",
@@ -1218,6 +1301,8 @@ class LLMRegistry:
 
         for name in self._registrations:
             if name in ordered:
+                continue
+            if not self._provider_is_configured(name):
                 continue
             if healthy_only and self._registrations[name].health_status not in (
                 "healthy",
@@ -1258,6 +1343,12 @@ class LLMRegistry:
         registration = self._registrations[resolved_name]
         info = asdict(registration)
 
+        if registration.requires_api_key and not self._provider_is_configured(
+            resolved_name
+        ):
+            self.invalidate_provider_cache(resolved_name)
+            return info
+
         # Ensure provider is instantiated to gather runtime metadata
         provider = self._providers.get(resolved_name)
         if provider is None:
@@ -1284,6 +1375,24 @@ class LLMRegistry:
             }
 
         try:
+            registration = self._registrations[resolved_name]
+            if registration.requires_api_key and not self._provider_is_configured(
+                resolved_name
+            ):
+                with _registry_lock:
+                    stale_keys = [
+                        cache_key
+                        for cache_key in self._providers.keys()
+                        if cache_key.startswith(f"{resolved_name}|")
+                    ]
+                    for cache_key in stale_keys:
+                        self._providers.pop(cache_key, None)
+                return {
+                    "status": "unavailable",
+                    "error": f"Provider '{name}' is not configured",
+                    "provider": resolved_name,
+                }
+
             provider = self.get_provider(resolved_name)
             if not provider:
                 return {
@@ -1304,7 +1413,11 @@ class LLMRegistry:
             result = cast(Dict[str, Any], result)
 
             # Add model validation for providers with installed models (requirement 2.5)
-            provider_models = self._get_models_for_provider(resolved_name)
+            # Skip for local fallbacks as they are best-effort and handle their own loading
+            if resolved_name in ["builtin_vllm", "builtin_transformers"]:
+                provider_models = {}
+            else:
+                provider_models = self._get_models_for_provider(resolved_name)
 
             if provider_models:
                 result["models"] = {
@@ -1409,10 +1522,12 @@ class LLMRegistry:
         return results
 
     def get_available_providers(self) -> List[str]:
-        """Get list of providers that are currently healthy or unknown status."""
+        """Get list of configured providers that are currently healthy or unknown."""
         available = []
 
         for name, registration in self._registrations.items():
+            if not self._provider_is_configured(name):
+                continue
             if registration.health_status in ["healthy", "unknown"]:
                 available.append(name)
 

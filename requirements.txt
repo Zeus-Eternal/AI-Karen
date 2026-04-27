@@ -1,4 +1,4 @@
-fastapi
+fastapi==0.136.1
 uvicorn
 pyautogui
 urwid
@@ -14,7 +14,7 @@ hnswlib
 duckdb
 huggingface_hub
 google-generativeai
-openai
+openai==2.32.0
 requests
 llama-cpp-python
 scikit-learn
@@ -28,7 +28,7 @@ email-validator
 itsdangerous
 python-multipart
 prometheus_client
-cryptography
+cryptography==47.0.0
 GPUtil
 psutil
 matplotlib
@@ -51,23 +51,24 @@ aiohttp
 sqlalchemy
 alembic
 chardet
-httpx
+httpx==0.28.1
 pyotp
 tenacity
 slowapi
 pytest-asyncio
 bcrypt
 argon2-cffi
-copilotkit
+copilotkit==0.1.87
 sse-starlette
 pre-commit
 httptools
 uvloop
 python-json-logger
-langgraph
+langgraph==1.1.9
+langgraph-sdk==0.3.13
 langchain-core
 langchain-community
-cryptography
+cryptography==47.0.0
 duckdb
 watchdog
 jsonschema
@@ -88,6 +89,8 @@ chunkr_ai
 xmltodict
 croniter
 mcp
+crawl4ai
+playwright
 # Optional: zvec is not published on PyPI for all platforms/interpreters.
 # Install manually only when enabling local Zvec features.
 # zvec

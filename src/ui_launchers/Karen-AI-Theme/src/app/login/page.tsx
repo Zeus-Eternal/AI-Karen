@@ -174,7 +174,7 @@ function LoginForm() {
                 />
                 {loginMode === 'username' && (
                   <p className="text-xs text-muted-foreground">
-                    Try &quot;admin123&quot; for testing
+                    Try &quot;Admin@123!&quot; for testing
                   </p>
                 )}
               </div>

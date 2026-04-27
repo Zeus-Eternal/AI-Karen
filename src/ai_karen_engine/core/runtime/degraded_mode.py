@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import textwrap
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
@@ -149,25 +150,60 @@ def get_degraded_mode_manager() -> DegradedModeManager:
 
 
 def generate_degraded_mode_response(user_input: str, **kwargs: Any) -> Dict[str, Any]:
-    """Generate a basic degraded response (legacy compat)."""
+    """Generate a live degraded response with fallback provider support."""
     from ai_karen_engine.core.langgraph_orchestrator.formatting.response_formatter_pipeline import (
         ResponseFormatterPipeline,
     )
-
-    message = (
-        f"I understand you're asking about: {user_input[:200]}. "
-        "I'm currently operating with limited capabilities. "
-        "Please try again shortly for full service."
+    from ai_karen_engine.integrations.providers.fallback_provider import (
+        FallbackProvider,
     )
+
+    fallback_provider_name, fallback_model_name = get_degraded_mode_manager().get_fallback_provider()
+    prompt = textwrap.dedent(
+        f"""
+        You are Karen operating in degraded mode.
+        The requested provider is unavailable, but you should still answer directly and helpfully.
+        Be concise, natural, and prioritize the user's request.
+
+        User request:
+        {user_input}
+        """
+    ).strip()
+
+    source = "degraded_fallback_static"
+    model_id = f"{fallback_provider_name}:{fallback_model_name}"
+
+    try:
+        provider = FallbackProvider(model=fallback_model_name)
+        message = provider.generate_text(prompt, model=fallback_model_name).strip()
+        usage = getattr(provider, "last_usage", {}) or {}
+        source = str(usage.get("source") or "degraded_fallback_llm")
+        model_id = str(usage.get("model_id") or model_id)
+    except Exception as exc:
+        logger.warning(
+            "Live degraded fallback generation failed; using deterministic fallback: %s",
+            exc,
+        )
+        message = (
+            f"I understand you're asking about: {user_input[:200]}. "
+            "I'm currently operating with limited capabilities, but I'm still here to help. "
+            "If you'd like, I can answer with a concise summary or suggest next steps."
+        )
+
     return ResponseFormatterPipeline().build_response_envelope(
         message,
-        "DegradedShim",
-        "degraded",
+        fallback_provider_name,
+        fallback_model_name,
         metadata={
             "degraded_mode_active": True,
-            "confidence": 0.3,
-            "note": "Response generated via backward-compat shim",
+            "confidence": 0.45 if source == "degraded_fallback_llm" else 0.3,
+            "note": "Response generated via degraded fallback provider",
+            "source": source,
+            "model_id": model_id,
+            "provider": fallback_provider_name,
+            "model": fallback_model_name,
         },
+        status="ok",
     )
 
 

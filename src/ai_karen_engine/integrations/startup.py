@@ -10,7 +10,6 @@ from typing import Dict, Any
 
 from ai_karen_engine.integrations.llm_registry import get_registry
 from ai_karen_engine.integrations.llm_utils import get_llm_manager
-from ai_karen_engine.integrations.llm_registry import get_registry
 from ai_karen_engine.core.logging import get_logger
 
 log = get_logger("kari.kire.warmup").logger

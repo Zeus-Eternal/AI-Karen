@@ -246,12 +246,11 @@ def _get_secret_name(provider_id: str, provider: ProviderConfig) -> Optional[str
 
 
 def _get_saved_api_key(provider_id: str, provider: ProviderConfig) -> Optional[str]:
-    secret_manager = get_secret_manager()
-    secret_name = _get_secret_name(provider_id, provider)
-    if secret_name:
-        secret_value = secret_manager.get_secret(secret_name)
-        if secret_value:
-            return secret_value
+    provider_manager = get_provider_config_manager()
+    api_key = provider_manager.get_api_key(provider_id)
+    if api_key:
+        return api_key
+
     env_var = provider.authentication.api_key_env_var
     if env_var:
         return os.getenv(env_var)
@@ -259,12 +258,11 @@ def _get_saved_api_key(provider_id: str, provider: ProviderConfig) -> Optional[s
 
 
 def _has_saved_api_key(provider_id: str, provider: ProviderConfig) -> bool:
-    secret_manager = get_secret_manager()
-    secret_name = _get_secret_name(provider_id, provider)
-    if secret_name and secret_manager.has_secret(secret_name):
-        return True
-    env_var = provider.authentication.api_key_env_var
-    return bool(env_var and os.getenv(env_var))
+    provider_manager = get_provider_config_manager()
+    return provider_manager.has_api_key(provider_id) or bool(
+        provider.authentication.api_key_env_var
+        and os.getenv(provider.authentication.api_key_env_var)
+    )
 
 
 def _sanitize_custom_headers(headers: Dict[str, str]) -> Dict[str, str]:

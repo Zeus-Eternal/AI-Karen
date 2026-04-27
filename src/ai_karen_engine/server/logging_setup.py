@@ -39,6 +39,11 @@ class _DedupFilter(logging.Filter):
 
 def configure_logging() -> None:
     """Configure production-grade logging"""
+    global _LOGGING_CONFIGURED
+
+    if _LOGGING_CONFIGURED:
+        return
+
     Path("logs").mkdir(exist_ok=True)
 
     try:
@@ -202,6 +207,8 @@ def configure_logging() -> None:
         }
     )
 
+    _LOGGING_CONFIGURED = True
+
 
 def apply_uvicorn_filters() -> None:
     """Apply uvicorn-specific logging filters to reduce noise"""
@@ -222,3 +229,4 @@ def apply_uvicorn_filters() -> None:
 # Initialize logging and create logger instance
 configure_logging()
 logger = logging.getLogger("kari")
+_LOGGING_CONFIGURED = False

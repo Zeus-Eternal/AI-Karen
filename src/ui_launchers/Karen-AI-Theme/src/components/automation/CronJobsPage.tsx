@@ -74,8 +74,8 @@ export default function CronJobsPage() {
     if (!isAuthenticated) return;
     try {
       const [tasksRes, seqsRes] = await Promise.all([
-        apiClient.get<any[]>("/api/tasks/"),
-        apiClient.get<any[]>("/api/automation/jobs/")
+        apiClient.get<any[]>("/api/tasks"),
+        apiClient.get<any[]>("/api/automation/jobs")
       ]);
       setTasks(tasksRes || []);
       setSequences(seqsRes || []);

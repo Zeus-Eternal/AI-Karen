@@ -22,27 +22,16 @@ class SynthesisConfig:
 class ResponseSynthesisNode:
     """Deterministic response synthesis over orchestration state."""
 
-    def __init__(self, config: Optional[SynthesisConfig] = None):
+    def __init__(self, config: Optional[SynthesisConfig] = None, llm_router: Optional[Any] = None):
         self.config = config or SynthesisConfig()
+        self._llm_router = llm_router
 
     async def __call__(
         self, state: LangGraphOrchestrationState
     ) -> LangGraphOrchestrationState:
         logger.info("Response synthesis processing")
         try:
-            state = await self.synthesize_response(state)
-            logger.info("Response synthesis completed")
-        except Exception as e:
-            logger.error("Response synthesis error: %s", e)
-            state.setdefault("errors", []).append(f"Response synthesis error: {e}")
-        return state
-
-    async def synthesize_response(
-        self, state: LangGraphOrchestrationState
-    ) -> LangGraphOrchestrationState:
-        logger.info("Response synthesis processing")
-        try:
-            response = self._compose_response(state)
+            response = await self._compose_response(state)
             state["llm_response"] = response
             state["synthesis_metadata"] = {
                 "response_length": len(response),
@@ -63,18 +52,60 @@ class ResponseSynthesisNode:
             }
             if self.config.apply_safety_filter:
                 state = self._apply_safety_filter(state)
+            logger.info("Response synthesis completed")
         except Exception as e:
             logger.error("Response synthesis error: %s", e)
             state.setdefault("errors", []).append(f"Response synthesis error: {e}")
-
         return state
 
-    def _compose_response(self, state: LangGraphOrchestrationState) -> str:
+    async def _compose_response(self, state: LangGraphOrchestrationState) -> str:
         messages = state.get("messages") or []
         last_user_message = self._extract_last_user_message(messages)
         tool_results = state.get("tool_results") or []
         execution_summary = state.get("execution_summary") or {}
         reasoning_result = state.get("reasoning_result") or {}
+
+        # If we have an LLM router and it can provide a healthy fallback or local provider,
+        # use it to synthesize a natural response that includes the tool results.
+        if self._llm_router and (tool_results or reasoning_result):
+            try:
+                from ai_karen_engine.services.models.routing.llm_router_service import ChatRequest
+                
+                # Check if we have a functional provider
+                selection = await self._llm_router.select_provider(
+                    ChatRequest(message=last_user_message or "")
+                )
+                
+                if selection:
+                    provider_name, model_name = selection
+                    
+                    # Construct a synthesis prompt
+                    tool_data = json.dumps(tool_results, indent=2)
+                    synthesis_prompt = f"""
+                    You are Karen, an intelligent assistant.
+                    Synthesize a natural, helpful response for the user based on the tool results provided below.
+                    
+                    User's latest message: {last_user_message}
+                    
+                    Tool Results:
+                    {tool_data}
+                    
+                    Respond directly to the user. If a tool failed, acknowledge it gracefully.
+                    """
+                    
+                    # Generate response via router
+                    response_gen = self._llm_router.process_chat_request(
+                        ChatRequest(message=synthesis_prompt, stream=False)
+                    )
+                    
+                    final_text = ""
+                    async for chunk in response_gen:
+                        final_text += chunk
+                    
+                    if final_text.strip():
+                        return final_text.strip()
+            except Exception as e:
+                logger.warning(f"LLM-based synthesis failed, falling back to deterministic: {e}")
 
         parts: List[str] = []
 
@@ -143,7 +174,8 @@ class ResponseSynthesisNode:
 
 async def response_synth_node(
     state: LangGraphOrchestrationState,
+    llm_router: Optional[Any] = None,
 ) -> LangGraphOrchestrationState:
     """Convenience wrapper for LangGraph orchestration."""
-    node = ResponseSynthesisNode()
+    node = ResponseSynthesisNode(llm_router=llm_router)
     return await node(state)

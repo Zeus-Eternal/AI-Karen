@@ -996,6 +996,53 @@ class LLMOrchestrator:
                 logger.info(f"Successfully registered local model: {model_id}")
             else:
                 logger.debug("No local GGUF models found under models/local-gguf/")
+
+            # Register vLLM and Transformers runtimes if available
+            try:
+                from ai_karen_engine.inference.factory import get_inference_service_factory
+                factory = get_inference_service_factory()
+                
+                # vLLM check
+                try:
+                    # Check if vllm is installed
+                    import importlib.util
+                    vllm_installed = importlib.util.find_spec("vllm") is not None
+                    
+                    if vllm_installed:
+                        vllm = factory.get_runtime("vllm")
+                        if vllm:
+                            model_id = "local:vllm-fallback"
+                            with self.registry._lock:
+                                if model_id not in self.registry._models:
+                                    self.registry.register(
+                                        model_id, vllm, ["generic", "conversation", "text"], 
+                                        weight=15, tags=["local", "fallback", "vllm"]
+                                    )
+                                    logger.info(f"Registered vLLM fallback runtime: {model_id}")
+                except Exception as e:
+                    logger.debug(f"vLLM runtime registration skipped: {e}")
+
+                # Transformers check
+                try:
+                    # Check if transformers is installed
+                    import importlib.util
+                    transformers_installed = importlib.util.find_spec("transformers") is not None
+                    
+                    if transformers_installed:
+                        transformers_rt = factory.get_runtime("transformers") or factory.create_transformers_runtime()
+                        if transformers_rt:
+                            model_id = "local:transformers-fallback"
+                            with self.registry._lock:
+                                if model_id not in self.registry._models:
+                                    self.registry.register(
+                                        model_id, transformers_rt, ["generic", "conversation", "text"], 
+                                        weight=20, tags=["local", "fallback", "transformers"]
+                                    )
+                                    logger.info(f"Registered Transformers fallback runtime: {model_id}")
+                except Exception as e:
+                    logger.debug(f"Transformers runtime registration skipped: {e}")
+            except Exception as e:
+                logger.warning(f"Failed to register factory runtimes: {e}")
                 
         except Exception as e:
             logger.warning(f"Failed to register local models: {e}")
@@ -2016,11 +2063,19 @@ class LLMOrchestrator:
     def _get_fallback_model(self) -> Optional[Tuple[str, ModelInfo]]:
         """Retrieve the deterministic fallback provider if available."""
 
+        best_fallback: Optional[Tuple[str, ModelInfo]] = None
+        best_weight = float("inf")
+
         with self.registry._lock:
             for model_id, info in self.registry._models.items():
+                if info.status != ModelStatus.ACTIVE:
+                    continue
                 if model_id.startswith("fallback:") or "fallback" in info.tags:
-                    return model_id, info
-        return None
+                    weight = info.weight or 100
+                    if weight < best_weight:
+                        best_weight = weight
+                        best_fallback = (model_id, info)
+        return best_fallback
 
     def _generate_degraded_response(
         self,
@@ -2073,24 +2128,34 @@ class LLMOrchestrator:
         fallback_entry = self._get_fallback_model()
         if enable_model_degraded_fallback and fallback_entry:
             fallback_id, fallback_model = fallback_entry
+            
+            # Use a prompt that encourages direct answering while acknowledging the mode
             fallback_prompt = textwrap.dedent(
                 f"""
-                The primary LLM providers failed with the following reason: {reason}.
-                Provide a supportive acknowledgement and summarize the user's prompt below.
+                System Notice: Primary LLM services are temporarily unavailable.
+                You are currently operating in Karen's Degraded Mode.
+                
+                Instruction: Answer the user's prompt as accurately as possible using your available knowledge and context.
+                Be helpful, concise, and professional.
 
                 User prompt:
                 {prompt}
                 """
             ).strip()
+            
             try:
                 fallback_start = time.time()
                 response = fallback_model.model.generate_text(fallback_prompt)
+                
+                # Cleanup common fallback prefixes if the model adds them redundantly
+                response = re.sub(r"^(Assistant:|Karen:)", "", response, flags=re.IGNORECASE).strip()
+                
                 fallback_duration = time.time() - fallback_start
                 usage = getattr(fallback_model.model, "last_usage", {})
                 
                 # Use specific model ID and confidence from fallback provider if available
                 actual_model_id = usage.get("model_id", fallback_id)
-                response_confidence = usage.get("confidence", 0.35)
+                response_confidence = usage.get("confidence", 0.45) # Slightly higher base for actual model
                 
                 self._log_request_event(
                     "fallback_success",

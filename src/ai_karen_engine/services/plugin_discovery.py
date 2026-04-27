@@ -260,6 +260,10 @@ class PluginRegistry:
             # Read manifest
             with open(manifest_path, 'r', encoding='utf-8') as f:
                 manifest_data = json.load(f)
+
+            # Normalize legacy / canonical entrypoint fields.
+            if 'entrypoint' in manifest_data and 'entry_point' not in manifest_data:
+                manifest_data['entry_point'] = manifest_data['entrypoint']
             
             # Set default plugin type if not specified
             if 'plugin_type' not in manifest_data and default_type:
@@ -393,31 +397,48 @@ class PluginRegistry:
         """Validate plugin module can be imported."""
         try:
             plugin_path = metadata.path
+            package_name = f"plugin_{metadata.manifest.name.replace('-', '_').replace('.', '_')}"
+            init_path = plugin_path / "__init__.py"
             handler_path = plugin_path / "handler.py"
-            
-            # Create module spec
-            spec = importlib.util.spec_from_file_location(
-                f"plugin_{metadata.manifest.name}",
-                handler_path
-            )
-            
-            if spec is None or spec.loader is None:
+            entrypoint = getattr(metadata.manifest, "entry_point", None) or "run"
+
+            if not init_path.exists() or not handler_path.exists():
                 return False
-            
-            # Load module (but don't execute)
-            module = importlib.util.module_from_spec(spec)
-            
-            # Check entry point exists
-            entry_point = metadata.manifest.entry_point
-            if not hasattr(module, entry_point):
-                # Try to load the module to check
-                spec.loader.exec_module(module)
-                if not hasattr(module, entry_point):
-                    logger.error(f"Plugin {metadata.manifest.name} missing entry point: {entry_point}")
+
+            package_spec = importlib.util.spec_from_file_location(
+                package_name,
+                init_path,
+                submodule_search_locations=[str(plugin_path)],
+            )
+
+            if package_spec is None or package_spec.loader is None:
+                return False
+
+            package_module = importlib.util.module_from_spec(package_spec)
+            sys.modules[package_name] = package_module
+            package_spec.loader.exec_module(package_module)
+
+            handler_module = importlib.import_module(f"{package_name}.handler")
+
+            if ":" in entrypoint:
+                module_name, attr_name = entrypoint.split(":", 1)
+                if module_name != "handler" or not hasattr(handler_module, attr_name):
+                    logger.error(
+                        "Plugin %s missing entrypoint: %s",
+                        metadata.manifest.name,
+                        entrypoint,
+                    )
                     return False
-            
+            elif not hasattr(handler_module, entrypoint):
+                logger.error(
+                    "Plugin %s missing entry point: %s",
+                    metadata.manifest.name,
+                    entrypoint,
+                )
+                return False
+
             return True
-            
+
         except Exception as e:
             logger.error(f"Module validation failed for {metadata.manifest.name}: {e}")
             return False

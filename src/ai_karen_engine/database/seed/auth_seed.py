@@ -21,12 +21,12 @@ def seed_default_auth(session: Session) -> None:
         )
         session.add(provider)
 
-    if not session.query(AuthUser).filter_by(email="admin@karen.ai").first():
+    if not session.query(AuthUser).filter_by(email="admin@kari.ai").first():
         admin = AuthUser(
             user_id=str(uuid.uuid4()),
-            email="admin@karen.ai",
+            email="admin@kari.ai",
             full_name="Admin User",
-            password_hash="$2b$12$76OItNxTd1aLq5eGSSCBReJtsICNWSJVblEKOHneTYMfh.pBZHSDu",
+            password_hash="$2b$12$1BVzKwS0wvU6FzcjiiVNhO2On8T1hLz1o4FLXnn78M6MDDJNZ99DS",
             is_active=True,
             is_verified=True,
             roles=["admin", "user"],

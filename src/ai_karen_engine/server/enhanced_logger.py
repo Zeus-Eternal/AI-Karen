@@ -255,6 +255,14 @@ class EnhancedLogger:
     
     def _setup_logging(self) -> None:
         """Setup logging configuration"""
+        global _enhanced_logging_configured
+
+        root_logger = logging.getLogger()
+        if _enhanced_logging_configured or getattr(
+            root_logger, "_karen_enhanced_logging_configured", False
+        ):
+            return
+
         # Ensure log directory exists
         log_dir = Path(self.config.log_dir)
         log_dir.mkdir(exist_ok=True)
@@ -318,11 +326,14 @@ class EnhancedLogger:
             logging.getLogger("security_events").addHandler(security_handler)
             logging.getLogger("security_alerts").addHandler(alert_handler)
         
-        # Configure root logger
-        root_logger = logging.getLogger()
+        # Configure root logger once per process so request logs do not fan out
         root_logger.setLevel(getattr(logging, self.config.log_level))
         for handler in handlers:
-            root_logger.addHandler(handler)
+            if handler not in root_logger.handlers:
+                root_logger.addHandler(handler)
+
+        setattr(root_logger, "_karen_enhanced_logging_configured", True)
+        _enhanced_logging_configured = True
     
     def _create_json_formatter(self) -> logging.Formatter:
         """Create JSON formatter for structured logging"""
@@ -587,6 +598,7 @@ class EnhancedLogger:
 
 # Global enhanced logger instance
 _enhanced_logger: Optional[EnhancedLogger] = None
+_enhanced_logging_configured = False
 
 
 def get_enhanced_logger(config: LoggingConfig = None) -> EnhancedLogger:
@@ -599,9 +611,7 @@ def get_enhanced_logger(config: LoggingConfig = None) -> EnhancedLogger:
 
 def init_enhanced_logging(config: LoggingConfig = None) -> EnhancedLogger:
     """Initialize global enhanced logging"""
-    global _enhanced_logger
-    _enhanced_logger = EnhancedLogger(config)
-    return _enhanced_logger
+    return get_enhanced_logger(config)
 
 
 # Export main classes and functions

@@ -119,6 +119,8 @@ class ExtensionLifecycleManager:
         # Event handling
         self.lifecycle_listeners: List[Callable[[ExtensionLifecycleEvent], None]] = []
         self.lifecycle_events: List[ExtensionLifecycleEvent] = []
+        self._discovery_lock = asyncio.Lock()
+        self._discovered_manifests: Dict[str, ExtensionManifest] = {}
         
         # Health and recovery
         self.health_checker = ExtensionHealthChecker(
@@ -147,8 +149,8 @@ class ExtensionLifecycleManager:
             # Start resource monitoring
             await self.health_checker.resource_monitor.start_monitoring()
             
-            # Discover extensions
-            await self.discover_extensions()
+            # Discover extensions once up front so loading can reuse the cache
+            await self.discover_extensions(force_refresh=True)
             
             # Load all extensions with dependency resolution
             await self.load_all_extensions()
@@ -185,33 +187,45 @@ class ExtensionLifecycleManager:
         except Exception as e:
             self.logger.error(f"Error during extension lifecycle manager shutdown: {e}")
     
-    async def discover_extensions(self) -> Dict[str, ExtensionManifest]:
+    async def discover_extensions(
+        self, force_refresh: bool = False
+    ) -> Dict[str, ExtensionManifest]:
         """
         Discover all extensions in the extensions directory.
         
         Returns:
             Dictionary mapping extension names to their manifests
         """
-        self.logger.info("Discovering extensions")
-        
-        try:
-            manifests = await self.extension_manager.discover_extensions()
-            
-            # Update states and emit events
-            for name, manifest in manifests.items():
-                self.extension_states[name] = ExtensionLifecycleState.DISCOVERED
-                await self._emit_lifecycle_event(
-                    extension_id=name,
-                    event_type="discovered",
-                    data={"manifest": manifest.to_dict()}
+        if not force_refresh and self._discovered_manifests:
+            return dict(self._discovered_manifests)
+
+        async with self._discovery_lock:
+            if not force_refresh and self._discovered_manifests:
+                return dict(self._discovered_manifests)
+
+            self.logger.info("Discovering extensions")
+
+            try:
+                manifests = await self.extension_manager.discover_extensions(
+                    force_refresh=force_refresh
                 )
-            
-            self.logger.info(f"Discovered {len(manifests)} extensions")
-            return manifests
-            
-        except Exception as e:
-            self.logger.error(f"Failed to discover extensions: {e}")
-            return {}
+
+                # Update states and emit events
+                for name, manifest in manifests.items():
+                    self.extension_states[name] = ExtensionLifecycleState.DISCOVERED
+                    await self._emit_lifecycle_event(
+                        extension_id=name,
+                        event_type="discovered",
+                        data={"manifest": manifest.to_dict()},
+                    )
+
+                self._discovered_manifests = dict(manifests)
+                self.logger.info(f"Discovered {len(manifests)} extensions")
+                return dict(manifests)
+
+            except Exception as e:
+                self.logger.error(f"Failed to discover extensions: {e}")
+                return {}
     
     async def load_all_extensions(self) -> Dict[str, ExtensionRecord]:
         """
@@ -223,7 +237,7 @@ class ExtensionLifecycleManager:
         self.logger.info("Loading all extensions with dependency resolution")
         
         try:
-            # Get discovered extensions
+            # Reuse the discovery cache populated during initialize()
             manifests = await self.discover_extensions()
             
             if not manifests:

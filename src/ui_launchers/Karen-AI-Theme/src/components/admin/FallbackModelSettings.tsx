@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/api";
 import { Bot, Cpu, RefreshCw, Save, Loader2, AlertTriangle, CheckCircle2, Globe, Clock } from "lucide-react";
-import { getRuntimeDisplayName, isLocalRuntimeProvider } from "@/lib/chat-response";
+import { getRuntimeDisplayName } from "@/lib/chat-response";
 import { normalizeModelSettingsResponse, type RuntimeSettingsResponse } from "@/lib/model-runtime-inventory";
 
 type ModelSettingsResponse = RuntimeSettingsResponse;
@@ -38,8 +38,8 @@ export default function FallbackModelSettings() {
       setSelectedProvider(normalized.selected_provider || normalized.providers[0]?.id || "");
       setSelectedModel(normalized.selected_model || "");
       const provider = normalized.providers.find(p => p.id === normalized.selected_provider);
-      if (isLocalRuntimeProvider(provider?.id)) {
-        setRuntimeSource(provider.runtime_source === "container" ? "container" : "host");
+      if (provider?.runtime_options?.length) {
+        setRuntimeSource(provider?.runtime_source === "container" ? "container" : "host");
       }
       setBaseUrl((provider?.base_url || provider?.default_base_url || "").replace(/\/api$/, ""));
     } catch {
@@ -72,17 +72,18 @@ export default function FallbackModelSettings() {
   }, [normalizedSettings]);
   const currentProvider = normalizedSettings?.providers.find(p => p.id === selectedProvider);
   const availableModels = currentProvider?.models ?? [];
-  const selectedRuntimeOption = isLocalRuntimeProvider(currentProvider?.id)
-    ? currentProvider.runtime_options?.find((option) => option.source === runtimeSource)
+  const usesRuntimeOptions = Boolean(currentProvider?.runtime_options?.length);
+  const selectedRuntimeOption = usesRuntimeOptions
+    ? currentProvider?.runtime_options?.find((option) => option.source === runtimeSource)
     : null;
 
   useEffect(() => {
-    if (!isLocalRuntimeProvider(currentProvider?.id)) return;
-    const option = currentProvider.runtime_options?.find((item) => item.source === runtimeSource);
+    if (!usesRuntimeOptions) return;
+    const option = currentProvider?.runtime_options?.find((item) => item.source === runtimeSource);
     if (option) {
       setBaseUrl((option.base_url || "").replace(/\/api$/, ""));
     }
-  }, [currentProvider, runtimeSource]);
+  }, [currentProvider, runtimeSource, usesRuntimeOptions]);
 
   const handleSave = async () => {
     if (!selectedProvider || !selectedModel) return;
@@ -92,7 +93,7 @@ export default function FallbackModelSettings() {
         provider: selectedProvider,
         model: selectedModel,
         base_url: baseUrl || undefined,
-        runtime_source: isLocalRuntimeProvider(currentProvider?.id) ? runtimeSource : undefined,
+        runtime_source: usesRuntimeOptions ? runtimeSource : undefined,
       });
       const normalized = normalizeModelSettingsResponse(response);
       setSettings(response);
@@ -160,7 +161,7 @@ export default function FallbackModelSettings() {
                 </Badge>
               </div>
             </div>
-            {isLocalRuntimeProvider(currentProvider?.id) && selectedRuntimeOption && (
+            {usesRuntimeOptions && selectedRuntimeOption && (
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground uppercase tracking-wider">Runtime Source</Label>
                 <div className="flex items-center gap-2">
@@ -204,8 +205,8 @@ export default function FallbackModelSettings() {
               <Select value={selectedProvider} onValueChange={(value) => {
                 setSelectedProvider(value);
                 const provider = normalizedSettings?.providers.find(p => p.id === value);
-                if (isLocalRuntimeProvider(provider?.id)) {
-                  setRuntimeSource(provider.runtime_source === "container" ? "container" : "host");
+                if (provider?.runtime_options?.length) {
+                  setRuntimeSource(provider?.runtime_source === "container" ? "container" : "host");
                 }
                 setSelectedModel(provider?.models[0]?.id || "");
                 setBaseUrl((provider?.base_url || provider?.default_base_url || "").replace(/\/api$/, ""));
@@ -277,7 +278,7 @@ export default function FallbackModelSettings() {
             </div>
           </div>
 
-          {isLocalRuntimeProvider(currentProvider?.id) && (
+          {usesRuntimeOptions && (
             <div className="space-y-3">
               <Label className="flex items-center gap-1.5">
                 <Globe className="h-3.5 w-3.5" /> Runtime Source
@@ -287,7 +288,7 @@ export default function FallbackModelSettings() {
                   <SelectValue placeholder="Select runtime source" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(currentProvider.runtime_options ?? []).map((option) => (
+                  {(currentProvider?.runtime_options ?? []).map((option) => (
                     <SelectItem key={option.source} value={option.source}>
                       {option.label}
                     </SelectItem>
@@ -322,10 +323,10 @@ export default function FallbackModelSettings() {
               onChange={(e) => setBaseUrl(e.target.value)}
               placeholder="http://host.docker.internal:11434"
               className="font-mono text-sm"
-              readOnly={isLocalRuntimeProvider(currentProvider?.id)}
+              readOnly={usesRuntimeOptions}
             />
             <p className="text-xs text-muted-foreground">
-              {isLocalRuntimeProvider(currentProvider?.id)
+              {usesRuntimeOptions
                 ? "For local runtimes, the runtime source determines the API endpoint."
                 : "Override the provider&apos;s default API endpoint."}
             </p>
@@ -488,7 +489,7 @@ export default function FallbackModelSettings() {
                     {provider.base_url || provider.default_base_url}
                   </p>
                 )}
-                {isLocalRuntimeProvider(provider.id) && provider.runtime_options?.length ? (
+                {provider.runtime_options?.length ? (
                   <div className="flex flex-wrap gap-1.5 mt-1">
                     {provider.runtime_options.map((option) => (
                       <Badge key={option.source} variant="outline" className="text-[10px]">

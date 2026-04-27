@@ -18,6 +18,7 @@ import { formatModelSwitchError } from '@/lib/model-switch-errors';
 import { getRuntimeDisplayName } from '@/lib/chat-response';
 import { normalizeModelSettingsResponse, type RuntimeSettingsResponse } from '@/lib/model-runtime-inventory';
 import { toast } from "@/hooks/use-toast";
+import { useMessageInjection } from '@/providers/MessageInjectionProvider';
 // Constants and utilities
 import { getStreamingStatus } from './const/getStreamingStatus';
 import { getDegradedResponseMessage } from './const/getDegradedResponseMessage';
@@ -92,6 +93,76 @@ interface ProviderDetails {
 }
 
 type ModelSettingsResponse = RuntimeSettingsResponse;
+
+const SESSION_BOOTSTRAP_SUPPRESSION_WINDOW_MS = 1500;
+
+type ConversationBootstrapCacheEntry = {
+  response: ConversationResponse;
+  expiresAt: number;
+};
+
+const sessionConversationBootstrapCache = new Map<string, ConversationBootstrapCacheEntry>();
+const sessionConversationBootstrapRequests = new Map<string, Promise<ConversationResponse>>();
+const recentSessionBootstrapRuns = new Map<string, number>();
+
+const cacheConversationBootstrap = (sessionId: string, response: ConversationResponse) => {
+  sessionConversationBootstrapCache.set(sessionId, {
+    response,
+    expiresAt: Date.now() + SESSION_BOOTSTRAP_SUPPRESSION_WINDOW_MS,
+  });
+};
+
+const takeConversationBootstrap = (sessionId: string): ConversationResponse | null => {
+  const cached = sessionConversationBootstrapCache.get(sessionId);
+  if (!cached) {
+    return null;
+  }
+
+  if (cached.expiresAt < Date.now()) {
+    sessionConversationBootstrapCache.delete(sessionId);
+    return null;
+  }
+
+  sessionConversationBootstrapCache.delete(sessionId);
+  return cached.response;
+};
+
+const fetchConversationBootstrap = async (sessionId: string): Promise<ConversationResponse> => {
+  const cached = takeConversationBootstrap(sessionId);
+  if (cached) {
+    return cached;
+  }
+
+  const existingRequest = sessionConversationBootstrapRequests.get(sessionId);
+  if (existingRequest) {
+    return existingRequest;
+  }
+
+  const request = apiClient.post<ConversationResponse>(`/api/conversations/ensure-session/${sessionId}`)
+    .then((response) => {
+      cacheConversationBootstrap(sessionId, response);
+      return response;
+    })
+    .finally(() => {
+      if (sessionConversationBootstrapRequests.get(sessionId) === request) {
+        sessionConversationBootstrapRequests.delete(sessionId);
+      }
+    });
+
+  sessionConversationBootstrapRequests.set(sessionId, request);
+  return request;
+};
+
+const shouldSuppressRecentBootstrap = (key: string): boolean => {
+  const now = Date.now();
+  const lastRunAt = recentSessionBootstrapRuns.get(key);
+  if (typeof lastRunAt === 'number' && now - lastRunAt < SESSION_BOOTSTRAP_SUPPRESSION_WINDOW_MS) {
+    return true;
+  }
+
+  recentSessionBootstrapRuns.set(key, now);
+  return false;
+};
 
 // Session Context
 const SessionContext = createContext<SessionContextType | undefined>(undefined);
@@ -202,24 +273,7 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
     try {
       // Load session metadata and history.
       // We use the same endpoint for both since ConversationResponse includes all metadata.
-      let conversationResponse: ConversationResponse | null = null;
-      const maxAttempts = 2;
-      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-        try {
-          conversationResponse = await apiClient.post<ConversationResponse>(`/api/conversations/ensure-session/${sessionId}`);
-          break;
-        } catch (attemptErr) {
-          const isRateLimited = attemptErr instanceof ApiError && attemptErr.status === 429;
-          if (!isRateLimited || attempt === maxAttempts) {
-            throw attemptErr;
-          }
-          await new Promise((resolve) => window.setTimeout(resolve, getRateLimitDelayMs(attemptErr, 1200)));
-        }
-      }
-
-      if (!conversationResponse) {
-        throw new Error('Unable to load session.');
-      }
+      const conversationResponse = await fetchConversationBootstrap(sessionId);
       
       const session: Session = {
         id: sessionId,
@@ -356,9 +410,9 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
           console.log('Session activity updated successfully');
         }
       } catch (err) {
-        console.error('Failed to renew session:', err);
-        // Attempt to recover by creating a new session
-        await createNewSession();
+        // Heartbeat failures are transient during backend startup or brief outages.
+        // Keep the current session intact and let the next interval retry naturally.
+        console.warn('Session activity update skipped:', err);
       }
     };
 
@@ -405,7 +459,7 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
         document.removeEventListener(event, updateActivity);
       });
     };
-  }, [createNewSession, currentSession]);
+  }, [currentSession]);
 
   // Delete a session
   const deleteSession = useCallback(async (sessionId: string) => {
@@ -558,6 +612,11 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
 
   // Initialize sessions on mount
   useEffect(() => {
+    const bootstrapKey = `initialize:${initialSessionId || '__new__'}`;
+    if (shouldSuppressRecentBootstrap(bootstrapKey)) {
+      return;
+    }
+
     const initializeSessions = async () => {
       setIsLoadingSessions(true);
       try {
@@ -735,6 +794,7 @@ export default function ChatInterface() {
   const submitInFlightRef = useRef(false);
   const restoredSessionNoticeRef = useRef<string | null>(null);
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const { pendingMessages, popMessage } = useMessageInjection();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -912,9 +972,7 @@ export default function ChatInterface() {
       }
 
       const fetchConversationMessages = async (): Promise<ChatMessage[]> => {
-        const conversation = await apiClient.post<ConversationResponse>(
-          `/api/conversations/ensure-session/${sessionId}`,
-        );
+        const conversation = await fetchConversationBootstrap(sessionId);
         return (conversation.messages || []).map(normalizeConversationMessage);
       };
 
@@ -1400,6 +1458,21 @@ export default function ChatInterface() {
 
   }, [input, isLoading, isAuthLoading, input, messages, displayName, preferredAddressName, recentMessages, selectedProvider, selectedModel, toast, user, getAssistFailureMetadata, setInput, setMessages, setIsLoading, setIsEditingDuringProcessing, setProcessingStatus, setStreamedContent, setStreamingMetrics, activeRequestControllerRef, sessionIdRef, isAuthenticated]);
 
+  // Process injected messages from other parts of the app
+  useEffect(() => {
+    if (pendingMessages.length > 0 && !isAuthLoading && !isLoading) {
+      const nextMessage = pendingMessages[0];
+
+      if (nextMessage.autoSubmit) {
+        void handleSubmit(nextMessage.content);
+      } else {
+        setInput(nextMessage.content);
+      }
+
+      popMessage(nextMessage.id);
+    }
+  }, [pendingMessages, isAuthLoading, isLoading, handleSubmit, setInput, popMessage]);
+
   // Save preferred address name
   const savePreferredAddressName = useCallback(async (preferredName: string) => {
     if (!user) {
@@ -1526,6 +1599,25 @@ export default function ChatInterface() {
       description: `Saved ${slug}.md`,
     });
   }, [currentSession, messages, toast]);
+
+  // Handle external message injection (e.g. from plugins)
+  useEffect(() => {
+    const handleInjectMessage = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const { content, autoSubmit = false } = customEvent.detail;
+
+      if (content) {
+        if (autoSubmit) {
+          void handleSubmit(content);
+        } else {
+          setInput(content);
+        }
+      }
+    };
+
+    window.addEventListener('karen:inject-message', handleInjectMessage);
+    return () => window.removeEventListener('karen:inject-message', handleInjectMessage);
+  }, [handleSubmit, setInput]);
 
   // Scroll functions
   const scrollChatToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {

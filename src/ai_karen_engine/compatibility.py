@@ -99,7 +99,6 @@ class CompatibilityImportManager:
             },
             "integrations": {
                 "ai_karen_engine.plugins.llm_manager": "ai_karen_engine.services.models.routing.llm_router_service",
-                "ai_karen_engine.plugins.weather_query": "ai_karen_engine.tools.weather_tool",
             },
             "ai": {
                 "ai_karen_engine.plugins.llm_services": "ai_karen_engine.services.models.routing.llm_router_service",
@@ -265,7 +264,6 @@ def is_migration_complete() -> bool:
         importlib.import_module("ai_karen_engine.plugins.router")
         
         # Check some representative plugins
-        importlib.import_module("plugins_hub.integrations.weather_query")
         importlib.import_module("plugins_hub.ai.llm_manager")
         
         return True

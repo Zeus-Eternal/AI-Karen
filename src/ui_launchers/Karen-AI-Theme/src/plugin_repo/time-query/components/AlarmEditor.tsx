@@ -34,41 +34,41 @@ export const AlarmEditor: React.FC<AlarmEditorProps> = ({ onSave, onCancel }) =>
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-neutral-900 border border-neutral-800 rounded-xl p-5 space-y-4">
-      <h3 className="font-medium text-white mb-2">Create Alarm</h3>
-      
+    <form onSubmit={handleSubmit} className="bg-card border border-border rounded-xl p-5 space-y-4">
+      <h3 className="font-medium text-foreground mb-2">Create Alarm</h3>
+
       <div>
-        <label className="block text-xs text-neutral-400 mb-1">Title</label>
-        <input 
-          type="text" 
-          value={title} 
+        <label className="block text-xs text-muted-foreground mb-1">Title</label>
+        <input
+          type="text"
+          value={title}
           onChange={(e) => setTitle(e.target.value)}
           required
-          className="w-full bg-neutral-950 border border-neutral-800 rounded px-3 py-2 text-white focus:outline-none focus:border-primary"
+          className="w-full bg-background border border-border px-3 py-1.5 rounded-md text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all disabled:opacity-50"
         />
       </div>
-      
+
       <div>
-        <label className="block text-xs text-neutral-400 mb-1">Time</label>
-        <input 
-          type="datetime-local" 
-          value={datetime} 
+        <label className="block text-xs text-muted-foreground mb-1">Time</label>
+        <input
+          type="datetime-local"
+          value={datetime}
           onChange={(e) => setDatetime(e.target.value)}
           required
-          className="w-full bg-neutral-950 border border-neutral-800 rounded px-3 py-2 text-white focus:outline-none focus:border-primary"
+          className="w-full bg-background border border-border px-3 py-1.5 rounded-md text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all disabled:opacity-50"
         />
       </div>
-      
+
       <div className="flex space-x-3 pt-2">
-        <button 
-          type="button" 
+        <button
+          type="button"
           onClick={onCancel}
-          className="flex-1 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded transition-colors"
+          className="flex-1 px-4 py-2 bg-secondary hover:bg-secondary/80 text-secondary-foreground rounded transition-colors"
         >
           Cancel
         </button>
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           disabled={loading}
           className="flex-1 px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded transition-colors"
         >

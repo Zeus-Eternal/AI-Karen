@@ -28,8 +28,9 @@ class ToolExecutionNode:
         config: Optional[ToolExecutionConfig] = None,
         tool_service: Optional[ToolService] = None,
     ):
+        from ai_karen_engine.services.tooling.tool_service import get_tool_service
         self.config = config or ToolExecutionConfig()
-        self._tool_service = tool_service or ToolService()
+        self._tool_service = tool_service or get_tool_service()
 
     async def __call__(
         self, state: LangGraphOrchestrationState
@@ -153,7 +154,8 @@ class ToolExecutionNode:
 
 async def tool_exec_node(
     state: LangGraphOrchestrationState,
+    tool_service: Optional[ToolService] = None,
 ) -> LangGraphOrchestrationState:
     """Convenience wrapper for LangGraph orchestration."""
-    node = ToolExecutionNode()
+    node = ToolExecutionNode(tool_service=tool_service)
     return await node(state)

@@ -6,6 +6,7 @@ resource management, and timeout controls.
 
 import asyncio
 import builtins
+import inspect
 import logging
 import os
 import re
@@ -43,6 +44,7 @@ from ai_karen_engine.services.plugin_discovery import (
     PluginStatus,
     get_plugin_registry,
 )
+from ai_karen_engine.extensions.platform.core.manifest import ExtensionContext, ExtensionManifest
 
 logger = logging.getLogger(__name__)
 
@@ -239,13 +241,23 @@ class PluginSandbox:
         """Restricted open function."""
         raise PermissionError("File system access is not allowed in sandbox")
 
+    @staticmethod
+    def _get_callable_globals(func: Callable) -> Dict[str, Any]:
+        """Resolve globals for plain functions and bound methods."""
+        if hasattr(func, "__globals__"):
+            return getattr(func, "__globals__")  # type: ignore[return-value]
+        bound = getattr(func, "__func__", None)
+        if bound is not None and hasattr(bound, "__globals__"):
+            return getattr(bound, "__globals__")
+        return {}
+
     def _restore_environment(self):
         """Restore original environment."""
         self.restricted_builtins.clear()
 
     def run(self, func: Callable, *args, **kwargs):
         """Execute a function with restricted builtins."""
-        func_globals = func.__globals__
+        func_globals = self._get_callable_globals(func)
         original_builtins = func_globals.get("__builtins__", builtins.__dict__)
         func_globals["__builtins__"] = self.restricted_builtins
         try:
@@ -257,7 +269,7 @@ class PluginSandbox:
 
     async def run_async(self, func: Callable, *args, **kwargs):
         """Execute an async function with restricted builtins."""
-        func_globals = func.__globals__
+        func_globals = self._get_callable_globals(func)
         original_builtins = func_globals.get("__builtins__", builtins.__dict__)
         func_globals["__builtins__"] = self.restricted_builtins
         try:
@@ -448,11 +460,8 @@ class PluginExecutionEngine:
         security_policy: SecurityPolicy
     ) -> Any:
         """Execute plugin directly in current context."""
-        # Load plugin module
-        plugin_module = await self._load_plugin_module(plugin_metadata)
-        
-        # Get entry point function
-        entry_point = getattr(plugin_module, plugin_metadata.manifest.entry_point)
+        # Load plugin entrypoint
+        entry_point = await self._load_plugin_entrypoint(plugin_metadata)
         
         # Execute with sandbox
         with PluginSandbox(resource_limits, security_policy) as sandbox:
@@ -473,10 +482,11 @@ class PluginExecutionEngine:
         """Execute plugin in a separate thread."""
 
         def thread_execution():
-            plugin_module = self._load_plugin_module_sync(plugin_metadata)
-            entry_point = getattr(plugin_module, plugin_metadata.manifest.entry_point)
+            entry_point = self._load_plugin_entrypoint_sync(plugin_metadata)
 
             with PluginSandbox(resource_limits, security_policy) as sandbox:
+                if asyncio.iscoroutinefunction(entry_point):
+                    return asyncio.run(sandbox.run_async(entry_point, parameters))
                 return sandbox.run(entry_point, parameters)
 
         executor_future = self.thread_pool.submit(thread_execution)
@@ -509,10 +519,11 @@ class PluginExecutionEngine:
         """Execute plugin in a separate process."""
         def process_execution():
             try:
-                plugin_module = self._load_plugin_module_sync(plugin_metadata)
-                entry_point = getattr(plugin_module, plugin_metadata.manifest.entry_point)
+                entry_point = self._load_plugin_entrypoint_sync(plugin_metadata)
 
                 with PluginSandbox(resource_limits, security_policy) as sandbox:
+                    if asyncio.iscoroutinefunction(entry_point):
+                        return asyncio.run(sandbox.run_async(entry_point, parameters))
                     return sandbox.run(entry_point, parameters)
             except Exception as e:
                 return {"error": str(e), "traceback": traceback.format_exc()}
@@ -551,8 +562,17 @@ class PluginExecutionEngine:
         request_id: str
     ) -> Any:
         """Execute plugin in enhanced sandbox mode."""
-        # For now, use process execution as the sandbox
-        # In a production environment, this could use containers or more advanced sandboxing
+        # Class-based extensions in this repository are already constrained to
+        # prompt-first handler logic and can safely use the direct sandbox path.
+        if ":" in (getattr(plugin_metadata.manifest, "entry_point", None) or ""):
+            return await self._execute_direct(
+                plugin_metadata,
+                parameters,
+                resource_limits,
+                security_policy,
+            )
+
+        # Otherwise fall back to process execution for stricter isolation.
         return await self._execute_in_process(
             plugin_metadata,
             parameters,
@@ -562,29 +582,132 @@ class PluginExecutionEngine:
             request_id
         )
     
-    async def _load_plugin_module(self, plugin_metadata: PluginMetadata):
-        """Load plugin module asynchronously."""
-        return self._load_plugin_module_sync(plugin_metadata)
+    async def _load_plugin_entrypoint(self, plugin_metadata: PluginMetadata):
+        """Load plugin entrypoint asynchronously and handle initialization."""
+        entrypoint_obj = self._load_plugin_entrypoint_sync(plugin_metadata)
+        
+        # If the entrypoint is a method of an ExtensionBase instance,
+        # we need to ensure the instance is initialized.
+        instance = getattr(entrypoint_obj, "__self__", None)
+        print(f"DEBUG: _load_plugin_entrypoint for {plugin_metadata.manifest.name}, instance found: {instance is not None}")
+        
+        if instance:
+            # Robust check for ExtensionBase-like objects
+            is_ext = hasattr(instance, "initialize") and hasattr(instance, "is_initialized")
+            print(f"DEBUG: instance is ExtensionBase-like: {is_ext}")
+            if is_ext:
+                try:
+                    if not instance.is_initialized():
+                        print(f"DEBUG: Initializing extension instance for {plugin_metadata.manifest.name}")
+                        logger.info(f"Initializing extension instance for {plugin_metadata.manifest.name}")
+                        await instance.initialize()
+                        # Some base classes might not set the flag correctly in the public method
+                        if hasattr(instance, "_is_initialized"):
+                            instance._is_initialized = True
+                        print(f"DEBUG: Initialization complete for {plugin_metadata.manifest.name}")
+                    else:
+                        print(f"DEBUG: Extension instance for {plugin_metadata.manifest.name} already initialized")
+                        logger.debug(f"Extension instance for {plugin_metadata.manifest.name} already initialized")
+                except Exception as e:
+                    print(f"DEBUG: Failed to initialize extension {plugin_metadata.manifest.name}: {e}")
+                    logger.error(f"Failed to initialize extension {plugin_metadata.manifest.name}: {e}")
+        
+        return entrypoint_obj
     
-    def _load_plugin_module_sync(self, plugin_metadata: PluginMetadata):
-        """Load plugin module synchronously."""
+    def _load_plugin_entrypoint_sync(self, plugin_metadata: PluginMetadata):
+        """Load plugin entrypoint synchronously."""
         plugin_path = plugin_metadata.path
+        init_path = plugin_path / "__init__.py"
         handler_path = plugin_path / "handler.py"
-        
-        # Create module spec
-        spec = importlib.util.spec_from_file_location(
-            f"plugin_{plugin_metadata.manifest.name}",
-            handler_path
+        package_name = f"plugin_{plugin_metadata.manifest.name.replace('-', '_').replace('.', '_')}"
+        entrypoint = getattr(plugin_metadata.manifest, "entry_point", None) or "run"
+
+        if not init_path.exists() or not handler_path.exists():
+            raise ImportError(f"Cannot load plugin package from {plugin_path}")
+
+        package_spec = importlib.util.spec_from_file_location(
+            package_name,
+            init_path,
+            submodule_search_locations=[str(plugin_path)],
         )
-        
-        if spec is None or spec.loader is None:
-            raise ImportError(f"Cannot load plugin module from {handler_path}")
-        
-        # Load and execute module
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        
-        return module
+
+        if package_spec is None or package_spec.loader is None:
+            raise ImportError(f"Cannot load plugin package from {init_path}")
+
+        package_module = importlib.util.module_from_spec(package_spec)
+        sys.modules[package_name] = package_module
+        package_spec.loader.exec_module(package_module)
+
+        handler_module = importlib.import_module(f"{package_name}.handler")
+
+        if ":" in entrypoint:
+            module_name, attr_name = entrypoint.split(":", 1)
+            if module_name != "handler":
+                raise ImportError(
+                    f"Unsupported entrypoint module '{module_name}' for {plugin_metadata.manifest.name}"
+                )
+
+            entrypoint_obj = getattr(handler_module, attr_name, None)
+            if entrypoint_obj is None:
+                raise ImportError(
+                    f"Entrypoint '{attr_name}' not found in {handler_path}"
+                )
+
+            if inspect.isclass(entrypoint_obj):
+                manifest_data = {}
+                if hasattr(plugin_metadata.manifest, "model_dump"):
+                    manifest_data = plugin_metadata.manifest.model_dump(mode="python")
+                elif isinstance(plugin_metadata.manifest, dict):
+                    manifest_data = dict(plugin_metadata.manifest)
+
+                if hasattr(plugin_metadata.manifest, "model_extra") and plugin_metadata.manifest.model_extra:
+                    manifest_data.update(plugin_metadata.manifest.model_extra)
+
+                if isinstance(manifest_data.get("dependencies"), list):
+                    manifest_data["dependencies"] = {
+                        "plugins": manifest_data.get("dependencies", []),
+                        "extensions": [],
+                        "system_services": [],
+                    }
+                elif not isinstance(manifest_data.get("dependencies"), dict):
+                    manifest_data["dependencies"] = {
+                        "plugins": [],
+                        "extensions": [],
+                        "system_services": [],
+                    }
+
+                if isinstance(manifest_data.get("rbac"), dict):
+                    pass
+                else:
+                    manifest_data["rbac"] = {
+                        "allowed_roles": manifest_data.get("required_roles", ["user"]),
+                        "default_enabled": manifest_data.get("default_enabled", True),
+                    }
+
+                extension_manifest = ExtensionManifest.from_dict(manifest_data)
+                extension_context = ExtensionContext(
+                    plugin_router=None,
+                    db_session=None,
+                    app_instance=None,
+                    tenant_id=None,
+                    user_id=None,
+                    extension_dir=plugin_path,
+                    config={},
+                )
+                extension_instance = entrypoint_obj(extension_manifest, extension_context)
+                if hasattr(extension_instance, "run"):
+                    return extension_instance.run
+                return extension_instance
+
+            return entrypoint_obj
+
+        entrypoint_obj = getattr(handler_module, entrypoint, None)
+        if entrypoint_obj is None:
+            raise ImportError(
+                f"Entrypoint '{entrypoint}' not found in {handler_path}"
+            )
+
+        return entrypoint_obj
     
     async def _validate_and_sanitize_input(
         self,

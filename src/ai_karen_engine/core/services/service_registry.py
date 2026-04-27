@@ -11,6 +11,7 @@ health monitoring to prevent service initialization warnings.
 import asyncio
 import logging
 import time
+import threading
 import weakref
 from typing import (
     Dict,
@@ -1214,6 +1215,8 @@ class ServiceRegistry:
 
 # Global service registry instance
 _service_registry: Optional[ServiceRegistry] = None
+_model_library_service: Optional[Any] = None
+_model_library_service_lock = threading.Lock()
 
 
 def get_service_registry() -> ServiceRegistry:
@@ -1222,6 +1225,24 @@ def get_service_registry() -> ServiceRegistry:
     if _service_registry is None:
         _service_registry = ServiceRegistry()
     return _service_registry
+
+
+def get_model_library_service() -> Any:
+    """Get the shared model library service managed by the registry layer."""
+    global _model_library_service
+
+    if _model_library_service is not None:
+        return _model_library_service
+
+    with _model_library_service_lock:
+        if _model_library_service is None:
+            from ai_karen_engine.services.models.discovery.model_library_service import (
+                ModelLibraryService,
+            )
+
+            _model_library_service = ModelLibraryService()
+
+    return _model_library_service
 
 
 async def initialize_services() -> None:

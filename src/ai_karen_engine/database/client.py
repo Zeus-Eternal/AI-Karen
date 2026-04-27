@@ -165,6 +165,30 @@ class DatabaseClient:
         except Exception as e:
             logger.error(f"Failed to create database tables: {e}")
             raise
+
+    async def cleanup(self):
+        """Close database engines and free resources (async)."""
+        if self.engine:
+            self.engine.dispose()
+            self.engine = None
+            
+        if self.async_engine:
+            try:
+                # SQLAlchemy 2.0 async engine dispose is awaitable
+                await self.async_engine.dispose()
+                self.async_engine = None
+            except Exception as e:
+                logger.warning(f"Error during async engine disposal: {e}")
+
+    def close(self):
+        """Synchronous cleanup (best effort)."""
+        if self.engine:
+            self.engine.dispose()
+            self.engine = None
+        
+        # We can't easily await here, so we log it
+        if self.async_engine:
+             logger.warning("Synchronous close() called on async database client. Use await cleanup() for full disposal.")
     
     def drop_tables(self):
         """Drop all database tables (use with caution!)"""

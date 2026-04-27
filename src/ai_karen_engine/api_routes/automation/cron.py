@@ -20,6 +20,9 @@ except ImportError:
     CRONITER_AVAILABLE = False
 
 from ai_karen_engine.auth.session import get_current_user
+from ai_karen_engine.agents import get_agent_integration_service, AgentExecutionMode
+from ai_karen_engine.agents.internal.agent_schemas import AgentTask
+from ai_karen_engine.services.job_service import get_job_service
 
 logger = logging.getLogger(__name__)
 
@@ -79,20 +82,19 @@ def get_cron_summary() -> Dict[str, Any]:
     }
 
 
-def _get_next_run(schedule: str) -> str:
+def get_next_run(schedule: str) -> str:
+    """Calculate the next run time from a cron expression."""
     if not CRONITER_AVAILABLE:
-        return "Unknown (croniter unavailable)"
+        return "N/A"
     try:
-        if not croniter.is_valid(schedule):
-            return "Invalid Schedule"
-        cron = croniter(schedule, datetime.utcnow())
-        next_dt = cron.get_next(datetime)
-        return next_dt.strftime("%Y-%m-%d %H:%M UTC")
+        now = datetime.utcnow()
+        cron = croniter(schedule, now)
+        return cron.get_next(datetime).isoformat()
     except Exception:
-        return "Unknown"
+        return "Invalid Schedule"
 
 
-@router.post("/", response_model=CronJobResponse)
+@router.post("", response_model=CronJobResponse)
 async def create_cron_job(
     request: CronJobRequest,
     user: Dict[str, Any] = Depends(get_current_user),
@@ -111,8 +113,9 @@ async def create_cron_job(
             "type": request.type,
             "targetId": request.targetId,
             "enabled": request.enabled,
-            "nextRun": _get_next_run(request.schedule),
-            "created_at": datetime.utcnow()
+            "nextRun": get_next_run(request.schedule),
+            "created_at": datetime.utcnow(),
+            "last_eval": datetime.utcnow().isoformat()
         }
 
         _cron_db[cron_id] = cron_record
@@ -125,7 +128,7 @@ async def create_cron_job(
         raise HTTPException(status_code=500, detail=f"Failed to create cron job: {str(e)}")
 
 
-@router.get("/", response_model=List[CronJobResponse])
+@router.get("", response_model=List[CronJobResponse])
 async def list_cron_jobs(
     user: Dict[str, Any] = Depends(get_current_user),
 ):
@@ -136,7 +139,7 @@ async def list_cron_jobs(
         # Update next runs dynamically
         for job in jobs:
             if job.get("enabled"):
-                job["nextRun"] = _get_next_run(job["schedule"])
+                job["nextRun"] = get_next_run(job["schedule"])
             else:
                 job["nextRun"] = "Disabled"
 
@@ -182,7 +185,7 @@ async def toggle_cron_job(
             
         record = _cron_db[cron_id]
         record["enabled"] = not record["enabled"]
-        record["nextRun"] = _get_next_run(record["schedule"]) if record["enabled"] else "Disabled"
+        record["nextRun"] = get_next_run(record["schedule"]) if record["enabled"] else "Disabled"
         
         return CronJobResponse(**record)
         
@@ -192,34 +195,76 @@ async def toggle_cron_job(
         logger.error(f"Error toggling cron job {cron_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to toggle cron job: {str(e)}")
 
-# Background executor task (started optionally or runs automatically)
+async def _run_cron_task(job: Dict[str, Any]):
+    """Internal helper to execute a cron job task."""
+    target_id = job.get("targetId")
+    job_type = job.get("type")
+    cron_id = job.get("id")
+
+    if job_type == "Task":
+        try:
+            integration_service = get_agent_integration_service()
+            await integration_service.initialize()
+            from ai_karen_engine.api_routes.automation.tasks import _tasks_db
+            task_def = _tasks_db.get(target_id)
+            if task_def:
+                runtime_task = AgentTask(
+                    task_id=f"cron_{cron_id}_{uuid.uuid4().hex[:4]}",
+                    agent_id=str(task_def.get("primaryAgent") or ""),
+                    task_type=str(task_def.get("taskType") or "cron_task"),
+                    description=str(task_def.get("description") or ""),
+                    input_data={"task_id": target_id, "trigger": "cron", "cron_id": cron_id},
+                    metadata={"source": "cron", "cron_id": cron_id}
+                )
+                await integration_service.execute_task(runtime_task, execution_mode=AgentExecutionMode.LANGGRAPH)
+        except Exception as te:
+            logger.error(f"Failed to trigger cron task {target_id}: {te}")
+    elif job_type in ["Sequence", "Job"]:
+        try:
+            job_service = get_job_service()
+            cron_user = {"user_id": "system-cron", "roles": ["admin"]}
+            await job_service.execute_job(target_id, user_context=cron_user)
+        except Exception as je:
+            logger.error(f"Failed to trigger cron job sequence {target_id}: {je}")
+
 async def _cron_executor_loop():
+    """Background task to evaluate and run cron jobs."""
+    if not CRONITER_AVAILABLE:
+        logger.warning("[CRON] croniter not available - background executor disabled")
+        return
+
+    logger.info("[CRON] Background executor loop started")
     while True:
         try:
-            if not CRONITER_AVAILABLE:
-                await asyncio.sleep(60)
-                continue
-                
             now = datetime.utcnow()
-            for cron_id, job in list(_cron_db.items()):
+            for job_id, job in list(_cron_db.items()):
                 if not job.get("enabled"):
                     continue
-                    
-                last_eval = job.get("last_eval", now)
-                cron = croniter(job["schedule"], last_eval)
-                next_calc = cron.get_next(datetime)
                 
-                # If we've passed the trigger time
-                if now >= next_calc:
-                    logger.info(f"Triggering cron job: {cron_id} -> {job.get('taskName')}")
-                    job["last_eval"] = now
-                    
-                    # Dispatch to relevant execution logic (Task / Sequence)
-                    # We just print internally for mock live functionality.
-                    # Since execute_task requires FastAPI context historically, 
-                    # backend logic can be queued to an orchestrator background worker here.
+                last_eval_str = job.get("last_eval")
+                if not last_eval_str:
+                    last_eval = now
+                else:
+                    try:
+                        last_eval = datetime.fromisoformat(last_eval_str)
+                    except ValueError:
+                        last_eval = now
+
+                try:
+                    cron = croniter(job["schedule"], last_eval)
+                    next_run = cron.get_next(datetime)
+                except Exception as cron_error:
+                    logger.error(f"Invalid cron schedule for {job_id}: {cron_error}")
+                    continue
+
+                if next_run > now:
+                    continue
+
+                await _run_cron_task(job)
+                job["last_eval"] = now.isoformat()
+                job["nextRun"] = get_next_run(job["schedule"])
             
-            await asyncio.sleep(10) # 10s precision
+            await asyncio.sleep(10)  # 10s precision
         except Exception as e:
             logger.error(f"Cron executor error: {e}")
             await asyncio.sleep(10)

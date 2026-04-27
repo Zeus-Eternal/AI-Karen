@@ -14,16 +14,17 @@ export const StopwatchPanel: React.FC<StopwatchPanelProps> = ({ state, loading, 
 
   React.useEffect(() => {
     if (!state) return;
-    
+
     let interval: any;
-    if (state.running && !state.paused) {
+    if (state.running && !state.paused && state.last_updated_at) {
       // It's actively running, tick locally based on last known state
       interval = setInterval(() => {
         const nowMs = Date.now();
-        setLocalDisplay(state.elapsed_ms + (nowMs - state.last_updated_at));
+        const lastUpdatedMs = new Date(state.last_updated_at).getTime();
+        setLocalDisplay(state.elapsed_ms + (nowMs - lastUpdatedMs));
       }, 50); // fast UI tick
     } else {
-      setLocalDisplay(state.elapsed_ms);
+      setLocalDisplay(state.elapsed_ms || 0);
     }
 
     return () => clearInterval(interval);
@@ -34,13 +35,13 @@ export const StopwatchPanel: React.FC<StopwatchPanelProps> = ({ state, loading, 
   const isPaused = state?.running && state.paused;
 
   return (
-    <div className="bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden shadow-xl shadow-black/20">
+    <div className="bg-card border border-border rounded-xl overflow-hidden shadow-xl shadow-black/20">
       <div className="p-6 flex flex-col items-center">
-        <div className="text-neutral-500 text-sm uppercase tracking-[0.2em] mb-4">Stopwatch</div>
-        <div className="text-6xl font-extralight text-white font-mono tabular-nums tracking-tighter mb-8">
+        <div className="text-muted-foreground text-sm uppercase tracking-[0.2em] mb-4">Stopwatch</div>
+        <div className="text-6xl font-extralight text-foreground font-mono tabular-nums tracking-tighter mb-8">
           {formatMsToStopwatch(displayMs)}
         </div>
-        
+
         <div className="flex justify-center gap-4">
           {!state?.running ? (
              <ActionButton onClick={() => onAction('start')} primary color="bg-emerald-600 hover:bg-emerald-500 text-white">Start</ActionButton>
@@ -52,12 +53,12 @@ export const StopwatchPanel: React.FC<StopwatchPanelProps> = ({ state, loading, 
               {isPaused && (
                 <ActionButton onClick={() => onAction('resume')} color="bg-emerald-600 hover:bg-emerald-500 text-white">Resume</ActionButton>
               )}
-              
+
               <ActionButton onClick={() => onAction('stop')} color="bg-red-600 hover:bg-red-500 text-white">Stop</ActionButton>
             </>
           )}
-          
-          <ActionButton onClick={() => onAction('reset')} color="bg-neutral-800 hover:bg-neutral-700 text-neutral-300">Reset</ActionButton>
+
+          <ActionButton onClick={() => onAction('reset')} color="bg-secondary hover:bg-secondary/80 text-secondary-foreground">Reset</ActionButton>
         </div>
       </div>
     </div>
@@ -65,7 +66,7 @@ export const StopwatchPanel: React.FC<StopwatchPanelProps> = ({ state, loading, 
 };
 
 const ActionButton: React.FC<{ onClick: () => void; children: React.ReactNode; color: string; primary?: boolean }> = ({ onClick, children, color, primary }) => (
-  <button 
+  <button
     onClick={onClick}
     className={`px-6 py-2 rounded-full font-medium transition-all transform active:scale-95 ${color} ${primary ? 'w-24 border border-white/10' : 'w-24'}`}
   >

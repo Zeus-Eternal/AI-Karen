@@ -171,6 +171,26 @@ def _build_degraded_sse_events(
     return events
 
 
+def _build_live_degraded_payload(
+    user_message: str,
+    degraded: Optional[DegradedResponse],
+    correlation_id: str,
+) -> Dict[str, Any]:
+    """Build a degraded fallback payload with live content when possible."""
+    payload: Dict[str, Any] = {}
+    if degraded is not None:
+        payload = serialize_runtime_response(degraded) or {}
+
+    live_response = generate_degraded_mode_response(user_message)
+    if isinstance(live_response, dict):
+        payload.update(live_response)
+
+    payload["correlation_id"] = correlation_id
+    payload.setdefault("degraded_mode", True)
+    payload.setdefault("mode", "degraded")
+    return payload
+
+
 logger = logging.getLogger(__name__)
 
 # Create router without prefix for automatic discovery alignment
@@ -700,7 +720,12 @@ async def copilot_assist(
                 final_state = retry_state
                 response_text = retry_text
             elif degraded_continuation_response is not None:
-                response_text = degraded_continuation_response.message
+                live_payload = _build_live_degraded_payload(
+                    request.message,
+                    degraded_continuation_response,
+                    correlation_id,
+                )
+                response_text = _extract_stream_text(live_payload) or response_text
         response_metadata: Dict[str, Any] = _json_safe(final_state.get("telemetry") or {})
         response_metadata.update(_json_safe(final_state.get("response_metadata") or {}))
         response_metadata.setdefault("status", "success")
@@ -861,13 +886,17 @@ async def copilot_assist_stream(
             exc,
             extra={"correlation_id": correlation_id},
         )
-        payload = (
-            serialize_runtime_response(
-                degraded_continuation_response or EmergencyFallbackResponse()
+        if degraded_continuation_response is not None:
+            payload = _build_live_degraded_payload(
+                request.message,
+                degraded_continuation_response,
+                correlation_id,
             )
-            or {}
-        )
-        payload["correlation_id"] = correlation_id
+        else:
+            payload = (
+                serialize_runtime_response(EmergencyFallbackResponse()) or {}
+            )
+            payload["correlation_id"] = correlation_id
 
         async def stream_degraded_fallback():
             for event in _build_degraded_sse_events(payload, correlation_id):
@@ -967,10 +996,11 @@ async def copilot_assist_stream(
             )
 
             if degraded_continuation_response:
-                fallback_payload = (
-                    serialize_runtime_response(degraded_continuation_response) or {}
+                fallback_payload = _build_live_degraded_payload(
+                    request.message,
+                    degraded_continuation_response,
+                    correlation_id,
                 )
-                fallback_payload["correlation_id"] = correlation_id
                 for event in _build_degraded_sse_events(
                     fallback_payload, correlation_id
                 ):

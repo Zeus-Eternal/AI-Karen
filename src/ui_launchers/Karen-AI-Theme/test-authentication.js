@@ -14,8 +14,8 @@ console.log('');
 
 // Test credentials
 const testCredentials = [
-  { identifier: 'admin', password: 'admin123', type: 'username' },
-  { identifier: 'admin@kari.ai', password: 'admin123', type: 'email' }
+  { identifier: 'admin', password: 'Admin@123!', type: 'username' },
+  { identifier: 'admin@kari.ai', password: 'Admin@123!', type: 'email' }
 ];
 
 async function testAuthentication() {

@@ -415,6 +415,12 @@ class LangGraphOrchestrator:
         def _reasoning_node(state: LangGraphOrchestrationState) -> Any:
             return reasoning_node(state)
 
+        def _tool_exec_node(state: LangGraphOrchestrationState) -> Any:
+            return tool_exec_node(state, tool_service=self._tool_service)
+
+        def _response_synth_node(state: LangGraphOrchestrationState) -> Any:
+            return response_synth_node(state, llm_router=self._llm_router)
+
         workflow.add_node("auth_gate", _auth_gate_node)
         workflow.add_node("safety_gate", _safety_gate_node)
         workflow.add_node("memory_fetch", _memory_fetch_node)
@@ -423,9 +429,9 @@ class LangGraphOrchestrator:
         workflow.add_node("runtime_policy", runtime_policy_enforcer_node)
         workflow.add_node("router_select", _router_select_node)
         workflow.add_node("medusa_node", medusa_node)
-        workflow.add_node("tool_exec", tool_exec_node)
+        workflow.add_node("tool_exec", _tool_exec_node)
         workflow.add_node("reasoning", _reasoning_node)
-        workflow.add_node("response_synth", response_synth_node)
+        workflow.add_node("response_synth", _response_synth_node)
         workflow.add_node("approval_gate", approval_gate_node)
         workflow.add_node("memory_write", memory_write_node)
         workflow.add_node("response_formatter", response_formatter_node)

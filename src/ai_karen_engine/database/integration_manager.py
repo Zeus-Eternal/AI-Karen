@@ -118,9 +118,9 @@ class DatabaseIntegrationManager:
         )
         
         # Test connection
-        health = self.db_client.health_check()
-        if health["status"] != "healthy":
-            raise RuntimeError(f"PostgreSQL health check failed: {health}")
+        is_healthy = self.db_client.health_check()
+        if not is_healthy:
+            raise RuntimeError("PostgreSQL health check failed")
         
         logger.info("PostgreSQL client initialized successfully")
     
@@ -486,7 +486,10 @@ class DatabaseIntegrationManager:
         
         # Check PostgreSQL
         if self.db_client:
-            health_data["components"]["postgres"] = self.db_client.health_check()
+            is_healthy = self.db_client.health_check()
+            health_data["components"]["postgres"] = {
+                "status": "healthy" if is_healthy else "unhealthy"
+            }
         
         # Check Milvus
         if self.milvus_client:

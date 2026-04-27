@@ -469,6 +469,77 @@ class MemorySubsystemProbe:
             )
 
 
+class ChatOrchestratorProbe:
+    """Probes whether the LLM orchestrator is initialized and has active models."""
+
+    name = "chat_orchestrator"
+
+    async def check(self) -> DependencyHealth:
+        start = time.time()
+        try:
+            from ai_karen_engine.llm_orchestrator import get_orchestrator
+
+            orchestrator = get_orchestrator()
+            models = orchestrator.registry.list_models()
+            active_models = [m for m in models if m.get("status") == "ACTIVE"]
+
+            elapsed = (time.time() - start) * 1000
+            healthy = len(active_models) > 0
+            return DependencyHealth(
+                name=self.name,
+                status=DependencyStatus.HEALTHY if healthy else DependencyStatus.UNHEALTHY,
+                reason=None if healthy else "No active models in orchestrator",
+                response_time_ms=elapsed,
+            )
+        except Exception as e:
+            return DependencyHealth(
+                name=self.name,
+                status=DependencyStatus.UNHEALTHY,
+                reason=str(e),
+                response_time_ms=(time.time() - start) * 1000,
+            )
+
+
+class LocalModelProbe:
+    """Probes whether a local fallback model (vLLM, Transformers) is registered and active."""
+
+    name = "local_model"
+
+    async def check(self) -> DependencyHealth:
+        start = time.time()
+        try:
+            from ai_karen_engine.llm_orchestrator import get_orchestrator, ModelStatus
+
+            orchestrator = get_orchestrator()
+            with orchestrator.registry._lock:
+                fallback_models = [
+                    m_id for m_id, info in orchestrator.registry._models.items()
+                    if info.status == ModelStatus.ACTIVE and ("fallback" in info.tags or m_id.startswith("local:"))
+                ]
+
+            if fallback_models:
+                return DependencyHealth(
+                    name=self.name,
+                    status=DependencyStatus.HEALTHY,
+                    reason=f"Found {len(fallback_models)} active local fallback models: {', '.join(fallback_models[:2])}",
+                    response_time_ms=(time.time() - start) * 1000,
+                )
+
+            return DependencyHealth(
+                name=self.name,
+                status=DependencyStatus.UNHEALTHY,
+                reason="No active local fallback models found in orchestrator",
+                response_time_ms=(time.time() - start) * 1000,
+            )
+        except Exception as e:
+            return DependencyHealth(
+                name=self.name,
+                status=DependencyStatus.UNHEALTHY,
+                reason=str(e),
+                response_time_ms=(time.time() - start) * 1000,
+            )
+
+
 # ---------------------------------------------------------------------------
 # Chat Runtime Control Plane
 # ---------------------------------------------------------------------------
@@ -545,6 +616,7 @@ class ChatRuntimeControlPlane:
             ChatOrchestratorProbe(),
             ProviderRouterProbe(),
             MemorySubsystemProbe(),
+            LocalModelProbe(),
         ]
 
         # Enhanced hardening features
@@ -640,6 +712,19 @@ class ChatRuntimeControlPlane:
     async def get_current_mode(self) -> RuntimeMode:
         """Get the current runtime mode. The single source of truth."""
         return self._current_mode
+
+    def get_capabilities(self) -> DegradedCapabilities:
+        """Return the current set of derived degraded capabilities."""
+        return self._degraded_capabilities
+
+    def get_status(self) -> Dict[str, Any]:
+        """Return simplified status for lightweight health checks."""
+        return {
+            "mode": self._current_mode.value,
+            "ready": self._startup_health_checks_completed,
+            "degraded": self._current_mode == RuntimeMode.DEGRADED,
+            "maintenance": self._maintenance_enabled,
+        }
 
     def get_fallback_provider(self) -> tuple[str, str]:
         """Return (provider, model) for fallback generation."""
@@ -1226,10 +1311,12 @@ class ChatRuntimeControlPlane:
         db = self._dependency_health.get("database")
         memory = self._dependency_health.get("memory_subsystem")
         provider = self._dependency_health.get("provider_router")
+        local_model = self._dependency_health.get("local_model")
 
         db_ok = db and db.status == DependencyStatus.HEALTHY
         memory_ok = memory and memory.status == DependencyStatus.HEALTHY
         provider_ok = provider and provider.status == DependencyStatus.HEALTHY
+        local_model_ok = local_model and local_model.status == DependencyStatus.HEALTHY
 
         capabilities = DegradedCapabilities(
             memory_available=bool(memory_ok and db_ok),
@@ -1237,7 +1324,7 @@ class ChatRuntimeControlPlane:
             plugins_available=bool(db_ok),
             external_providers_available=bool(provider_ok),
             streaming_supported=bool(provider_ok),
-            local_model_available=False,  # TODO: probe local model if available
+            local_model_available=bool(local_model_ok),
         )
 
         # Build human-readable status description (for mode metadata, not answer text)

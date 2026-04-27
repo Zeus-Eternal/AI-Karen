@@ -855,7 +855,7 @@ class DecisionEngine:
     def _suggest_tools(intent: str) -> List[str]:
         mapping = {
             "greeting": [],
-            "weather_query": ["weather"],
+            "weather_query": ["web_search"],
             "time_query": ["time"],
             "book_query": ["search_books"],
             "information_retrieval": ["search_memory"],

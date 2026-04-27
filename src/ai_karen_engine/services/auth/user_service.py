@@ -404,7 +404,7 @@ class UserService(BaseService):
             # In production, this should use proper password hashing
             demo_users = {
                 "admin@kari.ai": {
-                    "password": "admin123",
+                    "password": "Admin@123!",
                     "roles": ["admin", "user"],
                 },
                 "user@kari.ai": {"password": "password123", "roles": ["user"]},

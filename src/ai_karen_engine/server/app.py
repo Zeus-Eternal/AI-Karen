@@ -112,10 +112,6 @@ def create_app() -> FastAPI:
     # Load configuration (environment loading is handled in config module)
     settings = Settings()
     environment = settings.environment.lower()
-
-    # Environment loading is handled in config module
-    settings = Settings()
-    environment = settings.environment.lower()
     # Load performance configuration
     load_performance_settings(settings)
 
@@ -140,6 +136,7 @@ def create_app() -> FastAPI:
         redoc_url="/redoc" if settings.environment != "production" else None,
         lifespan=lifespan,
     )
+    app.state.settings = settings
 
     # Configure middleware
     configure_middleware(app, settings, REQUEST_COUNT, REQUEST_LATENCY, ERROR_COUNT)

@@ -11,6 +11,7 @@ import os
 from typing import Any, Dict, Iterator, List, Optional
 
 from ai_karen_engine.core.model_runtime.model_manager import ModelManager
+from ai_karen_engine.inference.core_helpers_runtime import CoreHelpersRuntime
 from ai_karen_engine.integrations.providers.openai_compatible_provider import (
     OpenAICompatibleProvider,
 )
@@ -46,6 +47,11 @@ class VLLMRuntime:
         )
         self._provider.provider_name = provider_name
         self._provider.display_name = "vLLM"
+        fallback_model = model if model not in {"", "auto"} else "/app/models/transformers/gpt2"
+        self._fallback_runtime = CoreHelpersRuntime(
+            text_model=fallback_model,
+            embedding_model="/app/models/transformers/distilbert-base-uncased",
+        )
 
     @classmethod
     def get_instance(cls, **kwargs: Any) -> "VLLMRuntime":
@@ -54,30 +60,72 @@ class VLLMRuntime:
         return cls._instance
 
     def health_check(self) -> Dict[str, Any]:
-        status = self._provider.health_check()
-        status["provider"] = self.provider_name
-        status["runtime"] = "vllm"
-        return status
+        if not self.base_url:
+            status = self._fallback_runtime.health_check()
+            status.update(
+                {
+                    "provider": self.provider_name,
+                    "runtime": "vllm",
+                    "mode": "transformers_fallback",
+                }
+            )
+            return status
+
+        try:
+            status = self._provider.health_check()
+            status["provider"] = self.provider_name
+            status["runtime"] = "vllm"
+            return status
+        except Exception as exc:
+            status = self._fallback_runtime.health_check()
+            status.update(
+                {
+                    "provider": self.provider_name,
+                    "runtime": "vllm",
+                    "mode": "transformers_fallback",
+                    "warning": str(exc),
+                }
+            )
+            return status
+
+    def _fallback_text(self, prompt: str, **kwargs: Any) -> str:
+        return self._fallback_runtime.generate_response(prompt, **kwargs)
 
     def load_model(self, model_path: Optional[str] = None) -> bool:
         if model_path:
             self.model = model_path
+            self._fallback_runtime.load_model(model_path)
         return True
 
     def generate(self, prompt: str, **kwargs: Any) -> str:
-        return ModelManager.invoke_provider_sync(self._provider, prompt, **kwargs)
+        if not self.base_url:
+            return self._fallback_text(prompt, **kwargs)
+        try:
+            return self._provider.generate_text(prompt, **kwargs)
+        except Exception:
+            return self._fallback_text(prompt, **kwargs)
 
     def generate_response(self, prompt: str, **kwargs: Any) -> str:
-        return ModelManager.invoke_provider_sync(self._provider, prompt, **kwargs)
+        return self.generate(prompt, **kwargs)
 
     def stream(self, prompt: str, **kwargs: Any) -> Iterator[str]:
-        yield from ModelManager.stream_provider_sync(self._provider, prompt, **kwargs)
+        if not self.base_url:
+            yield from self._fallback_runtime.stream(prompt, **kwargs)
+            return
+        try:
+            yield from self._provider.stream_generate(prompt, **kwargs)
+            return
+        except Exception:
+            yield from self._fallback_runtime.stream(prompt, **kwargs)
 
     def stream_generate(self, prompt: str, **kwargs: Any) -> Iterator[str]:
-        yield from ModelManager.stream_provider_sync(self._provider, prompt, **kwargs)
+        yield from self.stream(prompt, **kwargs)
 
     def embed(self, text: str, **kwargs: Any) -> List[float]:
-        return ModelManager.invoke_embedding_sync(self._provider, text, **kwargs)
+        try:
+            return ModelManager.invoke_embedding_sync(self._provider, text, **kwargs)
+        except Exception:
+            return self._fallback_runtime.embed(text, **kwargs)
 
 
 __all__ = ["VLLMRuntime"]

@@ -313,7 +313,8 @@ KARI_LAZY_LOADING=true KARI_MINIMAL_STARTUP=true python start_optimized.py
 - **Database**: localhost:5434 (PostgreSQL)
 
 **Default Login Credentials:**
-- Username: `admin` or Email: `admin@karen.ai` (alias: `admin@kari.ai`)
+- Username: `admin` or Email: `admin@kari.ai`
+- Password: `Admin@123!`
 - Password: set via first-run setup or `KARI_ADMIN_PASSWORD`
 - **⚠️ Important**: Do not ship a default password in production; rotate immediately if you used a bootstrap value.
 

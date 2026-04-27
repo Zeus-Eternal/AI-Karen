@@ -49,6 +49,11 @@ class TransformersRuntime:
             return "auto"
         return Path(model_path).name or "auto"
 
+    @staticmethod
+    def is_available() -> bool:
+        """Check if transformers runtime is available (best-effort always true due to fallbacks)."""
+        return True
+
     @classmethod
     def get_instance(cls, **kwargs: Any) -> "TransformersRuntime":
         if cls._instance is None:

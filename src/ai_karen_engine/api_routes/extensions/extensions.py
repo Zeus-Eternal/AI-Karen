@@ -233,9 +233,12 @@ async def load_extension(extension_name: str, user=Depends(get_current_user)):
         raise HTTPException(status_code=503, detail="Extension manager not initialized")
     try:
         record = await manager.load_extension(extension_name)
+        await manager.refresh_extensions()
         return {
+            "success": True,
             "message": f"Extension {extension_name} loaded",
-            "status": record.status.value,
+            "plugin_id": extension_name,
+            "status": record.status.value if record else "loaded",
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -248,9 +251,43 @@ async def unload_extension(extension_name: str, user=Depends(get_current_user)):
     if not manager:
         raise HTTPException(status_code=503, detail="Extension manager not initialized")
     try:
-        await manager.unload_extension(extension_name)
-        return {"message": f"Extension {extension_name} unloaded"}
+        success = await manager.unload_extension(extension_name)
+        if not success:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Extension {extension_name} is not currently loaded",
+            )
+        await manager.refresh_extensions()
+        return {
+            "success": True,
+            "message": f"Extension {extension_name} unloaded",
+            "plugin_id": extension_name,
+            "status": "unloaded",
+        }
     except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/{extension_name}/remove-ui")
+async def remove_extension_ui(extension_name: str, user=Depends(get_current_user)):
+    """Remove the installed UI package for an extension."""
+    try:
+        from ai_karen_engine.extensions.platform.core.registry.ui_installer import (
+            remove_ui,
+        )
+
+        result = remove_ui(extension_name)
+        manager = get_extension_manager()
+        if manager:
+            await manager.refresh_extensions()
+        return {
+            "success": result.status.value == "success" or result.status.value == "not_found",
+            "message": result.message,
+            "plugin_id": extension_name,
+            "status": result.status.value,
+        }
+    except Exception as e:
+        logger.error(f"Error removing UI for {extension_name}: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
 

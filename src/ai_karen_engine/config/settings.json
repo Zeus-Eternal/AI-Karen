@@ -1,11 +1,11 @@
 {
-  "provider": "ollama",
-  "model": "starcoder:128k",
+  "provider": "gemini",
+  "model": "gemini-2.5-flash",
   "use_memory": true,
   "context_length": 512,
   "decay": 0.1,
   "features": {
-    "copilot_cloud_enabled": false,
+    "copilot_cloud_enabled": true,
     "copilot_advanced_ui": true,
     "copilot_batch_operations": true
   },
@@ -17,7 +17,8 @@
   },
   "plugins": {
     "enabled": [
-      "model_orchestrator"
+      "model_orchestrator",
+      "intelligent-search"
     ],
     "model_orchestrator": {
       "models_root": "./models",
@@ -34,16 +35,46 @@
       "health_check_interval": 60,
       "auto_cleanup_enabled": true,
       "backup_registry": true
+    },
+    "intelligent-search": {
+      "default_mode": "general",
+      "default_provider": "duckduckgo",
+      "max_urls": 5,
+      "search": {
+        "duckduckgo": {
+          "enabled": true,
+          "priority": 100
+        },
+        "tavily": {
+          "enabled": false,
+          "api_key": null,
+          "priority": 90
+        },
+        "google_custom_search": {
+          "enabled": false,
+          "api_key": null,
+          "cx_id": null,
+          "priority": 80
+        }
+      },
+      "general": {
+        "max_urls": 5,
+        "depth": 1,
+        "freshness_bias": 0.3,
+        "prefer_recent": false,
+        "prefer_official_sources": false,
+        "allow_forum_results": true
+      }
     }
   },
-  "last_selected_model": "starcoder:128k",
+  "last_selected_model": "gemini-2.5-flash",
   "model_providers": {
     "zai": {
       "last_model": "glm-4.7",
       "base_url": "https://api.z.ai/api/coding/paas/v4"
     },
     "builtin_vllm": {
-      "last_model": "/app/models/transformers/microsoft--DialoGPT-medium",
+      "last_model": "/app/models/transformers/gpt2",
       "base_url": "http://localhost:8080/v1"
     },
     "openai": {
@@ -63,7 +94,7 @@
     },
     "ollama": {
       "last_model": "starcoder:128k",
-      "base_url": "http://host.docker.internal:11434/api",
+      "base_url": "http://host.docker.internal:11434",
       "runtime_source": "host"
     }
   }

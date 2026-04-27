@@ -1,15 +1,27 @@
 [
   {
-    "name": "local_gguf",
-    "provider_class": "OpenAICompatibleProvider",
-    "description": "Local OpenAI-compatible endpoint for open-source models",
+    "name": "builtin_vllm",
+    "provider_class": "TransformersRuntime",
+    "description": "Built-in vLLM text serving runtime",
     "supports_streaming": true,
+    "supports_embeddings": false,
+    "requires_api_key": false,
+    "default_model": "auto",
+    "health_status": "unhealthy",
+    "last_health_check": 1777289962.6189015,
+    "error_message": "No OpenAI API key provided. Set OPENAI_API_KEY environment variable."
+  },
+  {
+    "name": "builtin_transformers",
+    "provider_class": "TransformersRuntime",
+    "description": "Built-in Transformers runtime for local embeddings and fallback text generation",
+    "supports_streaming": false,
     "supports_embeddings": true,
     "requires_api_key": false,
-    "default_model": "Phi-3-mini-4k-instruct-q4.gguf",
-    "health_status": "healthy",
-    "last_health_check": 1776692014.6843717,
-    "error_message": null
+    "default_model": "auto",
+    "health_status": "unhealthy",
+    "last_health_check": 1777289962.6195529,
+    "error_message": "No OpenAI API key provided. Set OPENAI_API_KEY environment variable."
   },
   {
     "name": "ollama",
@@ -20,7 +32,7 @@
     "requires_api_key": false,
     "default_model": "starcoder:128k",
     "health_status": "healthy",
-    "last_health_check": 1776692014.6882403,
+    "last_health_check": 1777292721.9424934,
     "error_message": null
   },
   {
@@ -32,7 +44,7 @@
     "requires_api_key": true,
     "default_model": "gpt-4o-mini",
     "health_status": "unhealthy",
-    "last_health_check": 1776692014.6889346,
+    "last_health_check": 1777237982.1204855,
     "error_message": "No OpenAI API key provided. Set OPENAI_API_KEY environment variable."
   },
   {
@@ -44,8 +56,8 @@
     "requires_api_key": true,
     "default_model": "glm-4.5",
     "health_status": "unhealthy",
-    "last_health_check": 1776692015.395036,
-    "error_message": "API key validation failed: Error code: 401 - {'error': {'code': '401', 'message': 'token expired or incorrect'}}"
+    "last_health_check": 1777292722.3116324,
+    "error_message": "Error code: 401 - {'error': {'code': '401', 'message': 'token expired or incorrect'}}"
   },
   {
     "name": "gemini",
@@ -56,7 +68,7 @@
     "requires_api_key": true,
     "default_model": "gemini-2.5-flash",
     "health_status": "unhealthy",
-    "last_health_check": 1776692015.652294,
+    "last_health_check": 1777292722.8473697,
     "error_message": "Quota exceeded or rate limited"
   },
   {
@@ -68,7 +80,7 @@
     "requires_api_key": true,
     "default_model": "deepseek-chat",
     "health_status": "unhealthy",
-    "last_health_check": 1776692015.6529393,
+    "last_health_check": 1777237982.1120353,
     "error_message": "No DeepSeek API key provided. Set DEEPSEEK_API_KEY environment variable."
   },
   {
@@ -80,7 +92,7 @@
     "requires_api_key": true,
     "default_model": "microsoft/DialoGPT-large",
     "health_status": "unhealthy",
-    "last_health_check": 1776692015.6533015,
+    "last_health_check": 1777237982.1127899,
     "error_message": "No API token provided"
   },
   {
@@ -92,7 +104,7 @@
     "requires_api_key": true,
     "default_model": "gpt-4",
     "health_status": "healthy",
-    "last_health_check": 1776692015.653638,
+    "last_health_check": 1777237982.1132941,
     "error_message": null
   },
   {
@@ -104,8 +116,20 @@
     "requires_api_key": false,
     "default_model": "kari-fallback-v1",
     "health_status": "healthy",
-    "last_health_check": 1776692015.6539838,
+    "last_health_check": 1777292722.8480508,
     "error_message": null
+  },
+  {
+    "name": "local_gguf",
+    "provider_class": "OpenAICompatibleProvider",
+    "description": "Local OpenAI-compatible endpoint for open-source models",
+    "supports_streaming": true,
+    "supports_embeddings": true,
+    "requires_api_key": false,
+    "default_model": "Phi-3-mini-4k-instruct-q4.gguf",
+    "health_status": "unhealthy",
+    "last_health_check": 1777292722.848545,
+    "error_message": "No OpenAI API key provided. Set OPENAI_API_KEY environment variable."
   },
   {
     "name": "local_gguf_optimized",
@@ -115,8 +139,8 @@
     "supports_embeddings": true,
     "requires_api_key": false,
     "default_model": "Phi-3-mini-4k-instruct-q4.gguf",
-    "health_status": "healthy",
-    "last_health_check": 1776692015.65441,
-    "error_message": null
+    "health_status": "unhealthy",
+    "last_health_check": 1777292722.8489976,
+    "error_message": "No OpenAI API key provided. Set OPENAI_API_KEY environment variable."
   }
 ]

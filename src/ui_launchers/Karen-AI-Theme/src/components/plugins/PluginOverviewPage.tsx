@@ -299,8 +299,8 @@ function PluginHealthCard({ pluginId, displayName, description, version }: {
   const handleRemoveUI = async () => {
     setIsOperationInProgress(true);
     setUiInstallStatus('removing');
-try {
-       const result: PluginOperationResult = await apiClient.post(`/api/plugins/${pluginId}/uninstall`);
+    try {
+      const result: PluginOperationResult = await apiClient.post(`/api/extensions/${pluginId}/remove-ui`);
       if (result.success) {
         await refreshImportMap();
         setUiInstallStatus('not_installed');
@@ -363,8 +363,8 @@ try {
 
   const handleEnablePlugin = async () => {
     setIsOperationInProgress(true);
-try {
-       const result: PluginOperationResult = await apiClient.post(`/api/plugins/${pluginId}/enable`);
+    try {
+      const result: PluginOperationResult = await apiClient.post(`/api/extensions/${pluginId}/load`);
       if (result.success) {
         setBackendStatusDetail('enabled');
         setUiRegistrationStatus(isUiRegistered ? 'registered' : 'not_registered');
@@ -383,8 +383,8 @@ try {
 
   const handleDisablePlugin = async () => {
     setIsOperationInProgress(true);
-try {
-       const result: PluginOperationResult = await apiClient.post(`/api/plugins/${pluginId}/disable`);
+    try {
+      const result: PluginOperationResult = await apiClient.post(`/api/extensions/${pluginId}/unload`);
       if (result.success) {
         setBackendStatusDetail('disabled');
         setUiRegistrationStatus(isUiRegistered ? 'registered' : 'not_registered');
@@ -498,7 +498,7 @@ try {
               variant="outline"
               size="sm"
               onClick={handleInstallUI}
-              disabled={isUIBusy(uiInstallStatus)}
+              disabled={isOperationInProgress}
             >
               {isInstalling(uiInstallStatus) ? 'Installing...' : 'Install UI'}
             </Button>
@@ -512,7 +512,7 @@ try {
                   variant="outline"
                   size="sm"
                   onClick={handleDisablePlugin}
-                  disabled={false}
+                  disabled={isOperationInProgress}
                 >
                   Disable
                 </Button>
@@ -523,7 +523,7 @@ try {
                   variant="outline"
                   size="sm"
                   onClick={handleEnablePlugin}
-                  disabled={false}
+                  disabled={isOperationInProgress}
                 >
                   Enable
                 </Button>
@@ -537,7 +537,7 @@ try {
               variant="destructive"
               size="sm"
               onClick={handleRemoveUI}
-              disabled={isUIBusy(uiInstallStatus)}
+              disabled={isOperationInProgress}
             >
               {isRemoving(uiInstallStatus) ? 'Uninstalling...' : 'Uninstall'}
             </Button>
@@ -549,7 +549,7 @@ try {
               variant="outline"
               size="sm"
               onClick={handleRestoreUI}
-              disabled={isUIBusy(uiInstallStatus)}
+              disabled={isOperationInProgress}
             >
               {isRestoring(uiInstallStatus) ? 'Restoring...' : 'Restore'}
             </Button>

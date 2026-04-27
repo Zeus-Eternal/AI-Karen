@@ -1,4 +1,4 @@
-import { getRuntimeDisplayName, getRuntimeGroupLabel, isBuiltInRuntimeProvider, isLocalRuntimeProvider } from '@/lib/chat-response';
+import { getRuntimeDisplayName, getRuntimeGroupLabel, isBuiltInRuntimeProvider } from '@/lib/chat-response';
 
 export interface RuntimeProviderModel {
   id: string;
@@ -63,6 +63,8 @@ export interface NormalizedRuntimeInventory {
   systemFallbackProvider: NormalizedRuntimeProvider | null;
 }
 
+export type RuntimeProviderBucket = 'builtIn' | 'local' | 'thirdParty' | 'custom';
+
 const BUILTIN_RUNTIME_SEEDS: RuntimeProviderDetails[] = [
   {
     id: 'builtin_vllm',
@@ -97,11 +99,28 @@ const SYSTEM_FALLBACK_SEED: RuntimeProviderDetails = {
   models: [{ id: 'auto', name: 'auto', source: 'builtin' }],
 };
 
+export const getRuntimeProviderBucket = (
+  provider: RuntimeProviderDetails,
+): RuntimeProviderBucket => {
+  const providerType = String(provider.provider_type || '').toLowerCase();
+
+  if (isBuiltInRuntimeProvider(provider.id)) return 'builtIn';
+  if (provider.id === 'custom' || providerType === 'custom' || provider.supports_custom_auth) return 'custom';
+  if (providerType === 'local') return 'local';
+  return 'thirdParty';
+};
+
 const sortRank = (provider: RuntimeProviderDetails): number => {
-  if (isBuiltInRuntimeProvider(provider.id)) return 0;
-  if (isLocalRuntimeProvider(provider.id)) return 1;
-  if (provider.id === 'custom' || provider.provider_type === 'custom' || provider.supports_custom_auth) return 3;
-  return 2;
+  switch (getRuntimeProviderBucket(provider)) {
+    case 'builtIn':
+      return 0;
+    case 'local':
+      return 1;
+    case 'thirdParty':
+      return 2;
+    case 'custom':
+      return 3;
+  }
 };
 
 const normalizeModels = (
@@ -138,7 +157,6 @@ export function normalizeModelSettingsResponse(response: RuntimeSettingsResponse
     providerMap.set(provider.id, provider);
   });
   const providers = Array.from(providerMap.values())
-    .filter((provider) => provider.selectable !== false)
     .sort((a, b) => sortRank(a) - sortRank(b) || getRuntimeDisplayName(a.id, a.display_name).localeCompare(getRuntimeDisplayName(b.id, b.display_name)))
     .map((provider) => {
       const normalizedModels = normalizeModels(provider, response.selected_provider, response.selected_model);
@@ -151,10 +169,10 @@ export function normalizeModelSettingsResponse(response: RuntimeSettingsResponse
     });
 
   const selectableProviders = providers.filter((provider) => provider.selectable !== false && provider.id !== SYSTEM_FALLBACK_SEED.id);
-  const builtInProviders = providers.filter((provider) => provider.id === 'builtin_vllm');
-  const localProviders = providers.filter((provider) => isLocalRuntimeProvider(provider.id) && !isBuiltInRuntimeProvider(provider.id));
-  const customProviders = providers.filter((provider) => provider.id === 'custom' || provider.provider_type === 'custom' || provider.supports_custom_auth);
-  const thirdPartyProviders = providers.filter((provider) => !builtInProviders.some((builtIn) => builtIn.id === provider.id) && !localProviders.some((local) => local.id === provider.id) && !customProviders.some((custom) => custom.id === provider.id));
+  const builtInProviders = providers.filter((provider) => getRuntimeProviderBucket(provider) === 'builtIn');
+  const localProviders = providers.filter((provider) => getRuntimeProviderBucket(provider) === 'local');
+  const customProviders = providers.filter((provider) => getRuntimeProviderBucket(provider) === 'custom');
+  const thirdPartyProviders = providers.filter((provider) => getRuntimeProviderBucket(provider) === 'thirdParty');
   const systemFallbackProvider = {
     ...SYSTEM_FALLBACK_SEED,
     runtime_display_name: getRuntimeDisplayName(SYSTEM_FALLBACK_SEED.id, SYSTEM_FALLBACK_SEED.display_name),

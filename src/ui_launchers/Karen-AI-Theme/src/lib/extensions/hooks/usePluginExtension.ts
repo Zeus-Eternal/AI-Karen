@@ -1,35 +1,33 @@
 "use client";
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useAuth } from '@/lib/useAuth';
-import { authService } from '@/lib/auth';
-
+import { apiClient } from '@/lib/api';
+ 
 export class PluginExtensionError extends Error {
   status: number;
   details: string;
-  retryAfterSeconds?: number;
-
-  constructor(status: number, statusText: string, details: string, retryAfterSeconds?: number) {
+ 
+  constructor(status: number, statusText: string, details: string) {
     super(`Extension execution failed: ${statusText}${details ? ` - ${details}` : ''}`);
     this.name = 'PluginExtensionError';
     this.status = status;
     this.details = details;
-    this.retryAfterSeconds = retryAfterSeconds;
   }
 }
-
+ 
 export interface ExtensionAPI {
   execute: (command: any) => Promise<any>;
   getStatus: () => Promise<{ isReady: boolean; error?: string }>;
 }
-
+ 
 export interface UsePluginExtensionReturn {
   api: ExtensionAPI;
   isReady: boolean;
   error: string | null;
   loading: boolean;
 }
-
+ 
 /**
  * Hook for accessing plugin extension APIs from the Karen AI platform.
  * Provides a unified interface for executing plugin commands and managing plugin state.
@@ -39,67 +37,47 @@ export function usePluginExtension(pluginId: string): UsePluginExtensionReturn {
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-
-  // Create the API object with execute method
-  const api: ExtensionAPI = {
+ 
+  // Create the API object with execute method - memoized to prevent loops
+  const api: ExtensionAPI = useMemo(() => ({
     execute: async (command: any) => {
       try {
-        const response = await fetch(`/api/plugins/${pluginId}/execute`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(authService.getAccessToken() ? { Authorization: `Bearer ${authService.getAccessToken()}` } : {})
-          },
-          body: JSON.stringify({
-            plugin_name: pluginId,
-            parameters: command
-          })
+        const data: any = await apiClient.post(`/api/plugins/${pluginId}/execute`, {
+          plugin_name: pluginId,
+          parameters: command
         });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          const retryAfterHeader = response.headers.get('Retry-After');
-          const retryAfterSeconds = retryAfterHeader && !Number.isNaN(Number(retryAfterHeader))
-            ? Number(retryAfterHeader)
-            : undefined;
-
-          throw new PluginExtensionError(
-            response.status,
-            response.statusText,
-            errorText,
-            retryAfterSeconds
-          );
+        
+        // Handle the standard PluginExecutionResponse wrapper
+        if (data && typeof data === 'object') {
+          if (data.success === false) {
+            const errorMsg = data.error || 'Plugin execution failed';
+            setError(errorMsg);
+            throw new Error(errorMsg);
+          }
+          
+          // Return the actual result payload from the plugin
+          if ('result' in data) {
+            return data.result;
+          }
         }
-
-        return await response.json();
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        
+        return data;
+      } catch (err: any) {
+        const errorMessage = err.message || 'Unknown error';
         setError(errorMessage);
         throw err;
       }
     },
-
+ 
     getStatus: async () => {
       try {
-        const response = await fetch('/api/plugins/health', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(authService.getAccessToken() ? { Authorization: `Bearer ${authService.getAccessToken()}` } : {})
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to get plugin status: ${response.statusText}`);
-        }
-
-        const data = await response.json();
+        const data: any = await apiClient.get('/api/plugins/health');
         return {
-          isReady: data.status === 'healthy',
+          isReady: data.status === 'healthy' || data.status === 'ok',
           error: data.error || null
         };
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      } catch (err: any) {
+        const errorMessage = err.message || 'Unknown error';
         setError(errorMessage);
         return {
           isReady: false,
@@ -107,7 +85,7 @@ export function usePluginExtension(pluginId: string): UsePluginExtensionReturn {
         };
       }
     }
-  };
+  }), [pluginId]);
 
   // Initialize and check plugin status
   useEffect(() => {

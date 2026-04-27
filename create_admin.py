@@ -8,48 +8,61 @@ sys.path.insert(0, os.path.abspath(os.curdir))
 
 # Mock settings or import them
 from ai_karen_engine.database.integration_manager import get_database_manager
+from ai_karen_engine.server.config import settings
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 async def create_admin():
-    settings = Settings()
-    db_manager = get_database_manager()
+    db_manager = await get_database_manager()
 
-    email = "admin@karen.ai"
+    email = "admin@kari.ai"
     password = "Admin@123!"
     full_name = "Admin User"
 
-    hashed_password = pwd_context.hash(password)
+    # Hardcoded hash for Admin@123! to bypass passlib/bcrypt issues on Python 3.13
+    hashed_password = "$2b$12$1BVzKwS0wvU6FzcjiiVNhO2On8T1hLz1o4FLXnn78M6MDDJNZ99DS"
 
     print(f"Creating user {email}...")
 
-    query = """
-    INSERT INTO users (email, hashed_password, full_name, is_active, is_superuser, created_at, updated_at)
-    VALUES (:email, :hashed_password, :full_name, true, true, now(), now())
+    query_tenant = """
+    INSERT INTO tenants (id, name, slug, subscription_tier, is_active, created_at, updated_at)
+    VALUES ('00000000-0000-0000-0000-000000000000', 'Default Tenant', 'default', 'enterprise', true, now(), now())
+    ON CONFLICT (slug) DO NOTHING;
+    """
+
+    query_user = """
+    INSERT INTO auth_users (user_id, email, username, full_name, password_hash, tenant_id, roles, preferences, is_active, is_verified, two_factor_enabled, failed_login_attempts, created_at, updated_at)
+    VALUES (:user_id, :email, :username, :full_name, :password_hash, '00000000-0000-0000-0000-000000000000', '["admin", "user"]', '{}', true, true, false, 0, now(), now())
     ON CONFLICT (email) DO UPDATE 
-    SET hashed_password = EXCLUDED.hashed_password,
+    SET password_hash = EXCLUDED.password_hash,
         full_name = EXCLUDED.full_name,
         is_active = true,
         updated_at = now();
     """
 
     try:
-        # We need an async session
         from sqlalchemy import text
+        import uuid
 
-        # This is a bit simplified, but let's try to use the db_manager's engine
         async with db_manager.get_session() as session:
+            # Create default tenant first
+            await session.execute(text(query_tenant))
+
+            # Create admin user
             await session.execute(
-                text(query),
+                text(query_user),
                 {
+                    "user_id": str(uuid.uuid4()),
                     "email": email,
-                    "hashed_password": hashed_password,
+                    "username": "admin",
                     "full_name": full_name,
+                    "password_hash": hashed_password,
                 },
             )
             await session.commit()
-            print("Successfully created/updated admin user.")
+            print(f"Successfully created/updated admin user: {email}")
+
     except Exception as e:
         print(f"Error creating user: {e}")
 

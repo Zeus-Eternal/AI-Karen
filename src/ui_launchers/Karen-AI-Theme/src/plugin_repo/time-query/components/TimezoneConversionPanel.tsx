@@ -37,59 +37,59 @@ export const TimezoneConversionPanel: React.FC<ConversionPanelProps> = ({ onConv
   };
 
   return (
-    <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-5 w-full">
-      <h2 className="text-lg font-medium text-white mb-4">Timezone Conversion</h2>
-      
+    <div className="bg-card border border-border rounded-xl p-5 w-full">
+      <h2 className="text-lg font-medium text-foreground mb-4">Timezone Conversion</h2>
+
       <form onSubmit={handleConvert} className="space-y-4">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
-            <label className="block text-xs text-neutral-400 mb-1">Date & Time</label>
-            <input 
-              type="datetime-local" 
+            <label className="block text-xs text-muted-foreground mb-1">Date & Time</label>
+            <input
+              type="datetime-local"
               value={datetime}
               onChange={(e) => setDatetime(e.target.value)}
-              className="w-full bg-neutral-950 border border-neutral-800 rounded px-3 py-2 text-white"
+              className="w-full bg-background border border-border px-3 py-1.5 rounded-md text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all disabled:opacity-50"
               required
             />
           </div>
           <div className="flex-1">
-            <label className="block text-xs text-neutral-400 mb-1">From</label>
-            <select 
+            <label className="block text-xs text-muted-foreground mb-1">From</label>
+            <select
               value={fromTz}
               onChange={(e) => setFromTz(e.target.value)}
-              className="w-full bg-neutral-950 border border-neutral-800 rounded px-3 py-2 text-white"
+              className="w-full bg-background border border-border px-3 py-1.5 rounded-md text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all disabled:opacity-50"
             >
               {COMMON_TIMEZONES.map(tz => <option key={tz} value={tz}>{tz}</option>)}
             </select>
           </div>
           <div className="hidden sm:flex items-end justify-center px-2 pb-2">
-            <span className="text-neutral-500">→</span>
+            <span className="text-muted-foreground">→</span>
           </div>
           <div className="flex-1">
-            <label className="block text-xs text-neutral-400 mb-1">To</label>
-            <select 
+            <label className="block text-xs text-muted-foreground mb-1">To</label>
+            <select
               value={toTz}
               onChange={(e) => setToTz(e.target.value)}
-              className="w-full bg-neutral-950 border border-neutral-800 rounded px-3 py-2 text-white"
+              className="w-full bg-background border border-border px-3 py-1.5 rounded-md text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all disabled:opacity-50"
             >
               {COMMON_TIMEZONES.map(tz => <option key={tz} value={tz}>{tz}</option>)}
             </select>
           </div>
         </div>
-        <button type="submit" className="w-full bg-neutral-800 hover:bg-neutral-700 text-white py-2 rounded transition-colors">
+        <button type="submit" className="w-full bg-secondary hover:bg-secondary/80 text-secondary-foreground py-2 rounded transition-colors">
           Convert
         </button>
       </form>
 
-      {error && <div className="mt-4 text-red-400 text-sm">{error}</div>}
+      {error && <div className="mt-4 text-destructive text-sm">{error}</div>}
 
       {result && result.converted_datetime && (
-        <div className="mt-4 bg-neutral-950 border border-neutral-800 rounded p-4 flex flex-col items-center">
-          <div className="text-xs text-neutral-500 uppercase">{result.converted_datetime.timezone}</div>
-          <div className="text-2xl font-light text-white my-1">
+        <div className="mt-4 bg-background border border-border rounded p-4 flex flex-col items-center">
+          <div className="text-xs text-muted-foreground uppercase">{result.converted_datetime.timezone}</div>
+          <div className="text-2xl font-light text-foreground my-1">
             {new Date(result.converted_datetime.datetime).toLocaleString()}
           </div>
-          <div className="text-sm text-neutral-500">
+          <div className="text-sm text-muted-foreground">
             Source: {new Date(result.source_datetime.datetime).toLocaleString()} ({result.source_datetime.timezone})
           </div>
         </div>

@@ -378,10 +378,18 @@ class ModelManager:
 
     def _build_runtime(self, endpoint: ProviderEndpoint) -> Any:
         if endpoint.endpoint_type == ProviderEndpointType.BUILTIN_TRANSFORMERS:
-            runtime = TransformersRuntime.get_instance(
-                model_path=endpoint.default_model or None,
+            from ai_karen_engine.config.config_manager import get_default_model
+            from ai_karen_engine.inference.core_helpers_runtime import (
+                CoreHelpersRuntime,
             )
-            runtime.load_model(endpoint.default_model or None)
+
+            model_path = endpoint.default_model or None
+            if not model_path or model_path == "auto":
+                model_path = get_default_model("builtin_transformers") or "/app/models/transformers/gpt2"
+            runtime = CoreHelpersRuntime(
+                text_model=model_path,
+                embedding_model="/app/models/transformers/distilbert-base-uncased",
+            )
             return runtime
 
         if endpoint.endpoint_type == ProviderEndpointType.BUILTIN_VLLM:

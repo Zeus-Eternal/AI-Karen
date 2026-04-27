@@ -726,7 +726,14 @@ class AuthService {
         this.clearAuth();
         return false;
       } catch (error) {
-        console.error('Session validation error:', error);
+        const isTimeout = error instanceof Error && /Request timed out after \d+ms/i.test(error.message);
+
+        if (isTimeout) {
+          console.warn('[AuthService] validateSession timed out, treating as transient');
+        } else {
+          console.error('Session validation error:', error);
+        }
+
         // During dev/HMR, in-flight validation requests can be interrupted while local auth
         // state is still valid. Avoid hard logout on transient transport failures.
         if (accessToken && (currentUser || hasSessionMarker)) {

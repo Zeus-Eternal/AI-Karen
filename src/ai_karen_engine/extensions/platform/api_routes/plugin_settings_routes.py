@@ -56,58 +56,6 @@ class AllSettingsResponse(BaseModel):
 
 # Default schemas for common plugin settings
 DEFAULT_SETTINGS_SCHEMAS: Dict[str, List[Dict[str, Any]]] = {
-    "weather-query": [
-        {
-            "key": "api_key",
-            "label": "OpenWeatherMap API Key",
-            "description": "API key for OpenWeatherMap service. Leave empty for mock data.",
-            "type": "password",
-            "category": "API Configuration",
-            "order": 0,
-        },
-        {
-            "key": "default_location",
-            "label": "Default Location",
-            "description": "Default location to use when none specified",
-            "type": "string",
-            "defaultValue": "Boston, MA",
-            "category": "General",
-            "order": 0,
-        },
-        {
-            "key": "temperature_unit",
-            "label": "Temperature Unit",
-            "description": "Unit for temperature display",
-            "type": "select",
-            "defaultValue": "celsius",
-            "options": [
-                {"value": "celsius", "label": "Celsius (°C)"},
-                {"value": "fahrenheit", "label": "Fahrenheit (°F)"},
-                {"value": "kelvin", "label": "Kelvin (K)"},
-            ],
-            "category": "General",
-            "order": 1,
-        },
-        {
-            "key": "cache_enabled",
-            "label": "Enable Caching",
-            "description": "Cache weather results to reduce API calls",
-            "type": "boolean",
-            "defaultValue": True,
-            "category": "Performance",
-            "order": 0,
-        },
-        {
-            "key": "cache_ttl_minutes",
-            "label": "Cache TTL (minutes)",
-            "description": "Time to live for cached weather data",
-            "type": "number",
-            "defaultValue": 30,
-            "validation": {"min": 5, "max": 1440},
-            "category": "Performance",
-            "order": 1,
-        },
-    ],
     "gmail-plugin": [
         {
             "key": "client_id",

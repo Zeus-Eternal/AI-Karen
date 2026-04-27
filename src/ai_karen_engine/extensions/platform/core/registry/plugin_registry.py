@@ -131,6 +131,17 @@ class PluginRegistry:
             force_refresh=True
         )
 
+        # Drop any loaded extensions that no longer exist on disk.
+        # This keeps the catalog from surfacing dead plugins after uninstall.
+        stale_loaded = [
+            name
+            for name in list(self._loaded_extensions.keys())
+            if name not in self._discovery_metadata
+        ]
+        for name in stale_loaded:
+            logger.info("Pruning stale loaded extension from registry: %s", name)
+            self._loaded_extensions.pop(name, None)
+
         # Sync discovered extensions with database
         await self._sync_with_database()
 
@@ -185,6 +196,10 @@ class PluginRegistry:
     def get_extension(self, extension_id: str) -> Optional[ExtensionRecord]:
         """Get extension by name (for backward compatibility)."""
         return self._loaded_extensions.get(extension_id)
+
+    def get_all_extensions(self) -> Dict[str, ExtensionRecord]:
+        """Get all loaded extensions as a dictionary."""
+        return self._loaded_extensions.copy()
 
     def list_extensions(self) -> List[ExtensionRecord]:
         """List all loaded extensions."""
@@ -273,6 +288,14 @@ class PluginRegistry:
         logger.debug(
             f"Registry updated: {record.manifest.name} is now {record.status.value}"
         )
+
+    def unload_extension(self, extension_id: str) -> bool:
+        """Remove a loaded extension record from the runtime registry."""
+        removed = self._loaded_extensions.pop(extension_id, None)
+        if removed:
+            logger.debug("Registry unloaded extension: %s", extension_id)
+            return True
+        return False
 
     async def get_extensions_for_hook(self, hook_point: Any) -> List[ExtensionDBModel]:
         """Return extensions that are assigned to a specific hook point."""

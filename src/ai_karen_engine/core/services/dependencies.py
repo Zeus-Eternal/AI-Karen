@@ -12,6 +12,7 @@ import logging
 import os
 import uuid
 from datetime import datetime, timezone
+from types import SimpleNamespace
 from typing import Any, Dict, Optional, Callable, Union, Literal, TYPE_CHECKING, cast
 
 from fastapi import Depends, HTTPException, Request
@@ -23,6 +24,37 @@ from ai_karen_engine.auth.models import UserData
 from ai_karen_engine.auth.auth_middleware import AuthenticationError
 
 logger = logging.getLogger(__name__)
+
+
+class _NoopConversationMemoryService:
+    """Lightweight fallback used when the full memory stack is unavailable."""
+
+    db_client = None
+
+    async def initialize(self) -> None:
+        return None
+
+    async def query(self, *args: Any, **kwargs: Any) -> Any:
+        return SimpleNamespace(hits=[])
+
+    async def query_memories(self, *args: Any, **kwargs: Any) -> list[Any]:
+        return []
+
+    async def commit(self, *args: Any, **kwargs: Any) -> Any:
+        return SimpleNamespace(id=None, success=False)
+
+    async def store_web_ui_memory(self, *args: Any, **kwargs: Any) -> None:
+        return None
+
+    async def build_conversation_context(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        return {
+            "memories": [],
+            "total_memories": 0,
+            "memory_types_found": [],
+            "conversation_context": None,
+            "query_analysis": {},
+            "context_metadata": {},
+        }
 
 # --- Authentication Dependencies ---
 
@@ -196,7 +228,13 @@ async def get_conversation_service() -> Any:
                 memory_service = None
 
         if memory_service is None:
-            memory_service = WebUIMemoryService()
+            try:
+                memory_service = WebUIMemoryService()
+            except Exception as exc:
+                logger.warning(
+                    "Falling back to no-op conversation memory service: %s", exc
+                )
+                memory_service = _NoopConversationMemoryService()
 
         base_manager = ConversationManager(db_client=MultiTenantPostgresClient())
 

@@ -292,13 +292,31 @@ class PluginLifecycleManager:
                 PluginLifecycleState.UNINSTALLED,
                 PluginLifecycleState.AVAILABLE,
             ]:
+                # Treat uninstall as idempotent cleanup for stale records so the
+                # UI can remove dead plugins even when their files are already gone.
+                self.registry.unload_extension(plugin_id)
+                await self._remove_ui_components(plugin_id)
+
+                try:
+                    await self._unregister_plugin_installation(plugin_id)
+                except Exception as db_error:
+                    logger.warning(
+                        "Failed to delete database record for %s during cleanup: %s",
+                        plugin_id,
+                        db_error,
+                    )
+
+                self._set_lifecycle_state(plugin_id, "uninstalled")
+
                 return PluginOperationResult(
-                    success=False,
+                    success=True,
                     plugin_id=plugin_id,
                     operation=PluginOperation.UNINSTALL,
-                    new_state=current_state,
-                    message=f"Plugin {plugin_id} is not installed",
-                    details={},
+                    new_state=PluginLifecycleState.UNINSTALLED,
+                    message=(
+                        f"Plugin {plugin_id} was already absent; stale records were cleaned up"
+                    ),
+                    details={"backup_created": False},
                     timestamp=start_time,
                     duration_ms=int(
                         (datetime.now() - start_time).total_seconds() * 1000
@@ -337,7 +355,7 @@ class PluginLifecycleManager:
                 await self._remove_ui_components(plugin_id)
 
                 # Unload from registry
-                await self.registry.unload_extension(plugin_id)
+                self.registry.unload_extension(plugin_id)
 
                 # Remove plugin directory
                 plugin_path = self.plugins_dir / plugin_id

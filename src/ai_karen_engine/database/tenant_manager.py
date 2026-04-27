@@ -18,7 +18,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from ai_karen_engine.database.client import MultiTenantPostgresClient
 from ai_karen_engine.database.models import (
     Tenant,
-    User,
+    AuthUser,
     TenantConversation,
     TenantMemoryEntry,
 )
@@ -165,7 +165,7 @@ class TenantManager:
                     raise RuntimeError(f"Failed to create schema for tenant {tenant.id}")
                 
                 # Create admin user
-                admin_user = User(
+                admin_user = AuthUser(
                     tenant_id=tenant.id,
                     email=admin_email,
                     roles=admin_roles,

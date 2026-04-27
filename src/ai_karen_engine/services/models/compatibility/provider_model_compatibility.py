@@ -135,8 +135,11 @@ class ProviderModelCompatibilityService:
             return self.compatibility_cache[cache_key]
         
         try:
-            from ..discovery.model_library_service import ModelLibraryService
-            model_library = ModelLibraryService()
+            from ai_karen_engine.core.services.service_registry import (
+                get_model_library_service,
+            )
+
+            model_library = get_model_library_service()
             model_info = model_library.get_model_info(model_id)
             
             if not model_info:
@@ -309,8 +312,11 @@ class ProviderModelCompatibilityService:
                                           limit: int = 10) -> List[ModelCompatibility]:
         """Get recommended models for a specific provider."""
         try:
-            from ..discovery.model_library_service import ModelLibraryService
-            model_library = ModelLibraryService()
+            from ai_karen_engine.core.services.service_registry import (
+                get_model_library_service,
+            )
+
+            model_library = get_model_library_service()
             available_models = model_library.get_available_models()
             
             recommendations = []
@@ -382,8 +388,11 @@ class ProviderModelCompatibilityService:
             
             for rec in recommendations:
                 try:
-                    from ..discovery.model_library_service import ModelLibraryService
-                    model_library = ModelLibraryService()
+                    from ai_karen_engine.core.services.service_registry import (
+                        get_model_library_service,
+                    )
+
+                    model_library = get_model_library_service()
                     model_info = model_library.get_model_info(rec.model_id)
                     
                     if model_info:
@@ -435,8 +444,11 @@ class ProviderModelCompatibilityService:
     def get_compatibility_statistics(self) -> Dict[str, Any]:
         """Get statistics about model compatibility across providers."""
         try:
-            from ..discovery.model_library_service import ModelLibraryService
-            model_library = ModelLibraryService()
+            from ai_karen_engine.core.services.service_registry import (
+                get_model_library_service,
+            )
+
+            model_library = get_model_library_service()
             available_models = model_library.get_available_models()
             
             stats = {

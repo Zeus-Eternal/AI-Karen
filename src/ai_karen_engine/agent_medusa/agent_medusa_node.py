@@ -9,7 +9,16 @@ async def medusa_node(state: Dict[str, Any]) -> Dict[str, Any]:
     """LangGraph node that delegates execution to the AgentMedusa runtime"""
     logger.info("Medusa Node -> Entering AgentMedusa execution")
     
+    # In a full DI system, these would come from the state or a registry
+    from ai_karen_engine.services.models.routing.llm_router_service import get_llm_router
+    from ai_karen_engine.services.tooling.tool_service import get_tool_service
+    
+    router = get_llm_router()
+    tools = get_tool_service()
+    
     coordinator = MedusaCoordinator()
+    # Note: MedusaCoordinator doesn't currently accept these in __init__, 
+    # but specialists should use them via global accessors.
     
     # Extract data from LangGraph state
     query = ""

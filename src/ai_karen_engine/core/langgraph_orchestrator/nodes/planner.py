@@ -36,7 +36,6 @@ def _compose_execution_plan(
         execution_plan["complexity"] = "medium"
         execution_plan["estimated_time_seconds"] = 6
     elif intent in {
-        "weather_query",
         "time_query",
         "information_retrieval",
         "book_query",

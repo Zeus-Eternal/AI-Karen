@@ -8,10 +8,10 @@ export const CurrentTimePanel: React.FC<{ payload: TimePayload | null }> = ({ pa
   if (!payload) return null;
 
   return (
-    <div className="bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden">
-      <div className="px-5 py-4 border-b border-neutral-800 bg-neutral-900/50 flex items-center justify-between">
-        <h2 className="text-lg font-medium text-white">System Time Details</h2>
-        <span className="text-xs px-2 py-1 bg-blue-900/40 text-blue-400 rounded ring-1 ring-blue-500/20">
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="px-5 py-4 border-b border-border bg-muted/10 flex items-center justify-between">
+        <h2 className="text-lg font-medium text-foreground">System Time Details</h2>
+        <span className="text-xs px-2 py-1 bg-primary/10 text-primary rounded ring-1 ring-primary/20">
           {payload.source}
         </span>
       </div>
@@ -28,7 +28,7 @@ export const CurrentTimePanel: React.FC<{ payload: TimePayload | null }> = ({ pa
 
 const DetailRow: React.FC<{ label: string; value: string; isMono?: boolean }> = ({ label, value, isMono }) => (
   <div className="flex flex-col">
-    <span className="text-xs text-neutral-500 mb-1">{label}</span>
-    <span className={`text-sm text-neutral-200 ${isMono ? 'font-mono' : ''}`}>{value}</span>
+    <span className="text-xs text-muted-foreground mb-1">{label}</span>
+    <span className={`text-sm text-foreground ${isMono ? 'font-mono' : ''}`}>{value}</span>
   </div>
 );
