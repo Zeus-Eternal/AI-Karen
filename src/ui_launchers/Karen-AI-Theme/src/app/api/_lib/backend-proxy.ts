@@ -36,7 +36,18 @@ const IS_DOCKER =
   process.env.HOSTNAME?.includes('web') ||
   runningInContainer;
 
-const DEFAULT_BACKEND_URL = EXPLICIT_BACKEND_URL || (IS_DOCKER ? 'http://api:8000' : 'http://localhost:8000');
+let DEFAULT_BACKEND_URL = EXPLICIT_BACKEND_URL || (IS_DOCKER ? 'http://api:8000' : 'http://localhost:8000');
+
+// Hardening: If we are in Docker and the backend URL is still pointing to localhost/127.0.0.1,
+// we must rewrite it to 'api' (the service name) so containers can communicate.
+if (IS_DOCKER) {
+  if (DEFAULT_BACKEND_URL.includes('localhost')) {
+    DEFAULT_BACKEND_URL = DEFAULT_BACKEND_URL.replace('localhost', 'api');
+  } else if (DEFAULT_BACKEND_URL.includes('127.0.0.1')) {
+    DEFAULT_BACKEND_URL = DEFAULT_BACKEND_URL.replace('127.0.0.1', 'api');
+  }
+}
+
 const DEFAULT_TIMEOUT_MS = Number.parseInt(process.env.NEXT_PUBLIC_API_PROXY_TIMEOUT_MS || '30000', 10);
 const LONG_TIMEOUT_MS = Number.parseInt(
   process.env.NEXT_PUBLIC_API_PROXY_LONG_TIMEOUT_MS || '120000',

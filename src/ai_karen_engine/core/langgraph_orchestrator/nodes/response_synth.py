@@ -2,6 +2,7 @@
 
 import json
 import logging
+import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
@@ -65,22 +66,27 @@ class ResponseSynthesisNode:
         tool_results = state.get("tool_results") or []
         execution_summary = state.get("execution_summary") or {}
         reasoning_result = state.get("reasoning_result") or {}
+        request_config = state.get("request_config") or {}
+        request_preferences = dict(request_config) if isinstance(request_config, dict) else {}
+        requested_provider = request_preferences.get("preferred_llm_provider")
+        requested_model = request_preferences.get("preferred_model")
 
-        # If we have an LLM router and it can provide a healthy fallback or local provider,
-        # use it to synthesize a natural response that includes the tool results.
         if self._llm_router:
             try:
                 from ai_karen_engine.services.models.routing.llm_router_service import ChatRequest
-                
-                # Check if we have a functional provider
+
                 selection = await self._llm_router.select_provider(
-                    ChatRequest(message=last_user_message or "")
+                    ChatRequest(
+                        message=last_user_message or "",
+                        preferred_model=requested_model,
+                        stream=bool(state.get("streaming_enabled")),
+                        conversation_id=state.get("session_id"),
+                    ),
+                    user_preferences=request_preferences,
                 )
-                
+
                 if selection:
                     provider_name, model_name = selection
-                    
-                    # Construct a synthesis prompt
                     if tool_results:
                         tool_data = json.dumps(tool_results, indent=2)
                         synthesis_prompt = f"""
@@ -101,88 +107,100 @@ class ResponseSynthesisNode:
                         
                         User's latest message: {last_user_message}
                         """
-                    
+
                     try:
-                        # Try primary provider via process_chat_request
+                        generation_start = time.time()
                         response_gen = self._llm_router.process_chat_request(
-                            ChatRequest(message=synthesis_prompt, stream=False)
+                            ChatRequest(
+                                message=synthesis_prompt,
+                                stream=False,
+                                preferred_model=requested_model,
+                                conversation_id=state.get("session_id"),
+                            ),
+                            user_preferences=request_preferences,
                         )
-                        
+
                         final_text = ""
-                        metadata = {}
+                        metadata: Dict[str, Any] = {}
                         async for chunk in response_gen:
                             if isinstance(chunk, str):
                                 final_text += chunk
                             elif isinstance(chunk, dict):
-                                # Capture metadata if provided in chunks
-                                metadata.update(chunk.get("metadata", {}).get("llm", {}))
-                        
+                                chunk_metadata = chunk.get("metadata", {})
+                                if isinstance(chunk_metadata, dict):
+                                    llm_metadata = chunk_metadata.get("llm", {})
+                                    if isinstance(llm_metadata, dict):
+                                        metadata.update(llm_metadata)
+
                         if final_text.strip():
-                            # Store metadata for successful generation
-                            # Merge initial selection with actual results from generator
-                            state["llm_metadata"] = {
-                                "requested_provider": provider_name,
-                                "requested_model": model_name,
-                                "actual_provider": provider_name,
-                                "actual_model": model_name,
-                                "runtime_engine": provider_name,
-                                "response_source": "live_model",
-                                "degraded_mode": False,
-                                "used_fallback": False,
-                                **metadata, # Override with actual results (e.g. if internal fallback happened)
-                            }
-                            
-                            # Ensure actual_provider matches provider if provided in metadata
-                            if "provider" in metadata:
-                                state["llm_metadata"]["actual_provider"] = metadata["provider"]
-                            if "source" in metadata:
-                                state["llm_metadata"]["response_source"] = metadata["source"]
-                            if "used_fallback" in metadata:
-                                state["llm_metadata"]["used_fallback"] = metadata["used_fallback"]
-                                state["llm_metadata"]["degraded_mode"] = metadata["used_fallback"]
-                            
+                            llm_metadata = self._normalize_llm_metadata(
+                                metadata,
+                                requested_provider=requested_provider or provider_name,
+                                requested_model=requested_model or model_name,
+                                selected_provider=provider_name,
+                                selected_model=model_name,
+                                latency_ms=(time.time() - generation_start) * 1000,
+                                streaming_enabled=bool(state.get("streaming_enabled")),
+                            )
+                            self._store_llm_metadata(state, llm_metadata)
                             logger.info(
-                                f"LLM synthesis successful. Actual provider: {state['llm_metadata'].get('actual_provider')}"
+                                "LLM synthesis successful. Actual provider: %s",
+                                llm_metadata.get("actual_provider"),
                             )
                             return final_text.strip()
-                    
+
                     except Exception as provider_error:
-                        # Primary provider failed - try fallback chain
                         logger.warning(
-                            f"Primary provider {provider_name} failed: {provider_error}. "
-                            "Attempting degraded runtime fallback to vLLM/Transformers."
+                            "Primary provider %s failed: %s. Attempting degraded runtime fallback.",
+                            provider_name,
+                            provider_error,
                         )
-                        
+
                         try:
                             fallback_result = await self._llm_router.generate_with_degraded_runtime_fallback(
-                                request=ChatRequest(message=synthesis_prompt, stream=False),
-                                requested_provider=provider_name,
-                                requested_model=model_name or "unknown",
+                                request=ChatRequest(
+                                    message=synthesis_prompt,
+                                    stream=False,
+                                    preferred_model=requested_model,
+                                    conversation_id=state.get("session_id"),
+                                ),
+                                requested_provider=requested_provider or provider_name,
+                                requested_model=requested_model or model_name or "unknown",
                                 failure_reason=str(provider_error),
                             )
-                            
+
                             if fallback_result and fallback_result.get("content"):
-                                # Store fallback metadata
-                                fallback_metadata = fallback_result.get("metadata", {}).get("llm", {})
-                                state["llm_metadata"] = fallback_metadata
-                                logger.info(
-                                    f"Fallback successful: {fallback_metadata.get('provider', 'unknown')} "
-                                    f"(requested: {provider_name})"
+                                fallback_metadata = (
+                                    fallback_result.get("metadata", {}).get("llm", {})
                                 )
-                                return fallback_result["content"]
-                            
-                            # Fallback also failed
+                                llm_metadata = self._normalize_llm_metadata(
+                                    fallback_metadata,
+                                    requested_provider=requested_provider or provider_name,
+                                    requested_model=requested_model or model_name,
+                                    selected_provider=provider_name,
+                                    selected_model=model_name,
+                                    latency_ms=None,
+                                    streaming_enabled=bool(state.get("streaming_enabled")),
+                                )
+                                self._store_llm_metadata(state, llm_metadata)
+                                logger.info(
+                                    "Fallback successful: %s (requested: %s)",
+                                    llm_metadata.get("actual_provider"),
+                                    llm_metadata.get("requested_provider"),
+                                )
+                                return str(fallback_result["content"]).strip()
+
                             logger.error(
                                 "All providers failed including fallback chain. "
                                 "Falling back to deterministic response."
                             )
-                        
                         except Exception as fallback_error:
                             logger.error(
-                                f"Fallback chain execution failed: {fallback_error}. "
-                                "Falling back to deterministic response."
+                                "Fallback chain execution failed: %s. "
+                                "Falling back to deterministic response.",
+                                fallback_error,
                             )
-            
+
             except Exception as e:
                 logger.warning(f"LLM-based synthesis failed, falling back to deterministic: {e}")
 
@@ -213,7 +231,111 @@ class ResponseSynthesisNode:
         if len(response) > self.config.max_response_length:
             response = response[: self.config.max_response_length].rstrip() + "... (truncated)"
 
+        emergency_metadata = self._normalize_llm_metadata(
+            {
+                "actual_provider": "emergency_static",
+                "actual_model": "none",
+                "runtime_engine": "none",
+                "response_source": "emergency_static",
+                "fallback_level": 99,
+                "degraded_mode": True,
+                "degradation_reason": "all_live_providers_failed",
+            },
+            requested_provider=requested_provider,
+            requested_model=requested_model,
+            selected_provider="emergency_static",
+            selected_model="none",
+            latency_ms=None,
+            streaming_enabled=bool(state.get("streaming_enabled")),
+        )
+        self._store_llm_metadata(state, emergency_metadata)
         return response
+
+    @staticmethod
+    def _store_llm_metadata(
+        state: LangGraphOrchestrationState, llm_metadata: Dict[str, Any]
+    ) -> None:
+        state["llm_metadata"] = llm_metadata
+        response_metadata = {
+            **(state.get("response_metadata") or {}),
+            "llm": llm_metadata,
+            "degraded_mode": bool(llm_metadata.get("degraded_mode")),
+            "response_source": llm_metadata.get("response_source"),
+            "actual_provider": llm_metadata.get("actual_provider"),
+            "actual_model": llm_metadata.get("actual_model"),
+        }
+        state["response_metadata"] = response_metadata
+        state["degraded_mode"] = bool(llm_metadata.get("degraded_mode"))
+
+    @staticmethod
+    def _normalize_llm_metadata(
+        metadata: Dict[str, Any],
+        *,
+        requested_provider: Optional[Any],
+        requested_model: Optional[Any],
+        selected_provider: Optional[Any],
+        selected_model: Optional[Any],
+        latency_ms: Optional[float],
+        streaming_enabled: bool,
+    ) -> Dict[str, Any]:
+        llm = dict(metadata or {})
+        actual_provider = (
+            llm.get("actual_provider") or llm.get("provider") or selected_provider or "unknown"
+        )
+        actual_model = (
+            llm.get("actual_model")
+            or llm.get("model_id")
+            or llm.get("model_name")
+            or selected_model
+            or "auto"
+        )
+        resolved_requested_provider = (
+            llm.get("requested_provider") or requested_provider or actual_provider
+        )
+        resolved_requested_model = llm.get("requested_model") or requested_model or actual_model
+        provider_changed = (
+            str(resolved_requested_provider or "").strip()
+            and str(actual_provider or "").strip()
+            and str(resolved_requested_provider).strip().lower()
+            != str(actual_provider).strip().lower()
+        )
+        response_source = (
+            llm.get("response_source")
+            or ("live_model" if actual_provider != "emergency_static" else "emergency_static")
+        )
+        degraded_mode = bool(
+            llm.get("degraded_mode")
+            or llm.get("is_degraded")
+            or llm.get("used_fallback")
+            or provider_changed
+            or response_source != "live_model"
+        )
+        llm.update(
+            {
+                "requested_provider": resolved_requested_provider,
+                "requested_model": resolved_requested_model,
+                "actual_provider": actual_provider,
+                "actual_model": actual_model,
+                "provider": actual_provider,
+                "model_id": actual_model,
+                "model_name": llm.get("model_name") or actual_model,
+                "runtime_engine": llm.get("runtime_engine")
+                or str(actual_provider).replace("builtin_", ""),
+                "response_source": response_source,
+                "source": llm.get("source") or response_source,
+                "fallback_level": int(llm.get("fallback_level") or (1 if provider_changed else 0)),
+                "degraded_mode": degraded_mode,
+                "is_degraded": degraded_mode,
+                "used_fallback": bool(llm.get("used_fallback") or degraded_mode),
+                "streaming_enabled": streaming_enabled,
+            }
+        )
+        if latency_ms is not None:
+            llm["latency_ms"] = latency_ms
+            llm["duration"] = latency_ms / 1000
+        if degraded_mode and not llm.get("degradation_reason"):
+            llm["degradation_reason"] = "requested_provider_unavailable" if provider_changed else "provider_fallback"
+        return llm
 
     def _extract_last_user_message(self, messages: List[Any]) -> Optional[str]:
         for message in reversed(messages):

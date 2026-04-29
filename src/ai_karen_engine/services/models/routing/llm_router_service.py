@@ -272,6 +272,7 @@ class LLMRouter:
             "nano_vllm": ProviderPriority.LOCAL,
             "nano-vllm": ProviderPriority.LOCAL,
             "local_gguf": ProviderPriority.LOCAL,
+            "ollama": ProviderPriority.LOCAL,
 
             # Transformer runtimes
             "builtin_transformers": ProviderPriority.TRANSFORMER,
@@ -321,6 +322,9 @@ class LLMRouter:
 
         # Streaming support
         self._streaming_providers: Set[str] = {
+            "builtin_vllm",
+            "vllm",
+            "ollama",
             "openai",
             "anthropic",
             "gemini",
@@ -424,13 +428,13 @@ class LLMRouter:
                 request.preferred_model or user_preferences.get("preferred_model")
             )
 
-            # If model specified with provider prefix, split it
-            if preferred_model and ":" in preferred_model:
-                provider_part, model_part = preferred_model.split(":", 1)
-                preferred_provider = (
-                    preferred_provider or self._normalize_provider_name(provider_part)
-                )
-                preferred_model = self._normalize_model_name(model_part)
+            parsed_provider, parsed_model = self._split_explicit_provider_model(
+                preferred_model,
+                current_provider=preferred_provider,
+            )
+            if parsed_model:
+                preferred_provider = parsed_provider or preferred_provider
+                preferred_model = parsed_model
 
             # Validate preferred provider/model combination
             if preferred_provider and preferred_model:
@@ -699,9 +703,6 @@ class LLMRouter:
         if not normalized:
             return None
 
-        if ":" in normalized:
-            _, normalized = normalized.split(":", 1)
-
         # Only strip filesystem-style extensions for local file-backed model ids.
         # Dotted remote model ids such as "glm-4.5" are semantic identifiers, not
         # filenames, and Path(...).stem would incorrectly collapse them to "glm-4".
@@ -723,6 +724,32 @@ class LLMRouter:
             return stem or normalized
 
         return normalized
+
+    def _split_explicit_provider_model(
+        self,
+        model_name: Optional[str],
+        *,
+        current_provider: Optional[str] = None,
+    ) -> tuple[Optional[str], Optional[str]]:
+        """Split provider:model only when the prefix is a known provider.
+
+        Ollama model tags commonly contain colons, for example starcoder:128k.
+        Those are model identifiers, not provider prefixes, when the prefix is not
+        a registered provider.
+        """
+        if not model_name or ":" not in model_name:
+            return None, model_name
+
+        provider_part, model_part = model_name.split(":", 1)
+        parsed_provider = self._normalize_provider_name(provider_part)
+        known_providers = set(self.registry.list_providers())
+
+        if parsed_provider in known_providers:
+            if current_provider and current_provider != parsed_provider:
+                return current_provider, model_name
+            return parsed_provider, self._normalize_model_name(model_part)
+
+        return None, model_name
 
     def _provider_supports_model(
         self,
@@ -786,6 +813,16 @@ class LLMRouter:
 
         if not isinstance(provider_info, dict):
             return False
+
+        if provider_name == "builtin_vllm":
+            return (
+                provider_info.get("health_status") == "healthy"
+                and provider_info.get("runtime") == "vllm"
+                and not provider_info.get("initialization_error")
+            )
+
+        if provider_name == "builtin_transformers":
+            return provider_info.get("transformers_available") is True
 
         provider_type = str(provider_info.get("provider_type") or "").strip().lower()
         if provider_info.get(
@@ -1081,11 +1118,46 @@ class LLMRouter:
             if degraded_message:
                 self._record_selection_metric("degraded_mode", "degraded")
                 yield degraded_message
+                yield {
+                    "type": "metadata",
+                    "metadata": {
+                        "llm": self._build_llm_metadata(
+                            requested_provider=self._normalize_provider_name(
+                                (user_preferences or {}).get("preferred_llm_provider")
+                            )
+                            or "unknown",
+                            requested_model=self._normalize_model_name(
+                                request.preferred_model
+                                or (user_preferences or {}).get("preferred_model")
+                            )
+                            or "unknown",
+                            actual_provider="emergency_static",
+                            actual_model="none",
+                            runtime_engine="none",
+                            response_source="emergency_static",
+                            source="emergency_static",
+                            degraded_mode=True,
+                            fallback_level=99,
+                            degradation_reason="all_live_providers_unavailable",
+                            used_fallback=True,
+                            provider_error="No suitable provider available",
+                        )
+                    },
+                }
                 return
             raise RuntimeError("No suitable provider available")
 
         provider_name, model_name = selection
         previous_provider = provider_name
+        requested_provider = self._normalize_provider_name(
+            (user_preferences or {}).get("preferred_llm_provider")
+        )
+        requested_model = self._normalize_model_name(
+            request.preferred_model or (user_preferences or {}).get("preferred_model")
+        )
+        selected_is_fallback = bool(
+            requested_provider and requested_provider != provider_name
+        )
 
         try:
             async for chunk in self._attempt_provider_with_retries(
@@ -1100,13 +1172,35 @@ class LLMRouter:
             yield {
                 "type": "metadata",
                 "metadata": {
-                    "llm": {
-                        "provider": provider_name,
-                        "model_id": model_name,
-                        "source": "primary_provider",
-                    }
+                    "llm": self._build_llm_metadata(
+                        requested_provider=requested_provider or provider_name,
+                        requested_model=requested_model or model_name,
+                        actual_provider=provider_name,
+                        actual_model=model_name,
+                        response_source="live_model",
+                        source="primary_provider"
+                        if not selected_is_fallback
+                        else "routing_fallback",
+                        degraded_mode=selected_is_fallback,
+                        fallback_level=1 if selected_is_fallback else 0,
+                        degradation_reason=(
+                            "requested_provider_unavailable"
+                            if selected_is_fallback
+                            else None
+                        ),
+                        used_fallback=selected_is_fallback,
+                    )
                 }
             }
+            if selected_is_fallback:
+                self._log_provider_fallback_succeeded(
+                    requested_provider=requested_provider or "unknown",
+                    requested_model=requested_model,
+                    actual_provider=provider_name,
+                    actual_model=model_name,
+                    response_source="live_model",
+                    correlation_id=request_id,
+                )
             return
         except ProviderProcessingError as error:
             self._structured_log(
@@ -1128,10 +1222,20 @@ class LLMRouter:
                 }
             )
             previous_error = error.last_error or error
+            self._log_provider_invocation_failed(
+                requested_provider=requested_provider or provider_name,
+                requested_model=requested_model or model_name,
+                provider=provider_name,
+                error=previous_error,
+                fallback_next=None,
+                correlation_id=request_id,
+            )
 
         fallback_providers = await self._get_fallback_providers(provider_name, request)
         for fallback_provider in fallback_providers:
             try:
+                fallback_info = self.registry.get_provider_info(fallback_provider)
+                fallback_model = self._effective_provider_model(fallback_info)
                 reason = (
                     self._derive_error_reason(previous_error)
                     if previous_error
@@ -1141,6 +1245,14 @@ class LLMRouter:
                     previous_provider or "none",
                     fallback_provider,
                     reason,
+                )
+                self._log_provider_invocation_failed(
+                    requested_provider=requested_provider or provider_name,
+                    requested_model=requested_model or model_name,
+                    provider=previous_provider or provider_name,
+                    error=previous_error,
+                    fallback_next=fallback_provider,
+                    correlation_id=request_id,
                 )
                 self._structured_log(
                     logging.INFO,
@@ -1158,7 +1270,7 @@ class LLMRouter:
                     fallback_provider,
                     request,
                     request_id=request_id,
-                    model_name=None,
+                    model_name=fallback_model,
                 ):
                     yield chunk
                 
@@ -1166,14 +1278,29 @@ class LLMRouter:
                 yield {
                     "type": "metadata",
                     "metadata": {
-                        "llm": {
-                            "provider": fallback_provider,
-                            "requested_provider": provider_name,
-                            "source": "internal_fallback",
-                            "used_fallback": True,
-                        }
+                        "llm": self._build_llm_metadata(
+                            requested_provider=requested_provider or provider_name,
+                            requested_model=requested_model or model_name,
+                            actual_provider=fallback_provider,
+                            actual_model=fallback_model,
+                            response_source="live_model",
+                            source="internal_fallback",
+                            degraded_mode=True,
+                            fallback_level=1,
+                            degradation_reason=reason,
+                            used_fallback=True,
+                            provider_error=str(previous_error) if previous_error else None,
+                        )
                     }
                 }
+                self._log_provider_fallback_succeeded(
+                    requested_provider=requested_provider or provider_name,
+                    requested_model=requested_model or model_name,
+                    actual_provider=fallback_provider,
+                    actual_model=fallback_model,
+                    response_source="live_model",
+                    correlation_id=request_id,
+                )
                 return
             except ProviderProcessingError as error:
                 self._structured_log(
@@ -1214,6 +1341,27 @@ class LLMRouter:
                 )
             self._record_selection_metric("degraded_mode", "degraded")
             yield degraded_message
+            yield {
+                "type": "metadata",
+                "metadata": {
+                    "llm": self._build_llm_metadata(
+                        requested_provider=requested_provider or provider_name,
+                        requested_model=requested_model or model_name,
+                        actual_provider="emergency_static",
+                        actual_model="none",
+                        runtime_engine="none",
+                        response_source="emergency_static",
+                        source="emergency_static",
+                        degraded_mode=True,
+                        fallback_level=99,
+                        degradation_reason=str(degraded_reason),
+                        used_fallback=True,
+                        provider_error="; ".join(
+                            record.get("error", "") for record in failure_records
+                        ),
+                    )
+                }
+            }
             return
 
         raise RuntimeError("All providers failed to process the request")
@@ -1546,7 +1694,7 @@ class LLMRouter:
             ):
                 fallback_providers.append(provider_name)
 
-        return fallback_providers[:2]  # Limit to 2 fallback attempts
+        return fallback_providers[:4]
 
     async def _mark_provider_unhealthy(self, provider_name: str, error_message: str):
         """Mark provider as unhealthy"""
@@ -1905,6 +2053,140 @@ class LLMRouter:
             reason=self._normalize_metric_label(reason),
         ).inc()
 
+    def _build_llm_metadata(
+        self,
+        *,
+        requested_provider: Optional[str],
+        requested_model: Optional[str],
+        actual_provider: str,
+        actual_model: Optional[str],
+        response_source: str,
+        source: Optional[str] = None,
+        runtime_engine: Optional[str] = None,
+        degraded_mode: bool = False,
+        fallback_level: int = 0,
+        degradation_reason: Optional[str] = None,
+        used_fallback: bool = False,
+        provider_error: Optional[str] = None,
+        provider_health: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Build the provider truth contract used by routes and UI."""
+
+        resolved_actual_model = actual_model or "auto"
+        resolved_requested_provider = requested_provider or actual_provider
+        resolved_requested_model = requested_model or resolved_actual_model
+        resolved_runtime_engine = runtime_engine or actual_provider.replace(
+            "builtin_", ""
+        )
+
+        metadata = {
+            "requested_provider": resolved_requested_provider,
+            "requested_model": resolved_requested_model,
+            "actual_provider": actual_provider,
+            "actual_model": resolved_actual_model,
+            # Legacy compatibility fields consumed by existing UI helpers.
+            "provider": actual_provider,
+            "model_id": resolved_actual_model,
+            "model_name": resolved_actual_model,
+            "runtime_engine": resolved_runtime_engine,
+            "response_source": response_source,
+            "source": source or response_source,
+            "provider_health": provider_health,
+            "provider_error": provider_error,
+            "fallback_level": fallback_level,
+            "degraded_mode": degraded_mode,
+            "is_degraded": degraded_mode,
+            "used_fallback": used_fallback,
+            "degradation_reason": degradation_reason,
+        }
+        if degradation_reason and not provider_error:
+            metadata["failure_reason"] = degradation_reason
+        elif provider_error:
+            metadata["failure_reason"] = provider_error
+        return metadata
+
+    def _effective_provider_model(self, provider_info: Optional[Dict[str, Any]]) -> Optional[str]:
+        """Return the model that should be reported/used for a provider."""
+        if not provider_info:
+            return None
+        model = self._normalize_model_name(provider_info.get("default_model"))
+        if model and model != "auto":
+            return model
+        available_models = provider_info.get("available_models")
+        if isinstance(available_models, list) and available_models:
+            first = available_models[0]
+            if isinstance(first, str):
+                return self._normalize_model_name(first)
+            if isinstance(first, dict):
+                return self._normalize_model_name(
+                    first.get("name")
+                    or first.get("model")
+                    or first.get("model_id")
+                    or first.get("id")
+                )
+        return model
+
+
+    @staticmethod
+    def _redact_error_message(error: Optional[BaseException]) -> str:
+        raw = str(error or "")
+        if not raw:
+            return ""
+        redacted = re.sub(
+            r"(?i)(api[_-]?key|authorization|bearer|token|secret)[=: ]+[^\s,;]+",
+            r"\1=[redacted]",
+            raw,
+        )
+        return redacted[:500]
+
+    def _log_provider_invocation_failed(
+        self,
+        *,
+        requested_provider: Optional[str],
+        requested_model: Optional[str],
+        provider: Optional[str],
+        error: Optional[BaseException],
+        fallback_next: Optional[str],
+        correlation_id: str,
+    ) -> None:
+        error_type = type(error).__name__ if error is not None else "ProviderUnavailable"
+        logger.warning(
+            "chat.provider.invocation.failed",
+            extra={
+                "event": "chat.provider.invocation.failed",
+                "requested_provider": requested_provider,
+                "requested_model": requested_model,
+                "provider": provider,
+                "error_type": error_type,
+                "error_message": self._redact_error_message(error),
+                "fallback_next": fallback_next,
+                "correlation_id": correlation_id,
+            },
+        )
+
+    def _log_provider_fallback_succeeded(
+        self,
+        *,
+        requested_provider: Optional[str],
+        requested_model: Optional[str],
+        actual_provider: str,
+        actual_model: Optional[str],
+        response_source: str,
+        correlation_id: str,
+    ) -> None:
+        logger.info(
+            "chat.provider.fallback.succeeded",
+            extra={
+                "event": "chat.provider.fallback.succeeded",
+                "requested_provider": requested_provider,
+                "requested_model": requested_model,
+                "actual_provider": actual_provider,
+                "actual_model": actual_model,
+                "response_source": response_source,
+                "correlation_id": correlation_id,
+            },
+        )
+
     @staticmethod
     def _normalize_metric_label(value: Optional[str]) -> str:
         """Normalize free-form text for metric label usage."""
@@ -2150,6 +2432,7 @@ class LLMRouter:
     RUNTIME_DEGRADED_FALLBACK_ORDER = (
         "builtin_vllm",
         "builtin_transformers",
+        "ollama",
         "fallback",
     )
 
@@ -2164,7 +2447,7 @@ class LLMRouter:
         """
         Execute degraded runtime fallback chain when requested provider fails.
 
-        Tries providers in order: builtin_transformers -> builtin_vllm -> fallback.
+        Tries providers in order: vLLM -> real Transformers -> Ollama -> emergency static.
         Returns proper metadata showing which provider actually answered.
 
         This method explicitly catches ProviderNotAvailable and GenerationFailed exceptions
@@ -2196,6 +2479,25 @@ class LLMRouter:
                     )
                     continue
 
+                if (
+                    provider_name == "builtin_transformers"
+                    and provider_info.get("transformers_available") is not True
+                ):
+                    logger.info(
+                        "Skipping builtin_transformers as live degraded fallback because it is deterministic only",
+                        extra={
+                            "provider": provider_name,
+                            "requested_provider": requested_provider,
+                            "fallback_level": fallback_level,
+                        },
+                    )
+                    continue
+
+                if provider_name == "fallback":
+                    # The deterministic fallback provider is not a live LLM path.
+                    # It is handled by the explicit emergency/static block below.
+                    continue
+
                 if not await self._is_provider_healthy(provider_name):
                     logger.debug(
                         f"Provider {provider_name} is not healthy",
@@ -2203,8 +2505,14 @@ class LLMRouter:
                     )
                     continue
 
+                actual_model = self._effective_provider_model(provider_info)
+
                 # Get provider instance
-                provider = self.registry.get_provider(provider_name)
+                provider_kwargs = {"model": actual_model} if actual_model else {}
+                try:
+                    provider = self.registry.get_provider(provider_name, **provider_kwargs)
+                except TypeError:
+                    provider = self.registry.get_provider(provider_name)
                 if provider is None:
                     logger.warning(
                         f"Provider {provider_name} instance is None",
@@ -2242,7 +2550,7 @@ class LLMRouter:
                                 requested_provider=requested_provider,
                                 requested_model=requested_model,
                                 actual_provider=provider_name,
-                                actual_model=provider_info.get("default_model"),
+                                actual_model=actual_model,
                                 runtime_engine=provider_name.replace("builtin_", ""),
                                 response_source="live_model",
                                 fallback_level=fallback_level,
@@ -2253,33 +2561,35 @@ class LLMRouter:
                         except Exception as metrics_error:
                             logger.debug(f"Failed to record provider metrics: {metrics_error}")
 
+                    llm_metadata = self._build_llm_metadata(
+                        requested_provider=requested_provider,
+                        requested_model=requested_model,
+                        actual_provider=provider_name,
+                        actual_model=actual_model,
+                        runtime_engine=provider_name.replace("builtin_", ""),
+                        response_source="live_model",
+                        source="runtime_fallback",
+                        degraded_mode=True,
+                        fallback_level=fallback_level,
+                        degradation_reason=failure_reason,
+                        used_fallback=True,
+                        provider_health=provider_info,
+                    )
+                    llm_metadata.update(
+                        {
+                            "fallback_from": requested_provider,
+                            "fallback_chain": list(self.RUNTIME_DEGRADED_FALLBACK_ORDER),
+                            "attempted_providers": attempted_providers,
+                            "raw_failure_reason": failure_reason,
+                        }
+                    )
+
                     return {
                         "content": str(content).strip(),
                         "metadata": {
                             "degraded_mode": True,
                             "degraded_mode_active": True,
-                            "llm": {
-                                "requested_provider": requested_provider,
-                                "requested_model": requested_model,
-                                "provider": provider_name,  # actual_provider
-                                "model_id": provider_info.get("default_model"),
-                                "model_name": provider_info.get("default_model"),
-                                "runtime_engine": provider_name.replace("builtin_", ""),
-                                "source": "runtime_fallback",
-                                "response_source": "live_model",
-                                "is_degraded": True,
-                                "used_fallback": True,
-                                "fallback_from": requested_provider,
-                                "fallback_level": fallback_level,
-                                "degradation_reason": failure_reason,
-                                "fallback_chain": list(self.RUNTIME_DEGRADED_FALLBACK_ORDER),
-                                "attempted_providers": attempted_providers,
-                                "failure_reason": (
-                                    f"Requested provider {requested_provider} was unavailable; "
-                                    f"recovered through {provider_name}."
-                                ),
-                                "raw_failure_reason": failure_reason,
-                            },
+                            "llm": llm_metadata,
                         },
                     }
 
@@ -2373,13 +2683,16 @@ class LLMRouter:
                 "llm": {
                     "requested_provider": requested_provider,
                     "requested_model": requested_model,
-                    "provider": "emergency",  # actual_provider
-                    "model_id": "karen-fallback-v1",
-                    "model_name": "Karen Local Fallback",
+                    "actual_provider": "emergency_static",
+                    "actual_model": "none",
+                    "provider": "emergency_static",
+                    "model_id": "none",
+                    "model_name": "Emergency Static",
                     "runtime_engine": "none",
-                    "source": "hardcoded_emergency",
+                    "source": "emergency_static",
                     "response_source": "emergency_static",
                     "is_degraded": True,
+                    "degraded_mode": True,
                     "used_fallback": True,
                     "fallback_from": requested_provider,
                     "fallback_level": 99,  # Maximum fallback level

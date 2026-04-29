@@ -151,17 +151,43 @@ class HealthChecker:
     async def _check_builtin_vllm(self) -> ProviderStatus:
         """Health check for the built-in vLLM runtime."""
         start_time = time.time()
-        response_time = (time.time() - start_time) * 1000
-        return ProviderStatus(
-            provider="builtin_vllm",
-            model="auto",
-            available=True,
-            authenticated=True,
-            tool_support=True,
-            policy_gates_passed=True,
-            last_check=datetime.utcnow(),
-            response_time_ms=response_time,
-        )
+        try:
+            # Import runtime lazily to avoid circular dependencies
+            from ai_karen_engine.inference.vllm_runtime import VLLMRuntime
+            
+            # Resolve runtime - this uses the new KAREN_BUILTIN_VLLM_* env vars
+            runtime = VLLMRuntime.get_instance()
+            
+            # health_check() now uses the real KAREN_BUILTIN_VLLM_HEALTH_URL
+            health = runtime.health_check()
+            response_time = (time.time() - start_time) * 1000
+            
+            is_healthy = health.get("status") == "healthy"
+            
+            return ProviderStatus(
+                provider="builtin_vllm",
+                model=runtime.model,
+                available=is_healthy,
+                authenticated=True,
+                tool_support=True,
+                policy_gates_passed=True,
+                last_check=datetime.utcnow(),
+                response_time_ms=response_time,
+                error_message=health.get("error") if not is_healthy else None
+            )
+        except Exception as e:
+            response_time = (time.time() - start_time) * 1000
+            return ProviderStatus(
+                provider="builtin_vllm",
+                model="unknown",
+                available=False,
+                authenticated=False,
+                tool_support=False,
+                policy_gates_passed=False,
+                last_check=datetime.utcnow(),
+                response_time_ms=response_time,
+                error_message=str(e),
+            )
 
     async def _check_transformers(self) -> ProviderStatus:
         """Check Transformers provider health (local transformers models)."""

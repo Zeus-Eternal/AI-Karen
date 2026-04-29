@@ -18,24 +18,23 @@ from unittest.mock import Mock
 # Import VLLMRuntime and related classes
 from ai_karen_engine.inference.vllm_runtime import VLLMRuntime
 from ai_karen_engine.integrations.llm_utils import ProviderNotAvailable, GenerationFailed
+from ai_karen_engine.integrations.providers.openai_provider import OpenAIProvider
 
 
 class TestVLLMRuntimeConfig:
     """Test suite for VLLMRuntime configuration and initialization."""
 
-    def test_vllm_runtime_without_base_url_raises_on_use(self):
-        """Test that VLLMRuntime raises ProviderNotAvailable when base_url is not configured."""
-        # Create runtime without base_url
+    def test_vllm_runtime_without_base_url_uses_builtin_default(self, monkeypatch):
+        """Test that VLLMRuntime defaults to the builtin vLLM endpoint."""
+        monkeypatch.delenv("KAREN_BUILTIN_VLLM_BASE_URL", raising=False)
+        monkeypatch.delenv("VLLM_BASE_URL", raising=False)
+        monkeypatch.delenv("KAREN_VLLM_BASE_URL", raising=False)
         vllm = VLLMRuntime(model="test-model", base_url=None)
 
-        # Attempting to generate should raise ProviderNotAvailable
-        with pytest.raises(ProviderNotAvailable) as exc_info:
-            vllm.generate("Hello, vLLM!")
-
-        # Verify error message mentions configuration
-        error_msg = str(exc_info.value)
-        assert "base_url not configured" in error_msg.lower()
-        assert "docker compose --profile vllm" in error_msg.lower()
+        assert vllm.base_url in {
+            "http://vllm:8000/v1",
+            "http://localhost:8001/v1",
+        }
 
     def test_vllm_runtime_with_base_url_configured(self):
         """Test that VLLMRuntime can be initialized with a base_url."""
@@ -49,9 +48,9 @@ class TestVLLMRuntimeConfig:
         assert vllm.provider_name == "builtin_vllm"
 
     def test_vllm_runtime_uses_env_variable(self, monkeypatch):
-        """Test that VLLMRuntime reads VLLM_BASE_URL from environment."""
+        """Test that VLLMRuntime reads canonical builtin vLLM env first."""
         # Set environment variable
-        monkeypatch.setenv("VLLM_BASE_URL", "http://env-localhost:8001/v1")
+        monkeypatch.setenv("KAREN_BUILTIN_VLLM_BASE_URL", "http://env-localhost:8001/v1")
 
         vllm = VLLMRuntime()
 
@@ -59,7 +58,8 @@ class TestVLLMRuntimeConfig:
 
     def test_vllm_runtime_singleton_pattern(self):
         """Test that VLLMRuntime uses singleton pattern correctly."""
-        instance1 = VLLMRuntime(base_url="http://localhost:8001/v1")
+        VLLMRuntime._instance = None
+        instance1 = VLLMRuntime.get_instance(base_url="http://localhost:8001/v1")
         instance2 = VLLMRuntime.get_instance()
 
         assert instance1 is instance2
@@ -76,18 +76,80 @@ class TestVLLMRuntimeConfig:
 class TestVLLMRuntimeHealthCheck:
     """Test suite for VLLMRuntime health check functionality."""
 
-    def test_health_check_without_base_url_returns_unavailable(self):
-        """Test that health check returns honest 'unavailable' status when base_url is not configured."""
-        vllm = VLLMRuntime(base_url=None)
+    def test_builtin_vllm_health_requires_models_endpoint(self, monkeypatch):
+        monkeypatch.setenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME", "karen-vllm-local")
+        provider = OpenAIProvider(
+            model="karen-vllm-local",
+            base_url="http://localhost:8001/v1",
+            health_url="http://localhost:8001/health",
+            provider_name="builtin_vllm",
+        )
+        provider.initialization_error = None
 
-        status = vllm.health_check()
+        def fake_get(url, timeout):
+            response = MagicMock()
+            if url.endswith("/health"):
+                response.status_code = 200
+                return response
+            response.status_code = 503
+            response.json.return_value = {}
+            return response
 
-        assert status["provider"] == "builtin_vllm"
-        assert status["runtime"] == "vllm"
-        assert status["mode"] == "unavailable"
+        with patch("httpx.get", side_effect=fake_get):
+            status = provider.health_check()
+
         assert status["status"] == "unhealthy"
-        assert status["configured"] is False
-        assert "error" in status
+        assert status["health_endpoint_ok"] is True
+        assert status["models_endpoint_ok"] is False
+
+    def test_builtin_vllm_health_requires_served_model(self, monkeypatch):
+        monkeypatch.setenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME", "karen-vllm-local")
+        provider = OpenAIProvider(
+            model="karen-vllm-local",
+            base_url="http://localhost:8001/v1",
+            health_url="http://localhost:8001/health",
+            provider_name="builtin_vllm",
+        )
+        provider.initialization_error = None
+
+        def fake_get(url, timeout):
+            response = MagicMock()
+            response.status_code = 200
+            if url.endswith("/models"):
+                response.json.return_value = {"data": [{"id": "other-model"}]}
+            return response
+
+        with patch("httpx.get", side_effect=fake_get):
+            status = provider.health_check()
+
+        assert status["status"] == "unhealthy"
+        assert status["models_endpoint_ok"] is True
+        assert status["served_model_available"] is False
+
+    def test_builtin_vllm_health_passes_when_endpoint_serves_model(self, monkeypatch):
+        monkeypatch.setenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME", "karen-vllm-local")
+        provider = OpenAIProvider(
+            model="karen-vllm-local",
+            base_url="http://localhost:8001/v1",
+            health_url="http://localhost:8001/health",
+            provider_name="builtin_vllm",
+        )
+        provider.initialization_error = None
+
+        def fake_get(url, timeout):
+            response = MagicMock()
+            response.status_code = 200
+            if url.endswith("/models"):
+                response.json.return_value = {"data": [{"id": "karen-vllm-local"}]}
+            return response
+
+        with patch("httpx.get", side_effect=fake_get):
+            status = provider.health_check()
+
+        assert status["status"] == "healthy"
+        assert status["runtime_engine"] == "vllm"
+        assert status["models_endpoint_ok"] is True
+        assert status["served_model_available"] is True
 
     def test_health_check_with_base_url_calls_provider(self):
         """Test that health check delegates to OpenAI-compatible provider when configured."""
@@ -131,13 +193,6 @@ class TestVLLMRuntimeHealthCheck:
 
 class TestVLLMRuntimeGeneration:
     """Test suite for VLLMRuntime text generation."""
-
-    def test_generate_without_base_url_raises_error(self):
-        """Test that generate() raises ProviderNotAvailable when base_url is not configured."""
-        vllm = VLLMRuntime(base_url=None)
-
-        with pytest.raises(ProviderNotAvailable):
-            vllm.generate("Hello, vLLM!")
 
     def test_generate_with_base_url_calls_provider(self):
         """Test that generate() delegates to OpenAI-compatible provider when configured."""
@@ -214,13 +269,6 @@ class TestVLLMRuntimeGeneration:
 class TestVLLMRuntimeStreaming:
     """Test suite for VLLMRuntime streaming functionality."""
 
-    def test_stream_without_base_url_raises_error(self):
-        """Test that stream() raises ProviderNotAvailable when base_url is not configured."""
-        vllm = VLLMRuntime(base_url=None)
-
-        with pytest.raises(ProviderNotAvailable):
-            list(vllm.stream("Hello, vLLM!"))
-
     def test_stream_with_base_url_calls_provider(self):
         """Test that stream() delegates to OpenAI-compatible provider when configured."""
         with patch('ai_karen_engine.inference.vllm_runtime.OpenAICompatibleProvider') as mock_provider_class:
@@ -267,13 +315,6 @@ class TestVLLMRuntimeStreaming:
 class TestVLLMRuntimeEmbeddings:
     """Test suite for VLLMRuntime embedding functionality."""
 
-    def test_embed_without_base_url_raises_error(self):
-        """Test that embed() raises error when base_url is not configured."""
-        vllm = VLLMRuntime(base_url=None)
-
-        with pytest.raises(ProviderNotAvailable):
-            vllm.embed("test text")
-
     def test_embed_with_provider_support(self):
         """Test that embed() uses provider when embeddings are supported."""
         with patch('ai_karen_engine.inference.vllm_runtime.OpenAICompatibleProvider') as mock_provider_class:
@@ -294,16 +335,26 @@ class TestVLLMRuntimeEmbeddings:
         with patch('ai_karen_engine.inference.vllm_runtime.OpenAICompatibleProvider') as mock_provider_class:
             # Setup mock provider without embed method
             mock_provider = MagicMock(spec=[])  # No methods
-            delattr(mock_provider, 'embed')  # Ensure embed doesn't exist
             mock_provider_class.return_value = mock_provider
 
             vllm = VLLMRuntime(base_url="http://localhost:8001/v1")
 
-            with pytest.raises(NotImplementedError) as exc_info:
+            with pytest.raises(ProviderNotAvailable) as exc_info:
                 vllm.embed("test")
 
-            assert "vLLM server does not support embeddings" in str(exc_info.value)
-            assert "builtin_transformers" in str(exc_info.value)
+            assert "vLLM embedding endpoint is not available" in str(exc_info.value)
+
+    def test_embed_without_provider_support_does_not_use_transformers(self):
+        """builtin_vllm must not silently map embeddings to Transformers."""
+        with patch('ai_karen_engine.inference.vllm_runtime.OpenAICompatibleProvider') as mock_provider_class, \
+             patch('ai_karen_engine.inference.transformers_runtime.TransformersRuntime.get_instance') as mock_transformers:
+            mock_provider_class.return_value = MagicMock(spec=[])
+
+            vllm = VLLMRuntime(base_url="http://localhost:8001/v1")
+
+            with pytest.raises(ProviderNotAvailable):
+                vllm.embed("test")
+            mock_transformers.assert_not_called()
 
 
 class TestVLLMRuntimeWarmCache:
@@ -400,29 +451,53 @@ class TestVLLMRuntimeIntegration:
         )
 
         # This test verifies that VLLMRuntime raises ProviderNotAvailable
-        # when vLLM is not running, allowing the router to fallback to Transformers
+        # when vLLM is not running, allowing the router to fallback to a live provider
         with patch.object(router, "registry") as mock_registry:
             # Create mock VLLM instance that raises ProviderNotAvailable
             mock_vllm = MagicMock()
             mock_vllm.generate_response.side_effect = ProviderNotAvailable("vLLM not configured")
 
-            # Create mock Transformers instance that succeeds
-            mock_transformers = MagicMock()
-            mock_transformers.generate_response.return_value = "Response from Transformers"
+            # Create mock Ollama instance that succeeds
+            mock_ollama = MagicMock()
+            mock_ollama.generate_response.return_value = "Response from Ollama"
 
             def get_provider_side_effect(name):
                 if name == "builtin_vllm":
                     return mock_vllm
-                if name == "builtin_transformers":
-                    return mock_transformers
+                if name == "ollama":
+                    return mock_ollama
                 return None
 
             mock_registry.get_provider.side_effect = get_provider_side_effect
-            mock_registry.get_provider_info.return_value = {"default_model": "test-model"}
+            def get_provider_info_side_effect(name):
+                if name == "builtin_vllm":
+                    return {
+                        "default_model": "test-model",
+                        "health_status": "degraded",
+                        "runtime": "vllm",
+                        "initialization_error": "connection refused",
+                    }
+                if name == "builtin_transformers":
+                    return {
+                        "default_model": "local-fallback",
+                        "health_status": "healthy",
+                        "runtime": "transformers",
+                        "transformers_available": False,
+                    }
+                if name == "ollama":
+                    return {
+                        "default_model": "starcoder:128k",
+                        "provider_type": "local",
+                        "requires_api_key": False,
+                        "available_models": ["starcoder:128k"],
+                    }
+                return {"default_model": "test-model"}
+
+            mock_registry.get_provider_info.side_effect = get_provider_info_side_effect
 
             router._is_provider_healthy = AsyncMock(return_value=True)
 
-            # Execute fallback - should skip vLLM and use Transformers
+            # Execute fallback - should skip vLLM and deterministic Transformers, then use Ollama.
             result = await router.generate_with_degraded_runtime_fallback(
                 request=request,
                 requested_provider="builtin_vllm",
@@ -430,9 +505,9 @@ class TestVLLMRuntimeIntegration:
                 failure_reason="vLLM unavailable"
             )
 
-            # Verify Transformers was used
-            assert result["metadata"]["llm"]["provider"] == "builtin_transformers"
-            assert result["metadata"]["llm"]["fallback_level"] == 1
+            assert result["metadata"]["llm"]["actual_provider"] == "ollama"
+            assert result["metadata"]["llm"]["runtime_engine"] == "ollama"
+            assert result["metadata"]["llm"]["response_source"] == "live_model"
 
     @pytest.mark.skipif(
         os.getenv("KAREN_RUN_VLLM_SMOKE") != "1",

@@ -137,10 +137,14 @@ export function MessageBubble({ message, onActionClick }: MessageBubbleProps) {
   } = deriveCompactBadgePresentation(message.metadata);
   const {
     hasMetadataDetails,
+    requestedProviderLabel,
+    requestedModelLabel,
     providerLabel,
     modelLabel,
     modelTitle,
     sourceLabel,
+    runtimeEngineLabel,
+    fallbackLevelLabel,
     speedLabel,
     latencyLabel,
     engineHeaderLabel,
@@ -250,18 +254,36 @@ export function MessageBubble({ message, onActionClick }: MessageBubbleProps) {
                           <span className="text-[8px] text-blue-500 font-bold uppercase">{engineHeaderLabel}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Provider:</span>
-                      <span className="font-semibold">{providerLabel}</span>
+                        <span className="text-muted-foreground">Requested Provider:</span>
+                        <span className="font-semibold">{requestedProviderLabel}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Model:</span>
+                        <span className="text-muted-foreground">Actual Provider:</span>
+                        <span className="font-semibold">{providerLabel}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Requested Model:</span>
+                        <span className="font-semibold truncate max-w-[120px]" title={requestedModelLabel}>
+                          {requestedModelLabel}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Actual Model:</span>
                         <span className="font-semibold truncate max-w-[120px]" title={modelTitle}>
                           {modelLabel}
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Source:</span>
+                        <span className="text-muted-foreground">Response Source:</span>
                         <span className="font-semibold">{sourceLabel}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Fallback Level:</span>
+                        <span className="font-semibold">{fallbackLevelLabel}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Runtime Engine:</span>
+                        <span className="font-semibold">{runtimeEngineLabel}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Speed:</span>

@@ -34,6 +34,7 @@ class OpenAIProvider(LLMProviderBase):
         timeout: int = 60,
         max_retries: int = 3,
         provider_name: str = "openai",
+        health_url: Optional[str] = None,
     ):
         """
         Initialize OpenAI provider.
@@ -44,6 +45,7 @@ class OpenAIProvider(LLMProviderBase):
             base_url: Custom base URL for OpenAI-compatible APIs
             timeout: Request timeout in seconds
             max_retries: Maximum number of retry attempts
+            health_url: Optional custom health check URL
         """
         self.provider_name = str(provider_name or "openai").strip().lower()
         self.provider_defaults = get_openai_compatible_provider_defaults(
@@ -56,6 +58,7 @@ class OpenAIProvider(LLMProviderBase):
         self.base_url = self._normalize_base_url(
             base_url or str(self.provider_defaults["base_url"])
         )
+        self.health_url = health_url or os.getenv(f"KAREN_BUILTIN_{self.provider_name.upper()}_HEALTH_URL")
         self.timeout = timeout
         self.max_retries = (
             min(max_retries, 2) if self.provider_name == "zai" else max_retries
@@ -520,6 +523,7 @@ class OpenAIProvider(LLMProviderBase):
             "name": self.provider_name,
             "model": self.model,
             "base_url": self.base_url or str(self.provider_defaults["base_url"]),
+            "health_url": self.health_url,
             "has_api_key": bool(self.api_key),
             "api_key_valid": self.initialization_error is None
             and self.client is not None,
@@ -534,32 +538,143 @@ class OpenAIProvider(LLMProviderBase):
 
     def health_check(self) -> Dict[str, Any]:
         """Perform comprehensive health check on OpenAI API."""
-        if self.provider_name in ["builtin_vllm", "builtin_transformers"]:
+        if self.provider_name == "builtin_vllm":
+            base_url = (self.base_url or "").rstrip("/")
+            health_url = (
+                self.health_url
+                or os.getenv("KAREN_BUILTIN_VLLM_HEALTH_URL")
+                or (base_url.removesuffix("/v1") + "/health" if base_url else "")
+            )
+            served_model = (
+                os.getenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME")
+                or self.model
+                or "karen-vllm-local"
+            )
+            result: Dict[str, Any] = {
+                "provider": self.provider_name,
+                "runtime_engine": "vllm",
+                "base_url": base_url,
+                "health_url": health_url,
+                "default_model": served_model,
+                "model_tested": served_model,
+                "initialization_status": "success"
+                if not self.initialization_error
+                else "failed",
+            }
+            if self.initialization_error:
+                result.update(
+                    {
+                        "status": "unhealthy",
+                        "error": self.initialization_error,
+                        "health_endpoint_ok": False,
+                        "models_endpoint_ok": False,
+                        "served_model_available": False,
+                    }
+                )
+                return result
+            if not base_url or not health_url:
+                result.update(
+                    {
+                        "status": "unhealthy",
+                        "error": "builtin_vllm requires base_url and health_url",
+                        "health_endpoint_ok": False,
+                        "models_endpoint_ok": False,
+                        "served_model_available": False,
+                    }
+                )
+                return result
+
+            try:
+                import httpx
+
+                health_response = httpx.get(health_url, timeout=5.0)
+                result["health_endpoint_ok"] = health_response.status_code == 200
+                result["health_status_code"] = health_response.status_code
+
+                models_response = httpx.get(f"{base_url}/models", timeout=5.0)
+                result["models_endpoint_ok"] = models_response.status_code == 200
+                result["models_status_code"] = models_response.status_code
+                available_models: List[str] = []
+                if models_response.status_code == 200:
+                    models_payload = models_response.json()
+                    available_models = [
+                        str(item.get("id"))
+                        for item in models_payload.get("data", [])
+                        if item.get("id")
+                    ]
+                result["available_models"] = available_models
+                result["served_model_available"] = served_model in available_models
+
+                if (
+                    result["health_endpoint_ok"]
+                    and result["models_endpoint_ok"]
+                    and result["served_model_available"]
+                ):
+                    result.update(
+                        {
+                            "status": "healthy",
+                            "message": "builtin_vllm server is reachable and served model is available",
+                            "connectivity": "ok",
+                        }
+                    )
+                else:
+                    missing = []
+                    if not result["health_endpoint_ok"]:
+                        missing.append("health_endpoint")
+                    if not result["models_endpoint_ok"]:
+                        missing.append("models_endpoint")
+                    if not result["served_model_available"]:
+                        missing.append("served_model")
+                    result.update(
+                        {
+                            "status": "unhealthy",
+                            "error": "builtin_vllm health failed: "
+                            + ", ".join(missing),
+                            "connectivity": "failed",
+                        }
+                    )
+                return result
+            except Exception as e:
+                result.update(
+                    {
+                        "status": "unhealthy",
+                        "error": f"builtin_vllm unreachable at {health_url or base_url}: {e}",
+                        "health_endpoint_ok": False,
+                        "models_endpoint_ok": False,
+                        "served_model_available": False,
+                        "connectivity": "failed",
+                    }
+                )
+                return result
+
+        if self.provider_name == "builtin_transformers":
             # For local providers, check if the server is actually reachable if it has a base_url
-            if self.base_url:
+            if self.base_url or self.health_url:
                 try:
                     import httpx
-                    response = httpx.get(f"{self.base_url.rstrip('/')}/models", timeout=2.0)
+                    # Prioritize health_url if available, otherwise fallback to /models on base_url
+                    url = self.health_url or f"{self.base_url.rstrip('/')}/models"
+                    response = httpx.get(url, timeout=2.0)
                     if response.status_code == 200:
                         return {
                             "status": "healthy",
                             "provider": self.provider_name,
                             "model_tested": self.model,
-                            "message": "Local provider reachable",
+                            "message": f"Local provider reachable at {url}",
                             "initialization_status": "success"
                         }
                     else:
                         return {
                             "status": "unhealthy",
                             "provider": self.provider_name,
-                            "error": f"Local provider returned status {response.status_code}",
+                            "error": f"Local provider returned status {response.status_code} at {url}",
                             "initialization_status": "failed"
                         }
                 except Exception as e:
                     return {
                         "status": "unhealthy",
                         "provider": self.provider_name,
-                        "error": f"Local provider unreachable: {e}",
+                        "error": f"Local provider unreachable at {self.health_url or self.base_url}: {e}",
                         "initialization_status": "failed"
                     }
             
@@ -714,13 +829,8 @@ class OpenAIProvider(LLMProviderBase):
 
     def ping(self) -> bool:
         """Return True if the provider responds to a minimal request."""
-        if self.provider_name in ["builtin_vllm", "builtin_transformers"]:
-            # Local providers are assumed reachable if they are registered
-            return True
-            
         try:
-            self.health_check()
-            return True
+            return self.health_check().get("status") == "healthy"
         except Exception:
             return False
 

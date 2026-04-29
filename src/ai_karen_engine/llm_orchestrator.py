@@ -641,13 +641,24 @@ class LLMOrchestrator:
             self._setup_watchdog()
             self._initialized = True
             
-            # Start preloading in a background thread to avoid blocking the event loop
-            preload_thread = threading.Thread(
-                target=self._preload_providers_safe, 
-                daemon=True, 
-                name="orchestrator-preloader"
-            )
-            preload_thread.start()
+            # Provider warmup can load local model runtimes and pin the
+            # interpreter long enough to make the API stop answering health
+            # checks. Keep it opt-in; chat runtime fallback is owned by the
+            # provider router and should not depend on legacy warmup.
+            if os.getenv("KARI_ENABLE_PROVIDER_PRELOAD", "").lower() in {
+                "1",
+                "true",
+                "yes",
+                "on",
+            }:
+                preload_thread = threading.Thread(
+                    target=self._preload_providers_safe,
+                    daemon=True,
+                    name="orchestrator-preloader",
+                )
+                preload_thread.start()
+            else:
+                logger.info("Legacy provider preload disabled")
             
             # Start performance monitoring in a background thread
             def start_monitoring():
@@ -1007,25 +1018,9 @@ class LLMOrchestrator:
                 from ai_karen_engine.inference.factory import get_inference_service_factory
                 factory = get_inference_service_factory()
                 
-                # vLLM check
-                try:
-                    # Check if vllm is installed
-                    import importlib.util
-                    vllm_installed = importlib.util.find_spec("vllm") is not None
-                    
-                    if vllm_installed:
-                        vllm = factory.get_runtime("vllm")
-                        if vllm:
-                            model_id = "local:vllm-fallback"
-                            with self.registry._lock:
-                                if model_id not in self.registry._models:
-                                    self.registry.register(
-                                        model_id, vllm, ["generic", "conversation", "text"], 
-                                        weight=15, tags=["local", "fallback", "vllm"]
-                                    )
-                                    logger.info(f"Registered vLLM fallback runtime: {model_id}")
-                except Exception as e:
-                    logger.debug(f"vLLM runtime registration skipped: {e}")
+                # vLLM is represented only by the builtin_vllm provider, which
+                # must prove the OpenAI-compatible endpoint answered before it
+                # can be reported as the actual provider.
 
                 # Transformers check
                 try:

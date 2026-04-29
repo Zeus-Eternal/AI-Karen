@@ -1881,30 +1881,28 @@ class LLMRegistry:
         """Update provider configurations based on installed models."""
         provider_configs = settings.get("provider_configs", {})
 
-        # Update built-in vLLM provider with compatible local models.
-        vllm_models = self._get_models_for_provider("builtin_vllm")
-        vllm_model_names = [entry.model_id for entry in vllm_models.values()]
-        vllm_model_path = None
-        for entry in vllm_models.values():
-            if vllm_model_path is None:
-                vllm_model_path = str(Path(entry.install_path).parent)
-
-        if vllm_model_names:
-            if "builtin_vllm" not in provider_configs:
-                provider_configs["builtin_vllm"] = {}
-
-            provider_configs["builtin_vllm"].update(
-                {
-                    "models": vllm_model_names,
-                    "model_path": vllm_model_path,
-                    "context_length": 4096,
-                }
-            )
-
-            if settings.get("provider") == "builtin_vllm":
-                current_model = settings.get("model")
-                if not current_model or current_model not in vllm_model_names:
-                    settings["model"] = vllm_model_names[0]
+        served_vllm_model = os.getenv(
+            "KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME", "karen-vllm-local"
+        )
+        if "builtin_vllm" not in provider_configs:
+            provider_configs["builtin_vllm"] = {}
+        provider_configs["builtin_vllm"].pop("model_path", None)
+        provider_configs["builtin_vllm"].update(
+            {
+                "models": [served_vllm_model],
+                "context_length": int(
+                    os.getenv("KAREN_BUILTIN_VLLM_MAX_MODEL_LEN", "4096")
+                ),
+                "base_url": os.getenv(
+                    "KAREN_BUILTIN_VLLM_BASE_URL", "http://vllm:8000/v1"
+                ),
+                "health_url": os.getenv(
+                    "KAREN_BUILTIN_VLLM_HEALTH_URL", "http://vllm:8000/health"
+                ),
+            }
+        )
+        if settings.get("provider") == "builtin_vllm":
+            settings["model"] = served_vllm_model
 
         # Update built-in Transformers provider with local models.
         transformers_models = self._get_models_for_provider("builtin_transformers")

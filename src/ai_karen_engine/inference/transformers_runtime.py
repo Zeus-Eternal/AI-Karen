@@ -82,12 +82,19 @@ class TransformersRuntime(LLMProviderBase):
 
     def health_check(self) -> Dict[str, Any]:
         return {
-            "status": "healthy",
+            "status": "healthy" if self._transformers_available else "degraded",
             "provider": self.provider_name,
             "model_path": self.model_path,
             "model": self._model_name,
             "transformers_available": self._transformers_available,
-            "message": "Local transformers runtime ready",
+            "message": (
+                "Local transformers runtime ready"
+                if self._transformers_available
+                else "Transformers package unavailable; deterministic local fallback only"
+            ),
+            "response_source": (
+                "live_model" if self._transformers_available else "deterministic_fallback"
+            ),
         }
 
     def load_model(self, model_path: Optional[str] = None) -> bool:

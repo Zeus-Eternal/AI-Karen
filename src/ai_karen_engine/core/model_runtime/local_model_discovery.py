@@ -102,102 +102,115 @@ def _infer_model_type(model_format: str, capabilities: Iterable[str]) -> str:
 
 
 def discover_local_model_candidates(models_root: str | Path, discovery_config: dict[str, Any] | None = None) -> list[dict[str, Any]]:
-    root = Path(models_root)
-    roots: list[Path] = [root] if root.exists() else []
+    root = Path(models_root).resolve()
+    
+    # Deduplicate roots using resolved paths
+    roots_set: set[Path] = {root} if root.exists() else set()
     if discovery_config:
         for item in discovery_config.get("model_roots", []) or []:
-            candidate = Path(str(item))
+            candidate = Path(str(item)).resolve()
             if candidate.exists():
-                roots.append(candidate)
+                roots_set.add(candidate)
 
-    if not roots:
+    if not roots_set:
         return []
 
+    # Sort roots by depth (shortest first) to ensure we find models at the highest level possible first
+    roots = sorted(list(roots_set), key=lambda p: len(p.parts))
+
     records: list[dict[str, Any]] = []
-    seen: set[str] = set()
+    seen_paths: set[Path] = set()
 
     for base in roots:
-        for path in base.iterdir():
-            if path.name.startswith("."):
-                continue
-            if not path.is_file() and not path.is_dir():
-                continue
-
-            if path.is_file():
-                if path.suffix.lower() not in {".gguf", ".onnx"}:
+        try:
+            for path in base.iterdir():
+                resolved_path = path.resolve()
+                if resolved_path in seen_paths:
                     continue
-            else:
-                if not _has_model_marker(path):
+                
+                if path.name.startswith("."):
+                    continue
+                if not path.is_file() and not path.is_dir():
                     continue
 
-            metadata_files = _metadata_files(path if path.is_dir() else path.parent)
-
-            # Generate a user-friendly model_id
-            try:
-                # Try to make path relative to the models root for a cleaner ID
-                models_root_path = Path(models_root).resolve()
-                if path.resolve().is_relative_to(models_root_path):
-                    rel_id = str(path.resolve().relative_to(models_root_path)).replace("\\", "/")
+                if path.is_file():
+                    if path.suffix.lower() not in {".gguf", ".onnx"}:
+                        continue
                 else:
+                    if not _has_model_marker(path):
+                        continue
+
+                seen_paths.add(resolved_path)
+                metadata_files = _metadata_files(path if path.is_dir() else path.parent)
+
+                # Generate a user-friendly model_id
+                try:
+                    # Use the primary models_root for relative IDs whenever possible
+                    if resolved_path.is_relative_to(root):
+                        rel_id = str(resolved_path.relative_to(root)).replace("\\", "/")
+                    else:
+                        rel_id = str(path.relative_to(base)).replace("\\", "/")
+                except Exception:
                     rel_id = str(path.relative_to(base)).replace("\\", "/")
-            except Exception:
-                rel_id = str(path.relative_to(base)).replace("\\", "/")
 
-            # Unescape standard Transformers folder naming (e.g. Qwen--Qwen3.5 -> Qwen/Qwen3.5)
-            # and strip common prefixes for a cleaner ID
-            clean_id = rel_id
-            for prefix in ["transformers/", "local-gguf/", "onnx/", "models/"]:
-                if clean_id.startswith(prefix):
-                    clean_id = clean_id[len(prefix):]
-            
-            clean_id = clean_id.replace("--", "/")
+                # Unescape standard Transformers folder naming (e.g. Qwen--Qwen3.5 -> Qwen/Qwen3.5)
+                # and strip common prefixes for a cleaner ID
+                clean_id = rel_id
+                for prefix in ["transformers/", "local-gguf/", "onnx/", "models/"]:
+                    if clean_id.startswith(prefix):
+                        clean_id = clean_id[len(prefix):]
+                
+                clean_id = clean_id.replace("--", "/")
 
-            model_format = infer_model_format(path, metadata_files)
-            artifact_kind = infer_model_artifact_kind(model_format, metadata_files)
-            quantization = infer_quantization(metadata_files, path)
-            size_bytes = path.stat().st_size if path.is_file() else sum(
-                candidate.stat().st_size for candidate in path.rglob("*") if candidate.is_file()
-            )
-            capabilities = _infer_capabilities(model_format, artifact_kind, metadata_files)
-            compatibility = probe_runtime_compatibility(
-                model_format,
-                artifact_kind,
-                {
-                    "adapter_only": artifact_kind == "adapter",
+                model_format = infer_model_format(path, metadata_files)
+                artifact_kind = infer_model_artifact_kind(model_format, metadata_files)
+                quantization = infer_quantization(metadata_files, path)
+                size_bytes = path.stat().st_size if path.is_file() else sum(
+                    candidate.stat().st_size for candidate in path.rglob("*") if candidate.is_file()
+                )
+                capabilities = _infer_capabilities(model_format, artifact_kind, metadata_files)
+                compatibility = probe_runtime_compatibility(
+                    model_format,
+                    artifact_kind,
+                    {
+                        "adapter_only": artifact_kind == "adapter",
+                        "capabilities": capabilities,
+                        "model_type": _infer_model_type(model_format, capabilities),
+                        "tokenizer_present": "tokenizer.json" in metadata_files or "tokenizer_config.json" in metadata_files,
+                        "weights_present": any(file.endswith((".gguf", ".bin", ".safetensors")) for file in metadata_files) or path.is_file(),
+                        "config_present": "config.json" in metadata_files or path.is_dir(),
+                        "vllm_available": is_vllm_available(),
+                    },
+                )
+
+                records.append({
+                    "model_id": clean_id,
+                    "display_name": _display_name(path),
+                    "path": str(resolved_path),
+                    "relative_path": str(path.relative_to(base)),
+                    "model_format": model_format,
+                    "artifact_kind": artifact_kind,
                     "capabilities": capabilities,
+                    "compatible_runtimes": compatibility["compatible_runtimes"],
+                    "preferred_runtime": compatibility["preferred_runtime"],
+                    "compatibility_confidence": compatibility["compatibility_confidence"],
                     "model_type": _infer_model_type(model_format, capabilities),
-                    "tokenizer_present": "tokenizer.json" in metadata_files or "tokenizer_config.json" in metadata_files,
-                    "weights_present": any(file.endswith((".gguf", ".bin", ".safetensors")) for file in metadata_files) or path.is_file(),
-                    "config_present": "config.json" in metadata_files or path.is_dir(),
-                    "vllm_available": is_vllm_available(),
-                },
-            )
-
-            records.append({
-                "model_id": clean_id,
-                "display_name": _display_name(path),
-                "path": str(path.resolve()),
-                "relative_path": str(path.relative_to(base)),
-                "model_format": model_format,
-                "artifact_kind": artifact_kind,
-                "capabilities": capabilities,
-                "compatible_runtimes": compatibility["compatible_runtimes"],
-                "preferred_runtime": compatibility["preferred_runtime"],
-                "compatibility_confidence": compatibility["compatibility_confidence"],
-                "model_type": _infer_model_type(model_format, capabilities),
-                "architectures": [],
-                "tokenizer_present": bool("tokenizer.json" in metadata_files or "tokenizer_config.json" in metadata_files),
-                "weights_present": bool(any(file.endswith((".gguf", ".bin", ".safetensors")) for file in metadata_files) or path.is_file()),
-                "metadata_files": sorted(metadata_files),
-                "quantization": quantization,
-                "dtype": None,
-                "max_context": None,
-                "size_bytes": int(size_bytes),
-                "estimated_vram_gb": estimate_vram_gb(int(size_bytes), model_format, quantization),
-                "adapter_only": artifact_kind == "adapter",
-                "base_model_ref": None,
-                "security_flags": compatibility["security_flags"],
-                "runtime_notes": compatibility["runtime_notes"],
-            })
+                    "architectures": [],
+                    "tokenizer_present": bool("tokenizer.json" in metadata_files or "tokenizer_config.json" in metadata_files),
+                    "weights_present": bool(any(file.endswith((".gguf", ".bin", ".safetensors")) for file in metadata_files) or path.is_file()),
+                    "metadata_files": sorted(metadata_files),
+                    "quantization": quantization,
+                    "dtype": None,
+                    "max_context": None,
+                    "size_bytes": int(size_bytes),
+                    "estimated_vram_gb": estimate_vram_gb(int(size_bytes), model_format, quantization),
+                    "adapter_only": artifact_kind == "adapter",
+                    "base_model_ref": None,
+                    "security_flags": compatibility["security_flags"],
+                    "runtime_notes": compatibility["runtime_notes"],
+                })
+        except Exception as exc:
+            logger.error(f"Error scanning discovery root {base}: {exc}")
+            continue
 
     return records

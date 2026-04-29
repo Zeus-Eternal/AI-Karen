@@ -52,9 +52,10 @@ interface ChatInputProps {
   refreshSessions: () => Promise<void>;
   createNewSession: () => Promise<void>;
   onExportChat: () => Promise<void> | void;
-
-  // UI state
-  streamingStatus: string;
+  onCopyChat?: () => Promise<void> | void;
+  onShareChat?: () => Promise<void> | void;
+  onClearChat?: () => Promise<void> | void;
+  onSearchInChat?: () => void;
 }
 
 export function ChatInput({
@@ -91,18 +92,16 @@ export function ChatInput({
   refreshSessions,
   createNewSession,
   onExportChat,
+  onCopyChat,
+  onShareChat,
+  onClearChat,
+  onSearchInChat,
 }: ChatInputProps) {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   return (
     <div id="chat-input-area">
-      {/* Streaming Status Indicator */}
-      {isLoading && streamingStatus && (
-        <div className="bg-blue-500/10 border-t border-blue-500/20 px-3 py-2 text-sm flex items-center justify-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-          <span className="text-blue-600 font-medium">{streamingStatus}</span>
-        </div>
-      )}
+
 
       <div className="chat-input-container border-t border-border p-3 md:p-4 bg-background/80 backdrop-blur-sm sticky bottom-0">
         <div className="mb-2 flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -123,6 +122,10 @@ export function ChatInput({
               deleteSession={deleteSession}
               onOpenHistory={() => setIsHistoryOpen(true)}
               onExportChat={onExportChat}
+              onCopyChat={onCopyChat}
+              onShareChat={onShareChat}
+              onClearChat={onClearChat}
+              onSearchInChat={onSearchInChat}
             />
             <SessionHistory
               sessions={sessions}

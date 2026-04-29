@@ -173,6 +173,14 @@ OPENAI_COMPATIBLE_PROVIDER_DEFAULTS: Dict[str, Dict[str, Any]] = {
             "Qwen/Qwen2.5-72B-Instruct",
         ],
     },
+    "builtin_vllm": {
+        "api_key_env": "VLLM_API_KEY",
+        "base_url": os.getenv("KAREN_BUILTIN_VLLM_BASE_URL", "http://vllm:8000/v1"),
+        "display_name": "vLLM",
+        "common_models": [
+            os.getenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME", "karen-vllm-local"),
+        ],
+    },
 }
 
 
@@ -1070,24 +1078,31 @@ class LLMProviderConfigManager:
             description="Primary built-in runtime for high-throughput text generation and streaming.",
             provider_type=ProviderType.LOCAL,
             priority=95,
+            endpoint=ProviderEndpoint(
+                base_url=os.getenv("KAREN_BUILTIN_VLLM_BASE_URL", "http://vllm:8000/v1"),
+                health_endpoint=os.getenv("KAREN_BUILTIN_VLLM_HEALTH_URL", "http://vllm:8000/health"),
+                timeout=int(os.getenv("KAREN_BUILTIN_VLLM_TIMEOUT_SECONDS", "120")),
+            ),
             models=[
                 ProviderModel(
-                    id="auto",
-                    name="Auto",
+                    id=os.getenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME", "karen-vllm-local"),
+                    name="Local vLLM",
                     family="vllm",
-                    capabilities={"text", "conversation", "chat"},
-                    context_length=32768,
+                    capabilities={"text", "conversation", "chat", "streaming"},
+                    context_length=int(os.getenv("KAREN_BUILTIN_VLLM_MAX_MODEL_LEN", "4096")),
                     max_tokens=4096,
                     supports_streaming=True,
                 )
             ],
-            default_model="auto",
+            default_model=os.getenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME", "karen-vllm-local"),
             capabilities={"streaming", "chat_completion", "text_generation"},
             limits=ProviderLimits(
                 concurrent_requests=12,
-                max_context_length=32768,
+                max_context_length=int(os.getenv("KAREN_BUILTIN_VLLM_MAX_MODEL_LEN", "4096")),
                 max_output_tokens=4096,
             ),
+            enabled=os.getenv("KAREN_BUILTIN_VLLM_ENABLED", "true").lower() == "true",
+            fallback_eligible=os.getenv("KAREN_BUILTIN_VLLM_FALLBACK_ELIGIBLE", "true").lower() == "true",
         )
         self.add_provider(vllm_config)
 
@@ -1130,24 +1145,31 @@ class LLMProviderConfigManager:
                 description="Primary built-in runtime for high-throughput text generation and streaming.",
                 provider_type=ProviderType.LOCAL,
                 priority=95,
+                endpoint=ProviderEndpoint(
+                    base_url=os.getenv("KAREN_BUILTIN_VLLM_BASE_URL", "http://vllm:8000/v1"),
+                    health_endpoint=os.getenv("KAREN_BUILTIN_VLLM_HEALTH_URL", "http://vllm:8000/health"),
+                    timeout=int(os.getenv("KAREN_BUILTIN_VLLM_TIMEOUT_SECONDS", "120")),
+                ),
                 models=[
                     ProviderModel(
-                        id="auto",
-                        name="Auto",
+                        id=os.getenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME", "karen-vllm-local"),
+                        name="Local vLLM",
                         family="vllm",
-                        capabilities={"text", "conversation", "chat"},
-                        context_length=32768,
+                        capabilities={"text", "conversation", "chat", "streaming"},
+                        context_length=int(os.getenv("KAREN_BUILTIN_VLLM_MAX_MODEL_LEN", "4096")),
                         max_tokens=4096,
                         supports_streaming=True,
                     )
                 ],
-                default_model="auto",
+                default_model=os.getenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME", "karen-vllm-local"),
                 capabilities={"streaming", "chat_completion", "text_generation"},
                 limits=ProviderLimits(
                     concurrent_requests=12,
-                    max_context_length=32768,
+                    max_context_length=int(os.getenv("KAREN_BUILTIN_VLLM_MAX_MODEL_LEN", "4096")),
                     max_output_tokens=4096,
                 ),
+                enabled=os.getenv("KAREN_BUILTIN_VLLM_ENABLED", "true").lower() == "true",
+                fallback_eligible=os.getenv("KAREN_BUILTIN_VLLM_FALLBACK_ELIGIBLE", "true").lower() == "true",
             ),
             ProviderConfig(
                 name="anthropic",

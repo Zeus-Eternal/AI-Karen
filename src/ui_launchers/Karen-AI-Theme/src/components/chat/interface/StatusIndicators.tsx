@@ -1,4 +1,4 @@
-import { AlertCircle, ServerCrash, CheckCircle, Loader2, Wifi, WifiOff } from 'lucide-react';
+import { AlertCircle, CheckCircle, WifiOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { Session } from '../types';
 
@@ -7,10 +7,9 @@ interface StatusIndicatorsProps {
   error: string | null;
   currentSession: Session | null;
   isLoading?: boolean;
-  streamingStatus?: string;
 }
 
-export function StatusIndicators({ isBackendOffline, error, currentSession, isLoading, streamingStatus }: StatusIndicatorsProps) {
+export function StatusIndicators({ isBackendOffline, error, currentSession, isLoading }: StatusIndicatorsProps) {
   return (
     <>
       {isBackendOffline && (
@@ -53,15 +52,7 @@ export function StatusIndicators({ isBackendOffline, error, currentSession, isLo
         </div>
       )}
 
-      {isLoading && !isBackendOffline && (
-        <div className="bg-blue-500/10 text-blue-600 border-b border-blue-500/20 p-3 text-sm flex items-center justify-center gap-3 sticky top-0 z-10 backdrop-blur-sm shadow-sm ring-1 ring-blue-500/20 animate-in fade-in slide-in-from-top-2 duration-300">
-          <Loader2 className="h-5 w-5 shrink-0 animate-spin" />
-          <div className="flex flex-col items-center gap-1">
-            <span className="font-medium">{streamingStatus || 'Processing...'}</span>
-            <span className="text-xs opacity-90">Karen is generating a response</span>
-          </div>
-        </div>
-      )}
+
 
       {currentSession && currentSession.messageCount === 0 && !isLoading && (
         <div className="bg-muted/50 border-b border-border p-3 text-sm flex items-center justify-center gap-3 sticky top-0 z-10 backdrop-blur-sm">

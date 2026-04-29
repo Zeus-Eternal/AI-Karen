@@ -253,6 +253,10 @@ class ResponseFormatterPipeline:
         self, state: LangGraphOrchestrationState, response_data: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Generate response metadata"""
+        existing_metadata = dict(state.get("response_metadata") or {})
+        llm_metadata = dict(
+            existing_metadata.get("llm") or state.get("llm_metadata") or {}
+        )
         metadata = {
             "session_id": state.get("session_id"),
             "request_id": state.get("request_id"),
@@ -262,6 +266,20 @@ class ResponseFormatterPipeline:
             "streaming_enabled": state.get("streaming_enabled", False),
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
+        metadata.update(existing_metadata)
+        if llm_metadata:
+            metadata["llm"] = llm_metadata
+            metadata.setdefault("requested_provider", llm_metadata.get("requested_provider"))
+            metadata.setdefault("requested_model", llm_metadata.get("requested_model"))
+            metadata.setdefault("actual_provider", llm_metadata.get("actual_provider"))
+            metadata.setdefault("actual_model", llm_metadata.get("actual_model"))
+            metadata.setdefault("runtime_engine", llm_metadata.get("runtime_engine"))
+            metadata.setdefault("response_source", llm_metadata.get("response_source"))
+            metadata.setdefault("provider_health", llm_metadata.get("provider_health", {}))
+            metadata.setdefault("provider_error", llm_metadata.get("provider_error"))
+            metadata.setdefault("fallback_level", llm_metadata.get("fallback_level", 0))
+            metadata.setdefault("degraded_mode", llm_metadata.get("degraded_mode", False))
+            metadata.setdefault("degradation_reason", llm_metadata.get("degradation_reason"))
 
         # Add execution metrics if available
         if "execution_metrics" in state:
@@ -290,6 +308,11 @@ async def response_formatter_node(
         # Update state with formatted response
         state["formatted_response"] = envelope
         state["response_status"] = envelope.status
+        if envelope.metadata:
+            state["response_metadata"] = {
+                **(state.get("response_metadata") or {}),
+                **envelope.metadata,
+            }
 
         if envelope.errors:
             state.setdefault("errors", []).extend(envelope.errors)

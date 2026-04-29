@@ -46,11 +46,18 @@ class VLLMRuntime(LLMProviderBase):
         api_key_env: Optional[str] = None,
         provider_name: str = "builtin_vllm",
     ) -> None:
-        self.model = model
+        # Resolve model with intelligent defaults
+        self.model = (
+            model if model != "auto"
+            else os.getenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME")
+            or os.getenv("KAREN_VLLM_MODEL")
+            or "karen-vllm-local"
+        )
         
         # Resolve base URL with intelligent defaults
         raw_url = (
             base_url
+            or os.getenv("KAREN_BUILTIN_VLLM_BASE_URL")
             or os.getenv("VLLM_BASE_URL")
             or os.getenv("KAREN_VLLM_BASE_URL")
             or ""
@@ -64,6 +71,7 @@ class VLLMRuntime(LLMProviderBase):
                 raw_url = "http://localhost:8001/v1"
         
         self.base_url = raw_url
+        self.health_url = os.getenv("KAREN_BUILTIN_VLLM_HEALTH_URL")
         key = api_key
         if key is None and api_key_env:
             key = (os.getenv(api_key_env) or "").strip() or None
@@ -79,8 +87,9 @@ class VLLMRuntime(LLMProviderBase):
             )
 
         self._provider = OpenAICompatibleProvider(
-            model=model,
+            model=self.model,
             base_url=self.base_url,
+            health_url=self.health_url,
             api_key=self.api_key,
             provider_name=provider_name,
         )
@@ -193,14 +202,12 @@ class VLLMRuntime(LLMProviderBase):
         self._check_vllm_available()
 
         try:
-            # Try to use vLLM's embedding endpoint if available
             if hasattr(self._provider, 'embed'):
                 return self._provider.embed(text, **kwargs)
 
-            # Fallback to in-process transformers for embeddings if vLLM doesn't support them
-            # This ensures we always have embeddings even when vLLM is text-only
-            from ai_karen_engine.inference.transformers_runtime import TransformersRuntime
-            return TransformersRuntime.get_instance().embed(text, **kwargs)
+            raise ProviderNotAvailable(
+                "vLLM embedding endpoint is not available for builtin_vllm"
+            )
         except Exception as e:
             logger.error(
                 "vLLM embedding generation failed",

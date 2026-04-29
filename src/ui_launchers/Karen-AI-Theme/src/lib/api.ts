@@ -191,6 +191,11 @@ class ApiClient {
   private getPreferredBaseUrl(): string {
     if (this.isBrowser()) {
       const env = (process as unknown as { env?: Record<string, string> }).env || {};
+      // If NEXT_PUBLIC_API_BASE_URL is explicitly set, use it for direct API calls
+      if (env.NEXT_PUBLIC_API_BASE_URL) {
+        console.log('[ApiClient] Browser context, using configured API URL:', env.NEXT_PUBLIC_API_BASE_URL);
+        return env.NEXT_PUBLIC_API_BASE_URL.replace(/\/$/, '');
+      }
       console.log('[ApiClient] Browser context, forcing relative URLs');
       return '';
     }
@@ -233,7 +238,7 @@ class ApiClient {
     
     // Aggressive browser-side URL hardening
     if (this.isBrowser()) {
-      const dockerHostPattern = /https?:\/\/(api|api-copilot|172\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|localhost:8000|host\.docker\.internal)(:\d+)?/gi;
+      const dockerHostPattern = /https?:\/\/(api|api-copilot|172\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|host\.docker\.internal)(:\d+)?/gi;
       
       let finalUrl = baseUrl ? `${baseUrl}${normalizedEndpoint}` : normalizedEndpoint;
       console.log(`[ApiClient] buildUrl - Base: ${baseUrl}, Endpoint: ${endpoint}, Initial: ${finalUrl}`);

@@ -623,11 +623,16 @@ class ChatRuntimeControlPlane:
         self._probes: List[DependencyProbe] = [
             PostgreSQLProbe(),
             RedisProbe(),
-            ChatOrchestratorProbe(),
             ProviderRouterProbe(),
             MemorySubsystemProbe(),
-            LocalModelProbe(),
         ]
+        if os.getenv("KAREN_ENABLE_LEGACY_ORCHESTRATOR_PROBES", "").lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }:
+            self._probes.extend([ChatOrchestratorProbe(), LocalModelProbe()])
 
         # Enhanced hardening features
         self._runtime_state_persistence: bool = True
@@ -892,7 +897,21 @@ class ChatRuntimeControlPlane:
         if mode == RuntimeMode.MAINTENANCE:
             return self._build_maintenance_response()
         elif mode == RuntimeMode.EMERGENCY_FALLBACK:
-            return self._build_emergency_fallback_response()
+            # Chat emergency static is owned by the provider/router fallback path.
+            # A failed dependency snapshot must degrade chat, not bypass every live
+            # provider attempt. Routes still catch orchestrator setup failures and
+            # return emergency static only after execution paths fail.
+            logger.warning(
+                "Runtime is marked emergency_fallback; allowing chat route/provider fallback to execute",
+                extra={
+                    "runtime_mode": mode.value,
+                    "dependencies": {
+                        name: health.status.value
+                        for name, health in self._dependency_health.items()
+                    },
+                },
+            )
+            return None
         elif mode == RuntimeMode.DEGRADED:
             # Let orchestrator handle DEGRADED mode to provide best-effort responses
             return None
@@ -1369,16 +1388,70 @@ class ChatRuntimeControlPlane:
         return True
 
     def _is_degraded_ready(self) -> bool:
-        """Allow degraded service when either persistence or chat execution is available."""
+        """Allow degraded service when persistence or any chat execution path is available."""
         db = self._dependency_health.get("database")
         orchestrator = self._dependency_health.get("chat_orchestrator")
+        provider = self._dependency_health.get("provider_router")
+        local_model = self._dependency_health.get("local_model")
         return bool(
             (db is not None and db.status == DependencyStatus.HEALTHY)
             or (
                 orchestrator is not None
                 and orchestrator.status == DependencyStatus.HEALTHY
             )
+            or (
+                provider is not None
+                and provider.status == DependencyStatus.HEALTHY
+            )
+            or (
+                local_model is not None
+                and local_model.status == DependencyStatus.HEALTHY
+            )
         )
+
+    def _has_chat_execution_path(self) -> bool:
+        """Return True when a live/degraded chat path can still attempt generation."""
+        for dep_name in ("provider_router", "chat_orchestrator", "local_model"):
+            health = self._dependency_health.get(dep_name)
+            if health is not None and health.status == DependencyStatus.HEALTHY:
+                return True
+        return False
+
+    async def _has_live_provider_path(self) -> bool:
+        """Query the existing provider router/registry before blocking chat in emergency mode."""
+        try:
+            from ai_karen_engine.integrations.llm_registry import get_registry
+
+            registry = get_registry()
+
+            for provider_name in registry.list_providers():
+                if provider_name in {"fallback", "copilotkit", "custom_copilotkit"}:
+                    continue
+                provider_info = registry.get_provider_info(provider_name)
+                if not isinstance(provider_info, dict):
+                    continue
+                if provider_info.get("health_status") != "healthy":
+                    continue
+                if provider_name == "builtin_vllm":
+                    if (
+                        provider_info.get("runtime") == "vllm"
+                        and not provider_info.get("initialization_error")
+                    ):
+                        return True
+                    continue
+                if provider_name == "builtin_transformers":
+                    if provider_info.get("transformers_available") is True:
+                        return True
+                    continue
+                available_models = provider_info.get("available_models")
+                if provider_info.get("requires_api_key") is False and isinstance(
+                    available_models,
+                    list,
+                ) and available_models:
+                    return True
+        except Exception as exc:
+            logger.debug("Live provider path probe failed: %s", exc)
+        return False
 
     def _compute_optimal_mode(self) -> RuntimeMode:
         """

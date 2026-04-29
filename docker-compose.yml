@@ -291,7 +291,7 @@ services:
     profiles:
       - vllm
     ports:
-      - "${KAREN_VLLM_PORT:-8001}:8000"
+      - "${KAREN_BUILTIN_VLLM_HOST_PORT:-8001}:8000"
     environment:
       - HF_HOME=/models/huggingface
       - TRANSFORMERS_CACHE=/models/huggingface
@@ -305,16 +305,17 @@ services:
       - --port
       - "8000"
       - --model
-      - ${KAREN_VLLM_MODEL:-Qwen/Qwen2.5-1.5B-Instruct}
+      - ${KAREN_BUILTIN_VLLM_MODEL_ID:-Qwen/Qwen2.5-1.5B-Instruct}
       - --served-model-name
-      - ${KAREN_VLLM_SERVED_MODEL_NAME:-karen-vllm-local}
+      - ${KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME:-karen-vllm-local}
       - --dtype
-      - ${KAREN_VLLM_DTYPE:-auto}
+      - ${KAREN_BUILTIN_VLLM_DTYPE:-auto}
       - --gpu-memory-utilization
-      - ${KAREN_VLLM_GPU_MEMORY_UTILIZATION:-0.85}
+      - ${KAREN_BUILTIN_VLLM_GPU_MEMORY_UTILIZATION:-0.80}
       - --max-model-len
-      - ${KAREN_VLLM_MAX_MODEL_LEN:-4096}
-      - --trust-remote-code
+      - ${KAREN_BUILTIN_VLLM_MAX_MODEL_LEN:-4096}
+      - --generation-config
+      - vllm
     deploy:
       resources:
         limits:
@@ -578,6 +579,15 @@ services:
       # If you run the optional in-stack Ollama service, override this to
       # http://ollama:11434 instead.
       OLLAMA_BASE_URL: "${OLLAMA_BASE_URL:-http://host.docker.internal:11434}"
+      KAREN_BUILTIN_VLLM_ENABLED: "${KAREN_BUILTIN_VLLM_ENABLED:-true}"
+      KAREN_BUILTIN_VLLM_BASE_URL: "${KAREN_BUILTIN_VLLM_BASE_URL:-http://vllm:8000/v1}"
+      KAREN_BUILTIN_VLLM_HEALTH_URL: "${KAREN_BUILTIN_VLLM_HEALTH_URL:-http://vllm:8000/health}"
+      KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME: "${KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME:-karen-vllm-local}"
+      KAREN_BUILTIN_VLLM_TIMEOUT_SECONDS: "${KAREN_BUILTIN_VLLM_TIMEOUT_SECONDS:-120}"
+      KAREN_BUILTIN_VLLM_STREAMING_ENABLED: "${KAREN_BUILTIN_VLLM_STREAMING_ENABLED:-true}"
+      KAREN_BUILTIN_VLLM_FALLBACK_ELIGIBLE: "${KAREN_BUILTIN_VLLM_FALLBACK_ELIGIBLE:-true}"
+      KAREN_VLLM_BASE_URL: "${KAREN_BUILTIN_VLLM_BASE_URL:-http://vllm:8000/v1}"
+      VLLM_BASE_URL: "${KAREN_BUILTIN_VLLM_BASE_URL:-http://vllm:8000/v1}"
       NVIDIA_VISIBLE_DEVICES: "${NVIDIA_VISIBLE_DEVICES:-all}"
       NVIDIA_DRIVER_CAPABILITIES: "${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}"
     ports:

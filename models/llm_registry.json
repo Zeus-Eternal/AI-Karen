@@ -8,7 +8,7 @@
     "requires_api_key": false,
     "default_model": "auto",
     "health_status": "unhealthy",
-    "last_health_check": 1777465971.5945432,
+    "last_health_check": 1777483250.6347363,
     "error_message": "Local provider unreachable: [Errno 111] Connection refused"
   },
   {
@@ -20,7 +20,7 @@
     "requires_api_key": false,
     "default_model": "auto",
     "health_status": "healthy",
-    "last_health_check": 1777465971.5962124,
+    "last_health_check": 1777483250.6359046,
     "error_message": null
   },
   {
@@ -32,7 +32,7 @@
     "requires_api_key": false,
     "default_model": "starcoder:128k",
     "health_status": "healthy",
-    "last_health_check": 1777465971.6037657,
+    "last_health_check": 1777483250.6401198,
     "error_message": null
   },
   {
@@ -56,8 +56,8 @@
     "requires_api_key": true,
     "default_model": "glm-4.5",
     "health_status": "unhealthy",
-    "last_health_check": 1777465971.6149437,
-    "error_message": "Z.ai client initialization failed: "
+    "last_health_check": 1777483244.2254915,
+    "error_message": "Error code: 401 - {'error': {'code': '401', 'message': 'token expired or incorrect'}}"
   },
   {
     "name": "gemini",
@@ -68,8 +68,8 @@
     "requires_api_key": true,
     "default_model": "gemini-2.5-flash",
     "health_status": "unhealthy",
-    "last_health_check": 1777465971.6279004,
-    "error_message": "Gemini client initialization failed: "
+    "last_health_check": 1777483250.6252067,
+    "error_message": "Quota exceeded or rate limited"
   },
   {
     "name": "deepseek",
@@ -116,7 +116,7 @@
     "requires_api_key": false,
     "default_model": "kari-fallback-v1",
     "health_status": "degraded",
-    "last_health_check": 1777465971.6305974,
+    "last_health_check": 1777483250.6263328,
     "error_message": null
   },
   {
@@ -128,8 +128,8 @@
     "requires_api_key": false,
     "default_model": "Phi-3-mini-4k-instruct-q4.gguf",
     "health_status": "unhealthy",
-    "last_health_check": 1777465971.6408486,
-    "error_message": "OpenAI client initialization failed: "
+    "last_health_check": 1777483250.6270616,
+    "error_message": "No OpenAI API key provided. Set OPENAI_API_KEY environment variable."
   },
   {
     "name": "local_gguf_optimized",
@@ -140,7 +140,7 @@
     "requires_api_key": false,
     "default_model": "Phi-3-mini-4k-instruct-q4.gguf",
     "health_status": "unhealthy",
-    "last_health_check": 1777465971.6509678,
-    "error_message": "OpenAI client initialization failed: "
+    "last_health_check": 1777483250.627578,
+    "error_message": "No OpenAI API key provided. Set OPENAI_API_KEY environment variable."
   }
 ]

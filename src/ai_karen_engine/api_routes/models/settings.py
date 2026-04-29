@@ -144,6 +144,8 @@ class ProviderPayload(BaseModel):
     docs_url: Optional[str] = None
     base_url: Optional[str] = None
     default_base_url: Optional[str] = None
+    health_url: Optional[str] = None
+    default_health_url: Optional[str] = None
     default_model: Optional[str] = None
     selected_model: Optional[str] = None
     models: List[ProviderModelPayload] = Field(default_factory=list)
@@ -856,8 +858,7 @@ def _load_provider_models(
     provider: ProviderConfig, override: Dict[str, Any]
 ) -> List[ProviderModelPayload]:
     if provider.name == "builtin_vllm":
-        discovered = _discover_local_vllm_models()
-        return discovered or _configured_models(provider)
+        return _configured_models(provider)
 
     if provider.name == "ollama":
         return _discover_ollama_models(_resolve_provider_base_url(provider, override))
@@ -905,7 +906,7 @@ def _build_provider_payload(
     # Keep settings reads lightweight and deterministic.
     # Explicit model discovery happens via /providers/{provider_id}/models.
     if provider.name == "builtin_vllm":
-        models = _discover_local_vllm_models() or _configured_models(provider)
+        models = _configured_models(provider)
     else:
         models = _configured_models(provider)
 
@@ -939,6 +940,8 @@ def _build_provider_payload(
         docs_url=PROVIDER_DOC_URLS.get(provider.name),
         base_url=base_url or None,
         default_base_url=provider.endpoint.base_url if provider.endpoint else None,
+        health_url=override.get("health_endpoint") or (provider.endpoint.health_endpoint if provider.endpoint else None),
+        default_health_url=provider.endpoint.health_endpoint if provider.endpoint else None,
         default_model=provider.default_model,
         selected_model=provider_selected_model or None,
         models=models,

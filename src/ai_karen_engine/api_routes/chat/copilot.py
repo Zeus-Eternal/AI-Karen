@@ -197,6 +197,185 @@ async def _build_live_degraded_payload(
     return payload
 
 
+async def _build_router_fallback_assist_payload(
+    *,
+    request: "AssistRequest",
+    correlation_id: str,
+    conversation_id: str,
+    start_time: float,
+    request_config_metadata: Dict[str, Any],
+    actual_mode: str,
+    transport: str,
+    failure: Exception,
+    streaming_enabled: bool = False,
+) -> Optional[Dict[str, Any]]:
+    """Use the existing provider router when orchestration fails before answering."""
+    from ai_karen_engine.services.models.routing.llm_router_service import (
+        ChatRequest,
+        LLMRouter,
+    )
+
+    router = LLMRouter()
+    user_preferences = {
+        "preferred_llm_provider": request.preferred_llm_provider,
+        "preferred_model": request.preferred_model,
+    }
+    text = ""
+    metadata: Dict[str, Any] = {}
+
+    try:
+        async for chunk in router.process_chat_request(
+            ChatRequest(
+                message=request.message,
+                stream=False,
+                preferred_model=request.preferred_model,
+                conversation_id=conversation_id,
+                max_tokens=120,
+            ),
+            user_preferences=user_preferences,
+        ):
+            if isinstance(chunk, str):
+                text += chunk
+            elif isinstance(chunk, dict):
+                chunk_metadata = chunk.get("metadata")
+                if isinstance(chunk_metadata, dict):
+                    metadata.update(chunk_metadata)
+    except Exception as router_error:
+        logger.warning(
+            "Direct provider router fallback failed after orchestrator error: %s",
+            router_error,
+            extra={"correlation_id": correlation_id},
+        )
+        requested_provider = request.preferred_llm_provider or "orchestrator"
+        requested_model = request.preferred_model or "auto"
+        try:
+            fallback = await router.generate_with_degraded_runtime_fallback(
+                request=ChatRequest(
+                    message=request.message,
+                    stream=False,
+                    preferred_model=request.preferred_model,
+                    conversation_id=conversation_id,
+                    max_tokens=120,
+                ),
+                requested_provider=requested_provider,
+                requested_model=requested_model,
+                failure_reason=str(failure),
+            )
+            text = str(fallback.get("content") or "")
+            metadata.update(fallback.get("metadata") or {})
+        except Exception as fallback_error:
+            logger.error(
+                "Router degraded fallback failed after orchestrator error: %s",
+                fallback_error,
+                extra={"correlation_id": correlation_id},
+            )
+            return None
+
+    if not text.strip():
+        return None
+
+    response_metadata = _normalize_runtime_truth_metadata(
+        metadata=metadata,
+        request=request,
+        final_state=None,
+        correlation_id=correlation_id,
+        conversation_id=conversation_id,
+        start_time=start_time,
+        request_config_metadata=request_config_metadata,
+        streaming_enabled=streaming_enabled,
+        transport=transport,
+        actual_response_mode=actual_mode,
+    )
+    response_metadata["orchestrator_error"] = {
+        "type": type(failure).__name__,
+        "message": str(failure)[:300],
+    }
+
+    return {
+        "answer": text.strip(),
+        "structured_content": {},
+        "actions": [],
+        "metadata": response_metadata,
+    }
+
+
+def _build_router_fallback_sse_events(
+    payload: Dict[str, Any],
+    correlation_id: str,
+) -> List[Dict[str, Any]]:
+    """Build SSE events for direct router fallback responses."""
+    metadata = payload.get("metadata") or {}
+    llm_metadata = metadata.get("llm") or {}
+    requested_provider = llm_metadata.get("requested_provider")
+    requested_model = llm_metadata.get("requested_model")
+    actual_provider = llm_metadata.get("actual_provider")
+    answer = str(payload.get("answer") or "").strip()
+
+    events: List[Dict[str, Any]] = [
+        {
+            "type": "status",
+            "content": "Selecting provider...",
+            "correlation_id": correlation_id,
+            "metadata": {
+                **metadata,
+                "status": "provider_selection",
+                "requested_provider": requested_provider,
+                "requested_model": requested_model,
+            },
+        }
+    ]
+    if (
+        requested_provider
+        and actual_provider
+        and str(requested_provider).lower() != str(actual_provider).lower()
+    ):
+        events.extend(
+            [
+                {
+                    "type": "status",
+                    "content": "Requested provider unavailable; trying fallback.",
+                    "correlation_id": correlation_id,
+                    "metadata": {
+                        **metadata,
+                        "status": "provider_failed",
+                        "fallback_next": actual_provider,
+                    },
+                },
+                {
+                    "type": "status",
+                    "content": f"Fallback provider selected: {actual_provider}",
+                    "correlation_id": correlation_id,
+                    "metadata": {
+                        **metadata,
+                        "status": "fallback_provider_selected",
+                    },
+                },
+            ]
+        )
+    if answer:
+        events.append(
+            {
+                "type": "content",
+                "content": answer,
+                "correlation_id": correlation_id,
+                "metadata": metadata,
+            }
+        )
+    events.append(
+        {
+            "type": "complete",
+            "content": "",
+            "correlation_id": correlation_id,
+            "metadata": {
+                **metadata,
+                "status": "completed",
+                "content_length": len(answer),
+            },
+        }
+    )
+    return events
+
+
 logger = logging.getLogger(__name__)
 
 # Create router without prefix for automatic discovery alignment
@@ -426,6 +605,137 @@ def _extract_response_text_from_state(state: Dict[str, Any]) -> str:
     return str(state.get("response") or state.get("llm_response") or "")
 
 
+def _normalize_runtime_truth_metadata(
+    *,
+    metadata: Optional[Dict[str, Any]],
+    request: AssistRequest,
+    final_state: Optional[Dict[str, Any]],
+    correlation_id: str,
+    conversation_id: str,
+    start_time: Optional[float],
+    request_config_metadata: Dict[str, Any],
+    streaming_enabled: bool,
+    transport: str,
+    actual_response_mode: str,
+) -> Dict[str, Any]:
+    """Normalize requested-vs-actual provider truth for all copilot responses."""
+    normalized: Dict[str, Any] = _json_safe(metadata or {})
+    state = final_state or {}
+    state_llm = state.get("llm_metadata") or {}
+    llm = dict(normalized.get("llm") or state_llm or {})
+
+    requested_provider = (
+        llm.get("requested_provider")
+        or normalized.get("requested_provider")
+        or request.preferred_llm_provider
+    )
+    requested_model = (
+        llm.get("requested_model")
+        or normalized.get("requested_model")
+        or request.preferred_model
+    )
+    actual_provider = (
+        llm.get("actual_provider")
+        or normalized.get("actual_provider")
+        or llm.get("provider")
+        or normalized.get("provider")
+        or "unknown"
+    )
+    actual_model = (
+        llm.get("actual_model")
+        or normalized.get("actual_model")
+        or llm.get("model_id")
+        or llm.get("model_name")
+        or normalized.get("model")
+        or "unknown"
+    )
+    response_source = (
+        llm.get("response_source")
+        or normalized.get("response_source")
+        or llm.get("source")
+        or ("emergency_static" if actual_provider == "emergency_static" else "live_model")
+    )
+    provider_changed = bool(
+        requested_provider
+        and actual_provider
+        and str(requested_provider).strip().lower() != str(actual_provider).strip().lower()
+    )
+    degraded_mode = bool(
+        llm.get("degraded_mode")
+        or llm.get("is_degraded")
+        or normalized.get("degraded_mode")
+        or provider_changed
+        or response_source != "live_model"
+    )
+    fallback_level = llm.get("fallback_level", normalized.get("fallback_level"))
+    if fallback_level is None:
+        fallback_level = 1 if provider_changed else (99 if response_source == "emergency_static" else 0)
+
+    runtime_engine = (
+        llm.get("runtime_engine")
+        or normalized.get("runtime_engine")
+        or ("none" if actual_provider == "emergency_static" else str(actual_provider).replace("builtin_", ""))
+    )
+    latency_ms = normalized.get("latency_ms")
+    if latency_ms is None and start_time is not None:
+        latency_ms = (time.time() - start_time) * 1000
+
+    llm.update(
+        {
+            "requested_provider": requested_provider,
+            "requested_model": requested_model,
+            "actual_provider": actual_provider,
+            "actual_model": actual_model,
+            "provider": actual_provider,
+            "model_id": actual_model,
+            "model_name": llm.get("model_name") or actual_model,
+            "runtime_engine": runtime_engine,
+            "response_source": response_source,
+            "source": llm.get("source") or response_source,
+            "provider_health": llm.get("provider_health", normalized.get("provider_health", {})),
+            "provider_error": llm.get("provider_error", normalized.get("provider_error")),
+            "fallback_level": fallback_level,
+            "degraded_mode": degraded_mode,
+            "is_degraded": degraded_mode,
+            "used_fallback": bool(llm.get("used_fallback") or provider_changed or degraded_mode),
+            "degradation_reason": llm.get("degradation_reason")
+            or normalized.get("degradation_reason")
+            or ("requested_provider_unavailable" if provider_changed else None),
+            "streaming_enabled": streaming_enabled,
+            "actual_response_mode": actual_response_mode,
+            "transport": transport,
+            "latency_ms": latency_ms,
+            "correlation_id": correlation_id,
+        }
+    )
+
+    normalized.update(request_config_metadata)
+    normalized.update(
+        {
+            "llm": llm,
+            "requested_provider": requested_provider,
+            "requested_model": requested_model,
+            "actual_provider": actual_provider,
+            "actual_model": actual_model,
+            "runtime_engine": runtime_engine,
+            "response_source": response_source,
+            "provider_health": llm.get("provider_health", {}),
+            "provider_error": llm.get("provider_error"),
+            "fallback_level": fallback_level,
+            "degraded_mode": degraded_mode,
+            "degradation_reason": llm.get("degradation_reason"),
+            "streaming_enabled": streaming_enabled,
+            "actual_response_mode": actual_response_mode,
+            "transport": transport,
+            "latency_ms": latency_ms,
+            "correlation_id": correlation_id,
+            "conversation_id": conversation_id,
+            "status": normalized.get("status", "success"),
+        }
+    )
+    return normalized
+
+
 from ai_karen_engine.models.shared_types import (
     CanonicalChatRequest,
     CanonicalChatResponse,
@@ -443,11 +753,21 @@ async def _get_chat_orchestrator():
     try:
         from ai_karen_engine.core.langgraph_orchestrator import get_default_orchestrator
 
-        orchestrator = await get_default_orchestrator()
+        timeout_seconds = float(os.getenv("KAREN_COPILOT_ORCHESTRATOR_TIMEOUT", "5"))
+        orchestrator = await asyncio.wait_for(
+            get_default_orchestrator(),
+            timeout=timeout_seconds,
+        )
         logger.info(
             "Successfully retrieved ChatOrchestrator", extra={"correlation_id": "debug"}
         )
         return orchestrator
+    except asyncio.TimeoutError as exc:
+        logger.error(
+            "Timed out getting chat orchestrator",
+            extra={"correlation_id": "debug"},
+        )
+        raise HTTPException(status_code=503, detail="Chat service unavailable") from exc
     except Exception as exc:
         logger.error(
             "Failed to get chat orchestrator: %s",
@@ -704,6 +1024,21 @@ async def copilot_assist(
     )
 
     degraded_continuation_response: Optional[DegradedResponse] = None
+    conversation_id = _normalize_session_id(request.session_id)
+    if not conversation_id:
+        conversation_id = str(uuid.uuid4())
+    actual_mode, transport, should_stream = _resolve_actual_response_mode(
+        request.response_mode,
+        None,
+    )
+    request_config_metadata = _build_request_config_metadata(
+        requested_mode=request.response_mode or get_chat_response_mode(),
+        actual_mode=actual_mode,
+        transport=transport,
+        should_stream=False,
+        preferred_provider=request.preferred_llm_provider,
+        preferred_model=request.preferred_model,
+    )
 
     try:
         runtime_plane = await get_chat_runtime_control_plane()
@@ -737,30 +1072,36 @@ async def copilot_assist(
                     headers={"X-Correlation-Id": correlation_id},
                 )
 
+        runtime_status = runtime_plane.get_status()
+        if runtime_status.get("mode") != "normal":
+            fallback_payload = await _build_router_fallback_assist_payload(
+                request=request,
+                correlation_id=correlation_id,
+                conversation_id=conversation_id,
+                start_time=start_time,
+                request_config_metadata=request_config_metadata,
+                actual_mode=actual_mode,
+                transport="json",
+                failure=RuntimeError(
+                    f"runtime_mode_{runtime_status.get('mode', 'unknown')}"
+                ),
+            )
+            if fallback_payload is not None:
+                return _assist_response_json(
+                    answer=fallback_payload["answer"],
+                    structured_content=fallback_payload["structured_content"],
+                    actions=[],
+                    metadata=fallback_payload["metadata"],
+                    correlation_id=correlation_id,
+                    status_code=200,
+                )
+
         orchestrator = await _get_chat_orchestrator()
-        conversation_id = _normalize_session_id(request.session_id)
-        if not conversation_id:
-            conversation_id = str(uuid.uuid4())
 
         from langchain_core.messages import HumanMessage
 
         user_messages = [HumanMessage(content=request.message)]
         allow_public_copilot = os.getenv("ALLOW_PUBLIC_COPILOT", "false").lower() in ("1", "true", "yes")
-
-        # Resolve response mode for this request
-        actual_mode, transport, should_stream = _resolve_actual_response_mode(
-            request.response_mode, None
-        )
-
-        # Build request config metadata
-        request_config_metadata = _build_request_config_metadata(
-            requested_mode=request.response_mode or get_chat_response_mode(),
-            actual_mode=actual_mode,
-            transport=transport,
-            should_stream=False,  # /assist is always non-streaming
-            preferred_provider=request.preferred_llm_provider,
-            preferred_model=request.preferred_model,
-        )
 
         final_state = await orchestrator.process(
             messages=user_messages,
@@ -830,6 +1171,18 @@ async def copilot_assist(
         response_metadata.setdefault("llm", response_metadata.get("llm", {}))
         # Add response mode metadata
         response_metadata.update(request_config_metadata)
+        response_metadata = _normalize_runtime_truth_metadata(
+            metadata=response_metadata,
+            request=request,
+            final_state=final_state,
+            correlation_id=correlation_id,
+            conversation_id=conversation_id,
+            start_time=start_time,
+            request_config_metadata=request_config_metadata,
+            streaming_enabled=False,
+            transport="json",
+            actual_response_mode=actual_mode,
+        )
 
         action_models: List[SuggestedAction] = []
         for action in final_state.get("actions") or []:
@@ -865,10 +1218,30 @@ async def copilot_assist(
         )
 
     except Exception as e:
-        logger.error(
-            f"Copilot assist failed: {e}",
+        logger.exception(
+            "Copilot assist orchestration failed; trying provider router fallback: %s",
+            e,
             extra={"correlation_id": correlation_id},
         )
+        fallback_payload = await _build_router_fallback_assist_payload(
+            request=request,
+            correlation_id=correlation_id,
+            conversation_id=conversation_id,
+            start_time=start_time,
+            request_config_metadata=request_config_metadata,
+            actual_mode=actual_mode,
+            transport="json",
+            failure=e,
+        )
+        if fallback_payload is not None:
+            return _assist_response_json(
+                answer=fallback_payload["answer"],
+                structured_content=fallback_payload["structured_content"],
+                actions=[],
+                metadata=fallback_payload["metadata"],
+                correlation_id=correlation_id,
+                status_code=200,
+            )
 
         fallback = EmergencyFallbackResponse()
         payload = serialize_runtime_response(fallback) or {}
@@ -907,6 +1280,7 @@ async def copilot_assist_stream(
     correlation_id = (
         get_correlation_id(http_request) or f"copilot_stream_{int(time.time())}"
     )
+    start_time = time.time()
 
     logger.info(
         "Copilot assist stream request received",
@@ -918,6 +1292,21 @@ async def copilot_assist_stream(
     )
 
     degraded_continuation_response: Optional[DegradedResponse] = None
+    conversation_id = _normalize_session_id(request.session_id)
+    if not conversation_id:
+        conversation_id = str(uuid.uuid4())
+
+    actual_mode, transport, should_stream = _resolve_actual_response_mode(
+        request.response_mode, None
+    )
+    request_config_metadata = _build_request_config_metadata(
+        requested_mode=request.response_mode or get_chat_response_mode(),
+        actual_mode=actual_mode,
+        transport=transport,
+        should_stream=True,
+        preferred_provider=request.preferred_llm_provider,
+        preferred_model=request.preferred_model,
+    )
 
     try:
         runtime_plane = await get_chat_runtime_control_plane()
@@ -951,6 +1340,69 @@ async def copilot_assist_stream(
             if isinstance(response, DegradedResponse):
                 degraded_continuation_response = response
 
+        runtime_status = runtime_plane.get_status()
+        if runtime_status.get("mode") != "normal":
+            async def stream_runtime_router_fallback():
+                initial_payload = {
+                    "type": "status",
+                    "content": "Selecting provider...",
+                    "correlation_id": correlation_id,
+                    "metadata": {
+                        "status": "provider_selection",
+                        "requested_provider": request.preferred_llm_provider,
+                        "requested_model": request.preferred_model,
+                        **request_config_metadata,
+                    },
+                }
+                yield f"data: {json.dumps(initial_payload)}\n\n"
+                fallback_payload = await _build_router_fallback_assist_payload(
+                    request=request,
+                    correlation_id=correlation_id,
+                    conversation_id=conversation_id,
+                    start_time=start_time,
+                    request_config_metadata=request_config_metadata,
+                    actual_mode=actual_mode,
+                    transport="sse",
+                    failure=RuntimeError(
+                        f"runtime_mode_{runtime_status.get('mode', 'unknown')}"
+                    ),
+                    streaming_enabled=True,
+                )
+                if fallback_payload is not None:
+                    events = _build_router_fallback_sse_events(
+                        fallback_payload, correlation_id
+                    )[1:]
+                elif degraded_continuation_response is not None:
+                    degraded_payload = await _build_live_degraded_payload(
+                        request.message,
+                        degraded_continuation_response,
+                        correlation_id,
+                    )
+                    events = _build_degraded_sse_events(
+                        degraded_payload, correlation_id
+                    )
+                else:
+                    emergency_payload = serialize_runtime_response(
+                        EmergencyFallbackResponse()
+                    ) or {}
+                    emergency_payload["correlation_id"] = correlation_id
+                    events = _build_degraded_sse_events(
+                        emergency_payload, correlation_id
+                    )
+                for event in events:
+                    yield f"data: {json.dumps(event)}\n\n"
+                yield "data: [DONE]\n\n"
+
+            return StreamingResponse(
+                stream_runtime_router_fallback(),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "X-Correlation-Id": correlation_id,
+                },
+            )
+
     except Exception as runtime_exc:
         logger.error(
             "Runtime control plane error: %s",
@@ -983,25 +1435,42 @@ async def copilot_assist_stream(
             exc,
             extra={"correlation_id": correlation_id},
         )
-        if degraded_continuation_response is not None:
-            payload = await _build_live_degraded_payload(
-                request.message,
-                degraded_continuation_response,
-                correlation_id,
-            )
-        else:
-            payload = (
-                serialize_runtime_response(EmergencyFallbackResponse()) or {}
-            )
-            payload["correlation_id"] = correlation_id
+        fallback_payload = await _build_router_fallback_assist_payload(
+            request=request,
+            correlation_id=correlation_id,
+            conversation_id=conversation_id,
+            start_time=start_time,
+            request_config_metadata=request_config_metadata,
+            actual_mode=actual_mode,
+            transport="sse",
+            failure=exc,
+            streaming_enabled=True,
+        )
 
-        async def stream_degraded_fallback():
-            for event in _build_degraded_sse_events(payload, correlation_id):
+        async def stream_router_fallback():
+            if fallback_payload is not None:
+                events = _build_router_fallback_sse_events(
+                    fallback_payload, correlation_id
+                )
+            elif degraded_continuation_response is not None:
+                degraded_payload = await _build_live_degraded_payload(
+                    request.message,
+                    degraded_continuation_response,
+                    correlation_id,
+                )
+                events = _build_degraded_sse_events(degraded_payload, correlation_id)
+            else:
+                emergency_payload = serialize_runtime_response(
+                    EmergencyFallbackResponse()
+                ) or {}
+                emergency_payload["correlation_id"] = correlation_id
+                events = _build_degraded_sse_events(emergency_payload, correlation_id)
+            for event in events:
                 yield f"data: {json.dumps(event)}\n\n"
             yield "data: [DONE]\n\n"
 
         return StreamingResponse(
-            stream_degraded_fallback(),
+            stream_router_fallback(),
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
@@ -1011,25 +1480,6 @@ async def copilot_assist_stream(
         )
 
     from langchain_core.messages import HumanMessage
-
-    conversation_id = _normalize_session_id(request.session_id)
-    if not conversation_id:
-        conversation_id = str(uuid.uuid4())
-
-    # Resolve response mode for this request
-    actual_mode, transport, should_stream = _resolve_actual_response_mode(
-        request.response_mode, None
-    )
-
-    # Build request config metadata
-    request_config_metadata = _build_request_config_metadata(
-        requested_mode=request.response_mode or get_chat_response_mode(),
-        actual_mode=actual_mode,
-        transport=transport,
-        should_stream=True,  # /assist/stream is always streaming
-        preferred_provider=request.preferred_llm_provider,
-        preferred_model=request.preferred_model,
-    )
 
     async def generate_stream():
         try:
@@ -1051,8 +1501,24 @@ async def copilot_assist_stream(
             }
             yield f"data: {json.dumps(initial_payload)}\n\n"
 
+            selection_payload = {
+                "type": "status",
+                "content": "Selecting provider...",
+                "correlation_id": correlation_id,
+                "metadata": {
+                    "status": "provider_selection",
+                    "requested_provider": request.preferred_llm_provider,
+                    "requested_model": request.preferred_model,
+                    **request_config_metadata,
+                },
+            }
+            yield f"data: {json.dumps(selection_payload)}\n\n"
+
             user_messages = [HumanMessage(content=request.message)]
             allow_public_copilot = os.getenv("ALLOW_PUBLIC_COPILOT", "false").lower() in ("1", "true", "yes")
+            last_metadata: Dict[str, Any] = {}
+            final_content = ""
+            fallback_status_emitted = False
 
             async for chunk in orchestrator.stream_process(
                 messages=user_messages,
@@ -1096,6 +1562,53 @@ async def copilot_assist_stream(
                     content = chunk
 
                 if content or metadata:
+                    if metadata:
+                        metadata = _normalize_runtime_truth_metadata(
+                            metadata=metadata,
+                            request=request,
+                            final_state=None,
+                            correlation_id=correlation_id,
+                            conversation_id=conversation_id,
+                            start_time=start_time,
+                            request_config_metadata=request_config_metadata,
+                            streaming_enabled=True,
+                            transport=transport,
+                            actual_response_mode=actual_mode,
+                        )
+                        last_metadata = metadata
+                        llm_metadata = metadata.get("llm") or {}
+                        requested_provider = llm_metadata.get("requested_provider")
+                        actual_provider = llm_metadata.get("actual_provider")
+                        if (
+                            not fallback_status_emitted
+                            and requested_provider
+                            and actual_provider
+                            and str(requested_provider).lower() != str(actual_provider).lower()
+                        ):
+                            failure_payload = {
+                                "type": "status",
+                                "content": "Requested provider unavailable; trying fallback.",
+                                "correlation_id": correlation_id,
+                                "metadata": {
+                                    **metadata,
+                                    "status": "provider_failed",
+                                    "fallback_next": actual_provider,
+                                },
+                            }
+                            yield f"data: {json.dumps(failure_payload)}\n\n"
+                            selected_payload = {
+                                "type": "status",
+                                "content": f"Fallback provider selected: {actual_provider}",
+                                "correlation_id": correlation_id,
+                                "metadata": {
+                                    **metadata,
+                                    "status": "fallback_provider_selected",
+                                },
+                            }
+                            yield f"data: {json.dumps(selected_payload)}\n\n"
+                            fallback_status_emitted = True
+                    if content:
+                        final_content += content
                     event_type = "status" if metadata.get("status") and not content else "content"
                     payload = {
                         "type": event_type,
@@ -1105,6 +1618,29 @@ async def copilot_assist_stream(
                     }
                     yield f"data: {json.dumps(payload)}\n\n"
 
+            complete_metadata = _normalize_runtime_truth_metadata(
+                metadata=last_metadata,
+                request=request,
+                final_state=None,
+                correlation_id=correlation_id,
+                conversation_id=conversation_id,
+                start_time=start_time,
+                request_config_metadata=request_config_metadata,
+                streaming_enabled=True,
+                transport=transport,
+                actual_response_mode=actual_mode,
+            )
+            complete_payload = {
+                "type": "complete",
+                "content": "",
+                "correlation_id": correlation_id,
+                "metadata": {
+                    **complete_metadata,
+                    "status": "completed",
+                    "content_length": len(final_content),
+                },
+            }
+            yield f"data: {json.dumps(complete_payload)}\n\n"
             yield "data: [DONE]\n\n"
 
         except Exception as stream_error:
@@ -1113,6 +1649,25 @@ async def copilot_assist_stream(
                 stream_error,
                 extra={"correlation_id": correlation_id},
             )
+
+            fallback_payload = await _build_router_fallback_assist_payload(
+                request=request,
+                correlation_id=correlation_id,
+                conversation_id=conversation_id,
+                start_time=start_time,
+                request_config_metadata=request_config_metadata,
+                actual_mode=actual_mode,
+                transport="sse",
+                failure=stream_error,
+                streaming_enabled=True,
+            )
+            if fallback_payload is not None:
+                for event in _build_router_fallback_sse_events(
+                    fallback_payload, correlation_id
+                ):
+                    yield f"data: {json.dumps(event)}\n\n"
+                yield "data: [DONE]\n\n"
+                return
 
             if degraded_continuation_response:
                 fallback_payload = await _build_live_degraded_payload(

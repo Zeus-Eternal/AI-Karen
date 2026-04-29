@@ -72,10 +72,14 @@ export type DegradedPresentation = {
 
 export type ResponseDetailsPresentation = {
   hasMetadataDetails: boolean;
+  requestedProviderLabel: string;
+  requestedModelLabel: string;
   providerLabel: string;
   modelLabel: string;
   modelTitle: string;
   sourceLabel: string;
+  runtimeEngineLabel: string;
+  fallbackLevelLabel: string;
   speedLabel: string;
   latencyLabel: string;
   engineHeaderLabel: string;
@@ -508,16 +512,25 @@ export const deriveDegradedPresentation = (
 
   const localFallbackSource = isLocalFallbackSource(llm);
 
-  const requestedProvider = toCleanString(llm?.requested_provider);
-  const requestedModel = toCleanString(llm?.requested_model);
-  const actualProvider = toCleanString(llm?.provider);
-  const actualModelId = toCleanString(llm?.model_id);
-  const actualModel = getFriendlyModelLabel(llm?.model_id, llm?.model_name);
+  const requestedProvider = toCleanString(llm?.requested_provider || safeMetadata?.requested_provider);
+  const requestedModel = toCleanString(llm?.requested_model || safeMetadata?.requested_model);
+  const actualProvider = toCleanString(
+    llm?.actual_provider || safeMetadata?.actual_provider || llm?.provider,
+  );
+  const actualModelId = toCleanString(
+    llm?.actual_model || safeMetadata?.actual_model || llm?.model_id,
+  );
+  const actualModel = getFriendlyModelLabel(
+    llm?.actual_model || safeMetadata?.actual_model || llm?.model_id,
+    llm?.model_name,
+  );
 
   const normalizedActualProvider = normalizeProviderName(actualProvider);
   const normalizedRequestedProvider = normalizeProviderName(requestedProvider);
   const normalizedRequestedModel = normalizeModelName(requestedModel);
-  const normalizedActualModel = normalizeModelName(llm?.model_id || llm?.model_name || actualModel);
+  const normalizedActualModel = normalizeModelName(
+    llm?.actual_model || safeMetadata?.actual_model || llm?.model_id || llm?.model_name || actualModel,
+  );
 
   const isLegacyMismatch =
     isLegacyRuntimeProvider(requestedProvider) || isLegacyRuntimeProvider(actualProvider);
@@ -552,7 +565,9 @@ export const deriveDegradedPresentation = (
     isLegacyMismatch ||
     isKnownRuntimeControlMode(safeMetadata?.mode);
 
-  const hasLlmInfo = Boolean(llm && (llm.provider || llm.model_id || llm.model_name));
+  const hasLlmInfo = Boolean(
+    llm && (llm.actual_provider || llm.provider || llm.actual_model || llm.model_id || llm.model_name),
+  );
 
   const isExternalGgufBackedFallback =
     normalizedActualProvider === FALLBACK_PROVIDER &&
@@ -659,10 +674,20 @@ export const deriveResponseDetailsPresentation = (
   const totalTokens = Number(usage.total_tokens || 0);
 
   const hasMetadataDetails = Boolean(safeMetadata && Object.keys(safeMetadata).length > 0);
+  const requestedProviderLabel = degraded.requestedProvider
+    ? getFriendlyProviderLabel(degraded.requestedProvider)
+    : 'N/A';
+  const requestedModelLabel = degraded.requestedModel
+    ? getFriendlyModelLabel(degraded.requestedModel, degraded.requestedModel)
+    : 'N/A';
   const providerLabel = degraded.providerDisplayName;
   const modelLabel = degraded.modelDisplayName;
-  const modelTitle = toCleanString(llm?.model_id || llm?.model_name);
-  const sourceLabel = toCleanString(llm?.source || 'direct');
+  const modelTitle = toCleanString(llm?.actual_model || llm?.model_id || llm?.model_name);
+  const sourceLabel = toCleanString(llm?.response_source || llm?.source || 'direct');
+  const runtimeEngineLabel = toCleanString(llm?.runtime_engine || safeMetadata?.runtime_engine || 'N/A');
+  const fallbackLevelLabel = toCleanString(
+    llm?.fallback_level ?? safeMetadata?.fallback_level ?? '0',
+  );
 
   const speedLabel = llm?.tokens_per_second
     ? `${Number(llm.tokens_per_second).toFixed(2)} tok/s`
@@ -692,10 +717,14 @@ export const deriveResponseDetailsPresentation = (
 
   return {
     hasMetadataDetails,
+    requestedProviderLabel,
+    requestedModelLabel,
     providerLabel,
     modelLabel,
     modelTitle,
     sourceLabel,
+    runtimeEngineLabel,
+    fallbackLevelLabel,
     speedLabel,
     latencyLabel,
     engineHeaderLabel,
@@ -922,10 +951,14 @@ const ensureProviderMismatchMetadata = (
 ): Record<string, any> => {
   const llm = isRecord(metadata.llm) ? { ...metadata.llm } : {};
 
-  const requestedProvider = normalizeProviderName(llm.requested_provider);
-  const requestedModel = normalizeModelName(llm.requested_model);
-  const actualProvider = normalizeProviderName(llm.provider);
-  const actualModel = normalizeModelName(llm.model_id || llm.model_name);
+  const requestedProvider = normalizeProviderName(llm.requested_provider || metadata.requested_provider);
+  const requestedModel = normalizeModelName(llm.requested_model || metadata.requested_model);
+  const actualProvider = normalizeProviderName(
+    llm.actual_provider || metadata.actual_provider || llm.provider,
+  );
+  const actualModel = normalizeModelName(
+    llm.actual_model || metadata.actual_model || llm.model_id || llm.model_name,
+  );
 
   const providerChanged = Boolean(
     requestedProvider &&
@@ -989,7 +1022,7 @@ const ensureProviderMismatchMetadata = (
 
   if (!llm.failure_reason && providerChanged) {
     const friendlyRequested = getFriendlyProviderLabel(llm.requested_provider);
-    const friendlyActual = getFriendlyProviderLabel(llm.provider);
+    const friendlyActual = getFriendlyProviderLabel(llm.actual_provider || llm.provider);
 
     llm.failure_reason =
       `Selected provider ${friendlyRequested} was unavailable; Karen continued with ${friendlyActual}.`;
@@ -997,7 +1030,7 @@ const ensureProviderMismatchMetadata = (
 
   if (!llm.failure_reason && modelChanged) {
     const requestedLabel = getFriendlyModelLabel(llm.requested_model, llm.requested_model);
-    const actualLabel = getFriendlyModelLabel(llm.model_id, llm.model_name);
+    const actualLabel = getFriendlyModelLabel(llm.actual_model || llm.model_id, llm.model_name);
 
     llm.failure_reason =
       `Selected model ${requestedLabel} was unavailable; Karen continued with ${actualLabel}.`;

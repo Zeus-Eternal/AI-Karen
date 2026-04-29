@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ChevronDown,
+  Copy,
   Download,
   History,
   MessageSquare,
   Pencil,
   Plus,
   RefreshCw,
+  Search,
+  Share,
   Trash2,
 } from 'lucide-react';
 
@@ -52,6 +55,10 @@ interface ChatActionsMenuProps {
   deleteSession: (sessionId: string) => Promise<boolean | void>;
   onOpenHistory: () => void;
   onExportChat?: () => Promise<void> | void;
+  onCopyChat?: () => Promise<void> | void;
+  onShareChat?: () => Promise<void> | void;
+  onClearChat?: () => Promise<void> | void;
+  onSearchInChat?: () => void;
 }
 
 export function ChatActionsMenu({
@@ -63,12 +70,17 @@ export function ChatActionsMenu({
   deleteSession,
   onOpenHistory,
   onExportChat,
+  onCopyChat,
+  onShareChat,
+  onClearChat,
+  onSearchInChat,
 }: ChatActionsMenuProps) {
   const [open, setOpen] = useState(false);
   const [supportsHover, setSupportsHover] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameValue, setRenameValue] = useState('');
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [clearChatOpen, setClearChatOpen] = useState(false);
   const [isActionBusy, setIsActionBusy] = useState(false);
   const closeTimerRef = useRef<number | null>(null);
 
@@ -200,6 +212,119 @@ export function ChatActionsMenu({
     });
   }, [onExportChat, runAction]);
 
+  const handleCopyChat = useCallback(async () => {
+    if (!onCopyChat) return;
+    await runAction(async () => {
+      await onCopyChat();
+      setOpen(false);
+    });
+  }, [onCopyChat, runAction]);
+
+  const handleShareChat = useCallback(async () => {
+    if (!onShareChat) return;
+    await runAction(async () => {
+      await onShareChat();
+      setOpen(false);
+    });
+  }, [onShareChat, runAction]);
+
+  const handleClearChat = useCallback(async () => {
+    if (!onClearChat) return;
+    await runAction(async () => {
+      await onClearChat();
+      setOpen(false);
+    });
+  }, [onClearChat, runAction]);
+
+  const handleSearchInChat = useCallback(() => {
+    if (onSearchInChat) {
+      setOpen(false);
+      onSearchInChat();
+    }
+  }, [onSearchInChat]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Only handle shortcuts when menu is not open and no input is focused
+      if (open || event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      const isCtrlOrCmd = event.ctrlKey || event.metaKey;
+
+      if (isCtrlOrCmd) {
+        switch (event.key.toLowerCase()) {
+          case 'n':
+            event.preventDefault();
+            if (!isLoadingSessions && !isActionBusy) {
+              handleNewChat();
+            }
+            break;
+          case 'r':
+            event.preventDefault();
+            if (!isLoadingSessions && !isActionBusy) {
+              handleRefresh();
+            }
+            break;
+          case 'h':
+            event.preventDefault();
+            handleOpenHistory();
+            break;
+          case 'k':
+            event.preventDefault();
+            if (onSearchInChat) {
+              onSearchInChat();
+            }
+            break;
+        }
+      }
+
+      // Alt shortcuts
+      if (event.altKey) {
+        switch (event.key.toLowerCase()) {
+          case 'c':
+            event.preventDefault();
+            if (onCopyChat && currentSession && !isActionBusy) {
+              handleCopyChat();
+            }
+            break;
+          case 's':
+            event.preventDefault();
+            if (onShareChat && currentSession && !isActionBusy) {
+              handleShareChat();
+            }
+            break;
+          case 'e':
+            event.preventDefault();
+            if (onExportChat && currentSession && !isActionBusy) {
+              handleExport();
+            }
+            break;
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [
+    open,
+    isLoadingSessions,
+    isActionBusy,
+    currentSession,
+    handleNewChat,
+    handleRefresh,
+    handleOpenHistory,
+    handleCopyChat,
+    handleShareChat,
+    handleExport,
+    handleSearchInChat,
+    onCopyChat,
+    onShareChat,
+    onExportChat,
+    onSearchInChat,
+  ]);
+
   return (
     <>
       <div
@@ -257,6 +382,41 @@ export function ChatActionsMenu({
               >
                 <Pencil className="mr-2 h-4 w-4" />
                 <span>Rename Chat</span>
+                <span className="ml-auto text-xs text-muted-foreground">F2</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!canUseCurrentChatActions || !onCopyChat}
+                onClick={() => void handleCopyChat()}
+              >
+                <Copy className="mr-2 h-4 w-4" />
+                <span>Copy Chat</span>
+                <span className="ml-auto text-xs text-muted-foreground">Alt+C</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!canUseCurrentChatActions || !onShareChat}
+                onClick={() => void handleShareChat()}
+              >
+                <Share className="mr-2 h-4 w-4" />
+                <span>Share Chat</span>
+                <span className="ml-auto text-xs text-muted-foreground">Alt+S</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!canUseCurrentChatActions || !onSearchInChat}
+                onClick={handleSearchInChat}
+              >
+                <Search className="mr-2 h-4 w-4" />
+                <span>Search in Chat</span>
+                <span className="ml-auto text-xs text-muted-foreground">Ctrl+K</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!canUseCurrentChatActions || !onClearChat}
+                onClick={() => {
+                  setClearChatOpen(true);
+                  setOpen(false);
+                }}
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                <span>Clear Chat</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 disabled={!canUseCurrentChatActions || !onExportChat}
@@ -264,6 +424,7 @@ export function ChatActionsMenu({
               >
                 <Download className="mr-2 h-4 w-4" />
                 <span>Export Chat</span>
+                <span className="ml-auto text-xs text-muted-foreground">Alt+E</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 disabled={!canUseCurrentChatActions}
@@ -336,6 +497,31 @@ export function ChatActionsMenu({
               disabled={isActionBusy}
             >
               Delete Chat
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={clearChatOpen} onOpenChange={setClearChatOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear Current Chat?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes all messages from the current conversation but keeps the chat session.
+              You can still rename or delete the empty chat later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isActionBusy}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-warning hover:bg-warning/90"
+              onClick={(event) => {
+                event.preventDefault();
+                void handleClearChat();
+              }}
+              disabled={isActionBusy}
+            >
+              Clear Chat
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

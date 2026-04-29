@@ -14,5 +14,6 @@ class OpenAICompatibleProvider(OpenAIProvider):
 
     def __init__(self, *args, **kwargs):
         provider_name = kwargs.pop("provider_name", None) or "openai_compatible"
-        super().__init__(*args, provider_name=provider_name, **kwargs)
+        health_url = kwargs.pop("health_url", None)
+        super().__init__(*args, provider_name=provider_name, health_url=health_url, **kwargs)
 

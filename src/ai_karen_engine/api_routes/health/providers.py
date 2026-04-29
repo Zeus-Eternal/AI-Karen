@@ -1,6 +1,7 @@
 """Provider health and diagnostics endpoints."""
 
 import logging
+import os
 from typing import Dict, Any, Optional
 from fastapi import APIRouter, HTTPException
 import httpx
@@ -26,7 +27,8 @@ async def get_vllm_health() -> Dict[str, Any]:
         from ai_karen_engine.integrations.provider_registry import get_provider_registry
     except ImportError:
         return {
-            "provider": "vllm",
+            "provider": "builtin_vllm",
+            "provider_id": "builtin_vllm",
             "enabled": False,
             "healthy": False,
             "error": "Provider registry not available"
@@ -37,22 +39,43 @@ async def get_vllm_health() -> Dict[str, Any]:
     
     if not vllm_info:
         return {
-            "provider": "vllm",
+            "provider": "builtin_vllm",
+            "provider_id": "builtin_vllm",
             "enabled": False,
             "healthy": False,
             "error": "vLLM not configured in provider registry"
         }
     
-    base_url = vllm_info.get("base_url", "http://localhost:8001/v1")
-    health_url = vllm_info.get("health_check_url", "http://localhost:8001/health")
+    # ProviderRegistration metadata dict or info dict
+    metadata = vllm_info.metadata if hasattr(vllm_info, "metadata") else vllm_info
+    
+    base_url = (
+        os.getenv("KAREN_BUILTIN_VLLM_BASE_URL")
+        or metadata.get("base_url")
+        or "http://vllm:8000/v1"
+    ).rstrip("/")
+    health_url = (
+        os.getenv("KAREN_BUILTIN_VLLM_HEALTH_URL")
+        or metadata.get("health_url")
+        or metadata.get("health_check_url")
+        or "http://vllm:8000/health"
+    )
+    default_model = (
+        os.getenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME")
+        or metadata.get("default_model")
+        or metadata.get("model")
+        or "karen-vllm-local"
+    )
     
     result = {
-        "provider": "vllm",
-        "enabled": vllm_info.get("enabled", False),
+        "provider": "builtin_vllm",
+        "provider_id": "builtin_vllm",
+        "runtime_engine": "vllm",
+        "enabled": metadata.get("enabled", False),
         "base_url": base_url,
         "health_check_url": health_url,
-        "default_model": vllm_info.get("default_model"),
-        "streaming_supported": vllm_info.get("streaming_supported", True),
+        "default_model": default_model,
+        "streaming_supported": metadata.get("streaming_supported", True),
     }
     
     # Test health endpoint
@@ -77,6 +100,7 @@ async def get_vllm_health() -> Dict[str, Any]:
                 result["available_models"] = [
                     m.get("id") for m in models_data.get("data", [])
                 ]
+                result["served_model_available"] = default_model in result["available_models"]
             else:
                 result["models_endpoint_ok"] = False
                 result["models_status_code"] = models_response.status_code
@@ -86,9 +110,9 @@ async def get_vllm_health() -> Dict[str, Any]:
         logger.warning(f"vLLM models endpoint failed: {e}")
     
     # Test generation (only if models endpoint succeeded)
-    if result.get("models_endpoint_ok") and result.get("available_models"):
+    if result.get("models_endpoint_ok") and result.get("served_model_available"):
         try:
-            test_model = result["available_models"][0]
+            test_model = default_model
             async with httpx.AsyncClient(timeout=10.0) as client:
                 gen_response = await client.post(
                     f"{base_url}/chat/completions",
@@ -122,6 +146,7 @@ async def get_vllm_health() -> Dict[str, Any]:
     result["healthy"] = (
         result.get("health_endpoint_ok", False)
         and result.get("models_endpoint_ok", False)
+        and result.get("served_model_available", False)
         and result.get("generation_test_ok", False)
     )
     

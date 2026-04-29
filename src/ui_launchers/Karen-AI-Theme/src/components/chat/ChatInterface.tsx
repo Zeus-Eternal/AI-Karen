@@ -1600,6 +1600,139 @@ export default function ChatInterface() {
     });
   }, [currentSession, messages, toast]);
 
+  const handleCopyChat = useCallback(async () => {
+    if (!currentSession) {
+      toast({
+        title: 'No active chat',
+        description: 'Select or start a chat before copying.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const lines: string[] = [
+      `${currentSession.title || 'Chat Conversation'}`,
+      '',
+      `Session ID: ${currentSession.id}`,
+      `Copied: ${new Date().toISOString()}`,
+      '',
+    ];
+
+    for (const message of messages) {
+      const roleLabel = message.role === 'assistant' ? 'Karen' : message.role === 'user' ? 'User' : 'System';
+      const when = message.timestamp instanceof Date
+        ? message.timestamp.toLocaleString()
+        : new Date(message.timestamp).toLocaleString();
+      lines.push(`${roleLabel} (${when}):`);
+      lines.push(message.content || '');
+      lines.push('');
+    }
+
+    const text = lines.join('\n');
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({
+        title: 'Chat copied',
+        description: 'Conversation copied to clipboard.',
+      });
+    } catch {
+      // Fallback for browsers that don't support clipboard API
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        toast({
+          title: 'Chat copied',
+          description: 'Conversation copied to clipboard.',
+        });
+      } catch {
+        toast({
+          title: 'Copy failed',
+          description: 'Unable to copy chat to clipboard.',
+          variant: 'destructive',
+        });
+      }
+      document.body.removeChild(textArea);
+    }
+  }, [currentSession, messages, toast]);
+
+  const handleShareChat = useCallback(async () => {
+    if (!currentSession) {
+      toast({
+        title: 'No active chat',
+        description: 'Select or start a chat before sharing.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const shareUrl = `${window.location.origin}/chat/${currentSession.id}`;
+    const shareText = `Check out this conversation with Karen AI: ${currentSession.title || 'Chat'}`;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: currentSession.title || 'Karen AI Chat',
+          text: shareText,
+          url: shareUrl,
+        });
+      } else {
+        // Fallback: copy shareable link to clipboard
+        await navigator.clipboard.writeText(`${shareText}\n\n${shareUrl}`);
+        toast({
+          title: 'Share link copied',
+          description: 'Shareable link copied to clipboard.',
+        });
+      }
+    } catch {
+      toast({
+        title: 'Share failed',
+        description: 'Unable to share chat. Link copied to clipboard as fallback.',
+        variant: 'destructive',
+      });
+      try {
+        await navigator.clipboard.writeText(`${shareText}\n\n${shareUrl}`);
+      } catch {
+        console.error('Failed to copy share link');
+      }
+    }
+  }, [currentSession, toast]);
+
+  const handleClearChat = useCallback(async () => {
+    if (!currentSession) {
+      toast({
+        title: 'No active chat',
+        description: 'Select or start a chat before clearing.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Clear messages but keep the session
+    setMessages([]);
+    setStreamedContent('');
+
+    toast({
+      title: 'Chat cleared',
+      description: 'All messages have been removed from this chat.',
+    });
+  }, [currentSession, setMessages, setStreamedContent, toast]);
+
+  const handleSearchInChat = useCallback(() => {
+    // Focus search input if it exists, otherwise show a message
+    const searchInput = document.querySelector('[data-chat-search]') as HTMLInputElement;
+    if (searchInput) {
+      searchInput.focus();
+    } else {
+      toast({
+        title: 'Search not available',
+        description: 'Chat search functionality is not yet implemented.',
+      });
+    }
+  }, [toast]);
+
   // Handle external message injection (e.g. from plugins)
   useEffect(() => {
     const handleInjectMessage = (event: Event) => {
@@ -1884,7 +2017,6 @@ export default function ChatInterface() {
         error={error}
         currentSession={currentSession}
         isLoading={isLoading}
-        streamingStatus={streamingStatus}
       />
 
       {degradedMode.active && (
@@ -1957,6 +2089,10 @@ export default function ChatInterface() {
         refreshSessions={refreshSessions}
         createNewSession={createNewSession}
         onExportChat={handleExportCurrentChat}
+        onCopyChat={handleCopyChat}
+        onShareChat={handleShareChat}
+        onClearChat={handleClearChat}
+        onSearchInChat={handleSearchInChat}
         streamingStatus={streamingStatus}
       />
     </div>
