@@ -1,11 +1,11 @@
 {
-  "provider": "zai",
-  "model": "glm-4.7-flash",
+  "provider": "builtin_vllm",
+  "model": "/app/models/transformers/deepseek-ai--DeepSeek-R1-Distill-Qwen-1.5B",
   "use_memory": true,
   "context_length": 512,
   "decay": 0.1,
   "features": {
-    "copilot_cloud_enabled": true,
+    "copilot_cloud_enabled": false,
     "copilot_advanced_ui": true,
     "copilot_batch_operations": true
   },
@@ -75,7 +75,7 @@
       }
     }
   },
-  "last_selected_model": "glm-4.7-flash",
+  "last_selected_model": "/app/models/transformers/deepseek-ai--DeepSeek-R1-Distill-Qwen-1.5B",
   "model_providers": {
     "zai": {
       "last_model": "glm-4.7-flash",
@@ -99,7 +99,8 @@
       "base_url": "https://api.anthropic.com/v1"
     },
     "gemini": {
-      "last_model": "gemini-1.5-flash"
+      "last_model": "gemini-1.5-flash",
+      "base_url": "https://generativelanguage.googleapis.com/v1beta"
     },
     "ollama": {
       "last_model": "starcoder:128k",

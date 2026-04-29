@@ -553,8 +553,14 @@ async def refresh_token(
     access_token, error = await auth_svc.refresh_access_token(request.refresh_token)
 
     if not access_token:
+        # Map specific transient errors to 503 to prevent frontend logout loops
+        status_code = status.HTTP_401_UNAUTHORIZED
+        if "Database unavailable" in str(error) or "Session not found in memory" in str(error):
+            status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+            logger.warning(f"Refresh token failed due to transient error: {error}")
+            
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=status_code,
             detail=error,
             headers={"WWW-Authenticate": "Bearer"},
         )

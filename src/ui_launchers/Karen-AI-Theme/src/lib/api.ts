@@ -107,6 +107,20 @@ class ApiClient {
     return String(payload);
   }
 
+  private isTransientError(error: unknown): boolean {
+    if (!(error instanceof Error)) return false;
+    const msg = error.message;
+    return (
+      msg.includes('502') ||
+      msg.includes('503') ||
+      msg.includes('504') ||
+      msg.includes('fetch') ||
+      msg.includes('timeout') ||
+      msg.includes('Database unavailable') ||
+      msg.includes('Session not found in memory')
+    );
+  }
+
   private async sleep(ms: number): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, ms));
   }
@@ -409,15 +423,21 @@ class ApiClient {
               headers['Authorization'] = `Bearer ${newToken}`;
             }
           } catch (error) {
-            console.warn('[ApiClient] Token refresh failed:', error);
-            // Clear auth state only after refresh failure
-            localStorage.removeItem('access_token');
-            localStorage.removeItem('refresh_token');
-            localStorage.removeItem('user_data');
-            if (typeof window !== 'undefined') {
-              window.location.href = '/login';
+            console.warn('[ApiClient] Token refresh failed during expiry check:', error);
+            
+            if (this.isTransientError(error)) {
+              console.warn('[ApiClient] Transient failure during token refresh. Preserving local auth state.');
+              headers['Authorization'] = `Bearer ${accessToken}`; // Try with current token anyway
+            } else {
+              // Terminal failure - Clear auth state
+              localStorage.removeItem('access_token');
+              localStorage.removeItem('refresh_token');
+              localStorage.removeItem('user_data');
+              if (typeof window !== 'undefined') {
+                window.location.href = '/login';
+              }
             }
-            return headers; // Return without auth headers
+            return headers;
           }
         } else {
           console.log('[ApiClient] Using access token for Authorization header');
@@ -560,17 +580,10 @@ class ApiClient {
             localStorage.removeItem(this.TOKEN_REFRESH_ATTEMPTED_KEY);
           }
         } catch (refreshError) {
-          const isTransient = refreshError instanceof Error && (
-            refreshError.message.includes('502') || 
-            refreshError.message.includes('503') || 
-            refreshError.message.includes('504') || 
-            refreshError.message.includes('fetch') || 
-            refreshError.message.includes('timeout')
-          );
-
-          if (isTransient) {
+          if (this.isTransientError(refreshError)) {
             console.warn('[ApiClient] Token refresh failed due to transient/degraded state. Preserving auth state.');
             // Let it fall through to the normal error handling below, don't clear auth
+            localStorage.removeItem(this.TOKEN_REFRESH_ATTEMPTED_KEY);
           } else {
             console.warn('[ApiClient] Token refresh failed for 401, redirecting to login:', refreshError);
             localStorage.removeItem(this.TOKEN_REFRESH_ATTEMPTED_KEY);

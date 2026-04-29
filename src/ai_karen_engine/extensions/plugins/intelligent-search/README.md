@@ -144,7 +144,38 @@ Mode is resolved using the following fallback chain:
 3. Manifest default mode
 4. "general" - Default fallback
 
-## Common Parameters
+## Configuration
+
+The plugin supports multiple search providers with automatic fallback logic.
+
+### Providers
+
+1.  **DuckDuckGo (Free)**: Built-in scraper. No configuration needed.
+2.  **Brave Search (Free)**: Built-in scraper. No configuration needed.
+3.  **Mojeek (Free)**: Built-in reliable alternative scraper. No configuration needed.
+4.  **SearxNG (Free)**: Built-in rotation of 12+ public instances. No configuration needed.
+5.  **Wikipedia (Free)**: Built-in reliable knowledge search. No configuration needed.
+6.  **Tavily (Premium)**: Highly accurate AI-focused search. Requires API key.
+7.  **Brave Search (Premium)**: Official high-performance API. Requires API key.
+8.  **Google Custom Search (Premium)**: Official Google results. Requires API key and CX ID.
+
+### Setting API Keys
+
+Configure the following settings in your `.env` or app settings:
+
+```env
+# Tavily Search
+WEB_SEARCH_TAVILY_API_KEY=your_key_here
+
+# Brave Search
+WEB_SEARCH_BRAVE_API_KEY=your_key_here
+
+# Google Custom Search
+WEB_SEARCH_GOOGLE_API_KEY=your_key_here
+WEB_SEARCH_GOOGLE_CX_ID=your_cx_id_here
+```
+
+### Common Parameters
 
 All modes support:
 - `query`: The search query (required)
@@ -153,6 +184,6 @@ All modes support:
 - `freshness_bias`: Bias toward recent results (0.0 to 1.0)
 - `allowed_domains`: List of allowed domains
 - `blocked_domains`: List of blocked domains
-- `time_range`: Time range filter (e.g., "7d", "30d")
+- `time_range`: Time range filter (e.g., "d", "w", "m", "y")
 - `published_after`: Date threshold for results
 - `published_before`: Date threshold for results

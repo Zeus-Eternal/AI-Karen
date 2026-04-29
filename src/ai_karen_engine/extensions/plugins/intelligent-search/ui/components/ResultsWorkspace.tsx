@@ -30,7 +30,6 @@ export function ResultsWorkspace({ state, modeConfig }: ResultsWorkspaceProps) {
     'No live preview is available yet.';
   const featuredHref = featuredItem?.url || '';
   const statusLabel = response?.diagnostics?.degraded ? 'Degraded live fallback' : 'Live crawl';
-  const featuredSource = sources[Math.min(activeSourceIndex, Math.max(0, sources.length - 1))];
   const capabilityTags = [
     `Provider ${providerLabel}`,
     `${sourceCount} sources`,
@@ -144,71 +143,6 @@ export function ResultsWorkspace({ state, modeConfig }: ResultsWorkspaceProps) {
 
         <aside className="min-h-0 overflow-y-auto rounded-3xl border border-border/60 bg-card/75 p-4 shadow-[0_24px_60px_rgba(0,0,0,0.18)] lg:p-5">
           <div className="space-y-4">
-            <div className="rounded-3xl border border-border/60 bg-background/70 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-                Mission control
-              </p>
-              <div className="mt-3 space-y-2">
-                <WorkspaceLine label="Mode" value={modeConfig.label} />
-                <WorkspaceLine label="Provider" value={providerLabel} />
-                <WorkspaceLine label="Status" value={statusLabel} />
-                <WorkspaceLine label="Latency" value={elapsed} />
-              </div>
-            </div>
-
-            {sources.length > 0 && (
-              <div className="rounded-3xl border border-border/60 bg-background/70 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-                      Live sources
-                    </p>
-                    <h3 className="mt-1 text-sm font-semibold text-foreground">
-                      {featuredSource?.title || 'Select a source'}
-                    </h3>
-                  </div>
-                  <span className="inline-flex items-center rounded-full border border-border/60 bg-card/80 px-2.5 py-1 text-[11px] text-muted-foreground">
-                    {sources.length}
-                  </span>
-                </div>
-
-                <div className="mt-3 max-h-64 space-y-2 overflow-auto pr-1">
-                  {sources.map((source, index) => {
-                    const isActive = index === activeSourceIndex;
-
-                    return (
-                      <button
-                        key={source.id || `${source.url}-${index}`}
-                        type="button"
-                        onClick={() => setActiveSourceIndex(index)}
-                        className={`w-full rounded-2xl border px-3 py-3 text-left transition-all ${
-                          isActive
-                            ? 'border-primary bg-primary/10 shadow-[0_10px_24px_rgba(0,0,0,0.14)]'
-                            : 'border-border/60 bg-card/80 hover:border-primary/30 hover:bg-muted/40'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0 space-y-1">
-                            <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-                              Source {index + 1}
-                            </div>
-                            <div className={`truncate text-sm font-medium ${isActive ? 'text-primary' : 'text-foreground'}`}>
-                              {source.title || source.url}
-                            </div>
-                          </div>
-                          <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-background/70 text-[10px] font-semibold text-muted-foreground">
-                            {index + 1}
-                          </span>
-                        </div>
-                        <div className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">
-                          {source.content || source.snippet || 'No preview was returned.'}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
 
             <div className="rounded-3xl border border-border/60 bg-background/70 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
@@ -292,15 +226,6 @@ function SignalTile({
         {label}
       </div>
       <div className="mt-2 text-sm font-semibold text-foreground">{value}</div>
-    </div>
-  );
-}
-
-function WorkspaceLine({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="flex items-center justify-between gap-4 rounded-2xl border border-border/60 bg-card/80 px-3 py-2.5 text-sm">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium text-foreground">{value}</span>
     </div>
   );
 }

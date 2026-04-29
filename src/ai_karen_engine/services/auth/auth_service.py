@@ -669,6 +669,7 @@ class AuthService(BaseService):
         if not self._initialized:
             await self.initialize()
 
+        db_failed = False
         try:
             async with self._session_scope() as db_session:
                 result = await db_session.execute(
@@ -715,6 +716,7 @@ class AuthService(BaseService):
             logger.warning(
                 "Database refresh token failed, falling back to memory: %s", e
             )
+            db_failed = True
 
         # Fallback to in-memory sessions
         try:
@@ -725,6 +727,8 @@ class AuthService(BaseService):
                     break
 
             if not session:
+                if db_failed:
+                    return None, "Database unavailable, session not found in memory"
                 return None, "Invalid refresh token"
 
             if session.expires_at < datetime.utcnow():

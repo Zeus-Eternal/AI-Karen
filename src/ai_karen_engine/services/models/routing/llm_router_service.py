@@ -1095,6 +1095,18 @@ class LLMRouter:
                 model_name=model_name,
             ):
                 yield chunk
+            
+            # Yield metadata for successful primary provider
+            yield {
+                "type": "metadata",
+                "metadata": {
+                    "llm": {
+                        "provider": provider_name,
+                        "model_id": model_name,
+                        "source": "primary_provider",
+                    }
+                }
+            }
             return
         except ProviderProcessingError as error:
             self._structured_log(
@@ -1149,6 +1161,19 @@ class LLMRouter:
                     model_name=None,
                 ):
                     yield chunk
+                
+                # Yield metadata for successful fallback
+                yield {
+                    "type": "metadata",
+                    "metadata": {
+                        "llm": {
+                            "provider": fallback_provider,
+                            "requested_provider": provider_name,
+                            "source": "internal_fallback",
+                            "used_fallback": True,
+                        }
+                    }
+                }
                 return
             except ProviderProcessingError as error:
                 self._structured_log(
@@ -1682,6 +1707,20 @@ class LLMRouter:
         ):
             yield chunk
 
+        # Yield metadata for successful generation
+        yield {
+            "type": "metadata",
+            "metadata": {
+                "llm": {
+                    "provider": provider_name,
+                    "model_id": model_name or "auto",
+                    "actual_provider": provider_name,
+                    "actual_model": model_name or "auto",
+                    "source": "instrumented_call",
+                }
+            }
+        }
+
     def _log_provider_attempt(
         self,
         provider_name: str,
@@ -2109,8 +2148,8 @@ class LLMRouter:
 
     # Runtime Fallback Executor
     RUNTIME_DEGRADED_FALLBACK_ORDER = (
-        "builtin_transformers",
         "builtin_vllm",
+        "builtin_transformers",
         "fallback",
     )
 

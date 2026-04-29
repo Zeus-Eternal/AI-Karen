@@ -39,6 +39,7 @@ class TransformersRuntime(LLMProviderBase):
         self.quantization = quantization
         self.use_flash_attention = use_flash_attention
         self.options = dict(kwargs)
+        self.provider_name = kwargs.get("provider_name", "builtin_transformers")
         self._transformers_available = _lazy_import_transformers()
         self._model_name = self._resolve_model_name(model_path)
 
@@ -62,12 +63,31 @@ class TransformersRuntime(LLMProviderBase):
             cls._instance = cls(**kwargs)
         return cls._instance
 
+    def get_provider_info(self) -> Dict[str, Any]:
+        """Get provider metadata with initialization status."""
+        from ai_karen_engine.integrations.llm_registry import get_registry
+        registry = get_registry()
+        # Call private method safely to avoid recursion if get_provider_info is called from registry
+        models = registry._get_models_for_provider(self.provider_name)
+        
+        return {
+            "name": self.provider_name,
+            "model": self._model_name,
+            "transformers_available": self._transformers_available,
+            "available_models": list(models.keys()),
+            "supports_streaming": False,
+            "supports_embeddings": True,
+            "requires_api_key": False,
+        }
+
     def health_check(self) -> Dict[str, Any]:
         return {
-            "status": "available",
+            "status": "healthy",
+            "provider": self.provider_name,
             "model_path": self.model_path,
             "model": self._model_name,
             "transformers_available": self._transformers_available,
+            "message": "Local transformers runtime ready",
         }
 
     def load_model(self, model_path: Optional[str] = None) -> bool:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from importlib.util import find_spec
 from pathlib import Path
 from typing import Any, Mapping
@@ -125,7 +126,15 @@ def probe_runtime_compatibility(
 
 
 def is_vllm_available() -> bool:
-    return find_spec("vllm") is not None
+    # Local library presence
+    if find_spec("vllm") is not None:
+        return True
+    
+    # Remote/Container presence - check environment variables
+    if os.getenv("VLLM_BASE_URL") or os.getenv("KAREN_VLLM_BASE_URL") or os.getenv("KAREN_VLLM_ENABLED") == "true":
+        return True
+        
+    return False
 
 
 def infer_quantization(metadata_files: set[str], path: Path) -> str | None:

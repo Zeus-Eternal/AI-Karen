@@ -477,7 +477,9 @@ class AuthService {
         error.message.includes('503') || 
         error.message.includes('504') || 
         error.message.includes('fetch') || 
-        error.message.includes('timeout')
+        error.message.includes('timeout') ||
+        error.message.includes('Database unavailable') ||
+        error.message.includes('Session not found in memory')
       )) {
         console.warn('[AuthService] Transient error during token refresh, preserving local auth state.');
       } else {

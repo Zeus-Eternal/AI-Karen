@@ -132,10 +132,25 @@ def discover_local_model_candidates(models_root: str | Path, discovery_config: d
 
             metadata_files = _metadata_files(path if path.is_dir() else path.parent)
 
-            record_id = str(path.resolve())
-            if record_id in seen:
-                continue
-            seen.add(record_id)
+            # Generate a user-friendly model_id
+            try:
+                # Try to make path relative to the models root for a cleaner ID
+                models_root_path = Path(models_root).resolve()
+                if path.resolve().is_relative_to(models_root_path):
+                    rel_id = str(path.resolve().relative_to(models_root_path)).replace("\\", "/")
+                else:
+                    rel_id = str(path.relative_to(base)).replace("\\", "/")
+            except Exception:
+                rel_id = str(path.relative_to(base)).replace("\\", "/")
+
+            # Unescape standard Transformers folder naming (e.g. Qwen--Qwen3.5 -> Qwen/Qwen3.5)
+            # and strip common prefixes for a cleaner ID
+            clean_id = rel_id
+            for prefix in ["transformers/", "local-gguf/", "onnx/", "models/"]:
+                if clean_id.startswith(prefix):
+                    clean_id = clean_id[len(prefix):]
+            
+            clean_id = clean_id.replace("--", "/")
 
             model_format = infer_model_format(path, metadata_files)
             artifact_kind = infer_model_artifact_kind(model_format, metadata_files)
@@ -159,9 +174,9 @@ def discover_local_model_candidates(models_root: str | Path, discovery_config: d
             )
 
             records.append({
-                "model_id": record_id.replace("\\", "/"),
+                "model_id": clean_id,
                 "display_name": _display_name(path),
-                "path": str(path),
+                "path": str(path.resolve()),
                 "relative_path": str(path.relative_to(base)),
                 "model_format": model_format,
                 "artifact_kind": artifact_kind,

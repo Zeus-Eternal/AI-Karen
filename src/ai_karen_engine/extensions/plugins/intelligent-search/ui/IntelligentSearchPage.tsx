@@ -65,16 +65,6 @@ export default function IntelligentSearchPage() {
           />
         </main>
       </div>
-
-      {/* Optional: Global Loading Overlay for initial states if needed */}
-      {state.isLoading && !state.response && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/20 backdrop-blur-sm">
-          <div className="flex flex-col items-center gap-4 p-8 rounded-3xl bg-card border border-border shadow-2xl">
-            <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
-            <p className="text-sm font-medium text-foreground">Initializing live crawl...</p>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

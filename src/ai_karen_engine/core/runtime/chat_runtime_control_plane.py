@@ -894,7 +894,8 @@ class ChatRuntimeControlPlane:
         elif mode == RuntimeMode.EMERGENCY_FALLBACK:
             return self._build_emergency_fallback_response()
         elif mode == RuntimeMode.DEGRADED:
-            return self._build_degraded_response(**context)
+            # Let orchestrator handle DEGRADED mode to provide best-effort responses
+            return None
         else:
             # NORMAL — return None to signal "proceed with orchestrator"
             return None

@@ -535,6 +535,35 @@ class OpenAIProvider(LLMProviderBase):
     def health_check(self) -> Dict[str, Any]:
         """Perform comprehensive health check on OpenAI API."""
         if self.provider_name in ["builtin_vllm", "builtin_transformers"]:
+            # For local providers, check if the server is actually reachable if it has a base_url
+            if self.base_url:
+                try:
+                    import httpx
+                    response = httpx.get(f"{self.base_url.rstrip('/')}/models", timeout=2.0)
+                    if response.status_code == 200:
+                        return {
+                            "status": "healthy",
+                            "provider": self.provider_name,
+                            "model_tested": self.model,
+                            "message": "Local provider reachable",
+                            "initialization_status": "success"
+                        }
+                    else:
+                        return {
+                            "status": "unhealthy",
+                            "provider": self.provider_name,
+                            "error": f"Local provider returned status {response.status_code}",
+                            "initialization_status": "failed"
+                        }
+                except Exception as e:
+                    return {
+                        "status": "unhealthy",
+                        "provider": self.provider_name,
+                        "error": f"Local provider unreachable: {e}",
+                        "initialization_status": "failed"
+                    }
+            
+            # Default to healthy for purely in-process or localhost (best-effort)
             return {
                 "status": "healthy",
                 "provider": self.provider_name,

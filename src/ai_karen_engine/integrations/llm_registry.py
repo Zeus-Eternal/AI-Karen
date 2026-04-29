@@ -1655,12 +1655,81 @@ class LLMRegistry:
         """Get all registry entries that match a provider."""
         if provider_name == "builtin_vllm":
             return self._get_vllm_compatible_models()
+            
+        if provider_name == "builtin_transformers":
+            return self._get_transformers_compatible_models()
+
+        if provider_name == "fallback":
+            return {
+                "kari-fallback-v1": ModelEntry(
+                    model_id="kari-fallback-v1",
+                    library="system",
+                    revision="static",
+                    installed_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                    install_path="system",
+                    files=[],
+                    total_size=0,
+                    pinned=True,
+                    compatibility={
+                        "compatible_runtimes": ["fallback"],
+                        "preferred_runtime": "fallback",
+                        "model_type": "text_generation",
+                    },
+                    metadata={},
+                )
+            }
 
         return {
             key: entry
             for key, entry in self._model_entries.items()
             if self._entry_matches_provider(entry, provider_name)
         }
+
+    def _get_transformers_compatible_models(self) -> Dict[str, ModelEntry]:
+        """Return models that can be served by builtin_transformers."""
+        # Start with models explicitly in the registry
+        compatible = {
+            key: entry
+            for key, entry in self._model_entries.items()
+            if self._entry_matches_provider(entry, "builtin_transformers")
+        }
+        
+        # Augment with discovered local models
+        try:
+            from ai_karen_engine.core.model_runtime.model_discovery_service import (
+                get_model_discovery_service,
+            )
+
+            discovery = get_model_discovery_service()
+            # Transformers can serve 'transformers' format models
+            for model in discovery.get_models(runtime="transformers_direct", model_format="transformers"):
+                if str(model.model_type or "").lower() != "text_generation":
+                    continue
+                model_key = model.model_id.replace("/", "--")
+                if model_key in compatible:
+                    continue
+                    
+                compatible[model_key] = ModelEntry(
+                    model_id=model.model_id,
+                    library="transformers",
+                    revision="discovered",
+                    installed_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                    install_path=model.path,
+                    files=[{"path": rel, "size": 0} for rel in (model.metadata_files or [])],
+                    total_size=model.size_bytes,
+                    pinned=False,
+                    compatibility={
+                        "compatible_runtimes": list(model.compatible_runtimes),
+                        "preferred_runtime": model.preferred_runtime,
+                        "compatibility_confidence": model.compatibility_confidence,
+                        "model_type": model.model_type,
+                    },
+                    metadata=model.to_dict(),
+                )
+        except Exception as exc:
+            logger.debug("Failed to augment Transformers compatibility from discovery: %s", exc)
+
+        return compatible
 
     def _get_vllm_compatible_models(self) -> Dict[str, ModelEntry]:
         """Return models that can be served by builtin_vllm."""

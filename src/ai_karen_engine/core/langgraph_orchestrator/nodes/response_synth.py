@@ -109,23 +109,40 @@ class ResponseSynthesisNode:
                         )
                         
                         final_text = ""
+                        metadata = {}
                         async for chunk in response_gen:
-                            final_text += chunk
+                            if isinstance(chunk, str):
+                                final_text += chunk
+                            elif isinstance(chunk, dict):
+                                # Capture metadata if provided in chunks
+                                metadata.update(chunk.get("metadata", {}).get("llm", {}))
                         
                         if final_text.strip():
-                            # Store metadata for successful primary provider
+                            # Store metadata for successful generation
+                            # Merge initial selection with actual results from generator
                             state["llm_metadata"] = {
                                 "requested_provider": provider_name,
-                                "actual_provider": provider_name,
                                 "requested_model": model_name,
+                                "actual_provider": provider_name,
                                 "actual_model": model_name,
                                 "runtime_engine": provider_name,
                                 "response_source": "live_model",
                                 "degraded_mode": False,
                                 "used_fallback": False,
+                                **metadata, # Override with actual results (e.g. if internal fallback happened)
                             }
+                            
+                            # Ensure actual_provider matches provider if provided in metadata
+                            if "provider" in metadata:
+                                state["llm_metadata"]["actual_provider"] = metadata["provider"]
+                            if "source" in metadata:
+                                state["llm_metadata"]["response_source"] = metadata["source"]
+                            if "used_fallback" in metadata:
+                                state["llm_metadata"]["used_fallback"] = metadata["used_fallback"]
+                                state["llm_metadata"]["degraded_mode"] = metadata["used_fallback"]
+                            
                             logger.info(
-                                f"LLM synthesis successful with primary provider: {provider_name}"
+                                f"LLM synthesis successful. Actual provider: {state['llm_metadata'].get('actual_provider')}"
                             )
                             return final_text.strip()
                     

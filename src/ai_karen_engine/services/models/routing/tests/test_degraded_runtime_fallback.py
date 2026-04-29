@@ -176,7 +176,7 @@ class TestDegradedRuntimeFallback:
 
             # Verify the result uses emergency fallback
             assert "Emergency fallback response activated" in result["content"]
-            assert result["metadata"]["llm"]["provider"] == "fallback"
+            assert result["metadata"]["llm"]["provider"] == "emergency"
             assert result["metadata"]["llm"]["source"] == "hardcoded_emergency"
             assert result["metadata"]["llm"]["model_id"] == "karen-fallback-v1"
 

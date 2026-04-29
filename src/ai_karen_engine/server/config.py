@@ -117,8 +117,8 @@ if os.path.isdir(_src_path) and _src_path not in sys.path:
 
 class Settings(BaseSettings):
     app_name: str = "Kari AI Server"
-    environment: str = Field(default_factory=_default_environment, env="ENVIRONMENT")
-    secret_key: str = Field(..., env="SECRET_KEY")
+    environment: str = Field(default_factory=_default_environment, validation_alias="ENVIRONMENT")
+    secret_key: str = Field(..., validation_alias="SECRET_KEY")
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     # Long-lived token settings for API stability
@@ -132,159 +132,159 @@ class Settings(BaseSettings):
     prometheus_enabled: bool = True
     https_redirect: bool = False
     rate_limit: str = "300/minute"
-    debug: bool = Field(default_factory=_default_debug, env="KARI_DEBUG_MODE")
+    debug: bool = Field(default_factory=_default_debug, validation_alias="KARI_DEBUG_MODE")
     plugin_dir: str = "/app/plugins"
     llm_refresh_interval: int = 3600
 
     # Performance Optimization Settings
     enable_performance_optimization: bool = Field(
-        default=True, env="ENABLE_PERFORMANCE_OPTIMIZATION"
+        default=True, validation_alias="ENABLE_PERFORMANCE_OPTIMIZATION"
     )
     deployment_mode: str = Field(
-        default_factory=_default_deployment_mode, env="DEPLOYMENT_MODE"
+        default_factory=_default_deployment_mode, validation_alias="DEPLOYMENT_MODE"
     )
-    cpu_threshold: float = Field(default=80.0, env="CPU_THRESHOLD")
-    memory_threshold: float = Field(default=85.0, env="MEMORY_THRESHOLD")
-    response_time_threshold: float = Field(default=2.0, env="RESPONSE_TIME_THRESHOLD")
-    enable_lazy_loading: bool = Field(default=True, env="ENABLE_LAZY_LOADING")
-    enable_gpu_offloading: bool = Field(default=True, env="ENABLE_GPU_OFFLOADING")
+    cpu_threshold: float = Field(default=80.0, validation_alias="CPU_THRESHOLD")
+    memory_threshold: float = Field(default=85.0, validation_alias="MEMORY_THRESHOLD")
+    response_time_threshold: float = Field(default=2.0, validation_alias="RESPONSE_TIME_THRESHOLD")
+    enable_lazy_loading: bool = Field(default=True, validation_alias="ENABLE_LAZY_LOADING")
+    enable_gpu_offloading: bool = Field(default=True, validation_alias="ENABLE_GPU_OFFLOADING")
     enable_service_consolidation: bool = Field(
-        default=True, env="ENABLE_SERVICE_CONSOLIDATION"
+        default=True, validation_alias="ENABLE_SERVICE_CONSOLIDATION"
     )
-    max_startup_time: float = Field(default=30.0, env="MAX_STARTUP_TIME")
-    log_level: str = Field(default="INFO", env="LOG_LEVEL")
+    max_startup_time: float = Field(default=30.0, validation_alias="MAX_STARTUP_TIME")
+    log_level: str = Field(default="INFO", validation_alias="LOG_LEVEL")
 
     # HTTP Request Validation Settings (Requirements 4.1, 4.2, 4.3, 4.4)
     max_request_size: int = Field(
-        default=10 * 1024 * 1024, env="MAX_REQUEST_SIZE"
+        default=10 * 1024 * 1024, validation_alias="MAX_REQUEST_SIZE"
     )  # 10MB
-    max_headers_count: int = Field(default=100, env="MAX_HEADERS_COUNT")
-    max_header_size: int = Field(default=8192, env="MAX_HEADER_SIZE")
+    max_headers_count: int = Field(default=100, validation_alias="MAX_HEADERS_COUNT")
+    max_header_size: int = Field(default=8192, validation_alias="MAX_HEADER_SIZE")
     enable_request_validation: bool = Field(
-        default=True, env="ENABLE_REQUEST_VALIDATION"
+        default=True, validation_alias="ENABLE_REQUEST_VALIDATION"
     )
-    enable_security_analysis: bool = Field(default=True, env="ENABLE_SECURITY_ANALYSIS")
-    log_invalid_requests: bool = Field(default=True, env="LOG_INVALID_REQUESTS")
+    enable_security_analysis: bool = Field(default=True, validation_alias="ENABLE_SECURITY_ANALYSIS")
+    log_invalid_requests: bool = Field(default=True, validation_alias="LOG_INVALID_REQUESTS")
     validation_rate_limit_per_minute: int = Field(
-        default=100, env="VALIDATION_RATE_LIMIT_PER_MINUTE"
+        default=100, validation_alias="VALIDATION_RATE_LIMIT_PER_MINUTE"
     )
 
     # Security validation patterns (configurable)
     blocked_user_agents: str = Field(
-        default="sqlmap,nikto,nmap,masscan,zap", env="BLOCKED_USER_AGENTS"
+        default="sqlmap,nikto,nmap,masscan,zap", validation_alias="BLOCKED_USER_AGENTS"
     )
     suspicious_headers: str = Field(
         default="x-forwarded-host,x-cluster-client-ip,x-real-ip",
-        env="SUSPICIOUS_HEADERS",
+        validation_alias="SUSPICIOUS_HEADERS",
     )
 
     # Protocol-level error handling settings
     max_invalid_requests_per_connection: int = Field(
-        default=10, env="MAX_INVALID_REQUESTS_PER_CONNECTION"
+        default=10, validation_alias="MAX_INVALID_REQUESTS_PER_CONNECTION"
     )
     enable_protocol_error_handling: bool = Field(
-        default=True, env="ENABLE_PROTOCOL_ERROR_HANDLING"
+        default=True, validation_alias="ENABLE_PROTOCOL_ERROR_HANDLING"
     )
 
     # Database Connection Configuration (Requirements 4.3, 4.4)
     db_connection_timeout: int = Field(
-        default=45, env="DB_CONNECTION_TIMEOUT"
+        default=45, validation_alias="DB_CONNECTION_TIMEOUT"
     )  # Increased from 15 to 45 seconds
-    db_query_timeout: int = Field(default=30, env="DB_QUERY_TIMEOUT")
-    db_pool_size: int = Field(default=10, env="DB_POOL_SIZE")
-    db_max_overflow: int = Field(default=20, env="DB_MAX_OVERFLOW")
-    db_pool_recycle: int = Field(default=3600, env="DB_POOL_RECYCLE")  # 1 hour
-    db_pool_pre_ping: bool = Field(default=True, env="DB_POOL_PRE_PING")
-    db_pool_timeout: int = Field(default=30, env="DB_POOL_TIMEOUT")
-    db_echo: bool = Field(default=False, env="DB_ECHO")
+    db_query_timeout: int = Field(default=30, validation_alias="DB_QUERY_TIMEOUT")
+    db_pool_size: int = Field(default=10, validation_alias="DB_POOL_SIZE")
+    db_max_overflow: int = Field(default=20, validation_alias="DB_MAX_OVERFLOW")
+    db_pool_recycle: int = Field(default=3600, validation_alias="DB_POOL_RECYCLE")  # 1 hour
+    db_pool_pre_ping: bool = Field(default=True, validation_alias="DB_POOL_PRE_PING")
+    db_pool_timeout: int = Field(default=30, validation_alias="DB_POOL_TIMEOUT")
+    db_echo: bool = Field(default=False, validation_alias="DB_ECHO")
 
     # Database Health Monitoring
     db_health_check_interval: int = Field(
-        default=30, env="DB_HEALTH_CHECK_INTERVAL"
+        default=30, validation_alias="DB_HEALTH_CHECK_INTERVAL"
     )  # seconds
-    db_max_connection_failures: int = Field(default=5, env="DB_MAX_CONNECTION_FAILURES")
+    db_max_connection_failures: int = Field(default=5, validation_alias="DB_MAX_CONNECTION_FAILURES")
     db_connection_retry_delay: int = Field(
-        default=5, env="DB_CONNECTION_RETRY_DELAY"
+        default=5, validation_alias="DB_CONNECTION_RETRY_DELAY"
     )  # seconds
 
     # Graceful Shutdown Configuration
-    shutdown_timeout: int = Field(default=30, env="SHUTDOWN_TIMEOUT")  # seconds
-    enable_graceful_shutdown: bool = Field(default=True, env="ENABLE_GRACEFUL_SHUTDOWN")
+    shutdown_timeout: int = Field(default=30, validation_alias="SHUTDOWN_TIMEOUT")  # seconds
+    enable_graceful_shutdown: bool = Field(default=True, validation_alias="ENABLE_GRACEFUL_SHUTDOWN")
 
     # Extension Authentication Configuration (Requirements 8.1, 8.2, 8.3, 8.4, 8.5)
-    extension_auth_enabled: bool = Field(default=True, env="EXTENSION_AUTH_ENABLED")
+    extension_auth_enabled: bool = Field(default=True, validation_alias="EXTENSION_AUTH_ENABLED")
     extension_secret_key: str = Field(
         default="dev-extension-secret-key-change-in-production",
-        env="EXTENSION_SECRET_KEY",
+        validation_alias="EXTENSION_SECRET_KEY",
     )
-    extension_jwt_algorithm: str = Field(default="HS256", env="EXTENSION_JWT_ALGORITHM")
+    extension_jwt_algorithm: str = Field(default="HS256", validation_alias="EXTENSION_JWT_ALGORITHM")
     extension_access_token_expire_minutes: int = Field(
-        default=60, env="EXTENSION_ACCESS_TOKEN_EXPIRE_MINUTES"
+        default=60, validation_alias="EXTENSION_ACCESS_TOKEN_EXPIRE_MINUTES"
     )  # 1 hour for extension tokens
     extension_service_token_expire_minutes: int = Field(
-        default=30, env="EXTENSION_SERVICE_TOKEN_EXPIRE_MINUTES"
+        default=30, validation_alias="EXTENSION_SERVICE_TOKEN_EXPIRE_MINUTES"
     )  # 30 minutes for service-to-service tokens
     extension_api_key: str = Field(
-        default="dev-extension-api-key-change-in-production", env="EXTENSION_API_KEY"
+        default="dev-extension-api-key-change-in-production", validation_alias="EXTENSION_API_KEY"
     )
 
     # Extension Authentication Mode (development/hybrid/strict)
     extension_auth_mode: str = Field(
-        default_factory=_default_extension_auth_mode, env="EXTENSION_AUTH_MODE"
+        default_factory=_default_extension_auth_mode, validation_alias="EXTENSION_AUTH_MODE"
     )
     extension_dev_bypass_enabled: bool = Field(
         default_factory=_default_extension_dev_bypass,
-        env="EXTENSION_DEV_BYPASS_ENABLED",
+        validation_alias="EXTENSION_DEV_BYPASS_ENABLED",
     )
     extension_require_https: bool = Field(
-        default_factory=_default_extension_require_https, env="EXTENSION_REQUIRE_HTTPS"
+        default_factory=_default_extension_require_https, validation_alias="EXTENSION_REQUIRE_HTTPS"
     )
 
     # Extension Permission Configuration
     extension_default_permissions: str = Field(
-        default="extension:read,extension:write", env="EXTENSION_DEFAULT_PERMISSIONS"
+        default="extension:read,extension:write", validation_alias="EXTENSION_DEFAULT_PERMISSIONS"
     )
     extension_admin_permissions: str = Field(
-        default="extension:*", env="EXTENSION_ADMIN_PERMISSIONS"
+        default="extension:*", validation_alias="EXTENSION_ADMIN_PERMISSIONS"
     )
     extension_service_permissions: str = Field(
         default="extension:background_tasks,extension:health",
-        env="EXTENSION_SERVICE_PERMISSIONS",
+        validation_alias="EXTENSION_SERVICE_PERMISSIONS",
     )
 
     # Extension Rate Limiting
     extension_rate_limit_per_minute: int = Field(
-        default=100, env="EXTENSION_RATE_LIMIT_PER_MINUTE"
+        default=100, validation_alias="EXTENSION_RATE_LIMIT_PER_MINUTE"
     )
-    extension_burst_limit: int = Field(default=20, env="EXTENSION_BURST_LIMIT")
+    extension_burst_limit: int = Field(default=20, validation_alias="EXTENSION_BURST_LIMIT")
     extension_enable_rate_limiting: bool = Field(
-        default=True, env="EXTENSION_ENABLE_RATE_LIMITING"
+        default=True, validation_alias="EXTENSION_ENABLE_RATE_LIMITING"
     )
 
     # Extension Security Settings
     extension_token_blacklist_enabled: bool = Field(
-        default=True, env="EXTENSION_TOKEN_BLACKLIST_ENABLED"
+        default=True, validation_alias="EXTENSION_TOKEN_BLACKLIST_ENABLED"
     )
     extension_max_failed_attempts: int = Field(
-        default=5, env="EXTENSION_MAX_FAILED_ATTEMPTS"
+        default=5, validation_alias="EXTENSION_MAX_FAILED_ATTEMPTS"
     )
     extension_lockout_duration_minutes: int = Field(
-        default=15, env="EXTENSION_LOCKOUT_DURATION_MINUTES"
+        default=15, validation_alias="EXTENSION_LOCKOUT_DURATION_MINUTES"
     )
     extension_audit_logging_enabled: bool = Field(
-        default=True, env="EXTENSION_AUDIT_LOGGING_ENABLED"
+        default=True, validation_alias="EXTENSION_AUDIT_LOGGING_ENABLED"
     )
 
     # Extension Environment-Specific Settings
     extension_development_mode: bool = Field(
         default=RUNTIME_ENV in {"development", "dev", "local", "test", "testing"},
-        env="EXTENSION_DEVELOPMENT_MODE",
+        validation_alias="EXTENSION_DEVELOPMENT_MODE",
     )
     extension_staging_mode: bool = Field(
-        default=RUNTIME_ENV in {"staging", "stage"}, env="EXTENSION_STAGING_MODE"
+        default=RUNTIME_ENV in {"staging", "stage"}, validation_alias="EXTENSION_STAGING_MODE"
     )
     extension_production_mode: bool = Field(
-        default=RUNTIME_ENV in {"production", "prod"}, env="EXTENSION_PRODUCTION_MODE"
+        default=RUNTIME_ENV in {"production", "prod"}, validation_alias="EXTENSION_PRODUCTION_MODE"
     )
 
     @field_validator(

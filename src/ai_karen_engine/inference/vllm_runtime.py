@@ -47,12 +47,23 @@ class VLLMRuntime(LLMProviderBase):
         provider_name: str = "builtin_vllm",
     ) -> None:
         self.model = model
-        self.base_url = (
+        
+        # Resolve base URL with intelligent defaults
+        raw_url = (
             base_url
             or os.getenv("VLLM_BASE_URL")
             or os.getenv("KAREN_VLLM_BASE_URL")
             or ""
-        ).strip() or None
+        ).strip()
+        
+        if not raw_url:
+            # Container-friendly defaults
+            if os.path.exists("/.dockerenv") or os.getenv("KAREN_DOCKER") == "true":
+                raw_url = "http://vllm:8000/v1"
+            else:
+                raw_url = "http://localhost:8001/v1"
+        
+        self.base_url = raw_url
         key = api_key
         if key is None and api_key_env:
             key = (os.getenv(api_key_env) or "").strip() or None
@@ -81,6 +92,22 @@ class VLLMRuntime(LLMProviderBase):
         if cls._instance is None:
             cls._instance = cls(**kwargs)
         return cls._instance
+
+    def get_provider_info(self) -> Dict[str, Any]:
+        """Get provider metadata with initialization status."""
+        try:
+            info = self._provider.get_provider_info()
+            info["provider"] = self.provider_name
+            info["runtime"] = "vllm"
+            return info
+        except Exception:
+            return {
+                "name": self.provider_name,
+                "provider": self.provider_name,
+                "model": self.model,
+                "runtime": "vllm",
+                "status": "unknown"
+            }
 
     def _check_vllm_available(self) -> None:
         """Verify vLLM is configured and available before attempting operations."""
