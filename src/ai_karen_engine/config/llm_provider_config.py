@@ -40,6 +40,8 @@ PROVIDER_NAME_ALIASES: Dict[str, str] = {
 
 # Canonical provider class names with module ownership.
 PROVIDER_CLASS_MODULES: Dict[str, str] = {
+    "VLLMRuntime": "ai_karen_engine.inference.vllm_runtime",
+    "TransformersRuntime": "ai_karen_engine.inference.transformers_runtime",
     "OllamaProvider": "ai_karen_engine.integrations.providers.ollama_provider",
     "OpenAIProvider": "ai_karen_engine.integrations.providers.openai_provider",
     "OpenAICompatibleProvider": "ai_karen_engine.integrations.providers.openai_compatible_provider",
@@ -900,8 +902,8 @@ class LLMProviderConfigManager:
             ),
             models=[
                 ProviderModel(
-                    id="gemini-2.5-pro",
-                    name="Gemini 2.5 Pro",
+                    id="gemini-1.5-pro",
+                    name="Gemini 1.5 Pro",
                     family="gemini",
                     capabilities={"text", "vision", "code"},
                     context_length=2097152,
@@ -911,8 +913,8 @@ class LLMProviderConfigManager:
                     cost_per_1k_tokens=0.0035,
                 ),
                 ProviderModel(
-                    id="gemini-2.5-flash",
-                    name="Gemini 2.5 Flash",
+                    id="gemini-1.5-flash",
+                    name="Gemini 1.5 Flash",
                     family="gemini",
                     capabilities={"text", "vision", "code"},
                     context_length=1048576,
@@ -922,7 +924,7 @@ class LLMProviderConfigManager:
                     cost_per_1k_tokens=0.00075,
                 ),
             ],
-            default_model="gemini-2.5-flash",
+            default_model="gemini-1.5-flash",
             capabilities={"streaming", "vision", "code"},
             limits=ProviderLimits(
                 requests_per_minute=1500,
@@ -1168,8 +1170,8 @@ class LLMProviderConfigManager:
                 ),
                 models=[
                     ProviderModel(
-                        id="claude-sonnet-4-20250514",
-                        name="Claude Sonnet 4",
+                        id="claude-3-5-sonnet-20240620",
+                        name="Claude 3.5 Sonnet",
                         family="claude",
                         capabilities={"text", "vision", "reasoning", "tool_use"},
                         context_length=200000,
@@ -1179,7 +1181,7 @@ class LLMProviderConfigManager:
                         supports_vision=True,
                     ),
                     ProviderModel(
-                        id="claude-opus-4-1-20250805",
+                        id="claude-3-opus-20240229",
                         name="Claude Opus 4.1",
                         family="claude",
                         capabilities={"text", "vision", "reasoning", "tool_use"},
@@ -1200,7 +1202,7 @@ class LLMProviderConfigManager:
                         supports_vision=True,
                     ),
                 ],
-                default_model="claude-sonnet-4-20250514",
+                default_model="claude-3-5-sonnet-20240620",
                 capabilities={"streaming", "vision", "tool_use", "reasoning"},
                 limits=ProviderLimits(
                     concurrent_requests=5,

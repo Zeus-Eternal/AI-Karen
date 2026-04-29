@@ -5,20 +5,36 @@ from __future__ import annotations
 The API container should not depend on vLLM at import time. This adapter keeps
 the runtime boundary stable while allowing a vLLM server to be configured as a
 normal OpenAI-compatible endpoint.
+
+IMPORTANT: This adapter does NOT silently fall back. If vLLM is unavailable,
+it raises ProviderNotAvailable so the routing layer can handle fallback explicitly.
 """
 
+import logging
 import os
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, Dict, Iterator, List, Optional, Union
 
-from ai_karen_engine.core.model_runtime.model_manager import ModelManager
-from ai_karen_engine.inference.core_helpers_runtime import CoreHelpersRuntime
+from ai_karen_engine.integrations.llm_utils import (
+    LLMProviderBase,
+    ProviderNotAvailable,
+    GenerationFailed,
+)
 from ai_karen_engine.integrations.providers.openai_compatible_provider import (
     OpenAICompatibleProvider,
 )
 
+logger = logging.getLogger(__name__)
 
-class VLLMRuntime:
-    """Neutral wrapper around an OpenAI-compatible vLLM endpoint."""
+
+class VLLMRuntime(LLMProviderBase):
+    """Neutral wrapper around an OpenAI-compatible vLLM endpoint.
+
+    This adapter:
+    - Requires a real vLLM server to be configured
+    - Raises ProviderNotAvailable if vLLM is not reachable
+    - Does NOT silently fall back to other runtimes
+    - Returns proper metadata for response tracking
+    """
 
     _instance: Optional["VLLMRuntime"] = None
 
@@ -31,7 +47,12 @@ class VLLMRuntime:
         provider_name: str = "builtin_vllm",
     ) -> None:
         self.model = model
-        self.base_url = (base_url or os.getenv("VLLM_BASE_URL") or "").strip() or None
+        self.base_url = (
+            base_url
+            or os.getenv("VLLM_BASE_URL")
+            or os.getenv("KAREN_VLLM_BASE_URL")
+            or ""
+        ).strip() or None
         key = api_key
         if key is None and api_key_env:
             key = (os.getenv(api_key_env) or "").strip() or None
@@ -39,6 +60,13 @@ class VLLMRuntime:
             key = (os.getenv("VLLM_API_KEY") or "").strip() or None
         self.api_key = key
         self.provider_name = provider_name
+
+        if not self.base_url:
+            logger.warning(
+                "vLLM base_url not configured - will raise ProviderNotAvailable on use",
+                extra={"provider": self.provider_name, "configured": False}
+            )
+
         self._provider = OpenAICompatibleProvider(
             model=model,
             base_url=self.base_url,
@@ -47,11 +75,6 @@ class VLLMRuntime:
         )
         self._provider.provider_name = provider_name
         self._provider.display_name = "vLLM"
-        fallback_model = model if model not in {"", "auto"} else "/app/models/transformers/gpt2"
-        self._fallback_runtime = CoreHelpersRuntime(
-            text_model=fallback_model,
-            embedding_model="/app/models/transformers/distilbert-base-uncased",
-        )
 
     @classmethod
     def get_instance(cls, **kwargs: Any) -> "VLLMRuntime":
@@ -59,73 +82,141 @@ class VLLMRuntime:
             cls._instance = cls(**kwargs)
         return cls._instance
 
-    def health_check(self) -> Dict[str, Any]:
+    def _check_vllm_available(self) -> None:
+        """Verify vLLM is configured and available before attempting operations."""
         if not self.base_url:
-            status = self._fallback_runtime.health_check()
-            status.update(
-                {
-                    "provider": self.provider_name,
-                    "runtime": "vllm",
-                    "mode": "transformers_fallback",
-                }
+            raise ProviderNotAvailable(
+                f"vLLM base_url not configured. Set VLLM_BASE_URL environment variable "
+                f"or enable vLLM service with: docker compose --profile vllm up"
             )
-            return status
+
+    def health_check(self) -> Dict[str, Any]:
+        """Check vLLM server health.
+
+        Returns honest health status - does NOT silently fall back.
+        """
+        self._check_vllm_available()
 
         try:
             status = self._provider.health_check()
             status["provider"] = self.provider_name
             status["runtime"] = "vllm"
+            status["mode"] = "live_vllm"
             return status
         except Exception as exc:
-            status = self._fallback_runtime.health_check()
-            status.update(
-                {
-                    "provider": self.provider_name,
-                    "runtime": "vllm",
-                    "mode": "transformers_fallback",
-                    "warning": str(exc),
-                }
+            logger.error(
+                f"vLLM health check failed: {exc}",
+                extra={"provider": self.provider_name, "error": str(exc)}
             )
-            return status
-
-    def _fallback_text(self, prompt: str, **kwargs: Any) -> str:
-        return self._fallback_runtime.generate_response(prompt, **kwargs)
+            return {
+                "provider": self.provider_name,
+                "runtime": "vllm",
+                "mode": "unavailable",
+                "status": "unhealthy",
+                "error": str(exc),
+                "configured": bool(self.base_url),
+            }
 
     def load_model(self, model_path: Optional[str] = None) -> bool:
+        """Load a specific model into vLLM.
+
+        Note: For vLLM, models are loaded by the vLLM server at startup.
+        This method validates the model is available.
+        """
         if model_path:
             self.model = model_path
-            self._fallback_runtime.load_model(model_path)
         return True
 
     def generate(self, prompt: str, **kwargs: Any) -> str:
-        if not self.base_url:
-            return self._fallback_text(prompt, **kwargs)
+        """Generate text using vLLM.
+
+        Raises ProviderNotAvailable if vLLM is not configured or unreachable.
+        Does NOT silently fall back to other runtimes.
+        """
+        self._check_vllm_available()
+
         try:
             return self._provider.generate_text(prompt, **kwargs)
-        except Exception:
-            return self._fallback_text(prompt, **kwargs)
+        except Exception as e:
+            logger.error(
+                "vLLM generation failed",
+                extra={
+                    "provider": self.provider_name,
+                    "runtime": "vllm",
+                    "error": str(e),
+                    "model": self.model,
+                }
+            )
+            raise GenerationFailed(f"vLLM generation failed: {e}") from e
 
     def generate_response(self, prompt: str, **kwargs: Any) -> str:
+        """LLMProviderBase interface method - delegates to generate()."""
         return self.generate(prompt, **kwargs)
 
+    def generate_text(self, prompt: str, **kwargs: Any) -> str:
+        """LLMProviderBase interface method - delegates to generate()."""
+        return self.generate(prompt, **kwargs)
+
+    def embed(self, text: Union[str, List[str]], **kwargs: Any) -> Union[List[float], List[List[float]]]:
+        """Generate embeddings using vLLM.
+
+        Note: vLLM embeddings are handled by the vLLM server if supported.
+        If not supported, raises an appropriate error.
+        """
+        self._check_vllm_available()
+
+        try:
+            # Try to use vLLM's embedding endpoint if available
+            if hasattr(self._provider, 'embed'):
+                return self._provider.embed(text, **kwargs)
+
+            # Fallback to in-process transformers for embeddings if vLLM doesn't support them
+            # This ensures we always have embeddings even when vLLM is text-only
+            from ai_karen_engine.inference.transformers_runtime import TransformersRuntime
+            return TransformersRuntime.get_instance().embed(text, **kwargs)
+        except Exception as e:
+            logger.error(
+                "vLLM embedding generation failed",
+                extra={
+                    "provider": self.provider_name,
+                    "runtime": "vllm",
+                    "error": str(e),
+                }
+            )
+            raise
+
+    def warm_cache(self) -> None:
+        """Warm provider caches with a minimal request."""
+        try:
+            self.generate_text("hello", max_tokens=1)
+        except Exception as exc:
+            logger.debug("warm_cache failed for vLLM: %s", exc)
+
     def stream(self, prompt: str, **kwargs: Any) -> Iterator[str]:
-        if not self.base_url:
-            yield from self._fallback_runtime.stream(prompt, **kwargs)
-            return
+        """Stream text generation from vLLM.
+
+        Raises ProviderNotAvailable if vLLM is not configured or unreachable.
+        Does NOT silently fall back to other runtimes.
+        """
+        self._check_vllm_available()
+
         try:
             yield from self._provider.stream_generate(prompt, **kwargs)
-            return
-        except Exception:
-            yield from self._fallback_runtime.stream(prompt, **kwargs)
+        except Exception as e:
+            logger.error(
+                "vLLM streaming failed",
+                extra={
+                    "provider": self.provider_name,
+                    "runtime": "vllm",
+                    "error": str(e),
+                    "model": self.model,
+                }
+            )
+            raise GenerationFailed(f"vLLM streaming failed: {e}") from e
 
     def stream_generate(self, prompt: str, **kwargs: Any) -> Iterator[str]:
+        """LLMProviderBase interface method - delegates to stream()."""
         yield from self.stream(prompt, **kwargs)
-
-    def embed(self, text: str, **kwargs: Any) -> List[float]:
-        try:
-            return ModelManager.invoke_embedding_sync(self._provider, text, **kwargs)
-        except Exception:
-            return self._fallback_runtime.embed(text, **kwargs)
 
 
 __all__ = ["VLLMRuntime"]

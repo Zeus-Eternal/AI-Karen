@@ -113,27 +113,46 @@ class ProviderRegistryService:
         return self.llm_router
 
     def _setup_default_fallback_chains(self):
-        """Setup default fallback chains for common use cases"""
+        """Setup default fallback chains for Karen's local-first runtime."""
 
-        # Text generation fallback chain
+        # Text generation fallback chain - vLLM and Transformers only
         self._fallback_chains["text_generation"] = FallbackChain(
             primary="builtin_vllm",
-            fallbacks=["openai", "gemini", "deepseek", "huggingface", "local"],
+            fallbacks=["builtin_transformers", "fallback"],
             capability_required=ProviderCapability.TEXT_GENERATION,
+            max_fallback_attempts=3,
         )
 
-        # Embeddings fallback chain
-        self._fallback_chains["embeddings"] = FallbackChain(
-            primary="builtin_transformers",
-            fallbacks=["openai", "huggingface"],
-            capability_required=ProviderCapability.EMBEDDINGS,
+        # Chat completion fallback chain - vLLM and Transformers only
+        self._fallback_chains["chat_completion"] = FallbackChain(
+            primary="builtin_vllm",
+            fallbacks=["builtin_transformers", "fallback"],
+            capability_required=ProviderCapability.CHAT_COMPLETION,
+            max_fallback_attempts=3,
         )
 
-        # Local-first fallback chain
+        # Local-first fallback chain - vLLM and Transformers only
         self._fallback_chains["local_first"] = FallbackChain(
             primary="builtin_vllm",
-            fallbacks=["openai", "gemini", "deepseek", "huggingface"],
+            fallbacks=["builtin_transformers", "fallback"],
             capability_required=ProviderCapability.TEXT_GENERATION,
+            max_fallback_attempts=3,
+        )
+
+        # Degraded runtime fallback chain - vLLM and Transformers only
+        self._fallback_chains["degraded_runtime"] = FallbackChain(
+            primary="builtin_vllm",
+            fallbacks=["builtin_transformers", "fallback"],
+            capability_required=ProviderCapability.TEXT_GENERATION,
+            max_fallback_attempts=3,
+        )
+
+        # Embeddings fallback chain - can still use cloud for embeddings
+        self._fallback_chains["embeddings"] = FallbackChain(
+            primary="builtin_transformers",
+            fallbacks=["huggingface"],
+            capability_required=ProviderCapability.EMBEDDINGS,
+            max_fallback_attempts=2,
         )
 
     def _endpoint_to_capabilities(

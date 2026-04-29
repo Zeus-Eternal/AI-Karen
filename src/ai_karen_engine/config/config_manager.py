@@ -80,10 +80,22 @@ class VectorDBConfig:
 
 
 @dataclass
+class ChatConfig:
+    """Chat response configuration."""
+
+    response_mode: str = "streaming_first"  # streaming_first, auto, non_streaming
+    streaming_enabled: bool = True
+    streaming_transport: str = "sse"  # sse, openai_sse
+    non_streaming_enabled: bool = True
+    streaming_status_events: bool = True
+    streaming_final_metadata: bool = True
+
+
+@dataclass
 class LLMConfig:
     """LLM configuration."""
 
-    default_provider: str = "builtin_vllm"
+    default_provider: str = "builtin_transformers"
     default_model: str = "auto"
     default_lightweight_model_id: str = "auto"
     default_nlp_model_id: str = "distilbert-base-uncased"
@@ -92,8 +104,8 @@ class LLMConfig:
     transformers_dir: str = "models/transformers"
     fallback_chain: List[str] = field(
         default_factory=lambda: [
-            "builtin_vllm",
             "builtin_transformers",
+            "builtin_vllm",
             "openai",
             "gemini",
             "deepseek",
@@ -219,6 +231,7 @@ class AIKarenConfig:
     database: DatabaseConfig = field(default_factory=DatabaseConfig)
     redis: RedisConfig = field(default_factory=RedisConfig)
     vector_db: VectorDBConfig = field(default_factory=VectorDBConfig)
+    chat: ChatConfig = field(default_factory=ChatConfig)
     llm: LLMConfig = field(default_factory=LLMConfig)
     services: ServiceConfig = field(default_factory=ServiceConfig)
     security: SecurityConfig = field(default_factory=SecurityConfig)
@@ -237,15 +250,23 @@ class AIKarenConfig:
 DEFAULT_CONFIG = {
     "active_user": "default",
     "theme": "dark",
+    "chat": {
+        "response_mode": "streaming_first",
+        "streaming_enabled": True,
+        "streaming_transport": "sse",
+        "non_streaming_enabled": True,
+        "streaming_status_events": True,
+        "streaming_final_metadata": True,
+    },
     "llm": {
-        "default_provider": "builtin_vllm",
+        "default_provider": "builtin_transformers",
         "default_model": "auto",
         "default_lightweight_model_id": "auto",
         "default_nlp_model_id": "distilbert-base-uncased",
         "default_classifier_model_id": "default-classifier-model",
         "models_dir": "models",
         "transformers_dir": "models/transformers",
-        "fallback_chain": ["builtin_vllm", "builtin_transformers", "openai", "gemini", "deepseek", "huggingface"],
+        "fallback_chain": ["builtin_transformers", "builtin_vllm", "openai", "gemini", "deepseek", "huggingface"],
         "provider_defaults": {
             "openai": "gpt-4o-mini",
             "deepseek": "deepseek-chat",
@@ -438,6 +459,9 @@ def _create_config_object(config_dict: Dict[str, Any]) -> AIKarenConfig:
     if "web_ui" in data:
         data["web_ui"] = WebUIConfig(**_filter_kwargs(WebUIConfig, data["web_ui"]))
 
+    if "chat" in data:
+        data["chat"] = ChatConfig(**_filter_kwargs(ChatConfig, data["chat"]))
+
     if "agent_runtime" in data:
         data["agent_runtime"] = AgentRuntimeConfig(
             **_filter_kwargs(AgentRuntimeConfig, data["agent_runtime"])
@@ -573,7 +597,7 @@ def get_default_model(provider: str = "") -> str:
 
 def get_default_provider() -> str:
     """Get the default LLM provider."""
-    return get_llm_config().get("default_provider", "builtin_vllm")
+    return get_llm_config().get("default_provider", "builtin_transformers")
 
 
 def get_provider_defaults() -> Dict[str, str]:
@@ -585,7 +609,7 @@ def get_fallback_chain() -> list:
     """Get the ordered fallback chain of providers."""
     return get_llm_config().get(
         "fallback_chain",
-        ["builtin_vllm", "builtin_transformers", "openai", "gemini", "deepseek", "huggingface"],
+        ["builtin_transformers", "builtin_vllm", "openai", "gemini", "deepseek", "huggingface"],
     )
 
 
@@ -600,9 +624,42 @@ def get_task_assignment(task_type: str) -> Dict[str, str]:
         return assignments[task_type]
     # Fallback to system defaults
     return {
-        "provider": llm.get("default_provider", "builtin_vllm"),
+        "provider": llm.get("default_provider", "builtin_transformers"),
         "model": llm.get("default_model", "auto"),
     }
+
+
+# ---- Centralized Chat Config Helpers ----
+
+
+def get_chat_config() -> Dict[str, Any]:
+    """Get the full chat configuration section."""
+    cfg = load_config()
+    return cfg.get("chat", DEFAULT_CONFIG["chat"])
+
+
+def get_chat_response_mode() -> str:
+    """Get the default chat response mode (streaming_first, auto, non_streaming)."""
+    chat_cfg = get_chat_config()
+    return chat_cfg.get("response_mode", "streaming_first")
+
+
+def is_streaming_enabled() -> bool:
+    """Check if streaming is enabled globally."""
+    chat_cfg = get_chat_config()
+    return chat_cfg.get("streaming_enabled", True)
+
+
+def get_chat_streaming_transport() -> str:
+    """Get the streaming transport type (e.g., 'sse', 'openai_sse')."""
+    chat_cfg = get_chat_config()
+    return chat_cfg.get("streaming_transport", "sse")
+
+
+def is_non_streaming_enabled() -> bool:
+    """Check if non-streaming mode is enabled."""
+    chat_cfg = get_chat_config()
+    return chat_cfg.get("non_streaming_enabled", True)
 
 
 __all__ = [
@@ -625,16 +682,22 @@ __all__ = [
     "restore",
     "register",
     "get_llm_config",
+    "get_chat_config",
     "get_default_model",
     "get_default_provider",
     "get_provider_defaults",
     "get_fallback_chain",
     "get_task_assignment",
+    "get_chat_response_mode",
+    "is_streaming_enabled",
+    "get_chat_streaming_transport",
+    "is_non_streaming_enabled",
     "config_manager",
     "get_config",
     "reload",
     "AIKarenConfig",
     "LLMConfig",
+    "ChatConfig",
     "DatabaseConfig",
     "RedisConfig",
     "VectorDBConfig",
@@ -730,7 +793,7 @@ class ConfigManager:
         # Ensure default fallback uses the built-in runtime provider IDs.
         return config.get("llm_providers", {}).get(
             "fallback_hierarchy",
-            ["builtin_vllm", "builtin_transformers", "openai", "gemini", "deepseek", "huggingface"],
+            ["builtin_transformers", "builtin_vllm", "openai", "gemini", "deepseek", "huggingface"],
         )
 
     def get_plugins_config(self):

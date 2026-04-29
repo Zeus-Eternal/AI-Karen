@@ -207,13 +207,26 @@ class GeneralHandler(BaseWebSearchModeHandler):
                         "title": result.title,
                         "url": result.url,
                         "snippet": result.snippet,
+                        "content": result.content,
                         "publishedDate": result.published_date,
                     }
                     for result in search_response.results
                 ]
+                prepared["results"] = prepared.get("results", [])
+                prepared["extractedData"] = None
                 prepared["provider"] = search_response.provider
                 prepared["total_results"] = search_response.total_results
                 prepared["search_time"] = search_response.search_time
+                
+                # Ensure diagnostic fields are present for UI counters
+                prepared.setdefault("diagnostics", {
+                    "mode": self.MODE,
+                    "sourceCount": len(prepared["sources"]),
+                    "urlsFound": len(prepared["sources"]),
+                    "pagesCrawled": 0,
+                    "chunksProduced": 0,
+                    "latencyMs": int((search_response.search_time or 0) * 1000)
+                })
 
                 self.logger.info(
                     f"Web search completed",

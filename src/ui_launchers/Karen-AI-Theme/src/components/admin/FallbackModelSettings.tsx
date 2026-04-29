@@ -237,7 +237,7 @@ export default function FallbackModelSettings() {
                   ) : null}
                   {groupedProviders?.thirdPartyProviders.length ? (
                     <SelectGroup>
-                      <SelectLabel>Third-Party Providers</SelectLabel>
+                      <SelectLabel>Cloud Providers</SelectLabel>
                       {groupedProviders.thirdPartyProviders.map((provider) => (
                         <SelectItem key={provider.id} value={provider.id}>
                           {getRuntimeDisplayName(provider.id, provider.display_name)}
@@ -443,7 +443,7 @@ export default function FallbackModelSettings() {
           ) : null}
           {groupedProviders?.thirdPartyProviders.length ? (
             <div className="space-y-2">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Third-Party Providers</h4>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cloud Providers</h4>
               {groupedProviders.thirdPartyProviders.map((provider) => (
                 <div key={provider.id} className="p-4 rounded-xl border border-border/50 bg-muted/20 space-y-2">
                   <div className="flex items-center justify-between">

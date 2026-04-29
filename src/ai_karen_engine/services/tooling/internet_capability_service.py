@@ -107,6 +107,7 @@ class InternetSearchRequest:
     bypass_cache: bool = False
     timeout_seconds: float = 30.0
     crawl_concurrency: int = 5
+    extraction: Optional[Dict[str, Any]] = None
 
     @classmethod
     def from_payload(
@@ -149,6 +150,7 @@ class InternetSearchRequest:
             bypass_cache=bool(safe_payload.get("bypass_cache", False)),
             timeout_seconds=timeout_seconds,
             crawl_concurrency=crawl_concurrency,
+            extraction=safe_payload.get("extraction"),
         )
 
     def strategy_overrides(self) -> Dict[str, Any]:
@@ -477,8 +479,13 @@ class InternetCapabilityService:
 
         if not urls:
             return []
+            
+        extraction_strategy = None
+        if request.extraction and hasattr(self.crawler, "_build_extraction_strategy"):
+            extraction_strategy = self.crawler._build_extraction_strategy(request.extraction)
 
-        if hasattr(self.crawler, "fetch_many"):
+        # Optimization: use fetch_many if available and no specialized extraction requested
+        if not extraction_strategy and hasattr(self.crawler, "fetch_many"):
             results = await self.crawler.fetch_many(
                 list(urls),
                 bypass_cache=request.bypass_cache,
@@ -493,6 +500,7 @@ class InternetCapabilityService:
                     result = await self.crawler.fetch_url(
                         url,
                         bypass_cache=request.bypass_cache,
+                        extraction_strategy=extraction_strategy,
                     )
                     if isinstance(result, dict):
                         return result
@@ -540,6 +548,33 @@ class InternetCapabilityService:
             status=status,
         )
 
+        # Aggregate extracted data if multiple sources have it
+        aggregated_extracted_data = {}
+        for s in (sources or []):
+            if s.get("extracted_data"):
+                # If it's a list, we append it; if it's a dict, we merge it
+                s_data = s["extracted_data"]
+                if isinstance(s_data, list):
+                    if "items" not in aggregated_extracted_data:
+                        aggregated_extracted_data["items"] = []
+                    aggregated_extracted_data["items"].extend(s_data)
+                elif isinstance(s_data, dict):
+                    aggregated_extracted_data.update(s_data)
+                else:
+                    if "raw" not in aggregated_extracted_data:
+                        aggregated_extracted_data["raw"] = []
+                    aggregated_extracted_data["raw"].append(s_data)
+
+        # Merge top-level extraction data if present (e.g. from mode-specific logic)
+        if request.extraction and "items" not in aggregated_extracted_data and not aggregated_extracted_data:
+            # Check if any crawl results had it directly
+            for r in crawl_results:
+                if r.get("extracted_content"):
+                    ec = r["extracted_content"]
+                    if isinstance(ec, dict): aggregated_extracted_data.update(ec)
+                    elif isinstance(ec, list):
+                        aggregated_extracted_data.setdefault("items", []).extend(ec)
+
         response = {
             "query": request.query,
             "mode": mode,
@@ -553,9 +588,10 @@ class InternetCapabilityService:
                 degraded=degraded,
                 warnings=list(warnings),
             ),
-            "sources": sources,
-            "citations": citations,
-            "results": results,
+            "sources": sources or [],
+            "citations": citations or [],
+            "results": results or [],
+            "extractedData": aggregated_extracted_data or None,
             "insights": self._build_insights(
                 mode=mode,
                 sources=sources,
@@ -580,6 +616,14 @@ class InternetCapabilityService:
                 "request_id": execution_context.request_id,
             },
             "provider": self._provider_name(),
+            "liveSearch": { # NextJS UI prefers liveSearch camelCase often, keep both for compatibility
+                "mode": mode,
+                "query": request.query,
+                "expanded_queries": list(expanded_queries)[:5],
+                "urls": list(urls),
+                "crawl_results": list(crawl_results),
+                "processed_chunks": list(processed_chunks),
+            },
             "live_search": {
                 "mode": mode,
                 "query": request.query,
@@ -714,10 +758,19 @@ class InternetCapabilityService:
 
             value = {
                 "url": getattr(item, "url", ""),
+                "final_url": getattr(item, "final_url", ""),
                 "title": getattr(item, "title", ""),
                 "markdown": getattr(item, "markdown", ""),
                 "text": getattr(item, "text", ""),
+                "html": getattr(item, "html", ""),
+                "cleaned_html": getattr(item, "cleaned_html", ""),
+                "links": getattr(item, "links", []) or [],
+                "media": getattr(item, "media", {}) or {},
                 "metadata": getattr(item, "metadata", {}) or {},
+                "extracted_content": getattr(item, "extracted_content", None),
+                "success": getattr(item, "success", True),
+                "status_code": getattr(item, "status_code", None),
+                "elapsed_ms": getattr(item, "elapsed_ms", 0.0),
             }
             normalized.append(value)
 
@@ -821,11 +874,16 @@ class InternetCapabilityService:
                     "title": title,
                     "domain": urlparse(url).netloc,
                     "snippet": self._summarize_text(preview_source, 220),
-                    "content": self._summarize_text(preview_source, 800),
+                    "content": self._summarize_text(preview_source, 1000),
+                    "full_content": markdown,
+                    "markdown": markdown,
+                    "extracted_data": result.get("extracted_content"),
                     "publishedDate": metadata.get("published_date")
                     or metadata.get("date")
                     or metadata.get("article:published_time"),
                     "relevanceScore": round(max(0.0, 1.0 - (len(sources) * 0.08)), 2),
+                    "links": result.get("links", []),
+                    "media": result.get("media", {}),
                 }
             )
 

@@ -1375,6 +1375,9 @@ class AgentRegistry(BaseService):
             if self._metrics_service:
                 await self._metrics_service.record_agent_execution_time(agent_id, 0.0)
             
+            # Persist agent data
+            await self._enhanced_save_agent_data()
+            
             return True
     
     async def unregister_agent(self, agent_id: str) -> bool:
@@ -2011,6 +2014,9 @@ class AgentRegistry(BaseService):
                 "agent_id": agent_id,
                 "metadata": metadata
             })
+            
+            # Persist changes
+            await self._enhanced_save_agent_data()
             
             self.logger.info(f"Updated metadata for agent {agent_id}")
             return True
@@ -3962,6 +3968,9 @@ class AgentRegistry(BaseService):
             # Update agent instance status
             if agent_id in self._agent_instances:
                 self._agent_instances[agent_id]["status"] = agent_status
+            
+            # Persist changes
+            await self._enhanced_save_agent_data()
             
             self.logger.info(f"Agent {agent_id} status updated to {status}")
             return True

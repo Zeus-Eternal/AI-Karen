@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import base64
 import logging
+import os
 import secrets
 import time
 from datetime import datetime, timedelta
@@ -83,8 +84,8 @@ class SecureAuthMiddleware:
 
         self.jwt_secret = _load_auth_jwt_secret()
         self.jwt_algorithm: str = "HS256"
-        self.jwt_expiration_hours: int = 24
-        self.refresh_token_expiration_days: int = 7
+        self.jwt_expiration_hours: int = 8  # 8 hours instead of 24
+        self.refresh_token_expiration_days: int = 30  # 30 days instead of 7
         self.redis_client: Optional[Union[redis.Redis, Any]] = None
 
         try:
@@ -383,7 +384,7 @@ class SecureAuthMiddleware:
     def is_public_endpoint(self, path: str) -> bool:
         """
         Check if an endpoint is public and does not require authentication.
-        
+
         Public endpoints include:
         - Health and monitoring
         - API documentation
@@ -404,6 +405,21 @@ class SecureAuthMiddleware:
             "/api/public",
             "/ws",
         ]
+
+        # Check if copilot endpoints should be public
+        allow_public_copilot = os.getenv("ALLOW_PUBLIC_COPILOT", "false").lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+        if allow_public_copilot:
+            public_patterns.extend([
+                "/api/copilot",
+                "/api/conversations/ensure-session",
+                "/api/conversations/by-session",
+                "/api/auth/me",
+            ])
+
         return any(path.startswith(pattern) for pattern in public_patterns)
 
     async def validate_token(self, token: str) -> Dict[str, Any]:
@@ -447,13 +463,7 @@ class SecureAuthMiddleware:
         """FastAPI dependency to get current user."""
         try:
             path = request.url.path
-            if self.is_public_endpoint(path):
-                return {
-                    "user_id": "anonymous",
-                    "email": None,
-                    "user_type": "anonymous",
-                    "permissions": [],
-                }
+            is_public = self.is_public_endpoint(path)
 
             # 1. Try Bearer token or access_token cookie
             token = self._extract_token_from_request(request)
@@ -462,7 +472,8 @@ class SecureAuthMiddleware:
                     payload = self._verify_access_token(token)
                     return self._get_user_from_payload(payload)
                 except AuthenticationError as e:
-                    logger.warning(f"Access token verification failed for {path}: {e}")
+                    if not is_public:
+                        logger.warning(f"Access token verification failed for {path}: {e}")
                     # Continue to try session token if access token fails
                 except Exception as e:
                     logger.error(f"Unexpected error verifying access token for {path}: {e}")
@@ -475,10 +486,21 @@ class SecureAuthMiddleware:
                     payload = token_result["payload"]
                     return self._get_user_from_payload(payload)
                 
-                logger.warning(f"Session token validation failed for {path}: {token_result.get('error')}")
-                raise AuthenticationError(
-                    token_result.get("error") or "Session token invalid"
-                )
+                if not is_public:
+                    logger.warning(f"Session token validation failed for {path}: {token_result.get('error')}")
+                    raise AuthenticationError(
+                        token_result.get("error") or "Session token invalid"
+                    )
+
+            if is_public:
+                return {
+                    "user_id": "anonymous",
+                    "email": None,
+                    "user_type": "anonymous",
+                    "permissions": [],
+                    "tenant_id": "default",
+                    "authenticated": False,
+                }
 
             logger.info(f"No authentication provided for protected endpoint {path}")
             raise AuthenticationError("No authentication token provided")
@@ -487,6 +509,15 @@ class SecureAuthMiddleware:
             raise
         except Exception as e:
             logger.error(f"Error authenticating request: {e}")
+            if is_public:
+                return {
+                    "user_id": "anonymous",
+                    "email": None,
+                    "user_type": "anonymous",
+                    "permissions": [],
+                    "tenant_id": "default",
+                    "authenticated": False,
+                }
             raise AuthenticationError("Failed to authenticate user")
 
 

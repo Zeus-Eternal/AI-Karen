@@ -14,6 +14,11 @@ export interface RuntimeProviderDetails {
   selectable?: boolean;
   requires_api_key?: boolean;
   api_key_configured?: boolean;
+  api_key_masked?: string | null;
+  api_key_header?: string;
+  api_key_prefix?: string;
+  custom_headers?: Record<string, string>;
+  docs_url?: string | null;
   base_url?: string | null;
   default_base_url?: string | null;
   default_model?: string | null;
@@ -91,12 +96,12 @@ const SYSTEM_FALLBACK_SEED: RuntimeProviderDetails = {
   selectable: false,
   default_model: 'auto',
   selected_model: 'auto',
-  supports_model_discovery: false,
+  supports_model_discovery: true,  // Enable dynamic model discovery
   supports_model_pull: false,
   supports_custom_auth: false,
-  supports_manual_model_entry: true,
+  supports_manual_model_entry: false,
   supports_base_url_override: false,
-  models: [{ id: 'auto', name: 'auto', source: 'builtin' }],
+  models: [],  // Models will be loaded dynamically from /api/local/transformers/models
 };
 
 export const getRuntimeProviderBucket = (
@@ -148,6 +153,29 @@ const normalizeModels = (
         : [];
 };
 
+/**
+ * Dynamically load models from the transformers directory
+ * This scans the backend /api/local/transformers/models endpoint
+ * which returns all downloaded models.
+ */
+export async function loadDynamicTransformersModels(): Promise<RuntimeProviderModel[]> {
+  try {
+    const response = await apiClient.get<{ models: string[] }>(
+      '/api/local/transformers/models'
+    );
+
+    return response.models.map(modelName => ({
+      id: modelName,
+      name: modelName,
+      family: 'transformers',
+      source: 'runtime',
+    }));
+  } catch (error) {
+    console.error('Failed to load transformers models:', error);
+    return [];
+  }
+}
+
 export function normalizeModelSettingsResponse(response: RuntimeSettingsResponse): NormalizedRuntimeInventory {
   const providerMap = new Map<string, RuntimeProviderDetails>();
   [...BUILTIN_RUNTIME_SEEDS, ...(response.providers || [])].forEach((provider) => {
@@ -159,7 +187,10 @@ export function normalizeModelSettingsResponse(response: RuntimeSettingsResponse
   const providers = Array.from(providerMap.values())
     .sort((a, b) => sortRank(a) - sortRank(b) || getRuntimeDisplayName(a.id, a.display_name).localeCompare(getRuntimeDisplayName(b.id, b.display_name)))
     .map((provider) => {
-      const normalizedModels = normalizeModels(provider, response.selected_provider, response.selected_model);
+      // For transformers, load models dynamically from backend
+      const normalizedModels = provider.id === SYSTEM_FALLBACK_SEED.id && provider.supports_model_discovery
+        ? []
+        : normalizeModels(provider, response.selected_provider, response.selected_model);
       return {
         ...provider,
         runtime_display_name: getRuntimeDisplayName(provider.id, provider.display_name),

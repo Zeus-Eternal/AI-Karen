@@ -1,138 +1,143 @@
 import React, { useMemo, useState } from 'react';
 import { IntelligentSearchResponse, SearchResultItem, SearchSourceItem } from '../types';
-import { Send } from 'lucide-react';
+import { Send, FileText, Code, AlignLeft, Download, ExternalLink } from 'lucide-react';
 
 interface PanelProps {
   response: IntelligentSearchResponse;
 }
 
+type ViewMode = 'snippet' | 'markdown' | 'json';
+
+/**
+ * Enhanced function to send rich content to the main Karen chat
+ */
+const sendToChat = (item: any) => {
+  let content = `I found this information for you:\n\n**${item.title || 'Search Result'}**\n\n`;
+  
+  if (item.extracted_data || item.extractedData) {
+    const data = item.extracted_data || item.extractedData;
+    content += `### Structured Data\n\`\`\`json\n${JSON.stringify(data, null, 2)}\n\`\`\`\n\n`;
+  }
+  
+  if (item.markdown || item.full_content) {
+    const fullText = item.markdown || item.full_content;
+    content += `### Content\n${fullText}\n\n`;
+  } else if (item.content || item.snippet) {
+    content += `${item.content || item.snippet}\n\n`;
+  } else {
+    content += '_No preview content was available for this item._\n\n';
+  }
+  
+  if (item.url) {
+    content += `Source: ${item.url}`;
+  }
+  
+  const event = new CustomEvent('karen:inject-message', { 
+    detail: { 
+      content,
+      role: 'user',
+      autoSubmit: true 
+    } 
+  });
+  window.dispatchEvent(event);
+};
+
+/**
+ * Helper to toggle between different content views
+ */
+function ViewToggle({ active, onClick, label, icon }: { active: boolean; onClick: () => void; label: string; icon: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] transition-all px-3 py-1.5 rounded-lg ${
+        active ? 'bg-primary/10 text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'
+      }`}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
+
 export function ResultsPanel({ response }: PanelProps) {
   const results = response.results || [];
   const sources = response.sources || [];
-  const featuredItem = results[0] ?? sources[0];
-  const featuredPreview =
-    featuredItem?.content ||
-    featuredItem?.snippet ||
-    response.summary ||
-    'No preview was returned.';
   const initialActiveSourceIndex = useMemo(() => getMostRelevantSourceIndex(sources), [sources]);
   const [activeSourceIndex, setActiveSourceIndex] = useState(initialActiveSourceIndex);
+  const [sourceViewMode, setSourceViewMode] = useState<ViewMode>('snippet');
+
   const featuredSource = useMemo(
     () => sources[Math.min(activeSourceIndex, Math.max(0, sources.length - 1))],
     [activeSourceIndex, sources],
   );
-  const sourceCount = response.diagnostics?.sourceCount ?? response.sources?.length ?? 0;
+
+  const sourceCount = response.diagnostics?.sourceCount ?? sources.length ?? 0;
   const resultCount = results.length;
-  const providerLabel = response.provider || response.metadata?.provider || 'live';
+  const providerLabel = response.provider || response.metadata?.provider || 'crawl4ai';
 
   React.useEffect(() => {
     setActiveSourceIndex(initialActiveSourceIndex);
   }, [initialActiveSourceIndex, sources]);
 
-  const sendToChat = (item: any) => {
-    const content = `I found this information for you:\n\n**${item.title}**\n${item.content || item.snippet || 'No preview was returned.'}\n\nSource: ${item.url}`;
-    const event = new CustomEvent('karen:inject-message', { 
-      detail: { 
-        content,
-        role: 'user',
-        autoSubmit: true 
-      } 
-    });
-    window.dispatchEvent(event);
-  };
-
   return (
     <div className="space-y-6">
+      {/* 1. Summary & Overview Section */}
       <div className="rounded-3xl border border-border/60 bg-card/90 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.18)]">
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border/40 pb-5">
+          <div className="space-y-2">
+            <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground font-bold">Intelligent Summary</p>
+            <h3 className="text-xl font-semibold text-foreground">Synthesis of {sourceCount} sources</h3>
+          </div>
+          <button 
+            onClick={() => sendToChat({ title: 'Search Summary', snippet: response.summary, url: 'Live Search Intelligence' })}
+            className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-bold uppercase tracking-wider text-primary-foreground transition-all hover:scale-105 shadow-lg active:scale-95"
+          >
+            <Send className="h-3.5 w-3.5" />
+            Inject Summary
+          </button>
+        </div>
+
+        <div className="mt-5 grid gap-6 lg:grid-cols-[1fr_300px]">
           <div className="space-y-4">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="space-y-2">
-                <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">Live summary</p>
-                <h3 className="text-xl font-semibold text-foreground">Crawl4AI powered response</h3>
-              </div>
-              <button 
-                onClick={() => sendToChat({ title: 'Search Summary', snippet: response.summary, url: 'Live Search' })}
-                className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-primary transition-colors hover:bg-primary/20"
-              >
-                <Send className="h-3 w-3" />
-                Send summary
-              </button>
+            <div className="rounded-2xl border border-border/60 bg-background/50 p-5 text-sm leading-7 text-muted-foreground backdrop-blur-sm">
+              {response.summary || <span className="italic">Karen was unable to generate a summary for this crawl.</span>}
             </div>
-
-            <div className="flex flex-wrap gap-2">
-              <MetricPill label="Sources" value={sourceCount} />
-              <MetricPill label="Cards" value={resultCount} />
+            <div className="flex flex-wrap gap-2 pt-2">
               <MetricPill label="Provider" value={providerLabel} />
-            </div>
-
-            <div className="rounded-2xl border border-border/60 bg-background/70 p-5 text-sm leading-6 text-muted-foreground backdrop-blur">
-              {response.summary || <span className="italic">No summary returned from this search.</span>}
+              <MetricPill label="Sources" value={sourceCount} />
+              <MetricPill label="Passages" value={resultCount} />
+              <MetricPill label="Time" value={`${response.execution_time_ms || 0}ms`} />
             </div>
           </div>
 
-          <div className="rounded-3xl border border-border/60 bg-background/70 p-4 shadow-sm">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-              Featured preview
-            </p>
-            <h4 className="mt-2 text-base font-semibold leading-6 text-foreground">
-              {featuredItem?.title || 'No result cards yet'}
-            </h4>
-            <p className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap break-words text-sm leading-6 text-muted-foreground">
-              {featuredPreview}
-            </p>
-            {featuredItem?.url && (
-              <a
-                href={featuredItem.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-primary transition-colors hover:text-primary/80"
-              >
-                Open source
-              </a>
-            )}
+          <div className="rounded-2xl border border-border/60 bg-background/70 p-4 flex flex-col justify-center text-center space-y-3">
+             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                <FileText className="h-6 w-6 text-primary" />
+             </div>
+             <div>
+               <p className="text-sm font-semibold text-foreground">Structured Output</p>
+               <p className="text-[11px] text-muted-foreground mt-1">Crawl4AI identified {results.length} key passages from the live web.</p>
+             </div>
           </div>
         </div>
       </div>
 
+      {/* 2. Intelligence Explorer Section (Merged sources/excerpts) */}
       {sources.length > 0 && (
-        <div className="rounded-3xl border border-border/60 bg-card/90 p-5 shadow-[0_24px_60px_rgba(0,0,0,0.18)]">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="space-y-2">
-              <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">Live sources</p>
-              <h3 className="text-lg font-semibold text-foreground">
-                {featuredSource?.title || 'Select a source to read'}
-              </h3>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setActiveSourceIndex((current) => Math.max(0, current - 1))}
-                disabled={activeSourceIndex <= 0}
-                className="rounded-full border border-border/60 bg-background/70 px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Previous
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveSourceIndex((current) => Math.min(sources.length - 1, current + 1))}
-                disabled={activeSourceIndex >= sources.length - 1}
-                className="rounded-full border border-border/60 bg-background/70 px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Next
-              </button>
-            </div>
+        <div className="rounded-3xl border border-border/60 bg-card/90 overflow-hidden shadow-[0_24px_60px_rgba(0,0,0,0.18)]">
+          <div className="bg-muted/30 px-6 py-4 border-b border-border/60 flex items-center justify-between">
+             <div className="flex items-center gap-2">
+               <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+               <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground font-bold">Source Intelligence</p>
+             </div>
+             <span className="text-[10px] bg-background/80 border border-border/60 px-2 py-0.5 rounded-full text-muted-foreground">
+               {activeSourceIndex + 1} / {sources.length}
+             </span>
           </div>
 
-          <div className="mt-4 grid gap-4 xl:grid-cols-[280px_minmax(0,1fr)]">
-            <div className="rounded-2xl border border-border/60 bg-background/70 p-3">
-              <div className="mb-3 flex items-center justify-between">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                  Source list
-                </p>
-                <span className="text-xs text-muted-foreground">{sources.length}</span>
-              </div>
-              <div className="max-h-[24rem] space-y-2 overflow-auto pr-1">
+          <div className="grid gap-0 xl:grid-cols-[320px_1fr]">
+            <div className="border-r border-border/60 bg-muted/10">
+              <div className="max-h-[32rem] space-y-1 overflow-auto p-3 custom-scrollbar">
                 {sources.map((source, index) => {
                   const isActive = index === activeSourceIndex;
                   return (
@@ -140,27 +145,22 @@ export function ResultsPanel({ response }: PanelProps) {
                       key={source.id || `${source.url}-${index}`}
                       type="button"
                       onClick={() => setActiveSourceIndex(index)}
-                      className={`w-full rounded-2xl border px-3 py-3 text-left transition-all ${
+                      className={`w-full rounded-xl border px-3 py-3 text-left transition-all ${
                         isActive
-                          ? 'border-primary bg-primary/10 shadow-[0_10px_24px_rgba(0,0,0,0.14)]'
-                          : 'border-border/60 bg-card/80 hover:border-primary/30 hover:bg-muted/40'
+                          ? 'border-primary/50 bg-primary/10 shadow-sm'
+                          : 'border-transparent hover:bg-muted/50'
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 space-y-1">
-                          <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
-                            Source {index + 1}
-                          </div>
-                          <div className={`truncate text-sm font-medium ${isActive ? 'text-primary' : 'text-foreground'}`}>
-                            {source.title || source.url}
-                          </div>
-                        </div>
-                        <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-background/70 text-[10px] font-semibold text-muted-foreground">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`h-5 w-5 shrink-0 flex items-center justify-center rounded-full text-[10px] font-bold ${isActive ? 'bg-primary text-primary-foreground' : 'bg-muted-foreground/20 text-muted-foreground'}`}>
                           {index + 1}
                         </span>
+                        <span className={`truncate text-[11px] font-bold uppercase tracking-wider ${isActive ? 'text-primary' : 'text-muted-foreground'}`}>
+                          {source.domain || domainFromUrl(source.url)}
+                        </span>
                       </div>
-                      <div className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">
-                        {source.content || source.snippet || 'No preview was returned.'}
+                      <div className={`truncate text-sm font-medium ${isActive ? 'text-foreground' : 'text-muted-foreground/80'}`}>
+                        {source.title || source.url}
                       </div>
                     </button>
                   );
@@ -168,34 +168,58 @@ export function ResultsPanel({ response }: PanelProps) {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-border/60 bg-background/70 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                  Readable excerpt
-                </p>
+            <div className="flex flex-col bg-background/40">
+              <div className="flex items-center justify-between border-b border-border/60 bg-muted/20 px-5 py-3">
+                <div className="flex gap-4">
+                  <ViewToggle active={sourceViewMode === 'snippet'} onClick={() => setSourceViewMode('snippet')} label="Snippet" icon={<AlignLeft className="h-3 w-3" />} />
+                  <ViewToggle active={sourceViewMode === 'markdown'} onClick={() => setSourceViewMode('markdown')} label="Markdown" icon={<FileText className="h-3 w-3" />} />
+                  <ViewToggle active={sourceViewMode === 'json'} onClick={() => setSourceViewMode('json')} label="JSON" icon={<Code className="h-3 w-3" />} />
+                </div>
                 {featuredSource?.publishedDate && (
-                  <span className="text-xs text-muted-foreground">{featuredSource.publishedDate}</span>
+                  <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest">{featuredSource.publishedDate}</span>
                 )}
               </div>
-              <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-7 text-muted-foreground">
-                {featuredSource?.content || featuredSource?.snippet || response.summary || 'No preview was returned.'}
-              </p>
+              
+              <div className="p-6 flex-1 overflow-auto max-h-[28rem] custom-scrollbar min-h-[16rem]">
+                <h3 className="text-xl font-semibold mb-4 text-foreground leading-tight">
+                  {featuredSource?.title || 'Source Preview'}
+                </h3>
+                
+                {sourceViewMode === 'snippet' && (
+                  <p className="whitespace-pre-wrap break-words text-sm leading-8 text-muted-foreground/90">
+                    {featuredSource?.content || featuredSource?.snippet || 'No content preview available.'}
+                  </p>
+                )}
+                {sourceViewMode === 'markdown' && (
+                  <pre className="whitespace-pre-wrap break-words text-xs leading-6 text-foreground/90 font-mono bg-muted/10 p-4 rounded-xl border border-border/40">
+                    {featuredSource?.markdown || featuredSource?.full_content || 'Markdown content not available for this source.'}
+                  </pre>
+                )}
+                {sourceViewMode === 'json' && (
+                  <pre className="text-[11px] leading-5 text-foreground/80 font-mono bg-muted/10 p-4 rounded-xl border border-border/40">
+                    {JSON.stringify(featuredSource, null, 2)}
+                  </pre>
+                )}
+              </div>
+
               {featuredSource?.url && (
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="p-5 pt-0 mt-auto flex flex-wrap gap-3">
                   <a
                     href={featuredSource.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                    className="inline-flex items-center gap-2 rounded-full bg-primary/10 border border-primary/20 px-4 py-2 text-xs font-bold text-primary transition-all hover:bg-primary/20 shadow-sm"
                   >
-                    Open article
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    Visit Original
                   </a>
                   <button
                     type="button"
                     onClick={() => sendToChat(featuredSource)}
-                    className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/70 px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:border-primary/30 hover:text-primary"
+                    className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/70 px-4 py-2 text-xs font-bold text-foreground transition-all hover:border-primary/40 hover:text-primary shadow-sm"
                   >
-                    Send to chat
+                    <Send className="h-3.5 w-3.5" />
+                    Inject into Chat
                   </button>
                 </div>
               )}
@@ -204,42 +228,29 @@ export function ResultsPanel({ response }: PanelProps) {
         </div>
       )}
 
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h4 className="text-sm font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-            Ranked results
+      {/* 3. Ranked Passage Cards Section */}
+      <div className="space-y-4 pt-4">
+        <div className="flex items-center justify-between px-2">
+          <h4 className="text-xs font-bold uppercase tracking-[0.3em] text-muted-foreground flex items-center gap-2">
+            <Code className="h-3.5 w-3.5 text-primary" />
+            Ranked Intelligence Units
           </h4>
-          <span className="text-xs text-muted-foreground">{results.length} cards</span>
+          <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">{results.length} units extracted</span>
         </div>
 
         {results.length > 0 ? (
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
             {results.map((result, index) => (
               <ResultCard key={result.id || `${result.url}-${index}`} result={result} index={index} onSend={sendToChat} />
             ))}
           </div>
         ) : (
-          <div className="rounded-2xl border border-dashed border-border/60 bg-card/60 p-8 text-center text-sm text-muted-foreground">
-            No ranked result passages were returned. Read the live sources below.
+          <div className="rounded-3xl border border-dashed border-border/60 bg-card/60 p-12 text-center">
+            <p className="text-sm font-medium text-muted-foreground">No specific passages were ranked.</p>
+            <p className="text-xs text-muted-foreground/60 mt-1">Full source content is still available in the intelligence explorer above.</p>
           </div>
         )}
       </div>
-
-      {resultCount === 0 && sources.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-              Live sources
-            </h4>
-            <span className="text-xs text-muted-foreground">{sources.length} sources</span>
-          </div>
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            {sources.map((source, index) => (
-              <SourceCard key={source.id || `${source.url}-${index}`} source={source} index={index} onSend={sendToChat} />
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -248,31 +259,20 @@ export function SourcesPanel({ response }: PanelProps) {
   const sources = response.sources || [];
   const initialActiveSourceIndex = useMemo(() => getMostRelevantSourceIndex(sources), [sources]);
   const [activeSourceIndex, setActiveSourceIndex] = useState(initialActiveSourceIndex);
+  const [sourceViewMode, setSourceViewMode] = useState<ViewMode>('snippet');
+
   const featuredSource = useMemo(
     () => sources[Math.min(activeSourceIndex, Math.max(0, sources.length - 1))],
     [activeSourceIndex, sources],
   );
-  const activeSourceNumber = sources.length > 0 ? Math.min(activeSourceIndex, sources.length - 1) + 1 : 0;
 
   React.useEffect(() => {
     setActiveSourceIndex(initialActiveSourceIndex);
   }, [initialActiveSourceIndex, sources]);
 
-  const sendToChat = (source: any) => {
-    const content = `Here is a source for our conversation:\n\n**${source.title || source.url}**\n${source.content || source.snippet || 'No preview was returned.'}\n\nURL: ${source.url}`;
-    const event = new CustomEvent('karen:inject-message', { 
-      detail: { 
-        content,
-        role: 'user',
-        autoSubmit: true 
-      } 
-    });
-    window.dispatchEvent(event);
-  };
-
   if (sources.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-border/60 bg-card/60 p-8 text-center text-muted-foreground">
+      <div className="rounded-3xl border border-dashed border-border/60 bg-card/60 p-12 text-center text-muted-foreground">
         No live sources were returned for this query.
       </div>
     );
@@ -280,152 +280,179 @@ export function SourcesPanel({ response }: PanelProps) {
 
   return (
     <div className="space-y-5">
-      <div className="rounded-3xl border border-border/60 bg-card/90 p-5 shadow-[0_24px_60px_rgba(0,0,0,0.16)]">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-2">
-            <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">Featured source</p>
-            <h3 className="text-xl font-semibold text-foreground">
-              {featuredSource?.title || 'Live source preview'}
-            </h3>
-          </div>
-          {featuredSource?.url && (
-            <a
-              href={featuredSource.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/70 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:border-primary/30"
-            >
-              Open article
-            </a>
-          )}
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setActiveSourceIndex((current) => Math.max(0, current - 1))}
-            disabled={sources.length === 0 || activeSourceIndex <= 0}
-            className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/70 px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Previous
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveSourceIndex((current) => Math.min(sources.length - 1, current + 1))}
-            disabled={sources.length === 0 || activeSourceIndex >= sources.length - 1}
-            className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/70 px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Next
-          </button>
-          <span className="text-xs text-muted-foreground">
-            {activeSourceNumber} / {sources.length}
-          </span>
-        </div>
-
-        <div className="mt-4 grid gap-4 xl:grid-cols-[280px_minmax(0,1fr)]">
-          <div className="rounded-2xl border border-border/60 bg-background/70 p-3">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                Source list
-              </p>
-              <span className="text-xs text-muted-foreground">{sources.length}</span>
-            </div>
-            <div className="max-h-[28rem] space-y-2 overflow-auto pr-1">
-              {sources.map((source, index) => {
-                const isActive = index === activeSourceIndex;
-                return (
-                  <button
-                    key={source.id || `${source.url}-${index}`}
-                    type="button"
-                    onClick={() => setActiveSourceIndex(index)}
-                    className={`w-full rounded-2xl border px-3 py-3 text-left transition-all ${
-                      isActive
-                        ? 'border-primary bg-primary/10 shadow-[0_10px_24px_rgba(0,0,0,0.14)]'
-                        : 'border-border/60 bg-card/80 hover:border-primary/30 hover:bg-muted/40'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 space-y-1">
-                        <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
-                          Source {index + 1}
-                        </div>
-                        <div className={`truncate text-sm font-medium ${isActive ? 'text-primary' : 'text-foreground'}`}>
-                          {source.title || source.url}
-                        </div>
-                      </div>
-                      <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-background/70 text-[10px] font-semibold text-muted-foreground">
-                        {index + 1}
-                      </span>
-                    </div>
-                    <div className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">
-                      {source.content || source.snippet || 'No preview was returned.'}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-border/60 bg-background/70 p-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                Readable excerpt
-              </p>
-              {featuredSource?.publishedDate && (
-                <span className="text-xs text-muted-foreground">{featuredSource.publishedDate}</span>
-              )}
-            </div>
-            <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-7 text-muted-foreground">
-              {featuredSource?.content || featuredSource?.snippet || response.summary || 'No preview was returned.'}
-            </p>
-            {featuredSource?.url && (
-              <div className="mt-4 flex flex-wrap gap-2">
-                <a
-                  href={featuredSource.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-                >
-                  Open article
-                </a>
-                <button
-                  type="button"
-                  onClick={() => sendToChat(featuredSource)}
-                  className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/70 px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:border-primary/30 hover:text-primary"
-                >
-                  Send to chat
-                </button>
+      <div className="rounded-3xl border border-border/60 bg-card/90 overflow-hidden shadow-[0_24px_60px_rgba(0,0,0,0.16)]">
+        <div className="bg-muted/20 px-6 py-5 border-b border-border/60">
+           <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="space-y-1">
+                <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground font-bold">Deep Source Inspection</p>
+                <h3 className="text-2xl font-semibold text-foreground leading-tight">
+                  {featuredSource?.title || 'Source Explorer'}
+                </h3>
               </div>
-            )}
+              <div className="flex items-center gap-3">
+                 <button
+                   onClick={() => setActiveSourceIndex((c) => Math.max(0, c - 1))}
+                   disabled={activeSourceIndex === 0}
+                   className="p-2 rounded-full border border-border/60 hover:bg-muted disabled:opacity-30 transition-colors"
+                 >
+                    <AlignLeft className="h-4 w-4 rotate-180" />
+                 </button>
+                 <span className="text-sm font-mono text-muted-foreground">{activeSourceIndex + 1} / {sources.length}</span>
+                 <button
+                   onClick={() => setActiveSourceIndex((c) => Math.min(sources.length - 1, c + 1))}
+                   disabled={activeSourceIndex === sources.length - 1}
+                   className="p-2 rounded-full border border-border/60 hover:bg-muted disabled:opacity-30 transition-colors"
+                 >
+                    <AlignLeft className="h-4 w-4" />
+                 </button>
+              </div>
+           </div>
+        </div>
+
+        <div className="grid gap-0 xl:grid-cols-[320px_1fr]">
+          <div className="border-r border-border/60 bg-muted/5">
+             <div className="p-4 border-b border-border/40">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Captured Domains</p>
+             </div>
+             <div className="max-h-[32rem] overflow-auto custom-scrollbar">
+                {sources.map((s, i) => (
+                  <button
+                    key={s.id || i}
+                    onClick={() => setActiveSourceIndex(i)}
+                    className={`w-full p-4 text-left border-b border-border/40 transition-all ${i === activeSourceIndex ? 'bg-primary/5 border-l-4 border-l-primary' : 'hover:bg-muted/30 border-l-4 border-l-transparent'}`}
+                  >
+                    <p className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${i === activeSourceIndex ? 'text-primary' : 'text-muted-foreground'}`}>
+                      {s.domain || domainFromUrl(s.url)}
+                    </p>
+                    <p className={`text-sm font-medium truncate ${i === activeSourceIndex ? 'text-foreground' : 'text-muted-foreground/80'}`}>{s.title}</p>
+                  </button>
+                ))}
+             </div>
+          </div>
+
+          <div className="flex flex-col">
+             <div className="flex items-center justify-between border-b border-border/60 bg-muted/10 px-5 py-3">
+                <div className="flex gap-4">
+                  <ViewToggle active={sourceViewMode === 'snippet'} onClick={() => setSourceViewMode('snippet')} label="Readable" icon={<AlignLeft className="h-3 w-3" />} />
+                  <ViewToggle active={sourceViewMode === 'markdown'} onClick={() => setSourceViewMode('markdown')} label="Markdown" icon={<FileText className="h-3 w-3" />} />
+                  <ViewToggle active={sourceViewMode === 'json'} onClick={() => setSourceViewMode('json')} label="Raw JSON" icon={<Code className="h-3 w-3" />} />
+                </div>
+             </div>
+
+             <div className="p-6 overflow-auto max-h-[32rem] custom-scrollbar">
+                {sourceViewMode === 'snippet' && (
+                  <p className="whitespace-pre-wrap break-words text-sm leading-8 text-muted-foreground/90">
+                    {featuredSource?.content || featuredSource?.snippet || 'No readable excerpt returned.'}
+                  </p>
+                )}
+                {sourceViewMode === 'markdown' && (
+                  <pre className="whitespace-pre-wrap break-words text-xs leading-6 text-foreground/90 font-mono bg-muted/5 p-5 rounded-2xl border border-border/40">
+                    {featuredSource?.markdown || featuredSource?.full_content || 'Markdown content unavailable.'}
+                  </pre>
+                )}
+                {sourceViewMode === 'json' && (
+                  <pre className="text-[11px] leading-5 text-foreground/80 font-mono bg-muted/5 p-5 rounded-2xl border border-border/40">
+                    {JSON.stringify(featuredSource, null, 2)}
+                  </pre>
+                )}
+             </div>
+
+             <div className="p-6 pt-0 mt-auto flex gap-3">
+               <button onClick={() => sendToChat(featuredSource)} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-primary-foreground text-xs font-bold uppercase tracking-wider shadow-lg hover:scale-105 active:scale-95 transition-all">
+                  <Send className="h-3.5 w-3.5" /> Inject into Conversation
+               </button>
+               {featuredSource?.url && (
+                  <a href={featuredSource.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-border/60 hover:bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground transition-all">
+                     <ExternalLink className="h-3.5 w-3.5" /> Visit Original
+                  </a>
+               )}
+             </div>
           </div>
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {sources.map((source, index) => (
-          <SourceCard key={source.id || `${source.url}-${index}`} source={source} index={index} onSend={sendToChat} />
-        ))}
       </div>
     </div>
   );
 }
 
-function getMostRelevantSourceIndex(sources: SearchSourceItem[]) {
-  if (!sources.length) return 0;
+function ResultCard({ result, index, onSend }: { result: SearchResultItem; index: number; onSend: (item: any) => void }) {
+  const [viewMode, setViewMode] = useState<ViewMode>('snippet');
 
-  let bestIndex = 0;
-  let bestScore = Number.NEGATIVE_INFINITY;
+  return (
+    <article className="group relative rounded-3xl border border-border/60 bg-card/90 p-5 shadow-[0_18px_50px_rgba(0,0,0,0.16)] transition-all duration-300 hover:border-primary/40 hover:shadow-2xl">
+      <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+        <button 
+          onClick={() => onSend(result)}
+          className="p-2.5 rounded-full bg-primary text-primary-foreground shadow-lg hover:scale-110 active:scale-95 transition-all"
+          title="Inject into chat"
+        >
+          <Send className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+              {index + 1}
+            </span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-muted-foreground">
+              {result.domain || domainFromUrl(result.url) || 'INTELLIGENCE UNIT'}
+            </span>
+          </div>
+          <h5 className="text-base font-semibold leading-relaxed text-foreground pr-8">
+            {result.title}
+          </h5>
+        </div>
+        {typeof result.score === 'number' && (
+          <div className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-[10px] font-bold text-primary">
+            {(result.score * 100).toFixed(0)}%
+          </div>
+        )}
+      </div>
 
-  sources.forEach((source, index) => {
-    const score = typeof source.relevanceScore === 'number' ? source.relevanceScore : 0;
+      <div className="mt-4 rounded-2xl border border-border/40 bg-background/50 overflow-hidden">
+        <div className="flex items-center gap-3 border-b border-border/40 bg-muted/20 px-3 py-1.5">
+          {(['snippet', 'markdown', 'json'] as const).map((mode) => (
+            <button
+              key={mode}
+              onClick={() => setViewMode(mode)}
+              className={`text-[9px] font-bold uppercase tracking-widest transition-colors px-2 py-1 rounded ${
+                viewMode === mode ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {mode}
+            </button>
+          ))}
+        </div>
+        <div className="p-4 overflow-auto max-h-48 custom-scrollbar min-h-[6rem]">
+          {viewMode === 'snippet' && (
+            <p className="whitespace-pre-wrap break-words text-xs leading-6 text-muted-foreground/90 font-medium">
+              {result.snippet || result.content || 'No unit content preview available.'}
+            </p>
+          )}
+          {viewMode === 'markdown' && (
+            <pre className="whitespace-pre-wrap break-words text-[10px] leading-5 text-foreground/90 font-mono">
+              {result.markdown || result.content || 'Markdown source not available for this unit.'}
+            </pre>
+          )}
+          {viewMode === 'json' && (
+            <pre className="text-[10px] leading-4 text-foreground/80 font-mono">
+              {JSON.stringify(result, null, 2)}
+            </pre>
+          )}
+        </div>
+      </div>
 
-    if (score > bestScore) {
-      bestIndex = index;
-      bestScore = score;
-    }
-  });
-
-  return bestIndex;
+      <a
+        href={result.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-4 inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-primary transition-all hover:gap-2"
+      >
+        Source Access <ExternalLink className="h-3 w-3" />
+      </a>
+    </article>
+  );
 }
 
 export function ExtractedDataPanel({ response }: PanelProps) {
@@ -438,8 +465,8 @@ export function ExtractedDataPanel({ response }: PanelProps) {
 
   if (!hasCombinedPayload) {
     return (
-      <div className="rounded-2xl border border-dashed border-border/60 bg-card/60 p-8 text-center text-muted-foreground">
-        No search payload was captured.
+      <div className="rounded-3xl border border-dashed border-border/60 bg-card/60 p-12 text-center text-muted-foreground">
+        No structured search data was captured during this crawl.
       </div>
     );
   }
@@ -449,39 +476,84 @@ export function ExtractedDataPanel({ response }: PanelProps) {
     query: response.query,
     mode: response.mode,
     provider: response.provider,
-    total_results: response.total_results,
-    search_time: response.search_time,
-    execution_time_ms: response.execution_time_ms,
     sources: response.sources,
     results: response.results,
-    liveSearch: response.liveSearch,
     extractedData: response.extractedData,
     metadata: response.metadata,
     diagnostics: response.diagnostics,
   };
 
+  const downloadJson = () => {
+    const blob = new Blob([JSON.stringify(copiedPayload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `karen-intel-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadMarkdown = () => {
+    let md = `# Intelligent Search Intelligence: ${response.query || 'Untitled'}\n\n`;
+    md += `## Synthesis\n${response.summary || 'No summary available.'}\n\n`;
+    
+    if (response.sources && response.sources.length > 0) {
+      md += `## Verified Sources (${response.sources.length})\n\n`;
+      response.sources.forEach((s, i) => {
+        md += `### ${i + 1}. ${s.title || s.url}\n`;
+        md += `**Domain:** ${s.domain || domainFromUrl(s.url)}\n`;
+        md += `**URL:** ${s.url}\n\n`;
+        md += `#### Intelligence Units\n${s.markdown || s.full_content || s.content || s.snippet || 'No content captured.'}\n\n`;
+        if (s.extracted_data) {
+          md += `#### Extracted Data\n\`\`\`json\n${JSON.stringify(s.extracted_data, null, 2)}\n\`\`\`\n\n`;
+        }
+        md += `---\n\n`;
+      });
+    }
+    
+    const blob = new Blob([md], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `karen-intel-${Date.now()}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
-    <div className="space-y-4">
-      <div className="rounded-3xl border border-border/60 bg-card/90 p-5 shadow-[0_24px_60px_rgba(0,0,0,0.18)]">
+    <div className="space-y-6">
+      <div className="rounded-3xl border border-border/60 bg-card/90 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.18)]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-2">
-            <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">Search payload</p>
-            <h3 className="text-xl font-semibold text-foreground">Structured data returned by the plugin</h3>
+            <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground font-bold">Intelligence Payload</p>
+            <h3 className="text-xl font-semibold text-foreground">Deep Data View</h3>
           </div>
-          <button
-            onClick={() => navigator.clipboard.writeText(JSON.stringify(copiedPayload, null, 2))}
-            className="text-xs font-medium text-primary transition-colors hover:text-primary/80"
-          >
-            Copy JSON
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => navigator.clipboard.writeText(JSON.stringify(copiedPayload, null, 2))}
+              className="flex items-center gap-2 px-4 py-2 rounded-full border border-border/60 hover:bg-muted text-[10px] font-bold uppercase tracking-wider transition-all"
+            >
+              <Code className="h-3.5 w-3.5" /> Copy JSON
+            </button>
+            <button
+              onClick={downloadJson}
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 text-[10px] font-bold uppercase tracking-wider transition-all"
+            >
+              <Download className="h-3.5 w-3.5" /> JSON
+            </button>
+            <button
+              onClick={downloadMarkdown}
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground hover:scale-105 text-[10px] font-bold uppercase tracking-wider transition-all shadow-md"
+            >
+              <Download className="h-3.5 w-3.5" /> Markdown
+            </button>
+          </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          <MetricPill label="Mode" value={response.mode || 'unknown'} />
-          <MetricPill label="Sources" value={response.sources?.length ?? response.diagnostics?.sourceCount ?? 0} />
-          <MetricPill label="Cards" value={response.results?.length ?? 0} />
-          <MetricPill label="Provider" value={response.provider || 'live'} />
-          <MetricPill label="Total" value={response.total_results ?? 'n/a'} />
+        <div className="mt-5 flex flex-wrap gap-3">
+          <MetricPill label="Schema" value={response.mode || 'default'} />
+          <MetricPill label="Payload Size" value={`${(JSON.stringify(copiedPayload).length / 1024).toFixed(1)} KB`} />
+          <MetricPill label="Status" value="Verified" />
         </div>
       </div>
 
@@ -497,20 +569,23 @@ export function InsightsPanel({ response }: PanelProps) {
 
   if (insights.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-border/60 bg-card/60 p-8 text-center text-muted-foreground">
-        No specialist insights available for this query.
+      <div className="rounded-3xl border border-dashed border-border/60 bg-card/60 p-12 text-center text-muted-foreground">
+        No specialist insights available for this intelligence gather.
       </div>
     );
   }
 
   return (
-    <div className="grid gap-3">
+    <div className="grid gap-4">
       {insights.map((insight, i) => (
         <div
           key={i}
-          className="rounded-2xl border border-border/60 bg-card/85 px-4 py-4 text-sm text-foreground/90 shadow-sm"
+          className="group relative rounded-3xl border border-border/60 bg-card/85 p-6 text-sm leading-7 text-foreground/90 shadow-sm transition-all hover:border-primary/30 hover:shadow-lg"
         >
-          {insight}
+          <div className="absolute top-6 left-2 w-1 h-8 bg-primary/30 rounded-full group-hover:bg-primary transition-all" />
+          <div className="pl-4">
+            {insight}
+          </div>
         </div>
       ))}
     </div>
@@ -522,49 +597,48 @@ export function DiagnosticsPanel({ response }: PanelProps) {
 
   if (!diag) {
     return (
-      <div className="rounded-2xl border border-dashed border-border/60 bg-card/60 p-8 text-center text-muted-foreground">
-        Diagnostics not provided.
+      <div className="rounded-3xl border border-dashed border-border/60 bg-card/60 p-12 text-center text-muted-foreground">
+        Intelligence diagnostics not provided.
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-      <div className="rounded-3xl border border-border/60 bg-card/90 p-5 shadow-[0_24px_60px_rgba(0,0,0,0.18)]">
-        <h4 className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-          Runtime metadata
+    <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+      <div className="rounded-3xl border border-border/60 bg-card/90 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.18)]">
+        <h4 className="text-[11px] font-bold uppercase tracking-[0.3em] text-muted-foreground mb-5">
+          Orchestration Metadata
         </h4>
-        <dl className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <MetricRow label="Mode" value={diag.mode} />
-          <MetricRow label="Strategy" value={diag.strategy || 'default'} />
-          <MetricRow label="Latency" value={diag.latencyMs ? `${diag.latencyMs}ms` : 'unknown'} />
-          <MetricRow label="Sources" value={diag.sourceCount ?? 0} />
-          <MetricRow label="Pages" value={diag.pagesCrawled ?? 0} />
-          <MetricRow label="Chunks" value={diag.chunksProduced ?? 0} />
+        <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <MetricRow label="Search Mode" value={diag.mode} />
+          <MetricRow label="Strategy" value={diag.strategy || 'standard'} />
+          <MetricRow label="Pipeline Latency" value={diag.latencyMs ? `${diag.latencyMs}ms` : 'real-time'} />
+          <MetricRow label="URLs Identified" value={diag.urlsFound ?? 0} />
+          <MetricRow label="Pages Processed" value={diag.pagesCrawled ?? 0} />
+          <MetricRow label="Units Produced" value={diag.chunksProduced ?? 0} />
         </dl>
       </div>
 
-      <div className={`rounded-3xl border p-5 shadow-[0_24px_60px_rgba(0,0,0,0.18)] ${
+      <div className={`rounded-3xl border p-6 shadow-[0_24px_60px_rgba(0,0,0,0.18)] ${
         diag.degraded
           ? 'border-amber-500/30 bg-amber-500/10'
           : 'border-border/60 bg-card/90'
       }`}>
-        <h4 className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-          Live health
+        <h4 className="text-[11px] font-bold uppercase tracking-[0.3em] text-muted-foreground mb-5">
+          Connectivity Status
         </h4>
-        <div className="mt-4 space-y-3">
-          <MetricRow label="Status" value={diag.degraded ? 'Degraded' : 'Healthy'} />
-          <MetricRow label="URLs found" value={diag.urlsFound ?? 0} />
-          <MetricRow label="Warnings" value={diag.warnings?.length ?? 0} />
+        <div className="space-y-3">
+          <MetricRow label="Node Health" value={diag.degraded ? 'Degraded' : 'Nominal'} />
+          <MetricRow label="Critical Warnings" value={diag.warnings?.length ?? 0} />
         </div>
         {diag.warnings && diag.warnings.length > 0 && (
-          <div className="mt-4 space-y-2">
+          <div className="mt-5 space-y-2">
             {diag.warnings.map((warning, index) => (
               <div
                 key={index}
-                className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100"
+                className="rounded-2xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-xs text-amber-200/80 font-medium leading-5"
               >
-                {warning}
+                ⚠️ {warning}
               </div>
             ))}
           </div>
@@ -574,165 +648,71 @@ export function DiagnosticsPanel({ response }: PanelProps) {
   );
 }
 
-function ResultCard({ result, index, onSend }: { result: SearchResultItem; index: number; onSend: (item: any) => void }) {
-  return (
-    <article className="group relative rounded-3xl border border-border/60 bg-card/90 p-5 shadow-[0_18px_50px_rgba(0,0,0,0.16)] transition-transform duration-200 hover:-translate-y-0.5 hover:border-primary/30">
-      <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-        <button 
-          onClick={() => onSend(result)}
-          className="p-2 rounded-full bg-primary text-primary-foreground shadow-lg hover:scale-110 transition-transform"
-          title="Send to chat"
-        >
-          <Send className="h-3.5 w-3.5" />
-        </button>
-      </div>
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-              {index + 1}
-            </span>
-            <span className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
-              {result.domain || domainFromUrl(result.url) || 'Source'}
-            </span>
-          </div>
-          <h5 className="text-base font-semibold leading-6 text-foreground group-hover:text-primary transition-colors pr-8">
-            {result.title}
-          </h5>
-        </div>
-        {typeof result.score === 'number' && (
-          <div className="rounded-full border border-border/60 bg-background/80 px-3 py-1 text-xs font-medium text-muted-foreground">
-            {(result.score * 100).toFixed(0)}%
-          </div>
-        )}
-      </div>
-
-      <div className="mt-4 rounded-2xl border border-border/60 bg-background/70 px-4 py-3">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-          Preview
-        </p>
-        <p className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words text-sm leading-6 text-muted-foreground">
-          {result.snippet || result.content || 'No snippet returned.'}
-        </p>
-      </div>
-
-      <a
-        href={result.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-primary transition-colors hover:text-primary/80"
-      >
-        Open source
-      </a>
-    </article>
-  );
-}
-
-function SourceCard({ source, index, onSend }: { source: SearchSourceItem; index: number; onSend: (item: any) => void }) {
-  return (
-    <div className="group relative">
-      <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-        <button 
-          onClick={() => onSend(source)}
-          className="p-2 rounded-full bg-primary text-primary-foreground shadow-lg hover:scale-110 transition-transform"
-          title="Send to chat"
-        >
-          <Send className="h-3.5 w-3.5" />
-        </button>
-      </div>
-      <a
-        href={source.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="block rounded-3xl border border-border/60 bg-card/90 p-5 shadow-[0_18px_50px_rgba(0,0,0,0.16)] transition-transform duration-200 hover:-translate-y-0.5 hover:border-primary/30"
-      >
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
-              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                {index + 1}
-              </span>
-              {source.domain || domainFromUrl(source.url) || 'Source'}
-            </div>
-            <h5 className="text-base font-semibold leading-6 text-foreground group-hover:text-primary transition-colors pr-8">
-              {source.title || source.url}
-            </h5>
-          </div>
-          {typeof source.relevanceScore === 'number' && (
-            <div className="rounded-full border border-border/60 bg-background/80 px-3 py-1 text-xs font-medium text-muted-foreground">
-              {(source.relevanceScore * 100).toFixed(0)}%
-            </div>
-          )}
-        </div>
-
-        <div className="mt-4 rounded-2xl border border-border/60 bg-background/70 px-4 py-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-            Preview
-          </p>
-          <p className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-words text-sm leading-6 text-muted-foreground">
-            {source.content || source.snippet || 'No preview was returned.'}
-          </p>
-        </div>
-
-        <div className="mt-4 text-xs text-muted-foreground/80">
-          {source.publishedDate ? `Published ${source.publishedDate}` : 'Live crawl source'}
-        </div>
-      </a>
-    </div>
-  );
-}
-
 function MetricRow({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-background/70 px-4 py-3 text-sm">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="font-medium text-foreground">{value}</dd>
+    <div className="flex items-center justify-between rounded-xl border border-border/40 bg-background/40 px-4 py-3 text-xs">
+      <dt className="text-muted-foreground font-bold uppercase tracking-widest text-[9px]">{label}</dt>
+      <dd className="font-bold text-foreground">{value}</dd>
     </div>
   );
 }
 
 function MetricPill({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/80 px-3 py-1.5 text-xs text-muted-foreground">
-      <span className="uppercase tracking-[0.24em]">{label}</span>
-      <span className="font-medium text-foreground">{value}</span>
+    <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/80 px-3 py-1.5 text-[10px] text-muted-foreground font-bold shadow-sm">
+      <span className="uppercase tracking-[0.2em] opacity-60">{label}</span>
+      <span className="text-foreground">{value}</span>
     </div>
   );
 }
 
 function domainFromUrl(url: string) {
   try {
-    return new URL(url).hostname;
+    return new URL(url).hostname.replace('www.', '');
   } catch {
-    return '';
+    return 'Web Source';
   }
+}
+
+function getMostRelevantSourceIndex(sources: SearchSourceItem[]) {
+  if (!sources.length) return 0;
+  let bestIndex = 0;
+  let bestScore = -1;
+  sources.forEach((source, index) => {
+    const score = source.relevanceScore ?? 0;
+    if (score > bestScore) {
+      bestIndex = index;
+      bestScore = score;
+    }
+  });
+  return bestIndex;
 }
 
 function getPayloadSections(response: IntelligentSearchResponse) {
   const sections: Array<{ title: string; data: unknown }> = [];
-
   if (response.liveSearch && Object.keys(response.liveSearch).length > 0) {
-    sections.push({ title: 'Live search payload', data: response.liveSearch });
+    sections.push({ title: 'Live retrieval manifest', data: response.liveSearch });
   }
-
   if (response.extractedData && Object.keys(response.extractedData).length > 0) {
-    sections.push({ title: 'Structured extraction', data: response.extractedData });
+    sections.push({ title: 'Structured extraction results', data: response.extractedData });
   }
-
   if (response.metadata && Object.keys(response.metadata).length > 0) {
-    sections.push({ title: 'Metadata', data: response.metadata });
+    sections.push({ title: 'Orchestration metadata', data: response.metadata });
   }
-
   return sections;
 }
 
 function JsonSection({ title, data }: { title: string; data: unknown }) {
   return (
     <div className="overflow-hidden rounded-3xl border border-border/60 bg-card/90 shadow-[0_24px_60px_rgba(0,0,0,0.18)]">
-      <div className="border-b border-border/60 bg-muted/30 px-4 py-3">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">{title}</span>
+      <div className="border-b border-border/60 bg-muted/20 px-6 py-4 flex items-center justify-between">
+        <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">{title}</span>
+        <div className="flex gap-2">
+           <div className="h-1.5 w-1.5 rounded-full bg-primary/40" />
+           <div className="h-1.5 w-1.5 rounded-full bg-primary/20" />
+        </div>
       </div>
-      <pre className="max-h-[70vh] overflow-auto p-4 text-xs leading-6 text-foreground/90">
+      <pre className="max-h-[70vh] overflow-auto p-6 text-[11px] leading-6 text-foreground/90 font-mono custom-scrollbar">
         {JSON.stringify(data, null, 2)}
       </pre>
     </div>

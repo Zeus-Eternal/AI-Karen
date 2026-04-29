@@ -138,7 +138,7 @@ const EXTERNAL_ENDPOINT_PROVIDER_ALIASES: Record<string, string> = {
 };
 
 const LEGACY_CORE_RUNTIME_ALIASES = new Set([
-  'ollama',
+  // 'ollama' removed - it's a valid external provider, not legacy
   'llamacpp',
   'llama_cpp',
   'llama-cpp',

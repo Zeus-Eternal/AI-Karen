@@ -132,3 +132,7 @@ data/users.json
 .virEnv
 server/models/transformers
 ui_launchers/Karen-AI-Theme/.next
+/src/ui_launchers/Karen-AI-Theme/e2e
+/docs
+/.claude
+/.claude

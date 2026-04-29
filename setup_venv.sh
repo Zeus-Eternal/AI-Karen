@@ -29,18 +29,18 @@ if [ -z "$SELECTED_PYTHON" ]; then
 fi
 
 # Remove existing broken virtual environment
-if [ -d ".env_karen" ]; then
+if [ -d ".virEnv" ]; then
     echo "🗑️  Removing existing virtual environment..."
-    rm -rf .env_karen
+    rm -rf .virEnv
 fi
 
 # Create new virtual environment with selected Python version
 echo "📦 Creating new virtual environment with $SELECTED_PYTHON..."
-$SELECTED_PYTHON -m venv .env_karen
+$SELECTED_PYTHON -m venv .virEnv
 
 # Activate virtual environment and install dependencies
 echo "📥 Activating virtual environment..."
-source .env_karen/bin/activate
+source .virEnv/bin/activate
 
 # Upgrade pip
 echo "⬆️  Upgrading pip..."
@@ -61,7 +61,7 @@ pip install fastapi uvicorn pydantic pydantic-settings python-dotenv
 echo "✅ Virtual environment setup complete!"
 echo ""
 echo "To activate the environment, run:"
-echo "  source .env_karen/bin/activate"
+echo "  source .virEnv/bin/activate"
 echo ""
 echo "To run the project, use:"
 echo "  ./run_karen.sh"

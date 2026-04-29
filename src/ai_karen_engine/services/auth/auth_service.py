@@ -104,13 +104,13 @@ class AuthConfig(ServiceConfig):
     version: str = "1.0.0"
     jwt_secret_key: str = "change-me-in-production"
     jwt_algorithm: str = "HS256"
-    access_token_expire_minutes: int = 30
-    refresh_token_expire_days: int = 7
+    access_token_expire_minutes: int = 480  # 8 hours instead of 30 minutes
+    refresh_token_expire_days: int = 30    # 30 days instead of 7 days
     password_min_length: int = 8
     password_require_complexity: bool = True
     max_failed_login_attempts: int = 5
     account_lockout_minutes: int = 30
-    session_timeout_hours: int = 24
+    session_timeout_hours: int = 168  # 7 days instead of 24 hours
     enable_two_factor: bool = True
     bcrypt_rounds: int = 12
 

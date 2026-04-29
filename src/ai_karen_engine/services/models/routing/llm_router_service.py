@@ -37,6 +37,22 @@ from ai_karen_engine.core.operations.routing_decision_persistence import (
 # from ai_karen_engine.integrations.llm_registry import get_registry, LLMRegistry  <- Moved to local scope
 from ai_karen_engine.integrations.llm_utils import LLMProviderBase
 
+try:
+    from ai_karen_engine.core.operations.provider_metrics import (
+        ProviderEventType,
+        ProviderMetrics,
+        record_provider_event,
+        record_provider_fallback,
+    )
+    PROVIDER_METRICS_AVAILABLE = True
+except Exception:
+    # Gracefully handle missing provider metrics module
+    PROVIDER_METRICS_AVAILABLE = False
+    ProviderEventType = None  # type: ignore[assignment]
+    ProviderMetrics = None  # type: ignore[assignment]
+    record_provider_event = None  # type: ignore[assignment]
+    record_provider_fallback = None  # type: ignore[assignment]
+
 try:  # pragma: no cover - SecretManager may require optional deps
     from ai_karen_engine.models.secret_manager import SecretManager
 except Exception:  # pragma: no cover - gracefully handle missing optional dependency
@@ -248,18 +264,32 @@ class LLMRouter:
             "deepseek": {"max_requests": 40, "window_seconds": 60},
         }
 
-        # Provider priority mapping
+        # Provider priority mapping - canonical built-ins with proper priorities
         self.provider_priorities = {
+            # Local runtimes - highest priority
+            "builtin_vllm": ProviderPriority.LOCAL,
+            "vllm": ProviderPriority.LOCAL,
+            "nano_vllm": ProviderPriority.LOCAL,
+            "nano-vllm": ProviderPriority.LOCAL,
             "local_gguf": ProviderPriority.LOCAL,
+
+            # Transformer runtimes
+            "builtin_transformers": ProviderPriority.TRANSFORMER,
             "transformers": ProviderPriority.TRANSFORMER,
             "huggingface": ProviderPriority.TRANSFORMER,
+
+            # NLP and lightweight
             "spacy": ProviderPriority.NLP,
             "distilbert": ProviderPriority.LIGHTWEIGHT,
+
+            # Remote/cloud providers - lower priority
             "openai": ProviderPriority.REMOTE,
             "zai": ProviderPriority.REMOTE,
             "anthropic": ProviderPriority.REMOTE,
             "gemini": ProviderPriority.REMOTE,
             "deepseek": ProviderPriority.REMOTE,
+
+            # Fallback - lowest priority
             "fallback": ProviderPriority.FALLBACK,
         }
 
@@ -642,12 +672,21 @@ class LLMRouter:
         if provider_name is None:
             return None
 
-        normalized = str(provider_name).strip().lower()
+        normalized = str(provider_name).strip().lower().replace("-", "_")
         if not normalized:
             return None
 
+        # Canonical provider aliases matching frontend naming convention
         aliases = {
             "local": "local_gguf",
+            "hf_transformers": "builtin_transformers",
+            "hugging_face": "builtin_transformers",
+            "huggingface_local": "builtin_transformers",
+            "builtin_transformers": "builtin_transformers",
+            "transformers": "builtin_transformers",
+            "vllm": "builtin_vllm",
+            "nano_vllm": "builtin_vllm",
+            "builtin_vllm": "builtin_vllm",
         }
         return aliases.get(normalized, normalized)
 
@@ -1596,6 +1635,12 @@ class LLMRouter:
                     error=exc,
                 )
 
+                # NEW: If provider is not available, don't waste time retrying
+                from ai_karen_engine.integrations.llm_utils import ProviderNotAvailable
+                if isinstance(exc, ProviderNotAvailable):
+                    logger.warning(f"[%s] Provider %s is not available - skipping retries", request_id, provider_name)
+                    break
+
                 if attempt >= self.retry_attempts:
                     break
 
@@ -2061,6 +2106,307 @@ class LLMRouter:
             )
 
         return None
+
+    # Runtime Fallback Executor
+    RUNTIME_DEGRADED_FALLBACK_ORDER = (
+        "builtin_transformers",
+        "builtin_vllm",
+        "fallback",
+    )
+
+    async def generate_with_degraded_runtime_fallback(
+        self,
+        *,
+        request: ChatRequest,
+        requested_provider: str,
+        requested_model: str,
+        failure_reason: str,
+    ) -> Dict[str, Any]:
+        """
+        Execute degraded runtime fallback chain when requested provider fails.
+
+        Tries providers in order: builtin_transformers -> builtin_vllm -> fallback.
+        Returns proper metadata showing which provider actually answered.
+
+        This method explicitly catches ProviderNotAvailable and GenerationFailed exceptions
+        to provide clear fallback paths and accurate metadata.
+        """
+        from ai_karen_engine.integrations.llm_utils import (
+            ProviderNotAvailable,
+            GenerationFailed,
+        )
+
+        attempted_providers = [requested_provider]
+        fallback_level = 0
+
+        for provider_name in self.RUNTIME_DEGRADED_FALLBACK_ORDER:
+            # Skip if this is the failed provider
+            if provider_name == requested_provider:
+                continue
+
+            fallback_level += 1
+            attempted_providers.append(provider_name)
+
+            try:
+                # Check provider health
+                provider_info = self.registry.get_provider_info(provider_name)
+                if not provider_info:
+                    logger.debug(
+                        f"Provider {provider_name} not found in registry",
+                        extra={"provider": provider_name, "requested_provider": requested_provider}
+                    )
+                    continue
+
+                if not await self._is_provider_healthy(provider_name):
+                    logger.debug(
+                        f"Provider {provider_name} is not healthy",
+                        extra={"provider": provider_name, "requested_provider": requested_provider}
+                    )
+                    continue
+
+                # Get provider instance
+                provider = self.registry.get_provider(provider_name)
+                if provider is None:
+                    logger.warning(
+                        f"Provider {provider_name} instance is None",
+                        extra={"provider": provider_name, "requested_provider": requested_provider}
+                    )
+                    continue
+
+                # Invoke provider for text generation
+                content = await self._invoke_provider_for_text(provider, request)
+
+                if content and str(content).strip():
+                    # Record successful fallback
+                    self._record_fallback_metric(
+                        from_provider=requested_provider,
+                        to_provider=provider_name,
+                        reason="provider_unavailable"
+                    )
+
+                    logger.info(
+                        f"Successfully recovered from {requested_provider} failure using {provider_name}",
+                        extra={
+                            "requested_provider": requested_provider,
+                            "actual_provider": provider_name,
+                            "fallback_level": fallback_level,
+                            "fallback_chain": list(self.RUNTIME_DEGRADED_FALLBACK_ORDER),
+                        }
+                    )
+
+                    # Record structured provider metrics
+                    if PROVIDER_METRICS_AVAILABLE and record_provider_event:
+                        try:
+                            record_provider_event(
+                                event_type=ProviderEventType.SELECTED,
+                                provider_id=provider_name,
+                                requested_provider=requested_provider,
+                                requested_model=requested_model,
+                                actual_provider=provider_name,
+                                actual_model=provider_info.get("default_model"),
+                                runtime_engine=provider_name.replace("builtin_", ""),
+                                response_source="live_model",
+                                fallback_level=fallback_level,
+                                degraded_mode=True,
+                                degradation_reason=failure_reason,
+                                success=True,
+                            )
+                        except Exception as metrics_error:
+                            logger.debug(f"Failed to record provider metrics: {metrics_error}")
+
+                    return {
+                        "content": str(content).strip(),
+                        "metadata": {
+                            "degraded_mode": True,
+                            "degraded_mode_active": True,
+                            "llm": {
+                                "requested_provider": requested_provider,
+                                "requested_model": requested_model,
+                                "provider": provider_name,  # actual_provider
+                                "model_id": provider_info.get("default_model"),
+                                "model_name": provider_info.get("default_model"),
+                                "runtime_engine": provider_name.replace("builtin_", ""),
+                                "source": "runtime_fallback",
+                                "response_source": "live_model",
+                                "is_degraded": True,
+                                "used_fallback": True,
+                                "fallback_from": requested_provider,
+                                "fallback_level": fallback_level,
+                                "degradation_reason": failure_reason,
+                                "fallback_chain": list(self.RUNTIME_DEGRADED_FALLBACK_ORDER),
+                                "attempted_providers": attempted_providers,
+                                "failure_reason": (
+                                    f"Requested provider {requested_provider} was unavailable; "
+                                    f"recovered through {provider_name}."
+                                ),
+                                "raw_failure_reason": failure_reason,
+                            },
+                        },
+                    }
+
+            except ProviderNotAvailable as exc:
+                logger.warning(
+                    f"Provider {provider_name} is not available during fallback",
+                    extra={
+                        "provider": provider_name,
+                        "requested_provider": requested_provider,
+                        "error": str(exc),
+                        "fallback_level": fallback_level,
+                    }
+                )
+
+                # Record provider unavailability metrics
+                if PROVIDER_METRICS_AVAILABLE and record_provider_event:
+                    try:
+                        record_provider_event(
+                            event_type=ProviderEventType.INVOCATION_FAILED,
+                            provider_id=provider_name,
+                            requested_provider=requested_provider,
+                            requested_model=requested_model,
+                            success=False,
+                            error_type="ProviderNotAvailable",
+                            error_code=str(exc),
+                        )
+                    except Exception as metrics_error:
+                        logger.debug(f"Failed to record provider metrics: {metrics_error}")
+
+                continue  # Try next provider in chain
+
+            except GenerationFailed as exc:
+                logger.warning(
+                    f"Provider {provider_name} generation failed during fallback",
+                    extra={
+                        "provider": provider_name,
+                        "requested_provider": requested_provider,
+                        "error": str(exc),
+                        "fallback_level": fallback_level,
+                    }
+                )
+
+                # Record provider generation failure metrics
+                if PROVIDER_METRICS_AVAILABLE and record_provider_event:
+                    try:
+                        record_provider_event(
+                            event_type=ProviderEventType.GENERATION_FAILED,
+                            provider_id=provider_name,
+                            requested_provider=requested_provider,
+                            requested_model=requested_model,
+                            success=False,
+                            error_type="GenerationFailed",
+                            error_code=str(exc),
+                        )
+                    except Exception as metrics_error:
+                        logger.debug(f"Failed to record provider metrics: {metrics_error}")
+
+                continue  # Try next provider in chain
+
+            except Exception as exc:
+                logger.error(
+                    "Unexpected error in runtime fallback provider",
+                    extra={
+                        "provider": provider_name,
+                        "requested_provider": requested_provider,
+                        "error": str(exc),
+                        "fallback_level": fallback_level,
+                    },
+                    exc_info=True
+                )
+                continue  # Try next provider in chain
+
+        # All fallbacks failed - return emergency hardcoded response
+        logger.error(
+            f"All runtime fallbacks failed for requested provider {requested_provider}",
+            extra={
+                "requested_provider": requested_provider,
+                "attempted_providers": attempted_providers,
+                "failure_reason": failure_reason,
+            }
+        )
+
+        return {
+            "content": (
+                "Karen could not reach the requested provider or local runtime fallback. "
+                "Emergency fallback response activated."
+            ),
+            "metadata": {
+                "degraded_mode": True,
+                "degraded_mode_active": True,
+                "llm": {
+                    "requested_provider": requested_provider,
+                    "requested_model": requested_model,
+                    "provider": "emergency",  # actual_provider
+                    "model_id": "karen-fallback-v1",
+                    "model_name": "Karen Local Fallback",
+                    "runtime_engine": "none",
+                    "source": "hardcoded_emergency",
+                    "response_source": "emergency_static",
+                    "is_degraded": True,
+                    "used_fallback": True,
+                    "fallback_from": requested_provider,
+                    "fallback_level": 99,  # Maximum fallback level
+                    "degradation_reason": failure_reason,
+                    "fallback_chain": list(self.RUNTIME_DEGRADED_FALLBACK_ORDER),
+                    "attempted_providers": attempted_providers,
+                    "failure_reason": "All providers unavailable - emergency fallback activated",
+                },
+            },
+        }
+
+    async def _invoke_provider_for_text(self, provider, request: ChatRequest) -> str:
+        """
+        Invoke a provider for text generation, supporting multiple provider interfaces.
+
+        Raises:
+            ProviderNotAvailable: If the provider is not configured or unreachable
+            GenerationFailed: If generation fails for any reason
+        """
+        from ai_karen_engine.integrations.llm_utils import (
+            ProviderNotAvailable,
+            GenerationFailed,
+        )
+
+        # Extract prompt from request
+        prompt = getattr(request, "message", None) or getattr(request, "prompt", None) or ""
+        if not prompt:
+            prompt = str(request)
+
+        # Try different provider methods in order
+        try:
+            if hasattr(provider, "generate_response"):
+                result = provider.generate_response(prompt)
+            elif hasattr(provider, "generate_text"):
+                result = provider.generate_text(prompt)
+            elif hasattr(provider, "chat"):
+                result = provider.chat([{"role": "user", "content": prompt}])
+            else:
+                raise RuntimeError(f"Provider {provider!r} has no supported generation method.")
+        except (ProviderNotAvailable, GenerationFailed):
+            # Re-raise provider-specific exceptions for fallback handling
+            raise
+        except Exception as exc:
+            # Wrap unexpected exceptions
+            logger.error(
+                f"Unexpected error invoking provider {getattr(provider, 'provider_name', 'unknown')}: {exc}",
+                extra={"provider": getattr(provider, 'provider_name', 'unknown'), "error": str(exc)},
+                exc_info=True
+            )
+            raise GenerationFailed(f"Provider generation failed: {exc}") from exc
+
+        # Handle async/sync results
+        if inspect.isawaitable(result):
+            result = await result
+
+        # Extract content from different result formats
+        if isinstance(result, dict):
+            return str(
+                result.get("content")
+                or result.get("answer")
+                or result.get("response")
+                or result.get("text")
+                or ""
+            )
+
+        return str(result or "")
 
     # Enhanced Hardening Methods
 

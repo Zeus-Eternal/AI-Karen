@@ -548,6 +548,26 @@ async def create_chat_response(
             response_metadata.setdefault("session_id", session_id)
             response_metadata.setdefault("used_fallback", bool(final_state.get("used_fallback", False)))
             response_metadata.setdefault("context_used", bool(final_state.get("context_used", False)))
+            
+            # Extract LLM metadata from orchestrator state for provider fallback tracking
+            llm_metadata = final_state.get("llm_metadata", {})
+            if llm_metadata:
+                response_metadata.update({
+                    "requested_provider": llm_metadata.get("requested_provider"),
+                    "actual_provider": llm_metadata.get("actual_provider"),
+                    "requested_model": llm_metadata.get("requested_model"),
+                    "actual_model": llm_metadata.get("actual_model"),
+                    "runtime_engine": llm_metadata.get("runtime_engine"),
+                    "response_source": llm_metadata.get("response_source"),
+                    "fallback_level": llm_metadata.get("fallback_level", 0),
+                    "fallback_chain": llm_metadata.get("fallback_chain", []),
+                    "attempted_providers": llm_metadata.get("attempted_providers", []),
+                })
+                # Update used_fallback if fallback was actually used
+                if llm_metadata.get("used_fallback"):
+                    response_metadata["used_fallback"] = True
+                if llm_metadata.get("degraded_mode"):
+                    response_metadata["degraded_mode"] = True
 
             # Log & Metrics (Thin wrapper around telemetry)
             structured_logger.log_response(

@@ -73,6 +73,8 @@ export interface AssistStreamCallbacks {
 
 class ApiClient {
   private readonly SESSION_MARKER_KEY = 'kari_session_expected';
+  private readonly SESSION_WARNING_SHOWN_KEY = 'session_warning_shown';
+  private readonly TOKEN_REFRESH_ATTEMPTED_KEY = 'token_refresh_attempted';
 
   private formatApiErrorMessage(payload: unknown, fallback: string): string {
     if (typeof payload === 'string') {
@@ -293,6 +295,69 @@ class ApiClient {
     return this.isBrowser() && this.hasSessionMarker();
   }
 
+  private getTimeUntilTokenExpiry(token: string): number | null {
+    try {
+      const expTime = this.getTokenExpirationTime(token);
+      if (!expTime) return null;
+      return expTime - (Date.now() / 1000);
+    } catch {
+      return null;
+    }
+  }
+
+  private shouldShowSessionWarning(token: string): boolean {
+    const timeUntilExpiry = this.getTimeUntilTokenExpiry(token);
+    if (!timeUntilExpiry) return false;
+
+    // Show warning if expires within 30 minutes
+    const warningThreshold = 30 * 60; // 30 minutes in seconds
+    return timeUntilExpiry <= warningThreshold && timeUntilExpiry > 0;
+  }
+
+  private hasShownSessionWarning(): boolean {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem(this.SESSION_WARNING_SHOWN_KEY) === 'true';
+  }
+
+  private markSessionWarningShown(): void {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(this.SESSION_WARNING_SHOWN_KEY, 'true');
+    }
+  }
+
+  private clearSessionWarningFlag(): void {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(this.SESSION_WARNING_SHOWN_KEY);
+    }
+  }
+
+  public async checkSessionStatus(): Promise<{
+    isValid: boolean;
+    timeUntilExpiry: number | null;
+    shouldShowWarning: boolean;
+    isExpired: boolean;
+  }> {
+    try {
+      const accessToken = localStorage.getItem('access_token');
+      if (!accessToken) {
+        return { isValid: false, timeUntilExpiry: null, shouldShowWarning: false, isExpired: true };
+      }
+
+      const timeUntilExpiry = this.getTimeUntilTokenExpiry(accessToken);
+      const isExpired = this.isTokenExpired(accessToken);
+      const shouldShowWarning = !isExpired && this.shouldShowSessionWarning(accessToken);
+
+      return {
+        isValid: !isExpired,
+        timeUntilExpiry,
+        shouldShowWarning,
+        isExpired
+      };
+    } catch {
+      return { isValid: false, timeUntilExpiry: null, shouldShowWarning: false, isExpired: true };
+    }
+  }
+
   private async getAuthHeaders(): Promise<Record<string, string>> {
     try {
       const headers: Record<string, string> = {
@@ -303,17 +368,56 @@ class ApiClient {
       console.log('[ApiClient] getAuthHeaders called; token present:', !!accessToken);
 
       if (accessToken) {
-        if (this.isTokenExpired(accessToken)) {
+        const expTime = this.getTokenExpirationTime(accessToken);
+        const now = Date.now() / 1000;
+        const timeUntilExpiry = expTime ? expTime - now : 0;
+
+        // Check for session warning
+        if (timeUntilExpiry > 0 && timeUntilExpiry <= 1800 && !this.hasShownSessionWarning()) { // 30 minutes
+          console.log('[ApiClient] Session expires soon, should show warning');
+          // Dispatch custom event for UI to show session warning
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('sessionWarning', {
+              detail: { timeUntilExpiry }
+            }));
+            this.markSessionWarningShown();
+          }
+        }
+
+        // Refresh proactively if token expires within 10 minutes
+        if (timeUntilExpiry > 0 && timeUntilExpiry <= 600) { // 10 minutes
+          console.log('[ApiClient] Token expires soon, refreshing proactively');
+          try {
+            await this.refreshAccessToken();
+            const newToken = localStorage.getItem('access_token');
+            if (newToken) {
+              headers['Authorization'] = `Bearer ${newToken}`;
+              // Clear warning flag on successful refresh
+              this.clearSessionWarningFlag();
+            }
+          } catch (error) {
+            console.warn('[ApiClient] Proactive token refresh failed:', error);
+            // Continue with current token, let backend handle expiry
+            headers['Authorization'] = `Bearer ${accessToken}`;
+          }
+        } else if (this.isTokenExpired(accessToken)) {
           console.log('[ApiClient] Access token expired, attempting refresh');
           try {
             await this.refreshAccessToken();
             const newToken = localStorage.getItem('access_token');
-            if (newToken) headers['Authorization'] = `Bearer ${newToken}`;
-          } catch {
-            console.warn('Failed to refresh token, using existing token for this request');
-            // Do not silently drop auth headers on refresh failure; let backend
-            // return an explicit 401 and keep client auth state intact.
-            headers['Authorization'] = `Bearer ${accessToken}`;
+            if (newToken) {
+              headers['Authorization'] = `Bearer ${newToken}`;
+            }
+          } catch (error) {
+            console.warn('[ApiClient] Token refresh failed:', error);
+            // Clear auth state only after refresh failure
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('user_data');
+            if (typeof window !== 'undefined') {
+              window.location.href = '/login';
+            }
+            return headers; // Return without auth headers
           }
         } else {
           console.log('[ApiClient] Using access token for Authorization header');
@@ -331,9 +435,20 @@ class ApiClient {
   private isTokenExpired(token: string): boolean {
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
-      return payload.exp < Date.now() / 1000;
+      // Consider token expired if it expires within the next 5 minutes
+      const bufferTime = 5 * 60; // 5 minutes in seconds
+      return (payload.exp - bufferTime) < Date.now() / 1000;
     } catch {
       return true;
+    }
+  }
+
+  private getTokenExpirationTime(token: string): number | null {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.exp;
+    } catch {
+      return null;
     }
   }
 
@@ -361,10 +476,22 @@ class ApiClient {
         response = await sendRefresh(fallbackBaseUrl);
       }
 
-      if (!response.ok) throw new Error('Token refresh failed');
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Token refresh failed');
+        throw new Error(`Token refresh failed: ${response.status} ${errorText}`);
+      }
+
       const data = await response.json();
+      if (!data.access_token) {
+        throw new Error('Invalid refresh response: missing access_token');
+      }
+
       localStorage.setItem('access_token', data.access_token);
+      // Clear any refresh attempt flags on success
+      localStorage.removeItem(this.TOKEN_REFRESH_ATTEMPTED_KEY);
+      this.clearSessionWarningFlag();
     } catch (error) {
+      console.error('[ApiClient] Token refresh failed:', error);
       // Do not clear auth state here; callers decide how to handle 401.
       // This prevents accidental hard logout during transient refresh issues.
       throw error;
@@ -411,16 +538,72 @@ class ApiClient {
       response = await send(fallbackBaseUrl);
     }
 
-    // 401 Handling
+    // 401 Handling - Only redirect to login as last resort
     if (response.status === 401) {
-      try {
-        await this.refreshAccessToken();
-        response = await send(preferredBaseUrl);
-        if (this.shouldRetryWithDirectBackend(response, fallbackBaseUrl) ||
-            this.shouldRetryMissingApiRoute(endpoint, response, fallbackBaseUrl)) {
-          response = await send(fallbackBaseUrl);
+      const hasTriedRefresh = localStorage.getItem(this.TOKEN_REFRESH_ATTEMPTED_KEY) === 'true';
+
+      if (!hasTriedRefresh) {
+        console.log('[ApiClient] 401 received, attempting token refresh');
+        localStorage.setItem(this.TOKEN_REFRESH_ATTEMPTED_KEY, 'true');
+
+        try {
+          await this.refreshAccessToken();
+          // Retry the original request with new token
+          response = await send(preferredBaseUrl);
+          if (this.shouldRetryWithDirectBackend(response, fallbackBaseUrl) ||
+              this.shouldRetryMissingApiRoute(endpoint, response, fallbackBaseUrl)) {
+            response = await send(fallbackBaseUrl);
+          }
+
+          // Clear the refresh attempt flag on success
+          if (response.ok) {
+            localStorage.removeItem(this.TOKEN_REFRESH_ATTEMPTED_KEY);
+          }
+        } catch (refreshError) {
+          const isTransient = refreshError instanceof Error && (
+            refreshError.message.includes('502') || 
+            refreshError.message.includes('503') || 
+            refreshError.message.includes('504') || 
+            refreshError.message.includes('fetch') || 
+            refreshError.message.includes('timeout')
+          );
+
+          if (isTransient) {
+            console.warn('[ApiClient] Token refresh failed due to transient/degraded state. Preserving auth state.');
+            // Let it fall through to the normal error handling below, don't clear auth
+          } else {
+            console.warn('[ApiClient] Token refresh failed for 401, redirecting to login:', refreshError);
+            localStorage.removeItem(this.TOKEN_REFRESH_ATTEMPTED_KEY);
+
+            // Only redirect to login after refresh failure
+            if (typeof window !== 'undefined') {
+              // Clear auth data
+              localStorage.removeItem('access_token');
+              localStorage.removeItem('refresh_token');
+              localStorage.removeItem('user_data');
+              this.clearSessionWarningFlag();
+              window.location.href = '/login';
+            }
+            return undefined as T; // Don't throw, let redirect happen
+          }
         }
-      } catch {}
+      } else {
+        // Already tried refresh, this is a genuine auth failure
+        console.warn('[ApiClient] 401 after refresh attempt, redirecting to login');
+        localStorage.removeItem(this.TOKEN_REFRESH_ATTEMPTED_KEY);
+
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          localStorage.removeItem('user_data');
+          this.clearSessionWarningFlag();
+          window.location.href = '/login';
+        }
+        return undefined as T; // Don't throw, let redirect happen
+      }
+    } else {
+      // Clear refresh attempt flag on non-401 responses
+      localStorage.removeItem(this.TOKEN_REFRESH_ATTEMPTED_KEY);
     }
 
     // 500 Retry for Copilot Assist
@@ -456,17 +639,31 @@ class ApiClient {
       const fallbackMessage = `HTTP ${response.status}: ${response.statusText}`;
       const errorPayload = errorData.detail ?? errorData.message ?? errorData.error ?? rawText;
 
+      const isDegradedMode = 
+        errorData.degraded_mode === true ||
+        (errorData.metadata && (errorData.metadata as Record<string, unknown>).degraded_mode === true) ||
+        response.headers.get('x-degraded-mode') === 'true';
+
       // Handle 401 errors by redirecting to login
       if (response.status === 401 && typeof window !== 'undefined') {
-        console.warn('[ApiClient] Authentication failed, redirecting to login');
-        // Clear any remaining auth data
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        localStorage.removeItem('user_data');
-        // Redirect to login page
-        window.location.href = '/login';
-        // Don't throw error, let the redirect happen
-        return undefined as T;
+        if (!isDegradedMode) {
+          console.warn('[ApiClient] Authentication failed, redirecting to login');
+          // Clear any remaining auth data
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          localStorage.removeItem('user_data');
+          // Redirect to login page
+          window.location.href = '/login';
+          // Don't throw error, let the redirect happen
+          return undefined as T;
+        } else {
+          // If it's a 401 but in degraded mode, we just throw the ApiError instead of redirecting
+          throw new ApiError(
+            response.status,
+            this.formatApiErrorMessage(errorData, fallbackMessage),
+            errorData,
+          );
+        }
       }
 
       // Provide user-friendly message for 502 Bad Gateway (startup timing)

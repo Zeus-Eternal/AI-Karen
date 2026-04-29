@@ -194,7 +194,7 @@ def register_startup_tasks(app: FastAPI) -> None:
             active_provider = (
                 str(settings_manager.get_setting("provider", "") or "").strip().lower()
             )
-            if active_provider not in {"llama-cpp", "llamacpp", "local"}:
+            if active_provider not in {"builtin_vllm", "builtin_transformers", "local", "local_gguf"}:
                 logger.info(
                     "Skipping local LLM warmup for non-local provider: %s",
                     active_provider or "unset",

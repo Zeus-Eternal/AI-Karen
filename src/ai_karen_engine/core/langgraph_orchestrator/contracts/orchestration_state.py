@@ -55,6 +55,8 @@ class LangGraphOrchestrationState(TypedDict):
     # Response Generation
     response: Optional[str]
     response_metadata: Optional[Dict[str, Any]]
+    llm_response: Optional[str]
+    llm_metadata: Optional[Dict[str, Any]]
 
     # Salvaged from Legacy ChatOrchestrator
     structured_content: Optional[Dict[str, Any]]
@@ -130,6 +132,8 @@ def create_initial_state(
         "tool_execution_metadata": None,
         "response": None,
         "response_metadata": None,
+        "llm_response": None,
+        "llm_metadata": None,
         "requires_approval": None,
         "approval_status": None,
         "approval_reason": None,

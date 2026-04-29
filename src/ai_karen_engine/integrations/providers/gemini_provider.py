@@ -26,8 +26,8 @@ class GeminiProvider(LLMProviderBase):
         self,
         model: str = "gemini-1.5-flash",
         api_key: Optional[str] = None,
-        timeout: int = 60,
-        max_retries: int = 3,
+        timeout: int = 30,
+        max_retries: int = 2,
         safety_settings: Optional[Dict[str, str]] = None,
     ):
         """
@@ -164,6 +164,8 @@ class GeminiProvider(LLMProviderBase):
             "too many requests",
             "server error",
             "timeout",
+            "deadline exceeded",
+            "504",
             "503",
             "502",
             "500",
@@ -363,6 +365,7 @@ class GeminiProvider(LLMProviderBase):
                     prompt,
                     generation_config=generation_config,
                     safety_settings=safety_settings,
+                    request_options={"timeout": self.timeout},
                 )
 
                 # Check if response was blocked by safety filters
@@ -461,6 +464,7 @@ class GeminiProvider(LLMProviderBase):
                     generation_config=generation_config,
                     safety_settings=safety_settings,
                     stream=True,
+                    request_options={"timeout": self.timeout},
                 )
 
             stream = self._retry_with_backoff(_stream)
@@ -507,14 +511,14 @@ class GeminiProvider(LLMProviderBase):
             def _embed():
                 if isinstance(text, str):
                     result = self.genai.embed_content(
-                        model=model, content=text, task_type="retrieval_document"
+                        model=model, content=text, task_type="retrieval_document", request_options={"timeout": self.timeout}
                     )
                     return result["embedding"]
                 else:
                     embeddings = []
                     for t in text:
                         result = self.genai.embed_content(
-                            model=model, content=t, task_type="retrieval_document"
+                            model=model, content=t, task_type="retrieval_document", request_options={"timeout": self.timeout}
                         )
                         embeddings.append(result["embedding"])
                     return embeddings
@@ -572,8 +576,8 @@ class GeminiProvider(LLMProviderBase):
     def _get_common_models(self) -> List[str]:
         """Get list of common Gemini models."""
         return [
-            "gemini-2.5-flash",
-            "gemini-2.5-pro",
+            "gemini-1.5-flash",
+            "gemini-1.5-pro",
             "gemini-2.0-flash",
             "gemini-2.0-flash-lite",
         ]

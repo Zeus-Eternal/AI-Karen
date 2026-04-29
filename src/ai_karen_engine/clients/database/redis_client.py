@@ -12,6 +12,18 @@ import redis
 
 
 class RedisClient:
+    def _interpolate_url(self, url: str) -> str:
+        """Interpolate ${VAR} placeholders in the URL using environment variables."""
+        if not url:
+            return url
+            
+        import re
+        def replace_match(match):
+            var_name = match.group(1)
+            return os.getenv(var_name, f"${{{var_name}}}")
+            
+        return re.sub(r"\$\{([^}]+)\}", replace_match, url)
+
     def __init__(
         self, url: Optional[str] = None, prefix: str = "kari", pool_size: int = 10
     ) -> None:
@@ -26,7 +38,9 @@ class RedisClient:
         """
 
         self.prefix: str = prefix
-        conn_url = url or os.getenv("REDIS_URL")
+        raw_url = url or os.getenv("REDIS_URL")
+        conn_url = self._interpolate_url(raw_url) if raw_url else None
+        
         self.pool: Optional[redis.ConnectionPool] = None
         self.r: Optional[redis.Redis] = None
         if conn_url:

@@ -102,7 +102,7 @@ done
 echo ""
 echo "💾 Memory Usage"
 echo "=============="
-docker stats --no-stream --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}" ai-karen-llamacpp ai-karen-app
+docker stats --no-stream --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}" ai-karen-vllm ai-karen-local-gguf ai-karen-api
 
 # Test with larger prompt
 echo ""

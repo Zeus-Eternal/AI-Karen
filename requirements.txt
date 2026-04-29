@@ -16,7 +16,6 @@ huggingface_hub
 google-generativeai
 openai==2.32.0
 requests
-llama-cpp-python
 scikit-learn
 spacy
 nltk
@@ -89,8 +88,9 @@ chunkr_ai
 xmltodict
 croniter
 mcp
-crawl4ai
-playwright
+crawl4ai==0.8.6
+# Optional Playwright
+playwright==1.58.0
 # Optional: zvec is not published on PyPI for all platforms/interpreters.
 # Install manually only when enabling local Zvec features.
 # zvec

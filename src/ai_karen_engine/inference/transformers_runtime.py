@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, Iterator, Optional
+from typing import Any, Dict, Iterator, List, Optional, Union
+
+from ai_karen_engine.integrations.llm_utils import LLMProviderBase
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +19,7 @@ def _lazy_import_transformers() -> bool:
         return False
 
 
-class TransformersRuntime:
+class TransformersRuntime(LLMProviderBase):
     """Best-effort local text runtime with a deterministic fallback path."""
 
     _instance: Optional["TransformersRuntime"] = None
@@ -81,8 +83,28 @@ class TransformersRuntime:
         for token in self._fallback_generate(prompt, **kwargs).split():
             yield token
 
-    def generate_response(self, prompt: str, **kwargs: Any) -> str:
-        return self._fallback_generate(prompt, **kwargs)
+    def generate_text(self, prompt: str, **kwargs: Any) -> str:
+        """LLMProviderBase interface method - delegates to generate()."""
+        return self.generate(prompt, **kwargs)
+
+    def embed(self, text: Union[str, List[str]], **kwargs: Any) -> Union[List[float], List[List[float]]]:
+        """Generate embeddings using local transformers or fallback.
+
+        In a real implementation, this would use sentence-transformers.
+        Currently returns a deterministic hash-based embedding for testing.
+        """
+        is_single = isinstance(text, str)
+        texts = [text] if is_single else text
+
+        results = []
+        import hashlib
+        for t in texts:
+            h = hashlib.sha256(t.encode()).hexdigest()
+            # Create a 384-float vector from hash
+            vec = [float(int(h[i % 64], 16)) / 15.0 for i in range(384)]
+            results.append(vec)
+
+        return results[0] if is_single else results
 
     def get_model_info(self) -> Dict[str, Any]:
         return {

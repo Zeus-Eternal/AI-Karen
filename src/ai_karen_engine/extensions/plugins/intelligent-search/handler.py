@@ -169,9 +169,14 @@ class WebSearchDispatcher(ExtensionBase):
                         },
                     )
                     if internet_result.get("sources") or internet_result.get("results"):
+                        # Ensure all required frontend fields are present
                         internet_result.setdefault("mode", mode)
                         internet_result["can_execute"] = True
                         internet_result.setdefault("provider", "crawl4ai")
+                        internet_result.setdefault("results", [])
+                        internet_result.setdefault("sources", [])
+                        internet_result.setdefault("extractedData", None)
+                        
                         metadata = internet_result.get("metadata")
                         if isinstance(metadata, dict):
                             metadata.setdefault("provider", "crawl4ai")

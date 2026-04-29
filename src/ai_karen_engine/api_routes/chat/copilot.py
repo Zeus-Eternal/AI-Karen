@@ -38,6 +38,12 @@ from ai_karen_engine.utils.chat_helpers import (
     extract_stream_text as _extract_stream_text,
     normalize_processing_status as _normalize_processing_status,
 )
+from ai_karen_engine.config.config_manager import (
+    get_chat_response_mode,
+    get_chat_streaming_transport,
+    is_streaming_enabled,
+    is_non_streaming_enabled,
+)
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -171,7 +177,7 @@ def _build_degraded_sse_events(
     return events
 
 
-def _build_live_degraded_payload(
+async def _build_live_degraded_payload(
     user_message: str,
     degraded: Optional[DegradedResponse],
     correlation_id: str,
@@ -181,7 +187,7 @@ def _build_live_degraded_payload(
     if degraded is not None:
         payload = serialize_runtime_response(degraded) or {}
 
-    live_response = generate_degraded_mode_response(user_message)
+    live_response = await generate_degraded_mode_response(user_message)
     if isinstance(live_response, dict):
         payload.update(live_response)
 
@@ -195,6 +201,65 @@ logger = logging.getLogger(__name__)
 
 # Create router without prefix for automatic discovery alignment
 router = APIRouter(tags=["copilot"])
+
+
+def _resolve_actual_response_mode(
+    request_response_mode: Optional[str],
+    request_stream: Optional[bool],
+) -> tuple[str, str, bool]:
+    """Resolve the actual response mode, transport, and should_stream flag.
+
+    Returns:
+        (actual_mode, transport, should_stream)
+        - actual_mode: "streaming_first", "auto", or "non_streaming"
+        - transport: "sse" or "json"
+        - should_stream: True if endpoint should stream, False otherwise
+    """
+    # Get admin default
+    admin_mode = get_chat_response_mode() or "streaming_first"
+
+    # Resolve per-request override
+    if request_response_mode:
+        mode = request_response_mode.lower()
+        if mode in ("streaming_first", "auto", "non_streaming"):
+            resolved_mode = mode
+        else:
+            logger.warning(
+                f"Invalid response_mode '{request_response_mode}', using admin default '{admin_mode}'"
+            )
+            resolved_mode = admin_mode
+    elif request_stream is not None:
+        # Legacy compatibility: stream=true → streaming_first
+        resolved_mode = "streaming_first" if request_stream else "non_streaming"
+    else:
+        resolved_mode = admin_mode
+
+    # Determine if streaming should be used
+    if resolved_mode == "non_streaming":
+        return "non_streaming", "json", False
+    elif resolved_mode == "streaming_first":
+        return "streaming_first", get_chat_streaming_transport() or "sse", True
+    else:  # auto
+        return "auto", get_chat_streaming_transport() or "sse", True
+
+
+def _build_request_config_metadata(
+    requested_mode: str,
+    actual_mode: str,
+    transport: str,
+    should_stream: bool,
+    preferred_provider: Optional[str] = None,
+    preferred_model: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Build request config metadata for responses."""
+    return {
+        "requested_response_mode": requested_mode,
+        "actual_response_mode": actual_mode,
+        "transport": transport,
+        "should_stream": should_stream,
+        "preferred_provider": preferred_provider,
+        "preferred_model": preferred_model,
+    }
 
 
 class SuggestedAction(BaseModel):
@@ -215,7 +280,10 @@ class AssistRequest(BaseModel):
     preferred_llm_provider: Optional[str] = None
     preferred_model: Optional[str] = None
     session_id: Optional[str] = None
-    stream: bool = False
+    response_mode: Optional[str] = Field(
+        default=None,
+        description="Optional per-request override: streaming_first, auto, non_streaming. If not provided, uses admin default.",
+    )
 
 
 class AssistResponse(BaseModel):
@@ -265,7 +333,7 @@ def _assist_response_json(
     )
 
 
-def _build_degraded_assist_response(
+async def _build_degraded_assist_response(
     *,
     degraded: DegradedResponse,
     user_message: str,
@@ -277,7 +345,7 @@ def _build_degraded_assist_response(
 ) -> JSONResponse:
     """Return a useful degraded assistant payload (not just a mode banner)."""
     payload = serialize_runtime_response(degraded) or {}
-    shim = generate_degraded_mode_response(user_message)
+    shim = await generate_degraded_mode_response(user_message)
     shim_answer = str(
         (
             shim.get("final")
@@ -677,6 +745,23 @@ async def copilot_assist(
         from langchain_core.messages import HumanMessage
 
         user_messages = [HumanMessage(content=request.message)]
+        allow_public_copilot = os.getenv("ALLOW_PUBLIC_COPILOT", "false").lower() in ("1", "true", "yes")
+
+        # Resolve response mode for this request
+        actual_mode, transport, should_stream = _resolve_actual_response_mode(
+            request.response_mode, None
+        )
+
+        # Build request config metadata
+        request_config_metadata = _build_request_config_metadata(
+            requested_mode=request.response_mode or get_chat_response_mode(),
+            actual_mode=actual_mode,
+            transport=transport,
+            should_stream=False,  # /assist is always non-streaming
+            preferred_provider=request.preferred_llm_provider,
+            preferred_model=request.preferred_model,
+        )
+
         final_state = await orchestrator.process(
             messages=user_messages,
             user_id=request.user_id,
@@ -684,12 +769,16 @@ async def copilot_assist(
             config={
                 "streaming_enabled": False,
                 "correlation_id": correlation_id,
+                "auth_context": {
+                    "allow_anonymous": allow_public_copilot,
+                },
                 "request_config": {
                     "surface": "copilot",
                     "top_k": request.top_k,
                     "context": _json_safe(request.context or {}),
                     "preferred_llm_provider": request.preferred_llm_provider,
                     "preferred_model": request.preferred_model,
+                    **request_config_metadata,
                 },
             },
         )
@@ -720,12 +809,18 @@ async def copilot_assist(
                 final_state = retry_state
                 response_text = retry_text
             elif degraded_continuation_response is not None:
-                live_payload = _build_live_degraded_payload(
-                    request.message,
-                    degraded_continuation_response,
-                    correlation_id,
-                )
-                response_text = _extract_stream_text(live_payload) or response_text
+                # ONLY overwrite with degraded placeholder if we don't have a real response yet
+                if not response_text or _is_placeholder_response(response_text):
+                    live_payload = await _build_live_degraded_payload(
+                        request.message,
+                        degraded_continuation_response,
+                        correlation_id,
+                    )
+                    response_text = _extract_stream_text(live_payload) or response_text
+                
+                # Capture metadata from live payload if available (merge instead of overwrite)
+                final_state["response_metadata"] = final_state.get("response_metadata") or {}
+                final_state["degraded_mode"] = True
         response_metadata: Dict[str, Any] = _json_safe(final_state.get("telemetry") or {})
         response_metadata.update(_json_safe(final_state.get("response_metadata") or {}))
         response_metadata.setdefault("status", "success")
@@ -733,6 +828,8 @@ async def copilot_assist(
         response_metadata.setdefault("conversation_id", conversation_id)
         response_metadata.setdefault("used_fallback", bool(final_state.get("used_fallback", False)))
         response_metadata.setdefault("llm", response_metadata.get("llm", {}))
+        # Add response mode metadata
+        response_metadata.update(request_config_metadata)
 
         action_models: List[SuggestedAction] = []
         for action in final_state.get("actions") or []:
@@ -887,7 +984,7 @@ async def copilot_assist_stream(
             extra={"correlation_id": correlation_id},
         )
         if degraded_continuation_response is not None:
-            payload = _build_live_degraded_payload(
+            payload = await _build_live_degraded_payload(
                 request.message,
                 degraded_continuation_response,
                 correlation_id,
@@ -919,6 +1016,21 @@ async def copilot_assist_stream(
     if not conversation_id:
         conversation_id = str(uuid.uuid4())
 
+    # Resolve response mode for this request
+    actual_mode, transport, should_stream = _resolve_actual_response_mode(
+        request.response_mode, None
+    )
+
+    # Build request config metadata
+    request_config_metadata = _build_request_config_metadata(
+        requested_mode=request.response_mode or get_chat_response_mode(),
+        actual_mode=actual_mode,
+        transport=transport,
+        should_stream=True,  # /assist/stream is always streaming
+        preferred_provider=request.preferred_llm_provider,
+        preferred_model=request.preferred_model,
+    )
+
     async def generate_stream():
         try:
             initial_payload = {
@@ -934,11 +1046,14 @@ async def copilot_assist_stream(
                         "initializing",
                         "Karen is initializing the request pipeline...",
                     ),
+                    **request_config_metadata,
                 },
             }
             yield f"data: {json.dumps(initial_payload)}\n\n"
 
             user_messages = [HumanMessage(content=request.message)]
+            allow_public_copilot = os.getenv("ALLOW_PUBLIC_COPILOT", "false").lower() in ("1", "true", "yes")
+
             async for chunk in orchestrator.stream_process(
                 messages=user_messages,
                 user_id=request.user_id,
@@ -946,12 +1061,16 @@ async def copilot_assist_stream(
                 config={
                     "streaming_enabled": True,
                     "correlation_id": correlation_id,
+                    "auth_context": {
+                        "allow_anonymous": allow_public_copilot,
+                    },
                     "request_config": {
                         "surface": "copilot",
                         "top_k": request.top_k,
                         "context": _json_safe(request.context or {}),
                         "preferred_llm_provider": request.preferred_llm_provider,
                         "preferred_model": request.preferred_model,
+                        **request_config_metadata,
                     },
                 },
             ):
@@ -996,7 +1115,7 @@ async def copilot_assist_stream(
             )
 
             if degraded_continuation_response:
-                fallback_payload = _build_live_degraded_payload(
+                fallback_payload = await _build_live_degraded_payload(
                     request.message,
                     degraded_continuation_response,
                     correlation_id,

@@ -23,12 +23,9 @@ docker system prune -f
 
 # Remove environment variables
 unset CUDA_VISIBLE_DEVICES
-unset KARI_LLAMACPP_HOST
-unset KARI_LLAMACPP_PORT
-unset KARI_LLAMACPP_USE_CUDA
-unset GGML_CUDA
-unset LLAMA_CUBLAS
-unset GGML_CUDA_DMM
+unset KARI_LOCAL_GGUF_HOST
+unset KARI_LOCAL_GGUF_PORT
+unset KARI_LOCAL_GGUF_USE_CUDA
 
 echo "✅ AI-Karen CUDA deployment stopped successfully!"
 echo "🚀 To restart: ./deploy-cuda.sh"

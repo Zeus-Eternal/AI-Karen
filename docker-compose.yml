@@ -280,6 +280,62 @@ services:
       - ai-karen-net
 
   # ──────────────────────────────────────────────────────────────────────
+  # vLLM OpenAI-compatible inference server (OPTIONAL)
+  # Starts only with --profile vllm
+  # Requires GPU for optimal performance
+  # ──────────────────────────────────────────────────────────────────────
+  vllm:
+    image: vllm/vllm-openai:latest
+    container_name: ai-karen-vllm
+    ipc: host
+    profiles:
+      - vllm
+    ports:
+      - "${KAREN_VLLM_PORT:-8001}:8000"
+    environment:
+      - HF_HOME=/models/huggingface
+      - TRANSFORMERS_CACHE=/models/huggingface
+      - HUGGING_FACE_HUB_TOKEN=${HUGGING_FACE_HUB_TOKEN:-}
+      - VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-}
+    volumes:
+      - ./models:/models
+    command:
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --model
+      - ${KAREN_VLLM_MODEL:-Qwen/Qwen2.5-1.5B-Instruct}
+      - --served-model-name
+      - ${KAREN_VLLM_SERVED_MODEL_NAME:-karen-vllm-local}
+      - --dtype
+      - ${KAREN_VLLM_DTYPE:-auto}
+      - --gpu-memory-utilization
+      - ${KAREN_VLLM_GPU_MEMORY_UTILIZATION:-0.85}
+      - --max-model-len
+      - ${KAREN_VLLM_MAX_MODEL_LEN:-4096}
+      - --trust-remote-code
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+          cpus: '4.0'
+        reservations:
+          memory: 4G
+          cpus: '2.0'
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    restart: unless-stopped
+    networks:
+      - ai-karen-net
+
+  # ──────────────────────────────────────────────────────────────────────
   # Ollama (OPTIONAL - recommended local model path for Docker installs)
   # Starts only with --profile ollama
   # ──────────────────────────────────────────────────────────────────────
@@ -448,7 +504,7 @@ services:
       KAREN_ENABLE_HEALTH_CHECKS: "true"
       KARI_SKIP_STARTUP_CHECK: "false"
       KARI_SKIP_AUTO_INIT: "false"
-      ALLOW_PUBLIC_COPILOT: "false"
+      ALLOW_PUBLIC_COPILOT: "${ALLOW_PUBLIC_COPILOT:-false}"
 
       # Use service hostnames for in-network connectivity
       DATABASE_URL: "postgresql://karen_user:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"

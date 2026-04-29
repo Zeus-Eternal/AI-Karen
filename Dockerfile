@@ -75,7 +75,7 @@ RUN python -m spacy download en_core_web_sm || true
 # Runtime-cuda stage (CUDA-enabled local GGUF build)
 # Use API_BUILD_TARGET=runtime-cuda when building the API image on GPU hosts.
 # -----------------------------
-FROM nvidia/cuda:12.4.1-devel-ubuntu22.04 AS runtime-cuda
+FROM nvidia/cuda:12.0.1-devel-ubuntu22.04 AS runtime-cuda
 WORKDIR /app
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
@@ -112,6 +112,9 @@ ENV CC=/usr/bin/gcc \
 COPY requirements.txt ./
 
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Install PyTorch compatible with CUDA 12.0
+RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu120
 
 # Install playwright browsers
 RUN playwright install chromium && playwright install-deps chromium

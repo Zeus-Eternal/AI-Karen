@@ -25,6 +25,9 @@ interface ChatInputProps {
   speechRecognitionSupported: boolean;
   showStopButton: boolean;
 
+  // Streaming status
+  streamingStatus: string;
+
   // Button handlers
   onMicClick: () => void;
   onSuggestStarter: () => void;
@@ -68,6 +71,7 @@ export function ChatInput({
   isBackendOffline,
   speechRecognitionSupported,
   showStopButton,
+  streamingStatus,
   onMicClick,
   onSuggestStarter,
   onStopRequest,
@@ -87,15 +91,22 @@ export function ChatInput({
   refreshSessions,
   createNewSession,
   onExportChat,
-  streamingStatus,
 }: ChatInputProps) {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   return (
     <div id="chat-input-area">
+      {/* Streaming Status Indicator */}
+      {isLoading && streamingStatus && (
+        <div className="bg-blue-500/10 border-t border-blue-500/20 px-3 py-2 text-sm flex items-center justify-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+          <span className="text-blue-600 font-medium">{streamingStatus}</span>
+        </div>
+      )}
+
       <div className="chat-input-container border-t border-border p-3 md:p-4 bg-background/80 backdrop-blur-sm sticky bottom-0">
-        <div className="mb-2 flex w-full flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div className="flex gap-2">
+        <div className="mb-2 flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap gap-2">
             <ProviderSettingsModal
               selectableProviders={selectableProviders}
               selectedProvider={selectedProvider}
@@ -129,30 +140,40 @@ export function ChatInput({
               hideTrigger={true}
             />
           </div>
-          <div className="flex self-center md:self-auto">
+          <div className="flex self-center sm:self-auto">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={onSuggestStarter}
               disabled={isLoading || isSuggestingStarter || isRecording}
-              className="h-9 px-3"
+              className="h-9 px-3 text-xs sm:text-sm"
+              aria-label={isSuggestingStarter ? "Generating conversation starter suggestion" : "Generate a conversation starter suggestion"}
+              aria-describedby="starter-help"
             >
-              <Sparkles className="mr-2 h-4 w-4" />
-              {isSuggestingStarter ? "Getting idea..." : "Need an idea?"}
+              <Sparkles className="mr-2 h-4 w-4" aria-hidden="true" />
+              <span className="hidden sm:inline">
+                {isSuggestingStarter ? "Getting idea..." : "Need an idea?"}
+              </span>
+              <span className="sm:hidden">
+                {isSuggestingStarter ? "Idea..." : "Idea"}
+              </span>
             </Button>
           </div>
         </div>
-        <form onSubmit={onSubmit} className="w-full flex gap-2 md:gap-3 items-center">
+        <form onSubmit={onSubmit} className="w-full flex gap-2 sm:gap-3 items-center">
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className={`${isRecording ? 'text-destructive animate-pulse' : ''}`}
+            className={`h-10 w-10 sm:h-11 sm:w-11 ${isRecording ? 'text-destructive animate-pulse' : ''}`}
             onClick={onMicClick}
             disabled={isLoading || isAuthLoading || !speechRecognitionSupported}
+            aria-label={isRecording ? "Stop voice recording" : "Start voice recording"}
+            aria-pressed={isRecording}
+            aria-describedby="mic-help"
           >
-            {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+            {isRecording ? <MicOff className="h-5 w-5" aria-hidden="true" /> : <Mic className="h-5 w-5" aria-hidden="true" />}
           </Button>
           <Input
             type="text"
@@ -174,8 +195,15 @@ export function ChatInput({
                     ? "Offline mode - limited functionality"
                     : streamingStatus || "Ask Karen anything..."
             }
-            className="flex-1 bg-[#292929]"
+            className="flex-1 bg-[#292929] h-10 sm:h-11 text-sm sm:text-base"
             disabled={isAuthLoading}
+            aria-label="Chat message input"
+            aria-describedby="input-help"
+            aria-invalid={isBackendOffline}
+            autoComplete="off"
+            spellCheck="true"
+            role="textbox"
+            aria-multiline="false"
           />
           <Button
             type={isLoading ? 'button' : 'submit'}
@@ -187,11 +215,29 @@ export function ChatInput({
               isBackendOffline ||
               (!isLoading && !displayedInputValue.trim())
             }
-            className={`${isLoading ? 'bg-destructive hover:bg-destructive/90' : ''}`}
+            className={`${isLoading ? 'bg-destructive hover:bg-destructive/90' : ''} h-10 w-10 sm:h-11 sm:w-11`}
+            aria-label={showStopButton ? "Stop current response generation" : "Send message"}
+            aria-describedby="submit-help"
           >
-            {showStopButton ? '⏹️' : '🚀'}
+            <span aria-hidden="true" className="text-lg sm:text-xl">{showStopButton ? '⏹️' : '🚀'}</span>
           </Button>
         </form>
+      </div>
+
+      {/* Hidden help text for screen readers */}
+      <div className="sr-only">
+        <div id="starter-help">Get a suggested conversation starter from Karen AI</div>
+        <div id="mic-help">
+          {speechRecognitionSupported
+            ? "Voice input for chat messages"
+            : "Voice input not supported in this browser"}
+        </div>
+        <div id="input-help">Type your message to Karen AI. Press Enter to send, Shift+Enter for new line</div>
+        <div id="submit-help">
+          {showStopButton
+            ? "Stop the current AI response generation"
+            : "Send your message to Karen AI"}
+        </div>
       </div>
     </div>
   );

@@ -106,6 +106,10 @@ class DegradedModeManager:
     def attempt_recovery(self) -> bool:
         return False
 
+    async def generate_degraded_response(self, user_input: str, **kwargs: Any) -> Dict[str, Any]:
+        """Backward-compatible entrypoint that delegates to the async generator."""
+        return await generate_degraded_mode_response(user_input, **kwargs)
+
     def get_status(self) -> DegradedModeStatus:
         """Return status by reading from the control plane if available."""
         try:
@@ -149,62 +153,99 @@ def get_degraded_mode_manager() -> DegradedModeManager:
 # ---------------------------------------------------------------------------
 
 
-def generate_degraded_mode_response(user_input: str, **kwargs: Any) -> Dict[str, Any]:
-    """Generate a live degraded response with fallback provider support."""
+async def generate_degraded_mode_response(user_input: str, **kwargs: Any) -> Dict[str, Any]:
+    """Generate a live degraded response with runtime fallback support."""
     from ai_karen_engine.core.langgraph_orchestrator.formatting.response_formatter_pipeline import (
         ResponseFormatterPipeline,
     )
-    from ai_karen_engine.integrations.providers.fallback_provider import (
-        FallbackProvider,
+    from ai_karen_engine.services.models.routing.llm_router_service import (
+        LLMRouter,
+        ChatRequest,
     )
 
-    fallback_provider_name, fallback_model_name = get_degraded_mode_manager().get_fallback_provider()
-    prompt = textwrap.dedent(
-        f"""
-        You are Karen operating in degraded mode.
-        The requested provider is unavailable, but you should still answer directly and helpfully.
-        Be concise, natural, and prioritize the user's request.
+    # Get the requested provider from kwargs if available
+    requested_provider = kwargs.get("requested_provider", "gemini")
+    requested_model = kwargs.get("requested_model", "unknown")
+    failure_reason = kwargs.get("failure_reason", "Requested provider unavailable")
 
-        User request:
-        {user_input}
-        """
-    ).strip()
-
-    source = "degraded_fallback_static"
-    model_id = f"{fallback_provider_name}:{fallback_model_name}"
-
+    # Try runtime fallback first through LLMRouter
     try:
-        provider = FallbackProvider(model=fallback_model_name)
-        message = provider.generate_text(prompt, model=fallback_model_name).strip()
-        usage = getattr(provider, "last_usage", {}) or {}
-        source = str(usage.get("source") or "degraded_fallback_llm")
-        model_id = str(usage.get("model_id") or model_id)
+        router = LLMRouter()
+        chat_request = ChatRequest(message=user_input, stream=False)
+
+        # Call the runtime fallback executor
+        fallback_result = await router.generate_with_degraded_runtime_fallback(
+            request=chat_request,
+            requested_provider=requested_provider,
+            requested_model=requested_model,
+            failure_reason=failure_reason,
+        )
+
+        # Extract content and metadata from fallback result
+        content = fallback_result.get("content", "")
+        metadata = fallback_result.get("metadata", {})
+        llm_metadata = metadata.get("llm", {})
+
+        # Build response envelope with proper metadata
+        return ResponseFormatterPipeline().build_response_envelope(
+            content,
+            llm_metadata.get("provider", requested_provider),
+            llm_metadata.get("model_id", requested_model),
+            metadata={
+                "degraded_mode": True,
+                "degraded_mode_active": True,
+                "llm": llm_metadata,
+                "source": llm_metadata.get("source", "runtime_fallback"),
+                "model_id": llm_metadata.get("model_id"),
+                "provider": llm_metadata.get("provider"),
+                "model": llm_metadata.get("model_name", llm_metadata.get("model_id")),
+                "note": "Response generated via degraded runtime fallback",
+            },
+            status="ok",
+        )
+
     except Exception as exc:
         logger.warning(
-            "Live degraded fallback generation failed; using deterministic fallback: %s",
+            "Runtime fallback generation failed; using deterministic fallback: %s",
             exc,
         )
+        # Fallback to deterministic response
+        from ai_karen_engine.integrations.providers.fallback_provider import FallbackProvider
+
+        fallback_provider_name, fallback_model_name = get_degraded_mode_manager().get_fallback_provider()
         message = (
             f"I understand you're asking about: {user_input[:200]}. "
             "I'm currently operating with limited capabilities, but I'm still here to help. "
             "If you'd like, I can answer with a concise summary or suggest next steps."
         )
 
-    return ResponseFormatterPipeline().build_response_envelope(
-        message,
-        fallback_provider_name,
-        fallback_model_name,
-        metadata={
-            "degraded_mode_active": True,
-            "confidence": 0.45 if source == "degraded_fallback_llm" else 0.3,
-            "note": "Response generated via degraded fallback provider",
-            "source": source,
-            "model_id": model_id,
-            "provider": fallback_provider_name,
-            "model": fallback_model_name,
-        },
-        status="ok",
-    )
+        return ResponseFormatterPipeline().build_response_envelope(
+            message,
+            fallback_provider_name,
+            fallback_model_name,
+            metadata={
+                "degraded_mode": True,
+                "degraded_mode_active": True,
+                "llm": {
+                    "requested_provider": requested_provider,
+                    "requested_model": requested_model,
+                    "provider": fallback_provider_name,
+                    "model_id": fallback_model_name,
+                    "model_name": fallback_model_name,
+                    "source": "deterministic_fallback",
+                    "is_degraded": True,
+                    "used_fallback": True,
+                    "fallback_from": requested_provider,
+                    "failure_reason": failure_reason,
+                },
+                "source": "deterministic_fallback",
+                "model_id": fallback_model_name,
+                "provider": fallback_provider_name,
+                "model": fallback_model_name,
+                "note": "Response generated via deterministic fallback (runtime fallback failed)",
+            },
+            status="ok",
+        )
 
 
 # ---------------------------------------------------------------------------

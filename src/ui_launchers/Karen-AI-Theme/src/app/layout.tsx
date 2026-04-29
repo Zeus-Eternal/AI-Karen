@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from '@/providers/theme-provider';
 import { PluginRegistryProvider } from '@/plugin_host/registry';
 import { MessageInjectionProvider } from '@/providers/MessageInjectionProvider';
+import SessionWarning from '@/components/SessionWarning';
 
 const inter = Inter({
   variable: '--font-sans',
@@ -35,6 +36,7 @@ export default function RootLayout({
         <ThemeProvider>
           <PluginRegistryProvider>
             <MessageInjectionProvider>
+              <SessionWarning />
               {children}
               <Toaster />
             </MessageInjectionProvider>

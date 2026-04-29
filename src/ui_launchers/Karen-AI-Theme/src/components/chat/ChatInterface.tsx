@@ -1883,6 +1883,8 @@ export default function ChatInterface() {
         isBackendOffline={isBackendOffline}
         error={error}
         currentSession={currentSession}
+        isLoading={isLoading}
+        streamingStatus={streamingStatus}
       />
 
       {degradedMode.active && (

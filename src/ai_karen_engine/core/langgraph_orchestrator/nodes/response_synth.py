@@ -1,5 +1,6 @@
 """Response synthesis node for LangGraph orchestration."""
 
+import json
 import logging
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
@@ -67,7 +68,7 @@ class ResponseSynthesisNode:
 
         # If we have an LLM router and it can provide a healthy fallback or local provider,
         # use it to synthesize a natural response that includes the tool results.
-        if self._llm_router and (tool_results or reasoning_result):
+        if self._llm_router:
             try:
                 from ai_karen_engine.services.models.routing.llm_router_service import ChatRequest
                 
@@ -80,30 +81,91 @@ class ResponseSynthesisNode:
                     provider_name, model_name = selection
                     
                     # Construct a synthesis prompt
-                    tool_data = json.dumps(tool_results, indent=2)
-                    synthesis_prompt = f"""
-                    You are Karen, an intelligent assistant.
-                    Synthesize a natural, helpful response for the user based on the tool results provided below.
+                    if tool_results:
+                        tool_data = json.dumps(tool_results, indent=2)
+                        synthesis_prompt = f"""
+                        You are Karen, an intelligent assistant.
+                        Synthesize a natural, helpful response for the user based on the tool results provided below.
+                        
+                        User's latest message: {last_user_message}
+                        
+                        Tool Results:
+                        {tool_data}
+                        
+                        Respond directly to the user. If a tool failed, acknowledge it gracefully.
+                        """
+                    else:
+                        synthesis_prompt = f"""
+                        You are Karen, an intelligent assistant.
+                        Respond naturally to the user.
+                        
+                        User's latest message: {last_user_message}
+                        """
                     
-                    User's latest message: {last_user_message}
+                    try:
+                        # Try primary provider via process_chat_request
+                        response_gen = self._llm_router.process_chat_request(
+                            ChatRequest(message=synthesis_prompt, stream=False)
+                        )
+                        
+                        final_text = ""
+                        async for chunk in response_gen:
+                            final_text += chunk
+                        
+                        if final_text.strip():
+                            # Store metadata for successful primary provider
+                            state["llm_metadata"] = {
+                                "requested_provider": provider_name,
+                                "actual_provider": provider_name,
+                                "requested_model": model_name,
+                                "actual_model": model_name,
+                                "runtime_engine": provider_name,
+                                "response_source": "live_model",
+                                "degraded_mode": False,
+                                "used_fallback": False,
+                            }
+                            logger.info(
+                                f"LLM synthesis successful with primary provider: {provider_name}"
+                            )
+                            return final_text.strip()
                     
-                    Tool Results:
-                    {tool_data}
-                    
-                    Respond directly to the user. If a tool failed, acknowledge it gracefully.
-                    """
-                    
-                    # Generate response via router
-                    response_gen = self._llm_router.process_chat_request(
-                        ChatRequest(message=synthesis_prompt, stream=False)
-                    )
-                    
-                    final_text = ""
-                    async for chunk in response_gen:
-                        final_text += chunk
-                    
-                    if final_text.strip():
-                        return final_text.strip()
+                    except Exception as provider_error:
+                        # Primary provider failed - try fallback chain
+                        logger.warning(
+                            f"Primary provider {provider_name} failed: {provider_error}. "
+                            "Attempting degraded runtime fallback to vLLM/Transformers."
+                        )
+                        
+                        try:
+                            fallback_result = await self._llm_router.generate_with_degraded_runtime_fallback(
+                                request=ChatRequest(message=synthesis_prompt, stream=False),
+                                requested_provider=provider_name,
+                                requested_model=model_name or "unknown",
+                                failure_reason=str(provider_error),
+                            )
+                            
+                            if fallback_result and fallback_result.get("content"):
+                                # Store fallback metadata
+                                fallback_metadata = fallback_result.get("metadata", {}).get("llm", {})
+                                state["llm_metadata"] = fallback_metadata
+                                logger.info(
+                                    f"Fallback successful: {fallback_metadata.get('provider', 'unknown')} "
+                                    f"(requested: {provider_name})"
+                                )
+                                return fallback_result["content"]
+                            
+                            # Fallback also failed
+                            logger.error(
+                                "All providers failed including fallback chain. "
+                                "Falling back to deterministic response."
+                            )
+                        
+                        except Exception as fallback_error:
+                            logger.error(
+                                f"Fallback chain execution failed: {fallback_error}. "
+                                "Falling back to deterministic response."
+                            )
+            
             except Exception as e:
                 logger.warning(f"LLM-based synthesis failed, falling back to deterministic: {e}")
 

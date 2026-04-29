@@ -33,11 +33,13 @@ from prometheus_client import Counter, Histogram
 
 try:
     from crawl4ai import AsyncWebCrawler, BrowserConfig, CacheMode, CrawlerRunConfig
-except ImportError:
+    _IMPORT_ERROR = None
+except ImportError as e:
     AsyncWebCrawler = None  # type: ignore[assignment]
     BrowserConfig = None  # type: ignore[assignment]
     CacheMode = None  # type: ignore[assignment]
     CrawlerRunConfig = None  # type: ignore[assignment]
+    _IMPORT_ERROR = str(e)
 
 
 logger = logging.getLogger(__name__)
@@ -138,6 +140,7 @@ class CrawlResult:
     links: List[Dict[str, Any]]
     media: Dict[str, Any]
     metadata: Dict[str, Any]
+    extracted_content: Optional[Any]
     success: bool
     status_code: Optional[int]
     error: Optional[str]
@@ -212,8 +215,9 @@ class Crawl4AIIntegration:
         )
 
         if not self.available:
+            error_details = f": {_IMPORT_ERROR}" if _IMPORT_ERROR else ""
             logger.warning(
-                "Crawl4AI is not installed or could not be imported. "
+                f"Crawl4AI is not installed or could not be imported{error_details}. "
                 "Crawl4AIIntegration will return structured dependency failures. "
                 "To fix this, ensure 'crawl4ai' and 'playwright' are in requirements.txt "
                 "and run 'playwright install chromium && playwright install-deps chromium'."
@@ -267,6 +271,7 @@ class Crawl4AIIntegration:
         bypass_cache: Optional[bool] = None,
         timeout_seconds: Optional[float] = None,
         metadata: Optional[Mapping[str, Any]] = None,
+        extraction_strategy: Optional[Any] = None,
     ) -> Dict[str, Any]:
         """
         Fetch a single URL and return normalized content.
@@ -277,7 +282,10 @@ class Crawl4AIIntegration:
             url=url,
             bypass_cache=bypass_cache,
             timeout_seconds=timeout_seconds,
-            metadata=metadata or {},
+            metadata={
+                **(metadata or {}),
+                "_extraction_strategy": extraction_strategy,
+            },
         )
         result = await self.fetch(request)
         return result.to_dict()
@@ -441,12 +449,20 @@ class Crawl4AIIntegration:
                 if req.bypass_cache is None
                 else req.bypass_cache
             )
-            run_config = self._build_run_config(bypass_cache=bypass_cache)
+            
+            # Extract strategy from internal metadata key
+            extraction_strategy = req.metadata.get("_extraction_strategy")
+            run_config = self._build_run_config(
+                bypass_cache=bypass_cache,
+                extraction_strategy=extraction_strategy,
+            )
 
+            logger.info(f"🚀 Crawl4AI starting arun for {normalized_url} (timeout={timeout}s, strategy={type(extraction_strategy).__name__ if extraction_strategy else 'None'})")
             raw_result = await asyncio.wait_for(
                 crawler.arun(url=normalized_url, config=run_config),
                 timeout=timeout,
             )
+            logger.info(f"✅ Crawl4AI arun completed for {normalized_url}")
 
             if raw_result is None:
                 result = self._failure_result(
@@ -491,6 +507,49 @@ class Crawl4AIIntegration:
             self._observe_result(result)
             return result
 
+    def _build_extraction_strategy(self, config: Optional[Dict[str, Any]]) -> Optional[Any]:
+        """Build a Crawl4AI extraction strategy from a configuration dictionary."""
+        if not config or not self.available:
+            return None
+
+        try:
+            strategy_type = config.get("type", "instruction")
+            
+            if strategy_type == "css":
+                from crawl4ai.extraction_strategy import JsonCssExtractionStrategy
+                schema = config.get("schema")
+                if not schema:
+                    return None
+                return JsonCssExtractionStrategy(schema, verbose=self.settings.verbose)
+                
+            elif strategy_type == "xpath":
+                from crawl4ai.extraction_strategy import JsonXPathExtractionStrategy
+                schema = config.get("schema")
+                if not schema:
+                    return None
+                return JsonXPathExtractionStrategy(schema, verbose=self.settings.verbose)
+                
+            elif strategy_type in {"llm", "schema", "instruction"}:
+                from crawl4ai.extraction_strategy import LLMExtractionStrategy
+                
+                # LLM strategy requires provider and other details
+                # If they aren't provided, we use a default instruction-based one if possible
+                instruction = config.get("instruction") or config.get("schema")
+                if not instruction:
+                    return None
+                    
+                return LLMExtractionStrategy(
+                    provider=config.get("provider", "openai/gpt-4o-mini"),
+                    api_token=config.get("api_token"),
+                    instruction=str(instruction),
+                    schema=config.get("schema") if strategy_type == "schema" else None,
+                    verbose=self.settings.verbose
+                )
+        except Exception as e:
+            logger.warning(f"Failed to build extraction strategy: {e}")
+            
+        return None
+
     def _build_browser_config(self) -> Any:
         """Build BrowserConfig while tolerating Crawl4AI version differences."""
         if BrowserConfig is None:
@@ -512,7 +571,11 @@ class Crawl4AIIntegration:
             },
         )
 
-    def _build_run_config(self, bypass_cache: bool) -> Any:
+    def _build_run_config(
+        self,
+        bypass_cache: bool,
+        extraction_strategy: Optional[Any] = None,
+    ) -> Any:
         """Build CrawlerRunConfig while tolerating Crawl4AI version differences."""
         if CrawlerRunConfig is None:
             return None
@@ -525,6 +588,9 @@ class Crawl4AIIntegration:
 
         if cache_mode is not None:
             kwargs["cache_mode"] = cache_mode
+
+        if extraction_strategy is not None:
+            kwargs["extraction_strategy"] = extraction_strategy
 
         if not self.settings.include_raw_html:
             kwargs["word_count_threshold"] = 10
@@ -579,6 +645,7 @@ class Crawl4AIIntegration:
         links = self._normalize_links(getattr(result, "links", []))
         media = self._normalize_media(getattr(result, "media", {}))
         metadata = self._normalize_metadata(getattr(result, "metadata", {}))
+        extracted_content = getattr(result, "extracted_content", None)
 
         success = bool(getattr(result, "success", True))
         status_code = self._extract_status_code(result)
@@ -630,6 +697,7 @@ class Crawl4AIIntegration:
             links=links,
             media=media,
             metadata=normalized_metadata,
+            extracted_content=extracted_content,
             success=success,
             status_code=status_code,
             error=error,

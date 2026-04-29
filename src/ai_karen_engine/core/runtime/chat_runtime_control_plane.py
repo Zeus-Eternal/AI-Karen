@@ -480,7 +480,17 @@ class ChatOrchestratorProbe:
             from ai_karen_engine.llm_orchestrator import get_orchestrator
 
             orchestrator = get_orchestrator()
-            models = orchestrator.registry.list_models()
+            # If orchestrator has a registry, use it. Otherwise it might be initializing.
+            registry = getattr(orchestrator, "registry", None)
+            if not registry:
+                return DependencyHealth(
+                    name=self.name,
+                    status=DependencyStatus.HEALTHY, # Assume healthy while initializing
+                    reason="Orchestrator initializing",
+                    response_time_ms=(time.time() - start) * 1000,
+                )
+            
+            models = registry.list_models()
             active_models = [m for m in models if m.get("status") == "ACTIVE"]
 
             elapsed = (time.time() - start) * 1000

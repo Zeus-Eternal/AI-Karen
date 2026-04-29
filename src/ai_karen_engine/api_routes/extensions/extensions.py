@@ -1,23 +1,42 @@
 """Extension management API routes."""
 
+from __future__ import annotations
+
+import asyncio
 import logging
 from datetime import datetime
 from pathlib import Path
 import sys
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from ai_karen_engine.utils.dependency_checks import import_fastapi
 
-APIRouter, Depends, HTTPException, Request = import_fastapi(
-    "APIRouter", "Depends", "HTTPException", "Request"
-)
+if TYPE_CHECKING:
+    from fastapi import APIRouter, Depends, HTTPException, Request
+else:
+    APIRouter, Depends, HTTPException, Request = import_fastapi(
+        "APIRouter", "Depends", "HTTPException", "Request"
+    )
 
 logger = logging.getLogger(__name__)
 
+_initialized_managers: Set[int] = set()
+_initializing_managers: Set[int] = set()
 
-# Import extensions manager
+
+async def _async_init_manager(manager: Any) -> None:
+    manager_id = id(manager)
+    try:
+        await manager.initialize()
+        _initialized_managers.add(manager_id)
+    except Exception as e:
+        logger.warning(f"Failed to initialize extension manager: {e}")
+    finally:
+        _initializing_managers.discard(manager_id)
+
+
 def get_extension_manager():
     """Get extension manager, returns None if not available."""
     try:
@@ -26,23 +45,20 @@ def get_extension_manager():
         )
 
         manager = get_manager()
+        manager_id = id(manager)
 
-        # Initialize the manager if it hasn't been initialized yet
-        if not hasattr(manager, "_initialized"):
-            try:
-                import asyncio
+        if manager_id in _initialized_managers:
+            return manager
 
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    # Create a task to initialize the manager
-                    asyncio.create_task(manager.initialize())
-                    manager._initialized = True
-                else:
-                    # Initialize directly
-                    loop.run_until_complete(manager.initialize())
-                    manager._initialized = True
-            except Exception as e:
-                logger.warning(f"Failed to initialize extension manager: {e}")
+        try:
+            loop = asyncio.get_running_loop()
+            _initializing_managers.add(manager_id)
+            loop.create_task(_async_init_manager(manager))
+        except RuntimeError:
+            asyncio.run(manager.initialize())
+            _initialized_managers.add(manager_id)
+        except Exception as e:
+            logger.warning(f"Failed to initialize extension manager: {e}")
 
         return manager
     except ImportError as e:
@@ -281,7 +297,8 @@ async def remove_extension_ui(extension_name: str, user=Depends(get_current_user
         if manager:
             await manager.refresh_extensions()
         return {
-            "success": result.status.value == "success" or result.status.value == "not_found",
+            "success": result.status.value == "success"
+            or result.status.value == "not_found",
             "message": result.message,
             "plugin_id": extension_name,
             "status": result.status.value,

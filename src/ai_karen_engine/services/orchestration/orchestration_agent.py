@@ -29,6 +29,7 @@ from ai_karen_engine.core.model_runtime.provider_registry_service import (
     ProviderRegistryService,
     ProviderCapability,
 )
+from ai_karen_engine.core.model_runtime.model_manager import ModelManager
 from ai_karen_engine.core.memory.signals.distilbert_service import DistilBertService
 from ai_karen_engine.core.memory.signals.spacy_service import SpacyService
 from ai_karen_engine.core.reasoning.synthesis.small_language_model_service import (
@@ -138,6 +139,19 @@ class OrchestrationAgent:
             data.llm_preferences or {}
         )
 
+        # DEBUG: Force fallback for specific test message
+        if data.message == "Force fallback test":
+            logger.warning("FORCING DEGRADED MODE FOR TEST")
+            self.degraded_manager.activate_degraded_mode(
+                DegradedModeReason.ALL_PROVIDERS_FAILED,
+                failed_providers=["forced_test_failure"],
+            )
+            return await self.degraded_manager.generate_degraded_response(
+                data.message,
+                requested_provider="forced_test_failure",
+                failure_reason="Forced test failure"
+            )
+
         # Quick task routing using helpers (Requirement 6)
         task_type = await self._infer_task_type(data)
 
@@ -222,7 +236,10 @@ class OrchestrationAgent:
                 failed_providers=self.default_hierarchy,
             )
             degraded = await self.degraded_manager.generate_degraded_response(
-                data.message
+                data.message,
+                requested_provider=validated_preferences.get("provider", "primary"),
+                requested_model=validated_preferences.get("model", "unknown"),
+                failure_reason="No available providers found in selection hierarchy"
             )
             # Ensure suggestions for recovery are present
             if not degraded.get("suggestions"):
@@ -326,7 +343,11 @@ class OrchestrationAgent:
             failed_providers=failed_chain,
         )
 
-        degraded = await self.degraded_manager.generate_degraded_response(data.message)
+        degraded = await self.degraded_manager.generate_degraded_response(
+            data.message,
+            requested_provider=failed_provider or "primary",
+            failure_reason=failure_reason
+        )
         meta = degraded.setdefault("meta", {})
         annotations = meta.setdefault("annotations", [])
         if "LLM Fallback" not in annotations:
@@ -592,6 +613,84 @@ class OrchestrationAgent:
         except Exception as e:
             logger.debug(f"SmallLanguageModel scaffolding failed: {e}")
             return "Scaffolding unavailable; falling back to main LLM would be appropriate."
+
+    async def orchestrate_stream(self, data: OrchestrationInput) -> AsyncIterator[str]:
+        """
+        Streaming version of orchestration.
+        Yields text chunks directly.
+        """
+        # Validate and extract user preferences
+        validated_preferences = self._validate_user_preferences(
+            data.llm_preferences or {}
+        )
+
+        # DEBUG: Force fallback for specific test message
+        if data.message == "Force fallback test":
+            logger.warning("FORCING DEGRADED MODE FOR STREAM TEST")
+            degraded = await self.degraded_manager.generate_degraded_response(
+                data.message,
+                requested_provider="forced_test_failure",
+                failure_reason="Forced test failure"
+            )
+            yield degraded.get("final") or "Degraded mode active."
+            return
+
+        # General/complex chat → main LLM with 4-step selection process
+        selection_result = await self.model_selector.select_provider_and_model(
+            user_preferences=validated_preferences,
+            context={"message": data.message, "session_id": data.session_id},
+        )
+
+        if selection_result.provider is None:
+            # Entering degraded mode for streaming
+            degraded = await self.degraded_manager.generate_degraded_response(
+                data.message,
+                requested_provider=validated_preferences.get("provider", "primary"),
+                failure_reason="No available providers found in hierarchy"
+            )
+            yield degraded.get("final") or "All providers are currently unavailable. Entering degraded mode..."
+            return
+
+        # Invoke the selected provider in streaming mode
+        try:
+            async for chunk in self._invoke_provider_stream(
+                selection_result.provider, selection_result.model, data
+            ):
+                yield chunk
+        except Exception as e:
+            logger.error(f"Orchestration streaming failed: {e}")
+            yield f"\n[Streaming error: {e}]"
+
+    async def _invoke_provider_stream(
+        self, provider: str, model: Optional[str], data: OrchestrationInput
+    ) -> AsyncIterator[str]:
+        """Call provider with fail-fast and immediate fallback to next in chain (Streaming)."""
+        # Build an augmented prompt using helper insights
+        helper_prefix = await self._build_helper_prefix(data)
+        prompt = f"{helper_prefix}\n\nUser: {data.message}"
+
+        for attempt_provider in self._iter_provider_chain(provider):
+            try:
+                # Use ModelManager for streaming as LLMUtils doesn't support it yet
+                prov_obj = self.llm_utils.get_provider(attempt_provider)
+                
+                kwargs: Dict[str, Any] = {"model": model} if model else {}
+                
+                async for chunk in ModelManager.stream_provider(
+                    prov_obj,
+                    prompt,
+                    **kwargs,
+                ):
+                    yield chunk
+                
+                return # Successfully streamed
+                
+            except Exception as e:
+                logger.warning(f"Provider {attempt_provider} streaming failed, trying next: {e}")
+                continue
+
+        # If we reached here, all providers failed
+        yield "\n[Error: All providers in chain failed to stream response]"
 
     def _default_model_for(self, provider: str) -> Optional[str]:
         try:

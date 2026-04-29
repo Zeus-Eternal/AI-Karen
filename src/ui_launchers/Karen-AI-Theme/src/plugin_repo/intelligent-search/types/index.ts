@@ -13,9 +13,14 @@ export interface SearchSourceItem {
   title: string;
   snippet?: string;
   content?: string;
+  full_content?: string;
+  markdown?: string;
+  extracted_data?: any;
   publishedDate?: string;
   relevanceScore?: number;
   domain?: string;
+  links?: Array<{ url: string; text: string; category?: string }>;
+  media?: Record<string, any>;
 }
 
 export interface SearchResultItem {
@@ -26,6 +31,8 @@ export interface SearchResultItem {
   snippet?: string;
   content?: string;
   score?: number;
+  markdown?: string;
+  extracted_data?: any;
 }
 
 export interface SearchDiagnostics {

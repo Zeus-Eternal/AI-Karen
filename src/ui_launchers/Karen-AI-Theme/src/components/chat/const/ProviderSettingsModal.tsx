@@ -125,7 +125,7 @@ export const ProviderSettingsModal = ({
                 )}
                 {groupedProviders.thirdPartyProviders.length > 0 && (
                   <div className="space-y-1">
-                    <div className="px-2 text-[9px] uppercase tracking-[0.2em] text-muted-foreground">Third-Party Providers</div>
+                    <div className="px-2 text-[9px] uppercase tracking-[0.2em] text-muted-foreground">Cloud Providers</div>
                     {groupedProviders.thirdPartyProviders.map((p) => (
                       <button
                         key={p.id}

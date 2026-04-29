@@ -11,7 +11,7 @@ import asyncio
 import logging
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, AsyncGenerator, Dict, List, Optional
+from typing import Any, AsyncGenerator, AsyncIterator, Dict, List, Optional
 
 from ai_karen_engine.core.model_runtime.model_manager import ModelManager
 
@@ -160,54 +160,34 @@ class NativeExecutionHandler(BaseExecutionHandler):
         finally:
             self._status = AgentStatus.IDLE
     
-    async def execute_stream(self, request: AgentRequest) -> AsyncGenerator[StreamChunk, None]:
-        """Execute request with streaming using native LLM."""
+    async def execute_stream(self, request: AgentRequest) -> AsyncIterator[StreamChunk]:
+        """Execute request with streaming using native LLM via OrchestrationAgent."""
         try:
             self._status = AgentStatus.STREAMING
             self.logger.info(f"Starting native stream: {request.request_id}")
             
             # Import here to avoid circular imports
-            from ai_karen_engine.integrations.llm_registry import get_registry
+            from ai_karen_engine.services.orchestration.orchestration_agent import get_orchestration_agent, OrchestrationInput
             
-            # Get LLM registry and provider
-            registry = get_registry()
+            # Get orchestration agent
+            agent = get_orchestration_agent()
             
-            # Prepare routing context
-            routing_context = {
-                "user_id": request.user_id,
-                "session_id": request.session_id,
-                "task_type": "chat_stream",
-                "capabilities": [cap.value for cap in request.capabilities_required]
-            }
-            
-            # Get appropriate provider
-            provider_result = await registry.get_provider_with_routing(
-                user_ctx=routing_context,
-                query=request.message,
-                task_type="chat_stream",
-                khrp_step="agent_streaming",
-                requirements={}
+            # Create orchestration input
+            orchestration_input = OrchestrationInput(
+                message=request.message,
+                conversation_history=request.conversation_history,
+                session_id=request.session_id,
+                user_id=request.user_id,
+                context=request.context,
+                llm_preferences=request.context.get("llm_preferences") if request.context else None
             )
             
-            if not provider_result or "provider" not in provider_result:
-                raise Exception("No suitable streaming provider found")
-            
-            provider = provider_result["provider"]
-            
-            # Stream the response
-            async for chunk_text in ModelManager.stream_provider(
-                provider,
-                request.message,
-                context=request.context or {},
-                config=request.config.custom_config if request.config else {},
-            ):
+            # Execute through orchestration agent streaming method
+            async for chunk in agent.orchestrate_stream(orchestration_input):
                 yield StreamChunk(
-                    content=chunk_text,
+                    content=chunk,
                     chunk_type="text",
-                    metadata={
-                        "provider": provider_result.get("decision", {}).get("provider"),
-                        "model": provider_result.get("decision", {}).get("model")
-                    }
+                    metadata={"orchestrator": "native"}
                 )
             
             # Send final chunk
@@ -216,8 +196,7 @@ class NativeExecutionHandler(BaseExecutionHandler):
                 chunk_type="metadata",
                 is_final=True,
                 metadata={
-                    "provider": provider_result.get("decision", {}).get("provider"),
-                    "model": provider_result.get("decision", {}).get("model"),
+                    "orchestrator": "native",
                     "complete": True
                 }
             )
@@ -467,38 +446,35 @@ class DeepAgentsExecutionHandler(BaseExecutionHandler):
         finally:
             self._status = AgentStatus.IDLE
     
-    async def execute_stream(self, request: AgentRequest) -> AsyncGenerator[StreamChunk, None]:
+    async def execute_stream(self, request: AgentRequest) -> AsyncIterator[StreamChunk]:
         """Execute request with streaming using DeepAgents."""
         try:
             self._status = AgentStatus.STREAMING
             self.logger.info(f"Starting DeepAgents stream: {request.request_id}")
             
-            # DeepAgents streaming implementation
-            # For now, we'll simulate streaming by processing the request and yielding chunks
+            # Import here to avoid circular imports
+            from ai_karen_engine.services.orchestration.orchestration_agent import get_orchestration_agent, OrchestrationInput
             
-            # Execute the request first
-            response = await self.execute(request)
+            # Get orchestration agent
+            agent = get_orchestration_agent()
             
-            # Split response into chunks for streaming simulation
-            words = response.response.split()
-            chunk_size = 10  # words per chunk
+            # Create orchestration input
+            orchestration_input = OrchestrationInput(
+                message=request.message,
+                conversation_history=request.conversation_history,
+                session_id=request.session_id,
+                user_id=request.user_id,
+                context=request.context,
+                llm_preferences=request.context.get("llm_preferences") if request.context else None
+            )
             
-            for i in range(0, len(words), chunk_size):
-                chunk_words = words[i:i + chunk_size]
-                chunk_text = " ".join(chunk_words)
-                
+            # Execute through orchestration agent streaming method
+            async for chunk in agent.orchestrate_stream(orchestration_input):
                 yield StreamChunk(
-                    content=chunk_text + (" " if i + chunk_size < len(words) else ""),
+                    content=chunk,
                     chunk_type="text",
-                    metadata={
-                        "orchestrator": "deep_agents",
-                        "chunk_index": i // chunk_size,
-                        "total_chunks": (len(words) + chunk_size - 1) // chunk_size
-                    }
+                    metadata={"orchestrator": "deep_agents"}
                 )
-                
-                # Small delay to simulate streaming
-                await asyncio.sleep(0.1)
             
             # Send final chunk
             yield StreamChunk(
@@ -507,8 +483,7 @@ class DeepAgentsExecutionHandler(BaseExecutionHandler):
                 is_final=True,
                 metadata={
                     "orchestrator": "deep_agents",
-                    "complete": True,
-                    "confidence": response.confidence
+                    "complete": True
                 }
             )
             

@@ -17,7 +17,9 @@ import {
   ShieldCheck,
   Settings2,
   Info,
-  InfoIcon
+  InfoIcon,
+  Sparkles,
+  Square,
 } from 'lucide-react';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Label } from '../ui/label';
@@ -35,7 +37,7 @@ import { cn } from '@/lib/utils';
 import {
   getRuntimeDisplayName,
 } from '@/lib/chat-response';
-import { normalizeModelSettingsResponse, type RuntimeSettingsResponse } from '@/lib/model-runtime-inventory';
+import { normalizeModelSettingsResponse, loadDynamicTransformersModels, type RuntimeSettingsResponse } from '@/lib/model-runtime-inventory';
 
 interface ProviderModel {
   id: string;
@@ -213,6 +215,7 @@ export default function ModelSettings() {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
   const [isClearingKey, setIsClearingKey] = useState(false);
+  const [chatResponseMode, setChatResponseMode] = useState('streaming_first');
   
   // Custom Provider State
   const [isCustomDialogOpen, setIsCustomDialogOpen] = useState(false);
@@ -261,6 +264,7 @@ export default function ModelSettings() {
       setSettings(response);
       setSelectedProvider(normalized.selected_provider);
       setSelectedModel(normalized.selected_model);
+      setChatResponseMode(normalized.chat_response_mode || 'streaming_first');
     } catch (error) {
       toast({
         title: 'Unable to load model settings',
@@ -276,11 +280,19 @@ export default function ModelSettings() {
     if (!providerId) return;
     setIsLoadingModels(true);
     try {
+      // For transformers, load models dynamically from the models directory
+      if (providerId === 'builtin_transformers') {
+        const models = await loadDynamicTransformersModels();
+        setAvailableModels(models);
+        return;
+      }
+
+      // For other providers, use the standard settings endpoint
       const query = providerBaseUrl?.trim() ? `?base_url=${encodeURIComponent(providerBaseUrl.trim())}` : '';
       const response = await apiClient.get<ProviderModelsResponse>(`/api/settings/model/providers/${providerId}/models${query}`);
       setAvailableModels(sortProviderModels(response.models));
     } catch (error) {
-      setAvailableModels(selectedProviderDetails?.models ?? []);
+      setAvailableModels((selectedProviderDetails?.models ?? []).map((m) => ({ id: m.id, name: m.name, family: 'unknown', source: m.source ?? 'runtime' })));
       toast({
         title: 'Model discovery failed',
         description: formatErrorMessage(error, `Karen could not refresh models for ${providerId}.`),
@@ -309,7 +321,12 @@ export default function ModelSettings() {
     setApiKeyValidationMessage('');
     setApiKeyHeader(selectedProviderDetails.api_key_header || 'Authorization');
     setApiKeyPrefix(selectedProviderDetails.api_key_prefix ?? 'Bearer');
-    setAvailableModels(selectedProviderDetails.models);
+    // For transformers, models are loaded dynamically, so start with empty
+    setAvailableModels(
+      selectedProviderDetails.id === 'builtin_transformers'
+        ? []
+        : selectedProviderDetails.models.map((m) => ({ id: m.id, name: m.name, family: 'unknown', source: m.source ?? 'runtime' }))
+    );
     setSelectedModel(providerDefaultModel);
     void loadProviderModels(selectedProviderDetails.id, providerBaseUrl);
   }, [selectedProviderDetails, loadProviderModels, usesRuntimeOptions]);
@@ -441,6 +458,7 @@ export default function ModelSettings() {
         api_key: submittedApiKey || undefined,
         api_key_header: selectedProviderDetails.supports_custom_auth ? apiKeyHeader.trim() : undefined,
         api_key_prefix: selectedProviderDetails.supports_custom_auth ? apiKeyPrefix : undefined,
+        chat_response_mode: chatResponseMode,
       });
       setSettings(response);
       toast({ title: 'Model settings saved', description: `${selectedProviderLabel || selectedProviderDetails.display_name} is configured.` });
@@ -633,7 +651,7 @@ export default function ModelSettings() {
                     </SelectGroup>
                     <SelectSeparator className="my-2" />
                     <SelectGroup>
-                      <SelectLabel className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground"><HardDrive className="h-3 w-3" /> Third-Party Providers</SelectLabel>
+                      <SelectLabel className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground"><HardDrive className="h-3 w-3" /> Cloud Providers</SelectLabel>
                       {normalizedSettings?.thirdPartyProviders.map((p) => (
                         <SelectItem key={p.id} value={p.id} className="cursor-pointer py-3">
                           <div className="flex items-center gap-3">
@@ -669,6 +687,62 @@ export default function ModelSettings() {
                         </SelectGroup>
                       </>
                     ) : null}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Chat Response Mode Selection */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="chat-response-mode" className="text-sm font-semibold uppercase tracking-wider text-muted-foreground/80">Chat Response Mode</Label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="rounded-full h-6 w-6">
+                          <InfoIcon className="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        Controls how Karen delivers responses. Streaming first provides real-time tokens. Non-streaming waits for complete responses.
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <Select
+                  value={chatResponseMode}
+                  onValueChange={setChatResponseMode}
+                >
+                  <SelectTrigger id="chat-response-mode" className="h-11 border-border/60 bg-muted/10 text-base font-medium transition-all hover:border-primary/40 focus:ring-primary/20">
+                    <SelectValue placeholder="Select response mode..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="streaming_first">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-primary" />
+                        <div>
+                          <div className="font-semibold">Streaming First</div>
+                          <div className="text-xs text-muted-foreground">Real-time token delivery</div>
+                        </div>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="auto">
+                      <div className="flex items-center gap-2">
+                        <RefreshCw className="h-4 w-4 text-primary" />
+                        <div>
+                          <div className="font-semibold">Auto</div>
+                          <div className="text-xs text-muted-foreground">Based on provider capabilities</div>
+                        </div>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="non_streaming">
+                      <div className="flex items-center gap-2">
+                        <Square className="h-4 w-4 text-primary" />
+                        <div>
+                          <div className="font-semibold">Non-Streaming</div>
+                          <div className="text-xs text-muted-foreground">Wait for complete response</div>
+                        </div>
+                      </div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>

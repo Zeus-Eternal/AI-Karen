@@ -470,8 +470,21 @@ class AuthService {
         return '';
       }
       console.error('Token refresh error:', error);
-      // Hard refresh failure should be terminal for this local session
-      this.clearAuth();
+      
+      // Don't clear auth on transient errors (like 502/503 during degraded mode)
+      if (error instanceof Error && (
+        error.message.includes('502') || 
+        error.message.includes('503') || 
+        error.message.includes('504') || 
+        error.message.includes('fetch') || 
+        error.message.includes('timeout')
+      )) {
+        console.warn('[AuthService] Transient error during token refresh, preserving local auth state.');
+      } else {
+        // Hard refresh failure should be terminal for this local session
+        this.clearAuth();
+      }
+      
       throw error;
     } finally {
       this.refreshInFlight = null;

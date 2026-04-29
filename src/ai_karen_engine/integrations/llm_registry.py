@@ -518,7 +518,7 @@ class LLMRegistry:
         builtin_providers = [
             {
                 "name": "builtin_vllm",
-                "provider_class": "TransformersRuntime",
+                "provider_class": "VLLMRuntime",
                 "description": "Built-in vLLM text serving runtime",
                 "supports_streaming": True,
                 "supports_embeddings": False,
@@ -1190,7 +1190,7 @@ class LLMRegistry:
         builtin_providers = [
             {
                 "name": "builtin_vllm",
-                "provider_class": "TransformersRuntime",
+                "provider_class": "VLLMRuntime",
                 "description": "Built-in vLLM text serving runtime",
                 "supports_streaming": True,
                 "supports_embeddings": False,
@@ -1218,7 +1218,12 @@ class LLMRegistry:
                         provider_class_name = provider_config["provider_class"]
 
                         # Import the correct provider class
-                        if provider_class_name == "TransformersRuntime":
+                        if provider_class_name == "VLLMRuntime":
+                            from ai_karen_engine.inference.vllm_runtime import (
+                                VLLMRuntime,
+                            )
+                            provider_class = VLLMRuntime
+                        elif provider_class_name == "TransformersRuntime":
                             from ai_karen_engine.inference.transformers_runtime import (
                                 TransformersRuntime,
                             )

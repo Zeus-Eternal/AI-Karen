@@ -726,6 +726,11 @@ class LLMOrchestrator:
                         # Ensure fallback provider is always tried last
                         register_kwargs["weight"] = 100
                         register_kwargs["tags"] = ["fallback", "deterministic"]
+                    elif provider_name.lower() in ["builtin_vllm", "builtin_transformers"]:
+                        # Tag built-in runtimes for live fallback in degraded mode
+                        register_kwargs["tags"] = ["local", "fallback", "runtime"]
+                        # Give vLLM higher priority as a live fallback if available
+                        register_kwargs["weight"] = 10 if provider_name.lower() == "builtin_vllm" else 20
                     self.registry.register(
                         model_id,
                         provider,
