@@ -23,6 +23,7 @@ from ai_karen_engine.core.runtime.chat_runtime_control_plane import (
     RuntimeConstants,
 )
 from ai_karen_engine.core.runtime.degraded_mode import generate_degraded_mode_response
+from ai_karen_engine.core.runtime.chat_runtime_service import get_chat_runtime_service
 from ai_karen_engine.core.services.dependencies import bypass_user_context_func
 from ai_karen_engine.models.shared_types import (
     CanonicalChatRequest,
@@ -197,183 +198,24 @@ async def _build_live_degraded_payload(
     return payload
 
 
-async def _build_router_fallback_assist_payload(
-    *,
-    request: "AssistRequest",
-    correlation_id: str,
-    conversation_id: str,
-    start_time: float,
-    request_config_metadata: Dict[str, Any],
-    actual_mode: str,
-    transport: str,
-    failure: Exception,
-    streaming_enabled: bool = False,
-) -> Optional[Dict[str, Any]]:
-    """Use the existing provider router when orchestration fails before answering."""
-    from ai_karen_engine.services.models.routing.llm_router_service import (
-        ChatRequest,
-        LLMRouter,
-    )
-
-    router = LLMRouter()
-    user_preferences = {
-        "preferred_llm_provider": request.preferred_llm_provider,
-        "preferred_model": request.preferred_model,
-    }
-    text = ""
-    metadata: Dict[str, Any] = {}
-
-    try:
-        async for chunk in router.process_chat_request(
-            ChatRequest(
-                message=request.message,
-                stream=False,
-                preferred_model=request.preferred_model,
-                conversation_id=conversation_id,
-                max_tokens=120,
-            ),
-            user_preferences=user_preferences,
-        ):
-            if isinstance(chunk, str):
-                text += chunk
-            elif isinstance(chunk, dict):
-                chunk_metadata = chunk.get("metadata")
-                if isinstance(chunk_metadata, dict):
-                    metadata.update(chunk_metadata)
-    except Exception as router_error:
-        logger.warning(
-            "Direct provider router fallback failed after orchestrator error: %s",
-            router_error,
-            extra={"correlation_id": correlation_id},
-        )
-        requested_provider = request.preferred_llm_provider or "orchestrator"
-        requested_model = request.preferred_model or "auto"
-        try:
-            fallback = await router.generate_with_degraded_runtime_fallback(
-                request=ChatRequest(
-                    message=request.message,
-                    stream=False,
-                    preferred_model=request.preferred_model,
-                    conversation_id=conversation_id,
-                    max_tokens=120,
-                ),
-                requested_provider=requested_provider,
-                requested_model=requested_model,
-                failure_reason=str(failure),
-            )
-            text = str(fallback.get("content") or "")
-            metadata.update(fallback.get("metadata") or {})
-        except Exception as fallback_error:
-            logger.error(
-                "Router degraded fallback failed after orchestrator error: %s",
-                fallback_error,
-                extra={"correlation_id": correlation_id},
-            )
-            return None
-
-    if not text.strip():
-        return None
-
-    response_metadata = _normalize_runtime_truth_metadata(
-        metadata=metadata,
+async def _build_router_fallback_assist_payload(*, request: "AssistRequest", correlation_id: str, conversation_id: str, start_time: float, request_config_metadata: Dict[str, Any], actual_mode: str, transport: str, failure: Exception, streaming_enabled: bool = False) -> Optional[Dict[str, Any]]:
+    service = get_chat_runtime_service()
+    return await service.build_router_fallback_assist_payload(
         request=request,
-        final_state=None,
         correlation_id=correlation_id,
         conversation_id=conversation_id,
         start_time=start_time,
         request_config_metadata=request_config_metadata,
-        streaming_enabled=streaming_enabled,
+        actual_mode=actual_mode,
         transport=transport,
-        actual_response_mode=actual_mode,
+        failure=failure,
+        streaming_enabled=streaming_enabled,
+        metadata_normalizer=_normalize_runtime_truth_metadata,
     )
-    response_metadata["orchestrator_error"] = {
-        "type": type(failure).__name__,
-        "message": str(failure)[:300],
-    }
-
-    return {
-        "answer": text.strip(),
-        "structured_content": {},
-        "actions": [],
-        "metadata": response_metadata,
-    }
 
 
-def _build_router_fallback_sse_events(
-    payload: Dict[str, Any],
-    correlation_id: str,
-) -> List[Dict[str, Any]]:
-    """Build SSE events for direct router fallback responses."""
-    metadata = payload.get("metadata") or {}
-    llm_metadata = metadata.get("llm") or {}
-    requested_provider = llm_metadata.get("requested_provider")
-    requested_model = llm_metadata.get("requested_model")
-    actual_provider = llm_metadata.get("actual_provider")
-    answer = str(payload.get("answer") or "").strip()
-
-    events: List[Dict[str, Any]] = [
-        {
-            "type": "status",
-            "content": "Selecting provider...",
-            "correlation_id": correlation_id,
-            "metadata": {
-                **metadata,
-                "status": "provider_selection",
-                "requested_provider": requested_provider,
-                "requested_model": requested_model,
-            },
-        }
-    ]
-    if (
-        requested_provider
-        and actual_provider
-        and str(requested_provider).lower() != str(actual_provider).lower()
-    ):
-        events.extend(
-            [
-                {
-                    "type": "status",
-                    "content": "Requested provider unavailable; trying fallback.",
-                    "correlation_id": correlation_id,
-                    "metadata": {
-                        **metadata,
-                        "status": "provider_failed",
-                        "fallback_next": actual_provider,
-                    },
-                },
-                {
-                    "type": "status",
-                    "content": f"Fallback provider selected: {actual_provider}",
-                    "correlation_id": correlation_id,
-                    "metadata": {
-                        **metadata,
-                        "status": "fallback_provider_selected",
-                    },
-                },
-            ]
-        )
-    if answer:
-        events.append(
-            {
-                "type": "content",
-                "content": answer,
-                "correlation_id": correlation_id,
-                "metadata": metadata,
-            }
-        )
-    events.append(
-        {
-            "type": "complete",
-            "content": "",
-            "correlation_id": correlation_id,
-            "metadata": {
-                **metadata,
-                "status": "completed",
-                "content_length": len(answer),
-            },
-        }
-    )
-    return events
+def _build_router_fallback_sse_events(payload: Dict[str, Any], correlation_id: str) -> List[Dict[str, Any]]:
+    return get_chat_runtime_service().build_router_fallback_sse_events(payload, correlation_id)
 
 
 logger = logging.getLogger(__name__)
@@ -1041,8 +883,8 @@ async def copilot_assist(
     )
 
     try:
-        runtime_plane = await get_chat_runtime_control_plane()
-        response = await runtime_plane.get_runtime_response(
+        runtime_service = get_chat_runtime_service()
+        response = await runtime_service.ensure_control_plane_ready(
             user_id=request.user_id,
             message=request.message,
             session_id=request.session_id,
@@ -1309,8 +1151,8 @@ async def copilot_assist_stream(
     )
 
     try:
-        runtime_plane = await get_chat_runtime_control_plane()
-        response = await runtime_plane.get_runtime_response(
+        runtime_service = get_chat_runtime_service()
+        response = await runtime_service.ensure_control_plane_ready(
             user_id=request.user_id,
             message=request.message,
             session_id=request.session_id,
