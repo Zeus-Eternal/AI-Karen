@@ -186,7 +186,7 @@ class InferenceServiceFactory:
 
         # Format-to-runtime mapping
         runtime_preferences = {
-            "gguf": ["transformers"],
+            "gguf": ["local_gguf", "transformers"],
             "safetensors": ["transformers"],
             "fp16": ["transformers"],
             "bf16": ["transformers"],

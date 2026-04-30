@@ -10,6 +10,7 @@ This module provides runtime provider switching capabilities with:
 
 import asyncio
 import logging
+import os
 import threading
 import time
 from dataclasses import dataclass, field
@@ -23,6 +24,7 @@ from ai_karen_engine.config.llm_provider_config import (
     ProviderType,
     AuthenticationType
 )
+from ai_karen_engine.core.model_runtime.provider_registry_service import ProviderRegistryService
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +120,19 @@ class RuntimeProviderManager:
         # Initialize
         self._initialize_provider_health()
         self._register_config_change_listener()
+
+    @staticmethod
+    def canonicalize_provider_id(provider_name: Optional[str]) -> Optional[str]:
+        return ProviderRegistryService.canonicalize_provider_id(provider_name)
+
+    def get_runtime_fallback_chain(self) -> List[str]:
+        configured = os.getenv("KAREN_RUNTIME_FALLBACK_CHAIN", "")
+        if configured.strip():
+            canonical = [self.canonicalize_provider_id(p) for p in configured.split(",")]
+            normalized = [p for p in canonical if p]
+            if normalized:
+                return normalized
+        return ["builtin_vllm", "builtin_transformers", "local_gguf", "fallback"]
     
     # ---------- Provider Switching ----------
     
@@ -329,7 +344,8 @@ class RuntimeProviderManager:
     def _check_local_provider_health(self, config: ProviderConfig) -> ProviderHealthStatus:
         """Check health of local provider"""
         try:
-            if config.name in ("builtin_vllm", "builtin_transformers", "local"):
+            canonical_name = self.canonicalize_provider_id(config.name)
+            if canonical_name in ("builtin_vllm", "builtin_transformers", "local_gguf"):
                 # Check if local model files exist
                 try:
                     from ai_karen_engine.inference.model_store import ModelStore

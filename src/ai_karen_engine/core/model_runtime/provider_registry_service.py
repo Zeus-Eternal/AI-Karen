@@ -78,6 +78,21 @@ class ProviderRegistryService:
     """
     Provider registry service with health monitoring and graceful fallbacks
     """
+    CANONICAL_PROVIDER_ALIASES: Dict[str, str] = {
+        "local": "local_gguf",
+        "llama_cpp": "local_gguf",
+        "llama.cpp": "local_gguf",
+        "local_gguf": "local_gguf",
+        "transformers": "builtin_transformers",
+        "hf_transformers": "builtin_transformers",
+        "hugging_face": "builtin_transformers",
+        "huggingface_local": "builtin_transformers",
+        "builtin_transformers": "builtin_transformers",
+        "vllm": "builtin_vllm",
+        "nano_vllm": "builtin_vllm",
+        "nano-vllm": "builtin_vllm",
+        "builtin_vllm": "builtin_vllm",
+    }
 
     def __init__(self, use_global_registry: bool = True):
         # Use the centralized registry instead of creating our own
@@ -181,6 +196,15 @@ class ProviderRegistryService:
                 self._endpoint_to_capabilities(endpoint),
                 bool(endpoint.api_key_env),
             )
+
+    @classmethod
+    def canonicalize_provider_id(cls, provider_name: Optional[Any]) -> Optional[str]:
+        if provider_name is None:
+            return None
+        normalized = str(provider_name).strip().lower().replace("-", "_")
+        if not normalized:
+            return None
+        return cls.CANONICAL_PROVIDER_ALIASES.get(normalized, normalized)
 
     def register_openai_compatible_endpoint(
         self,
