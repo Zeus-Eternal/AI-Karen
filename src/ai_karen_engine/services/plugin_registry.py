@@ -8,13 +8,13 @@ import pkgutil
 from types import ModuleType
 from typing import Dict
 
-from ai_karen_engine.extensions.unified.core.unified_execution_registry import (
-    UnifiedExecutionRegistry,
-    UnifiedPluginRecord,
+from ai_karen_engine.extensions.unified.core.cortex_execution_registry import (
+    CortexExecutionRegistry,
+    CortexPluginRecord,
 )
 
 PLUGIN_REGISTRY: Dict[str, Dict[str, ModuleType]] = {}
-UNIFIED_REGISTRY = UnifiedExecutionRegistry()
+UNIFIED_REGISTRY = CortexExecutionRegistry()
 
 
 def _discover_plugins(base_pkg: str, type_label: str) -> Dict[str, Dict[str, ModuleType]]:
@@ -43,7 +43,7 @@ def load_plugins() -> Dict[str, Dict[str, ModuleType]]:
     PLUGIN_REGISTRY.update(community_plugins)
 
     UNIFIED_REGISTRY.register_plugins(
-        UnifiedPluginRecord(
+        CortexPluginRecord(
             name=name,
             handler=entry["handler"],
             origin=entry.get("type", "unknown"),

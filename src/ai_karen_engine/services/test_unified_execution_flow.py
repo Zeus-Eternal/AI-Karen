@@ -1,7 +1,7 @@
-from ai_karen_engine.extensions.unified.core.unified_execution_registry import (
-    UnifiedExecutionContext,
-    UnifiedExecutionRegistry,
-    UnifiedPluginRecord,
+from ai_karen_engine.extensions.unified.core.cortex_execution_registry import (
+    CortexExecutionContext,
+    CortexExecutionRegistry,
+    CortexPluginRecord,
 )
 
 
@@ -17,27 +17,27 @@ class _FailHandler:
         raise RuntimeError("boom")
 
 
-def _registry(record: UnifiedPluginRecord) -> UnifiedExecutionRegistry:
-    registry = UnifiedExecutionRegistry()
+def _registry(record: CortexPluginRecord) -> CortexExecutionRegistry:
+    registry = CortexExecutionRegistry()
     registry.register_plugins([record])
     return registry
 
 
 def test_denied_permissions():
     registry = _registry(
-        UnifiedPluginRecord("tool-a", _OkHandler, "core", {"entrypoint": "handler", "required_roles": ["admin"]})
+        CortexPluginRecord("tool-a", _OkHandler, "core", {"entrypoint": "handler", "required_roles": ["admin"]})
     )
     try:
-        registry.execute(UnifiedExecutionContext("tool-a", {"cortex_eligible": True, "roles": ["user"]}, "q"))
+        registry.execute(CortexExecutionContext("tool-a", {"cortex_eligible": True, "roles": ["user"]}, "q"))
         assert False, "Expected RBAC denial"
     except PermissionError:
         pass
 
 
 def test_manifest_validation_failure():
-    registry = _registry(UnifiedPluginRecord("tool-a", _OkHandler, "core", {"required_roles": []}))
+    registry = _registry(CortexPluginRecord("tool-a", _OkHandler, "core", {"required_roles": []}))
     try:
-        registry.execute(UnifiedExecutionContext("tool-a", {"cortex_eligible": True, "roles": ["admin"]}, "q"))
+        registry.execute(CortexExecutionContext("tool-a", {"cortex_eligible": True, "roles": ["admin"]}, "q"))
         assert False, "Expected manifest validation failure"
     except ValueError:
         pass
@@ -45,8 +45,8 @@ def test_manifest_validation_failure():
 
 def test_audited_success_and_safe_injection():
     events = []
-    registry = _registry(UnifiedPluginRecord("tool-a", _OkHandler, "core", {"entrypoint": "handler"}))
-    result = registry.execute(UnifiedExecutionContext("tool-a", {"cortex_eligible": True, "roles": []}, "hello", stream=events.append))
+    registry = _registry(CortexPluginRecord("tool-a", _OkHandler, "core", {"entrypoint": "handler"}))
+    result = registry.execute(CortexExecutionContext("tool-a", {"cortex_eligible": True, "roles": []}, "hello", stream=events.append))
 
     assert result == {"answer": "hello"}
     assert registry.audit_events[-1].outcome == "success"
@@ -55,9 +55,9 @@ def test_audited_success_and_safe_injection():
 
 def test_audited_failure_and_stream_event():
     events = []
-    registry = _registry(UnifiedPluginRecord("tool-a", _FailHandler, "core", {"entrypoint": "handler"}))
+    registry = _registry(CortexPluginRecord("tool-a", _FailHandler, "core", {"entrypoint": "handler"}))
     try:
-        registry.execute(UnifiedExecutionContext("tool-a", {"cortex_eligible": True, "roles": []}, "hello", stream=events.append))
+        registry.execute(CortexExecutionContext("tool-a", {"cortex_eligible": True, "roles": []}, "hello", stream=events.append))
         assert False, "Expected execution failure"
     except RuntimeError:
         pass

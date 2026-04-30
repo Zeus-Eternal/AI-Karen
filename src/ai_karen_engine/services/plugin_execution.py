@@ -1059,14 +1059,14 @@ async def initialize_plugin_execution_engine(
     return _execution_engine
 
 # Compatibility shim: routes/runtime should dispatch through unified registry only.
-from ai_karen_engine.extensions.unified.core.unified_execution_registry import UnifiedExecutionContext
+from ai_karen_engine.extensions.unified.core.cortex_execution_registry import CortexExecutionContext
 from ai_karen_engine.services.plugin_registry import UNIFIED_REGISTRY
 
 
 def execute_plugin(plugin_name: str, user_ctx: Dict[str, Any], query: Any, context: Optional[Dict[str, Any]] = None, stream: Optional[Callable[[Dict[str, Any]], None]] = None) -> Any:
     """Legacy execute shim backed by unified interface."""
     return UNIFIED_REGISTRY.execute(
-        UnifiedExecutionContext(
+        CortexExecutionContext(
             plugin_name=plugin_name,
             user_ctx=user_ctx,
             query=query,
