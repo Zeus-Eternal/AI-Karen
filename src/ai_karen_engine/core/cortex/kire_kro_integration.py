@@ -284,7 +284,7 @@ class KIREKROIntegration:
                 )
                 final_state = {
                     "response": "Processed successfully.",
-                    "execution_path": "standard",
+                    "execution_path": "direct_chat",
                     "correlation_id": correlation_id,
                 }
 
