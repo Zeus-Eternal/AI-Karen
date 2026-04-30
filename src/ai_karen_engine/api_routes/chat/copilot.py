@@ -591,13 +591,11 @@ from ai_karen_engine.utils.chat_helpers import (
 
 
 async def _get_chat_orchestrator():
-    """Return the LangGraphOrchestrator for processing chat requests."""
+    """Return orchestrator via canonical chat runtime service."""
     try:
-        from ai_karen_engine.core.langgraph_orchestrator import get_default_orchestrator
-
         timeout_seconds = float(os.getenv("KAREN_COPILOT_ORCHESTRATOR_TIMEOUT", "5"))
         orchestrator = await asyncio.wait_for(
-            get_default_orchestrator(),
+            get_chat_runtime_service().get_orchestrator(),
             timeout=timeout_seconds,
         )
         logger.info(
