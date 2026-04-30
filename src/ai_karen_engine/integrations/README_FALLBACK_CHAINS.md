@@ -320,7 +320,6 @@ The implementation includes comprehensive test scenarios:
 python -m ai_karen_engine.integrations.test_fallback_chain_manager
 
 # Run demonstration
-python -m ai_karen_engine.integrations.fallback_demo
 ```
 
 ## Monitoring and Analytics
