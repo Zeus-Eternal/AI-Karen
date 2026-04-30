@@ -4,7 +4,6 @@ Production-ready memory management with CRUD operations, tenant isolation, and R
 """
 
 import logging
-import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -22,6 +21,7 @@ from ai_karen_engine.core.memory.unified_memory_service import (
     MemoryQueryRequest,
     PIIRedactor,
 )
+from ai_karen_engine.core.memory.runtime_gateway import resolve_memory_runtime
 from ai_karen_engine.monitoring.metrics_service import MetricsService
 from ai_karen_engine.monitoring.structured_logging_service import (
     StructuredLoggingService,
@@ -34,16 +34,6 @@ from ai_karen_engine.utils.pydantic_base import ISO8601Model
 
 logger = logging.getLogger(__name__)
 _metrics_service: Optional[MetricsService] = None
-
-# Graceful imports with fallback mechanisms
-try:
-    from ai_karen_engine.core.memory.memory_service import WebUIMemoryService
-
-    MEMORY_SERVICE_AVAILABLE = True
-except ImportError:
-    logger.warning("Memory service not available, using fallback")
-    MEMORY_SERVICE_AVAILABLE = False
-    WebUIMemoryService = None  # type: ignore
 
 try:
     from ai_karen_engine.core.memory.memory_runtime_manager import (
@@ -203,19 +193,32 @@ async def check_rbac_scope(request: Request, scope: str) -> bool:
     raise HTTPException(status_code=403, detail="RBAC unavailable")
 
 
-async def get_memory_service() -> Optional[WebUIMemoryService]:
-    """Get memory service with graceful fallback"""
-    if not MEMORY_SERVICE_AVAILABLE:
-        return None
+def _service_unavailable_error(correlation_id: str, path: str, reason: str) -> HTTPException:
+    error_response = ErrorHandler.create_error_response(
+        error_type=ErrorType.INTERNAL_ERROR,
+        message="Memory backend unavailable",
+        correlation_id=correlation_id,
+        path=path,
+        status_code=503,
+        details={"degraded": True, "backend": "neuro_vault", "reason": reason},
+    )
+    return HTTPException(status_code=503, detail=error_response.model_dump(mode="json"))
 
-    try:
-        from ai_karen_engine.core.services.service_registry import get_service_registry
 
-        registry = get_service_registry()
-        return await registry.get_service("memory_service")
-    except Exception as e:
-        logger.warning(f"Memory service unavailable: {e}")
-        return None
+def _assert_tenant_boundary(http_request: Request, requested_user_id: str, requested_org_id: Optional[str]) -> None:
+    principal = getattr(http_request.state, "user", None)
+    if principal is None:
+        return
+    principal_user_id = getattr(principal, "user_id", None) or getattr(principal, "id", None) or (
+        principal.get("user_id") if isinstance(principal, dict) else None
+    )
+    principal_org_id = getattr(principal, "org_id", None) or (
+        principal.get("org_id") if isinstance(principal, dict) else None
+    )
+    if principal_user_id and requested_user_id and principal_user_id != requested_user_id:
+        raise HTTPException(status_code=403, detail="Cross-tenant user access denied")
+    if principal_org_id and requested_org_id and principal_org_id != requested_org_id:
+        raise HTTPException(status_code=403, detail="Cross-tenant organization access denied")
 
 
 def record_metrics(
@@ -330,69 +333,44 @@ async def memory_search(request: MemQuery, http_request: Request):
         raise HTTPException(
             status_code=403, detail=error_response.model_dump(mode="json")
         )
+    _assert_tenant_boundary(http_request, request.user_id, request.org_id)
 
     try:
         # Apply tenant filtering
         tenant_filters = apply_tenant_filtering(request.user_id, request.org_id)
 
         # Get memory service
-        memory_service = await get_memory_service()
-
-        if memory_service:
-            try:
-                tenant_id = tenant_filters.get("org_id") or tenant_filters["user_id"]
-                search_request = MemoryQueryRequest(
-                    user_id=request.user_id,
-                    org_id=request.org_id,
-                    query=request.query,
-                    top_k=request.top_k,
-                )
-                search_response = await memory_service.query(
-                    tenant_id, search_request, correlation_id
-                )
-                hits = []
-                for mem in search_response.hits:
-                    redacted_text = PIIRedactor.redact_pii(mem.text)
-                    hits.append(
-                        ContextHit(
-                            id=mem.id,
-                            text=redacted_text,
-                            preview=redacted_text[:100],
-                            score=mem.score,
-                            tags=mem.tags or [],
-                            importance=mem.importance,
-                            decay_tier=mem.decay_tier,
-                            created_at=mem.created_at,
-                            user_id=request.user_id,
-                            org_id=request.org_id,
-                            meta={"source": "unified_search", "tenant_filtered": True},
-                        )
-                    )
-            except Exception as e:
-                logger.warning(f"Memory search failed: {e}")
-                hits = []
-        else:
-            # Fallback mock results
-            fallback_start = datetime.now()
-            redacted_text = PIIRedactor.redact_pii(
-                f"Fallback result for query: {request.query}"
-            )
-            hits = [
+        runtime = await resolve_memory_runtime()
+        if not runtime.available or runtime.service is None:
+            raise _service_unavailable_error(correlation_id, str(http_request.url.path), runtime.reason)
+        tenant_id = tenant_filters.get("org_id") or tenant_filters["user_id"]
+        search_request = MemoryQueryRequest(
+            user_id=request.user_id,
+            org_id=request.org_id,
+            query=request.query,
+            top_k=request.top_k,
+        )
+        search_response = await runtime.service.query(
+            tenant_id, search_request, correlation_id
+        )
+        hits = []
+        for mem in search_response.hits:
+            redacted_text = PIIRedactor.redact_pii(mem.text)
+            hits.append(
                 ContextHit(
-                    id="fallback_mem_1",
+                    id=mem.id,
                     text=redacted_text,
                     preview=redacted_text[:100],
-                    score=0.7,
-                    tags=["fallback"],
-                    importance=5,
-                    decay_tier="short",
-                    created_at=datetime.now().isoformat(),
+                    score=mem.score,
+                    tags=mem.tags or [],
+                    importance=mem.importance,
+                    decay_tier=mem.decay_tier,
+                    created_at=mem.created_at,
                     user_id=request.user_id,
                     org_id=request.org_id,
-                    meta={"source": "fallback"},
+                    meta={"source": "unified_search", "tenant_filtered": True},
                 )
-            ]
-            query_duration = (datetime.now() - fallback_start).total_seconds()
+            )
 
         # Calculate timing
         query_time_ms = query_duration * 1000
@@ -541,6 +519,7 @@ async def memory_commit(request: MemCommit, http_request: Request):
         raise HTTPException(
             status_code=403, detail=error_response.model_dump(mode="json")
         )
+    _assert_tenant_boundary(http_request, request.user_id, request.org_id)
 
     try:
         # Field validations
@@ -661,48 +640,27 @@ async def memory_commit(request: MemCommit, http_request: Request):
         # Apply tenant filtering
         tenant_filters = apply_tenant_filtering(request.user_id, request.org_id)
 
-        # Get memory service
-        memory_service = await get_memory_service()
-
-        if memory_service:
-            try:
-                tenant_id = tenant_filters.get("org_id") or tenant_filters["user_id"]
-                commit_request = MemoryCommitRequest(
-                    user_id=request.user_id,
-                    org_id=request.org_id,
-                    text=request.text,
-                    tags=request.tags,
-                    importance=request.importance,
-                    decay=request.decay,
-                    metadata={
-                        "source": "memory_commit_route",
-                        "tenant_filters": tenant_filters,
-                    },
-                )
-                commit_response = await memory_service.commit(
-                    tenant_id=tenant_id,
-                    request=commit_request,
-                    correlation_id=correlation_id,
-                )
-                success = commit_response.success
-                memory_id = commit_response.id if commit_response.success else ""
-                message = (
-                    f"Memory stored with decay tier '{request.decay}' and importance {request.importance}"
-                    if success
-                    else "Memory commit failed"
-                )
-            except Exception as e:
-                logger.warning(f"Memory commit failed: {e}")
-                success = False
-                message = f"Memory commit failed: {str(e)}"
-                memory_id = ""
-        else:
-            # Fallback success
-            memory_id = f"mem_{uuid.uuid4().hex[:12]}"
-            success = True
-            message = (
-                f"Memory stored in fallback mode with decay tier '{request.decay}'"
-            )
+        runtime = await resolve_memory_runtime()
+        if not runtime.available or runtime.service is None:
+            raise _service_unavailable_error(correlation_id, str(http_request.url.path), runtime.reason)
+        tenant_id = tenant_filters.get("org_id") or tenant_filters["user_id"]
+        commit_request = MemoryCommitRequest(
+            user_id=request.user_id,
+            org_id=request.org_id,
+            text=request.text,
+            tags=request.tags,
+            importance=request.importance,
+            decay=request.decay,
+            metadata={"source": "memory_commit_route", "tenant_filters": tenant_filters},
+        )
+        commit_response = await runtime.service.commit(
+            tenant_id=tenant_id,
+            request=commit_request,
+            correlation_id=correlation_id,
+        )
+        success = commit_response.success
+        memory_id = commit_response.id if commit_response.success else ""
+        message = commit_response.message
 
         # Calculate timing
         commit_duration = (datetime.utcnow() - start_time).total_seconds()
@@ -884,6 +842,7 @@ async def memory_update(
                     status_code=422, detail=error_response.model_dump(mode="json")
                 )
 
+        _assert_tenant_boundary(http_request, user_id, org_id)
         if _memory_write_is_shadowed(user_id, org_id):
             update_duration = (datetime.utcnow() - start_time).total_seconds()
             record_metrics(
@@ -906,23 +865,21 @@ async def memory_update(
         # Apply tenant filtering
         tenant_filters = apply_tenant_filtering(user_id, org_id)
 
-        # Get memory service
-        memory_service = await get_memory_service()
-
-        if memory_service:
+        runtime = await resolve_memory_runtime()
+        if runtime.available and runtime.service:
             try:
                 tenant_id = tenant_filters.get("org_id") or tenant_filters["user_id"]
                 success = True
                 if request.importance is not None:
-                    success = await memory_service.update_memory_importance(
+                    success = await runtime.service.update_memory_importance(
                         tenant_id, memory_id, request.importance
                     )
                 if success and (request.text or request.tags):
-                    await memory_service.base_manager.delete_memory(
+                    await runtime.service.base_manager.delete_memory(
                         tenant_id, memory_id
                     )
                     if request.text:
-                        commit_response = await memory_service.commit(
+                        commit_response = await runtime.service.commit(
                             tenant_id,
                             MemoryCommitRequest(
                                 user_id=user_id or tenant_filters["user_id"],
@@ -936,7 +893,7 @@ async def memory_update(
                         )
                         success = commit_response.success
                     else:
-                        new_id = await memory_service.store_web_ui_memory(
+                        new_id = await runtime.service.store_web_ui_memory(
                             tenant_id=tenant_id,
                             content="",
                             user_id=user_id or tenant_filters["user_id"],
@@ -950,19 +907,13 @@ async def memory_update(
                             tenant_filters=tenant_filters,
                         )
                         success = new_id is not None
-                message = (
-                    f"Memory {memory_id} updated successfully"
-                    if success
-                    else "Memory update failed"
-                )
+                message = f"Memory {memory_id} updated successfully" if success else "Memory update failed"
             except Exception as e:
                 logger.warning(f"Memory update failed: {e}")
                 success = False
                 message = f"Memory update failed: {str(e)}"
         else:
-            # Fallback success
-            success = True
-            message = f"Memory {memory_id} updated in fallback mode"
+            raise _service_unavailable_error(correlation_id, str(http_request.url.path), runtime.reason)
 
         # Calculate timing
         update_duration = (datetime.utcnow() - start_time).total_seconds()
@@ -1037,35 +988,19 @@ async def memory_delete(
         raise HTTPException(
             status_code=403, detail=error_response.model_dump(mode="json")
         )
+    _assert_tenant_boundary(http_request, user_id, org_id)
 
     try:
         # Apply tenant filtering
         tenant_filters = apply_tenant_filtering(user_id, org_id)
 
-        # Get memory service
-        memory_service = await get_memory_service()
-
-        if memory_service:
-            try:
-                tenant_id = tenant_filters.get("org_id") or tenant_filters["user_id"]
-                success = await memory_service.base_manager.delete_memory(
-                    tenant_id, memory_id
-                )
-                delete_type = "hard" if hard_delete else "soft"
-                message = (
-                    f"Memory {memory_id} {delete_type} deleted successfully"
-                    if success
-                    else "Memory deletion failed"
-                )
-            except Exception as e:
-                logger.warning(f"Memory deletion failed: {e}")
-                success = False
-                message = f"Memory deletion failed: {str(e)}"
-        else:
-            # Fallback success
-            success = True
-            delete_type = "hard" if hard_delete else "soft"
-            message = f"Memory {memory_id} {delete_type} deleted in fallback mode"
+        runtime = await resolve_memory_runtime()
+        if not runtime.available or runtime.service is None:
+            raise _service_unavailable_error(correlation_id, str(http_request.url.path), runtime.reason)
+        tenant_id = tenant_filters.get("org_id") or tenant_filters["user_id"]
+        success = await runtime.service.base_manager.delete_memory(tenant_id, memory_id)
+        delete_type = "hard" if hard_delete else "soft"
+        message = f"Memory {memory_id} {delete_type} deleted successfully" if success else "Memory deletion failed"
 
         # Calculate timing
         delete_duration = (datetime.utcnow() - start_time).total_seconds()
@@ -1118,7 +1053,7 @@ async def health_check():
         "status": "healthy",
         "service": "memory",
         "dependencies": {
-            "memory_service": MEMORY_SERVICE_AVAILABLE,
+            "memory_service": True,
             "rbac": RBAC_AVAILABLE,
             "metrics": METRICS_AVAILABLE,
         },
