@@ -20,6 +20,12 @@ from .model_manager import (
     get_model_manager,
     initialize_model_manager,
 )
+from .production_decision_service import (
+    ProductionDecision,
+    ProductionDecisionService,
+    get_production_decision_service,
+)
+
 from .provider_registry_service import (
     FallbackChain,
     ProviderCapability,
@@ -50,4 +56,7 @@ __all__ = [
     "ProviderStatus",
     "get_provider_registry_service",
     "initialize_provider_registry_service",
+    "ProductionDecision",
+    "ProductionDecisionService",
+    "get_production_decision_service",
 ]
