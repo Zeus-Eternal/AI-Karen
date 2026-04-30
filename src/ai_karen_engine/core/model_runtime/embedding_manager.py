@@ -121,7 +121,20 @@ class EmbeddingManager:
                 cache_dir = os.getenv(
                     "TRANSFORMERS_CACHE_DIR", "/root/.cache/huggingface"
                 )
-                model_path = f"{cache_dir}/hub/models--{self.model_name}"
+                local_model_dir = os.path.join(
+                    cache_dir,
+                    self.model_name.replace("/", "--"),
+                )
+                hf_cache_model_dir = os.path.join(
+                    cache_dir,
+                    "hub",
+                    f"models--{self.model_name.replace('/', '--')}",
+                )
+                model_path = (
+                    local_model_dir
+                    if os.path.exists(local_model_dir)
+                    else hf_cache_model_dir
+                )
                 logger.info(
                     f"[EmbeddingManager] Trying to load from model path: {model_path}"
                 )

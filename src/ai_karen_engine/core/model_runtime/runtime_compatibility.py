@@ -50,6 +50,8 @@ def probe_runtime_compatibility(
     adapter_only = bool(metadata.get("adapter_only"))
     capabilities = {str(item).lower() for item in (metadata.get("capabilities") or [])}
     model_type = str(metadata.get("model_type") or "").lower()
+    hf_model_type = str(metadata.get("hf_model_type") or "").lower()
+    architectures = {str(item).lower() for item in (metadata.get("architectures") or [])}
 
     compatible_runtimes: list[str] = []
     preferred_runtime = "openai_compatible"
@@ -60,19 +62,32 @@ def probe_runtime_compatibility(
     vllm_available = bool(metadata.get("vllm_available"))
 
     if model_format == "transformers":
+        unsupported_transformer_model = (
+            hf_model_type == "qwen3_5"
+            or "qwen3_5" in architectures
+            or any(name.startswith("qwen3_5") for name in architectures)
+        )
         embedding_like = artifact_kind in {"embedding_pipeline", "sentence_transformer"} or any(
             flag in capabilities for flag in {"embedding", "reranking", "classification"}
         )
         multimodal_like = any(flag in capabilities for flag in {"vision", "vlm_helper"})
         text_generation_like = model_type in {"text_generation", "generation", "chat"}
 
-        if adapter_only:
+        if unsupported_transformer_model:
+            compatible_runtimes = []
+            preferred_runtime = "unsupported"
+            confidence = "unsupported"
+            runtime_notes.append(
+                "Qwen3.5 checkpoints are not supported by this local Transformers/vLLM stack."
+            )
+            security_flags.append("unsupported_architecture")
+        elif adapter_only:
             compatible_runtimes = ["transformers_direct"]
             preferred_runtime = "transformers_direct"
             confidence = "config_inferred"
             security_flags.append("adapter_only_without_base")
             runtime_notes.append("Adapter-only model; requires a configured base model for vLLM.")
-        elif embedding_like or multimodal_like or not text_generation_like:
+        elif embedding_like or (multimodal_like and not text_generation_like) or not text_generation_like:
             compatible_runtimes = ["transformers_direct"]
             preferred_runtime = "transformers_direct"
             confidence = "config_inferred"

@@ -29,17 +29,19 @@ services:
       - --port
       - "8000"
       - --model
-      - ${KAREN_BUILTIN_VLLM_MODEL_ID:-Qwen/Qwen2.5-1.5B-Instruct}
+      - ${KAREN_BUILTIN_VLLM_MODEL_ID:-/models/transformers/gpt2}
       - --served-model-name
       - ${KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME:-karen-vllm-local}
+      - --device
+      - ${KAREN_BUILTIN_VLLM_DEVICE:-cuda}
       - --dtype
       - ${KAREN_BUILTIN_VLLM_DTYPE:-float16}
       - --gpu-memory-utilization
       - ${KAREN_BUILTIN_VLLM_GPU_MEMORY_UTILIZATION:-0.80}
       - --max-model-len
-      - ${KAREN_BUILTIN_VLLM_MAX_MODEL_LEN:-4096}
+      - ${KAREN_BUILTIN_VLLM_MAX_MODEL_LEN:-1024}
       - --generation-config
-      - vllm
+      - ${KAREN_BUILTIN_VLLM_GENERATION_CONFIG:-auto}
     deploy:
       resources:
         limits:
@@ -48,11 +50,6 @@ services:
         reservations:
           memory: 4G
           cpus: '2.0'
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities:
-                - gpu
     healthcheck:
       test:
         - CMD-SHELL

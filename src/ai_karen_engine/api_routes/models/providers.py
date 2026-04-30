@@ -18,6 +18,7 @@ from ai_karen_engine.core.model_runtime.provider_registry_service import (
     ProviderCapability,
     get_provider_registry_service,
 )
+from ai_karen_engine.config.config_asset_loaders import load_model_runtime_discovery_config
 from ai_karen_engine.utils.dependency_checks import import_fastapi, import_pydantic
 
 APIRouter, Depends, HTTPException = import_fastapi(
@@ -164,6 +165,22 @@ def _has_gguf(dir_path: Path) -> bool:
         return False
 
 
+def _transformers_policy_values(key: str) -> set[str]:
+    policy = (load_model_runtime_discovery_config().get("discovery_policy") or {})
+    values = policy.get(key) or []
+    return {str(item).strip() for item in values if str(item).strip()}
+
+
+def _has_transformers_weights(model_dir: Path) -> bool:
+    try:
+        return any(
+            item.is_file() and item.name.endswith((".bin", ".safetensors", ".gguf"))
+            for item in model_dir.rglob("*")
+        )
+    except Exception:
+        return False
+
+
 def _list_gguf(dir_path: Path) -> List[ContractModelInfo]:
     models: List[ContractModelInfo] = []
     for p in dir_path.glob("**/*.gguf"):
@@ -199,20 +216,33 @@ def _list_gguf(dir_path: Path) -> List[ContractModelInfo]:
 
 def _list_transformers(dir_path: Path) -> List[ContractModelInfo]:
     models: List[ContractModelInfo] = []
+    allowed = _transformers_policy_values("runtime_visible_transformers")
+    excluded = _transformers_policy_values("exclude_from_runtime_discovery")
     try:
         for child in dir_path.iterdir():
-            if child.is_dir():
-                models.append(
-                    ContractModelInfo(
-                        id=f"transformers:/{child.name}",
-                        provider="transformers-local",
-                        displayName=child.name,
-                        family="transformers",
-                        installed=True,
-                        remote=False,
-                        tags=["hf", "local"],
-                    )
+            if not child.is_dir():
+                continue
+            if child.name in excluded:
+                continue
+            if allowed and child.name not in allowed:
+                continue
+            if not _has_transformers_weights(child):
+                logger.info(
+                    "Skipping incomplete transformers model %s: no local weights found",
+                    child.name,
                 )
+                continue
+            models.append(
+                ContractModelInfo(
+                    id=f"transformers:/{child.name}",
+                    provider="transformers-local",
+                    displayName=child.name,
+                    family="transformers",
+                    installed=True,
+                    remote=False,
+                    tags=["hf", "local"],
+                )
+            )
     except Exception:
         pass
     return models

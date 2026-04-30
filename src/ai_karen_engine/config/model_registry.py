@@ -26,7 +26,15 @@ def list_transformers_models(registry_path: Path | None = None) -> List[str]:
     )
 
     service = get_model_discovery_service()
-    models = sorted({model.display_name for model in service.get_models(model_format="transformers")})
+    models = sorted(
+        {
+            model.display_name
+            for model in service.get_models(
+                model_format="transformers",
+                runtime="transformers_direct",
+            )
+        }
+    )
     if not models:
         logger.debug("No transformers models detected by the core discovery service.")
     return models

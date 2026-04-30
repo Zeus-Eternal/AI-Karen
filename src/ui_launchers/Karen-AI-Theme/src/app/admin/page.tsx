@@ -60,15 +60,47 @@ type BackendUserResponse = {
 };
 
 type UserMetricsResponse = {
-  user_id: string;
-  hours: number;
+    user_id: string;
+    hours: number;
   event_count: number;
   session_count: number;
   total_session_minutes: number;
   average_session_minutes: number;
   last_seen?: string | null;
   token_usage?: number | null;
-  token_usage_supported: boolean;
+    token_usage_supported: boolean;
+};
+
+const normalizeBackendRole = (roles: string[]): UserRole => {
+    const normalizedRoles = roles.map((role) => role.toLowerCase());
+    if (normalizedRoles.includes("admin")) {
+        return "Admin";
+    }
+    if (normalizedRoles.includes("editor")) {
+        return "Editor";
+    }
+    return "User";
+};
+
+const toBackendRole = (role: string): string => role.trim().toLowerCase() || "user";
+
+const isValidEmail = (value: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+};
+
+const isStrongPassword = (value: string) => {
+    const password = value.trim();
+
+    if (password.length < 8) {
+        return false;
+    }
+
+    return (
+        /[A-Z]/.test(password) &&
+        /[a-z]/.test(password) &&
+        /\d/.test(password) &&
+        /[!@#$%^&*()_+\-=[\]{}|;:,.<>?]/.test(password)
+    );
 };
 
 
@@ -140,9 +172,9 @@ export default function AdminPage() {
 
     const mapBackendUser = (user: BackendUserResponse): User => ({
         id: user.user_id,
-        name: user.full_name || user.email || user.user_id,
+        name: user.full_name?.trim() || user.email || user.user_id,
         email: user.email,
-        role: user.roles.includes("admin") ? "Admin" : user.roles.includes("editor") ? "Editor" : "User",
+        role: normalizeBackendRole(user.roles),
         status: !user.is_verified ? "Pending" : user.is_active ? "Active" : "Suspended",
         createdAt: new Date(user.created_at).toLocaleDateString(),
         lastLogin: user.last_login || null,
@@ -297,13 +329,45 @@ export default function AdminPage() {
     };
 
     const handleCreateUser = async () => {
+        if (!canManageUsers) {
+            toast({
+                title: "User creation unavailable",
+                description: usersAuthRequired
+                    ? "Sign in before creating backend user records."
+                    : "This session is not authorized to manage backend users.",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        if (!isValidEmail(createForm.email)) {
+            toast({
+                title: "Invalid email",
+                description: "Enter a valid email address for the new user.",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        if (!isStrongPassword(createForm.password)) {
+            toast({
+                title: "Password does not meet backend rules",
+                description:
+                    "Use at least 8 characters with uppercase, lowercase, a digit, and a special character.",
+                variant: "destructive",
+            });
+            return;
+        }
+
         setIsCreatingUser(true);
         try {
+            const trimmedEmail = createForm.email.trim();
+            const fallbackName = trimmedEmail.split("@")[0] || trimmedEmail;
             const response = await apiClient.post<BackendUserResponse>("/api/users", {
-                email: createForm.email.trim(),
-                password: createForm.password,
-                full_name: createForm.name.trim() || null,
-                roles: [createForm.role],
+                email: trimmedEmail,
+                password: createForm.password.trim(),
+                full_name: createForm.name.trim() || fallbackName,
+                roles: [toBackendRole(createForm.role)],
             });
 
             setUsers((current) => [mapBackendUser(response), ...current]);
@@ -338,7 +402,7 @@ export default function AdminPage() {
         try {
             const response = await apiClient.put<BackendUserResponse>(`/api/users/${editingUser.id}`, {
                 full_name: editForm.name.trim(),
-                roles: [editForm.role.toLowerCase()],
+                roles: [toBackendRole(editForm.role)],
             });
 
             setUsers((current) => current.map((user) => (user.id === editingUser.id ? mapBackendUser(response) : user)));
@@ -372,6 +436,13 @@ export default function AdminPage() {
     };
 
 
+    const canManageUsers = !usersLoading && !usersAuthRequired && !usersAccessDenied;
+    const canCreateUser =
+        canManageUsers &&
+        !isCreatingUser &&
+        createForm.email.trim().length > 0 &&
+        isValidEmail(createForm.email) &&
+        isStrongPassword(createForm.password);
 
 
     return (
@@ -496,7 +567,7 @@ export default function AdminPage() {
                                     </div>
                                     <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                                         <DialogTrigger asChild>
-                                            <Button>
+                                            <Button disabled={!canManageUsers}>
                                                 <PlusCircle className="mr-2 h-4 w-4" /> Add User
                                             </Button>
                                         </DialogTrigger>
@@ -538,6 +609,9 @@ export default function AdminPage() {
                                                         onChange={(e) => setCreateForm((current) => ({ ...current, password: e.target.value }))}
                                                     />
                                                 </div>
+                                                <p className="col-span-4 text-xs text-muted-foreground">
+                                                    Password must be 8+ characters and include uppercase, lowercase, a digit, and a special character.
+                                                </p>
                                                 <div className="grid grid-cols-4 items-center gap-4">
                                                     <Label htmlFor="role" className="text-right">Role</Label>
                                                     <Select value={createForm.role} onValueChange={(value) => setCreateForm((current) => ({ ...current, role: value }))}>
@@ -555,7 +629,7 @@ export default function AdminPage() {
                                                 <Button
                                                     type="submit"
                                                     onClick={() => void handleCreateUser()}
-                                                    disabled={isCreatingUser || !createForm.email.trim() || !createForm.password.trim()}
+                                                    disabled={!canCreateUser}
                                                 >
                                                     {isCreatingUser ? "Creating..." : "Create and Invite"}
                                                 </Button>
@@ -568,6 +642,12 @@ export default function AdminPage() {
                                     <div className="flex items-center gap-2 rounded-xl border border-border/70 p-4 text-sm text-muted-foreground">
                                         <Activity className="h-4 w-4 animate-pulse" />
                                         Loading backend user inventory.
+                                    </div>
+                                ) : filteredUsers.length === 0 ? (
+                                    <div className="rounded-xl border border-border/70 p-4 text-sm text-muted-foreground">
+                                        {searchQuery.trim()
+                                            ? "No users match your current search."
+                                            : "No backend users were returned for this tenant or session."}
                                     </div>
                                 ) : (
                                     <Table>

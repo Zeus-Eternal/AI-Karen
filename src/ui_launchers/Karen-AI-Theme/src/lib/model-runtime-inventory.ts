@@ -1,8 +1,10 @@
+import { apiClient } from '@/lib/api';
 import { getRuntimeDisplayName, getRuntimeGroupLabel, isBuiltInRuntimeProvider } from '@/lib/chat-response';
 
 export interface RuntimeProviderModel {
   id: string;
   name: string;
+  family?: string;
   source?: string;
 }
 
@@ -48,6 +50,8 @@ export interface RuntimeSettingsResponse {
   selected_provider: string;
   selected_model: string;
   providers: RuntimeProviderDetails[];
+  timeout_seconds?: number;
+  auto_download?: boolean;
 }
 
 export interface NormalizedRuntimeProvider extends RuntimeProviderDetails {
@@ -66,6 +70,8 @@ export interface NormalizedRuntimeInventory {
   thirdPartyProviders: NormalizedRuntimeProvider[];
   customProviders: NormalizedRuntimeProvider[];
   systemFallbackProvider: NormalizedRuntimeProvider | null;
+  timeout_seconds?: number;
+  auto_download?: boolean;
 }
 
 export type RuntimeProviderBucket = 'builtIn' | 'local' | 'thirdParty' | 'custom';
@@ -164,7 +170,7 @@ export async function loadDynamicTransformersModels(): Promise<RuntimeProviderMo
       '/api/local/transformers/models'
     );
 
-    return response.models.map(modelName => ({
+    return response.models.map((modelName: string) => ({
       id: modelName,
       name: modelName,
       family: 'transformers',
@@ -231,5 +237,7 @@ export function normalizeModelSettingsResponse(response: RuntimeSettingsResponse
     thirdPartyProviders,
     customProviders,
     systemFallbackProvider,
+    timeout_seconds: response.timeout_seconds,
+    auto_download: response.auto_download,
   };
 }

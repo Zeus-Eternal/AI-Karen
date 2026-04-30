@@ -209,14 +209,10 @@ This function **already scans** the `models/transformers/` directory and returns
 1. User selects "Transformers" provider in UI
 2. UI calls `/api/local/transformers/models` endpoint
 3. Backend scans `models/transformers/` directory
-4. Backend returns all downloaded models:
-   - `deepseek-ai--DeepSeek-R1-Distill-Qwen-1.5B`
-   - `distilbert-base-uncased`
+4. Backend returns runtime-visible, complete local text-generation models:
    - `gpt2`
-   - `microsoft--DialoGPT-medium`
-   - `Qwen--Qwen3.5-0.8B`  ✅
-   - `sentence-transformers--all-MiniLM-L6-v2`
-5. UI displays all models in dropdown ✅
+   - `Qwen--Qwen3.5-0.8B`
+5. UI displays compatible runtime models in dropdown ✅
 6. User selects specific model (e.g., `Qwen--Qwen3.5-0.8B`)
 7. Runtime uses the selected model path
 
@@ -231,8 +227,9 @@ To verify the fix:
 3. **Select provider:** Transformers
 4. **Verify model list:**
    - Should show `auto` as first option
-   - Should show all downloaded models from `models/transformers/`
+   - Should show runtime-compatible text-generation models from `models/transformers/`
    - Example: `Qwen--Qwen3.5-0.8B` should appear
+   - Should not show system helper models such as `sentence-transformers--all-MiniLM-L6-v2` or `distilbert-base-uncased`
 
 5. **Download new model:**
    ```bash
@@ -256,16 +253,15 @@ To verify the fix:
 
 ### Current Downloaded Models
 
-These models will now appear in the UI:
+These models are present locally, but only runtime-visible text-generation models appear in the UI:
 
 ```
 models/transformers/
-├── deepseek-ai--DeepSeek-R1-Distill-Qwen-1.5B/
-├── distilbert-base-uncased/
-├── gpt2/
-├── microsoft--DialoGPT-medium/
-├── Qwen--Qwen3.5-0.8B/              ← Newly downloaded, now visible
-└── sentence-transformers--all-MiniLM-L6-v2/
+├── deepseek-ai--DeepSeek-R1-Distill-Qwen-1.5B/  ← kept, hidden until weights exist
+├── distilbert-base-uncased/                     ← system helper, hidden
+├── gpt2/                                       ← low-resource fallback, visible
+├── Qwen--Qwen3.5-0.8B/                         ← excluded on this stack
+└── sentence-transformers--all-MiniLM-L6-v2/    ← system embedding helper, hidden
 ```
 
 ### Model List in UI
@@ -274,11 +270,7 @@ models/transformers/
 Transformers Model:
 ┌────────────────────────────────────┐
 │ auto                             │
-│ Qwen--Qwen3.5-0.8B           │  ← Now visible!
-│ deepseek-ai--DeepSeek-R1...    │
-│ microsoft--DialoGPT-medium        │
-│ distilbert-base-uncased          │
-│ gpt2                               │
+│ gpt2                               │  ← default visible runtime model
 └────────────────────────────────────┘
 ```
 
@@ -304,10 +296,7 @@ Transformers Model:
 ```json
 {
   "models": [
-    "Qwen--Qwen3.5-0.8B",
-    "deepseek-ai--DeepSeek-R1-Distill-Qwen-1.5B",
-    "microsoft--DialoGPT-medium",
-    // ...
+    "gpt2"
   ]
 }
 ```

@@ -1,11 +1,29 @@
 {
   "schema_version": 1,
   "model_roots": [
-    "models",
     "models/transformers",
     "models/local-gguf",
     "models/onnx"
   ],
+  "discovery_policy": {
+    "canonical_transformers_root": "models/transformers",
+    "runtime_visible_transformers": [
+      "gpt2",
+      "deepseek-ai--DeepSeek-R1-Distill-Qwen-1.5B"
+    ],
+    "system_transformers": [
+      "sentence-transformers--all-MiniLM-L6-v2",
+      "distilbert-base-uncased"
+    ],
+    "exclude_from_runtime_discovery": [
+      "Qwen--Qwen3.5-0.8B",
+      "sentence-transformers--all-MiniLM-L6-v2",
+      "distilbert-base-uncased"
+    ],
+    "default_runtime_model": "gpt2",
+    "default_runtime_model_path": "/models/transformers/gpt2",
+    "low_resource_fallback_model": "gpt2"
+  },
   "format_signatures": {
     "gguf": [".gguf"],
     "onnx": [".onnx"],

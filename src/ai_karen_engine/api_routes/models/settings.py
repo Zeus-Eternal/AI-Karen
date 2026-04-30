@@ -858,7 +858,8 @@ def _load_provider_models(
     provider: ProviderConfig, override: Dict[str, Any]
 ) -> List[ProviderModelPayload]:
     if provider.name == "builtin_vllm":
-        return _configured_models(provider)
+        discovered = _discover_local_vllm_models()
+        return discovered or _configured_models(provider)
 
     if provider.name == "ollama":
         return _discover_ollama_models(_resolve_provider_base_url(provider, override))
@@ -968,7 +969,7 @@ def _build_provider_payload(
             or {}
         ),
         supports_base_url_override=_supports_base_url_override(provider),
-        supports_model_discovery=provider.name in {"ollama", "local_gguf"}
+        supports_model_discovery=provider.name in {"builtin_vllm", "builtin_transformers", "ollama", "local_gguf"}
         or bool(provider.endpoint and provider.endpoint.models_endpoint),
         supports_model_pull=provider.name == "ollama",
         supports_custom_auth=_is_custom_provider(provider),

@@ -313,17 +313,19 @@ services:
       - --port
       - "8000"
       - --model
-      - ${KAREN_BUILTIN_VLLM_MODEL_ID:-Qwen/Qwen2.5-1.5B-Instruct}
+      - ${KAREN_BUILTIN_VLLM_MODEL_ID:-/models/transformers/gpt2}
       - --served-model-name
       - ${KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME:-karen-vllm-local}
+      - --device
+      - ${KAREN_BUILTIN_VLLM_DEVICE:-cuda}
       - --dtype
       - ${KAREN_BUILTIN_VLLM_DTYPE:-float16}
       - --gpu-memory-utilization
       - ${KAREN_BUILTIN_VLLM_GPU_MEMORY_UTILIZATION:-0.80}
       - --max-model-len
-      - ${KAREN_BUILTIN_VLLM_MAX_MODEL_LEN:-4096}
+      - ${KAREN_BUILTIN_VLLM_MAX_MODEL_LEN:-1024}
       - --generation-config
-      - vllm
+      - ${KAREN_BUILTIN_VLLM_GENERATION_CONFIG:-auto}
     deploy:
       resources:
         limits:
@@ -347,6 +349,73 @@ services:
       start_period: 240s
     networks:
       - ai-karen-net
+
+  # ──────────────────────────────────────────────────────────────────────
+  # vLLM CPU fallback server (OPTIONAL)
+  # Starts only with --profile vllm-cpu
+  # Uses the same network alias as vllm so the API can keep http://vllm:8000/v1.
+  # Do not run vllm and vllm-cpu at the same time.
+  # ──────────────────────────────────────────────────────────────────────
+  vllm-cpu:
+    image: ${VLLM_IMAGE:-vllm/vllm-openai:v0.6.6}
+    container_name: ai-karen-vllm-cpu
+    ipc: host
+    restart: unless-stopped
+    profiles:
+      - vllm-cpu
+    ports:
+      - "${KAREN_BUILTIN_VLLM_HOST_PORT:-8001}:8000"
+    environment:
+      HF_HOME: /models/huggingface
+      TRANSFORMERS_CACHE: /models/huggingface
+      HUGGING_FACE_HUB_TOKEN: "${HUGGING_FACE_HUB_TOKEN:-}"
+      VLLM_TARGET_DEVICE: "${KAREN_BUILTIN_VLLM_CPU_TARGET_DEVICE:-cpu}"
+      VLLM_CPU_KVCACHE_SPACE: "${VLLM_CPU_KVCACHE_SPACE:-8}"
+      VLLM_CPU_NUM_OF_RESERVED_CPU: "${VLLM_CPU_NUM_OF_RESERVED_CPU:-1}"
+    volumes:
+      - ./models:/models
+    command:
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --model
+      - ${KAREN_BUILTIN_VLLM_MODEL_ID:-/models/transformers/gpt2}
+      - --served-model-name
+      - ${KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME:-karen-vllm-local}
+      - --device
+      - cpu
+      - --worker-cls
+      - ${KAREN_BUILTIN_VLLM_CPU_WORKER_CLS:-vllm.worker.cpu_worker.CPUWorker}
+      - --dtype
+      - ${KAREN_BUILTIN_VLLM_CPU_DTYPE:-float32}
+      - --max-model-len
+      - ${KAREN_BUILTIN_VLLM_MAX_MODEL_LEN:-1024}
+      - --block-size
+      - ${KAREN_BUILTIN_VLLM_CPU_BLOCK_SIZE:-16}
+      - --generation-config
+      - ${KAREN_BUILTIN_VLLM_GENERATION_CONFIG:-auto}
+      - --disable-async-output-proc
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+          cpus: '4.0'
+        reservations:
+          memory: 2G
+          cpus: '1.0'
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 240s
+    networks:
+      ai-karen-net:
+        aliases:
+          - vllm
 
   # ──────────────────────────────────────────────────────────────────────
   # Ollama (OPTIONAL - recommended local model path for Docker installs)

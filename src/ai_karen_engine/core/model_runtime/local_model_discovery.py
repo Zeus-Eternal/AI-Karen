@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import logging
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -12,6 +14,22 @@ from .runtime_compatibility import (
     probe_runtime_compatibility,
 )
 
+logger = logging.getLogger(__name__)
+
+
+def _normalize_policy_id(value: str) -> str:
+    normalized = str(value or "").strip().replace("\\", "/")
+    for prefix in ("models/transformers/", "transformers/", "/models/transformers/", "/app/models/transformers/"):
+        if normalized.startswith(prefix):
+            normalized = normalized[len(prefix):]
+    return normalized.strip("/")
+
+
+def _policy_model_names(discovery_config: dict[str, Any] | None, key: str) -> set[str]:
+    policy = (discovery_config or {}).get("discovery_policy") or {}
+    raw_values = policy.get(key) or []
+    return {_normalize_policy_id(str(item)) for item in raw_values if str(item).strip()}
+
 
 def _metadata_files(path: Path) -> set[str]:
     files: set[str] = set()
@@ -23,6 +41,22 @@ def _metadata_files(path: Path) -> set[str]:
         if candidate.is_file():
             files.add(candidate.relative_to(path).as_posix())
     return files
+
+
+def _load_transformers_config(path: Path) -> dict[str, Any]:
+    config_path = path / "config.json"
+    if not path.is_dir() or not config_path.exists():
+        return {}
+
+    try:
+        data = json.loads(config_path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+    if not isinstance(data, dict):
+        return {}
+
+    return data
 
 
 def _display_name(path: Path) -> str:
@@ -103,6 +137,9 @@ def _infer_model_type(model_format: str, capabilities: Iterable[str]) -> str:
 
 def discover_local_model_candidates(models_root: str | Path, discovery_config: dict[str, Any] | None = None) -> list[dict[str, Any]]:
     root = Path(models_root).resolve()
+    runtime_visible_transformers = _policy_model_names(discovery_config, "runtime_visible_transformers")
+    runtime_excluded_transformers = _policy_model_names(discovery_config, "exclude_from_runtime_discovery")
+    system_transformers = _policy_model_names(discovery_config, "system_transformers")
     
     # Deduplicate roots using resolved paths
     roots_set: set[Path] = {root} if root.exists() else set()
@@ -142,6 +179,8 @@ def discover_local_model_candidates(models_root: str | Path, discovery_config: d
 
                 seen_paths.add(resolved_path)
                 metadata_files = _metadata_files(path if path.is_dir() else path.parent)
+                config_data = _load_transformers_config(path if path.is_dir() else path.parent)
+                architectures = config_data.get("architectures") or []
 
                 # Generate a user-friendly model_id
                 try:
@@ -161,6 +200,7 @@ def discover_local_model_candidates(models_root: str | Path, discovery_config: d
                         clean_id = clean_id[len(prefix):]
                 
                 clean_id = clean_id.replace("--", "/")
+                policy_id = _normalize_policy_id(rel_id)
 
                 model_format = infer_model_format(path, metadata_files)
                 artifact_kind = infer_model_artifact_kind(model_format, metadata_files)
@@ -176,12 +216,39 @@ def discover_local_model_candidates(models_root: str | Path, discovery_config: d
                         "adapter_only": artifact_kind == "adapter",
                         "capabilities": capabilities,
                         "model_type": _infer_model_type(model_format, capabilities),
+                        "hf_model_type": str(config_data.get("model_type") or "").lower(),
+                        "architectures": architectures,
                         "tokenizer_present": "tokenizer.json" in metadata_files or "tokenizer_config.json" in metadata_files,
                         "weights_present": any(file.endswith((".gguf", ".bin", ".safetensors")) for file in metadata_files) or path.is_file(),
                         "config_present": "config.json" in metadata_files or path.is_dir(),
                         "vllm_available": is_vllm_available(),
                     },
                 )
+                if (
+                    model_format == "transformers"
+                    and policy_id in runtime_excluded_transformers
+                    and compatibility.get("compatibility_confidence") != "unsupported"
+                ):
+                    compatibility = {
+                        **compatibility,
+                        "compatible_runtimes": ["transformers_direct"],
+                        "preferred_runtime": "transformers_direct",
+                        "compatibility_confidence": "system_reserved",
+                        "runtime_notes": [
+                            *compatibility.get("runtime_notes", []),
+                            "Reserved for Karen system helpers; hidden from chat/runtime discovery.",
+                        ],
+                    }
+
+                is_runtime_visible = True
+                if model_format == "transformers" and runtime_visible_transformers:
+                    is_runtime_visible = policy_id in runtime_visible_transformers
+                if policy_id in runtime_excluded_transformers:
+                    is_runtime_visible = False
+
+                weights_present = bool(any(file.endswith((".gguf", ".bin", ".safetensors")) for file in metadata_files) or path.is_file())
+                if not weights_present:
+                    is_runtime_visible = False
 
                 records.append({
                     "model_id": clean_id,
@@ -195,9 +262,12 @@ def discover_local_model_candidates(models_root: str | Path, discovery_config: d
                     "preferred_runtime": compatibility["preferred_runtime"],
                     "compatibility_confidence": compatibility["compatibility_confidence"],
                     "model_type": _infer_model_type(model_format, capabilities),
-                    "architectures": [],
+                    "hf_model_type": str(config_data.get("model_type") or "").lower(),
+                    "runtime_visible": is_runtime_visible,
+                    "system_reserved": policy_id in system_transformers,
+                    "architectures": architectures,
                     "tokenizer_present": bool("tokenizer.json" in metadata_files or "tokenizer_config.json" in metadata_files),
-                    "weights_present": bool(any(file.endswith((".gguf", ".bin", ".safetensors")) for file in metadata_files) or path.is_file()),
+                    "weights_present": weights_present,
                     "metadata_files": sorted(metadata_files),
                     "quantization": quantization,
                     "dtype": None,

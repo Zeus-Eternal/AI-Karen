@@ -103,6 +103,16 @@ class UserMetricsResponse(BaseModel):
     token_usage_supported: bool = False
 
 
+def _normalize_roles(roles: Optional[List[str]]) -> List[str]:
+    """Normalize role labels into backend-friendly lowercase values."""
+    normalized = [
+        str(role).strip().lower()
+        for role in (roles or [])
+        if str(role).strip()
+    ]
+    return normalized or ["user"]
+
+
 def error_detail(message: str) -> Dict[str, str]:
     """Return error detail payload consistent with ErrorResponse."""
     return ErrorResponse(detail=message).model_dump()
@@ -189,13 +199,19 @@ async def create_user(
 
     try:
         auth_service = await get_auth_service_instance()
-        user_data = await auth_service.create_user(
+        user_data, error = await auth_service.create_user(
             email=request.email,
             password=request.password,
-            full_name=request.full_name,
+            full_name=request.full_name or request.email.split("@")[0],
             tenant_id=request.tenant_id,
-            roles=request.roles or ["user"],
+            roles=_normalize_roles(request.roles),
         )
+
+        if error or not user_data:
+            raise HTTPException(
+                status_code=400,
+                detail=error_detail(error or "Failed to create user"),
+            )
 
         return UserResponse(
             user_id=user_data.user_id,
@@ -213,6 +229,8 @@ async def create_user(
             updated_at=user_data.updated_at.isoformat(),
         )
 
+    except HTTPException:
+        raise
     except UserAlreadyExistsError as e:
         raise HTTPException(status_code=409, detail=error_detail(str(e)))
     except RateLimitExceededError as e:

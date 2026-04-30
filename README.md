@@ -247,6 +247,44 @@ To start the built-in vLLM service itself, add the profile explicitly:
 docker compose --profile vllm up -d vllm
 ```
 
+That `vllm` profile is the CUDA path. It requires the host NVIDIA driver and
+Docker GPU runtime to be working. The host must pass both checks before vLLM can
+initialize CUDA:
+
+```bash
+nvidia-smi
+docker run --rm --gpus all nvidia/cuda:12.1.1-base-ubuntu22.04 nvidia-smi
+```
+
+If `nvidia-smi` fails with a driver communication error and `/dev/nvidia*` is
+missing, repair the host device nodes and Docker GPU runtime first:
+
+```bash
+sudo chown root:root /usr/bin/nvidia-modprobe
+sudo chmod 4755 /usr/bin/nvidia-modprobe
+sudo nvidia-modprobe -u -c=0
+sudo nvidia-ctk runtime configure --runtime=docker
+sudo systemctl restart docker
+nvidia-smi
+docker run --rm --gpus all nvidia/cuda:12.1.1-base-ubuntu22.04 nvidia-smi
+```
+
+If `sudo` itself reports that `/etc/sudo.conf` is not owned by root, repair that
+from a real root shell or recovery/admin session before running the CUDA repair:
+
+```bash
+chown root:root /etc/sudo.conf
+```
+
+The repo also provides a CPU-only vLLM fallback profile. It uses the same
+`http://vllm:8000/v1` network alias as the CUDA service, so the API wiring does
+not change. Do not run `vllm` and `vllm-cpu` at the same time because they share
+the same host port and network alias.
+
+```bash
+docker compose --profile vllm-cpu up -d vllm-cpu
+```
+
 The default `VLLM_IMAGE` is pinned to `vllm/vllm-openai:v0.6.6` because that image uses an older CUDA runtime that is a better fit for consumer Turing cards such as the RTX 2080 Super. You can still override it when the host driver is new enough:
 
 ```bash

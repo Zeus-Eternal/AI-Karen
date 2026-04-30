@@ -1,6 +1,6 @@
 {
-  "provider": "builtin_transformers",
-  "model": "/app/models/transformers/deepseek-ai--DeepSeek-R1-Distill-Qwen-1.5B",
+  "provider": "builtin_vllm",
+  "model": "gpt2",
   "use_memory": true,
   "context_length": 512,
   "decay": 0.1,
@@ -75,20 +75,20 @@
       }
     }
   },
-  "last_selected_model": "/app/models/transformers/deepseek-ai--DeepSeek-R1-Distill-Qwen-1.5B",
+  "last_selected_model": "gpt2",
   "model_providers": {
     "zai": {
       "last_model": "glm-4.7-flash",
       "base_url": "https://api.z.ai/api/coding/paas/v4"
     },
     "builtin_vllm": {
-      "last_model": "karen-vllm-local",
+      "last_model": "gpt2",
       "base_url": "http://vllm:8000/v1",
       "health_url": "http://vllm:8000/health",
       "note": "builtin_vllm is the OpenAI-compatible vLLM server. Enable with --profile vllm."
     },
     "builtin_transformers": {
-      "last_model": "/app/models/transformers/deepseek-ai--DeepSeek-R1-Distill-Qwen-1.5B",
+      "last_model": "/app/models/transformers/gpt2",
       "base_url": "/app/models/transformers"
     },
     "openai": {
@@ -108,7 +108,7 @@
     },
     "ollama": {
       "last_model": "starcoder:128k",
-      "base_url": "http://host.docker.internal:11434/api",
+      "base_url": "http://host.docker.internal:11434",
       "runtime_source": "host"
     }
   }

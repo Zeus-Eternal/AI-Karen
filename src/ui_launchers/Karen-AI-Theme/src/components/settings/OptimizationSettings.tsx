@@ -6,6 +6,7 @@ import { AlertCircle, Cpu, Gauge, Loader2, RefreshCw, Save, ServerCog, Zap } fro
 import { apiClient } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -145,6 +146,8 @@ type OptimizationFormState = {
   metricsRetentionHours: string;
 };
 
+type ExecutionMode = "auto" | "cuda" | "cpu";
+
 const DEFAULT_FORM_STATE: OptimizationFormState = {
   enableOptimizationSystem: true,
   optimizationLevel: "balanced",
@@ -165,6 +168,28 @@ const DEFAULT_FORM_STATE: OptimizationFormState = {
   enableRealtimeAlerts: true,
   metricsRetentionHours: "24",
 };
+
+const EXECUTION_MODE_OPTIONS: Array<{
+  value: ExecutionMode;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "auto",
+    label: "Auto fallback",
+    description: "Prefer CUDA when available and keep CPU fallback enabled.",
+  },
+  {
+    value: "cuda",
+    label: "CUDA only",
+    description: "Use GPU execution and disable CPU fallback.",
+  },
+  {
+    value: "cpu",
+    label: "CPU only",
+    description: "Disable CUDA and route execution through the CPU fallback path.",
+  },
+];
 
 function toFormState(config?: PerformanceOptimizationConfigResponse["configuration"]): OptimizationFormState {
   return {
@@ -198,6 +223,44 @@ function normalizeOptimizationLevel(value: unknown): string {
   return ["conservative", "balanced", "aggressive"].includes(normalized)
     ? normalized
     : DEFAULT_FORM_STATE.optimizationLevel;
+}
+
+function getExecutionMode(form: OptimizationFormState): ExecutionMode {
+  if (!form.enableCuda) {
+    return "cpu";
+  }
+
+  if (!form.fallbackToCpu) {
+    return "cuda";
+  }
+
+  return "auto";
+}
+
+function applyExecutionMode(
+  current: OptimizationFormState,
+  mode: ExecutionMode,
+): OptimizationFormState {
+  switch (mode) {
+    case "cuda":
+      return {
+        ...current,
+        enableCuda: true,
+        fallbackToCpu: false,
+      };
+    case "cpu":
+      return {
+        ...current,
+        enableCuda: false,
+        fallbackToCpu: true,
+      };
+    default:
+      return {
+        ...current,
+        enableCuda: true,
+        fallbackToCpu: true,
+      };
+  }
 }
 
 function clampNumber(
@@ -456,8 +519,13 @@ export default function OptimizationSettings() {
   const gpuSummary = gpuRuntime?.summary;
   const detectedDevices = useMemo(() => gpuSnapshot?.cuda?.devices ?? [], [gpuSnapshot]);
   const detectedDeviceIds = useMemo(() => new Set(detectedDevices.map((device) => String(device.id))), [detectedDevices]);
+  const executionMode = useMemo(() => getExecutionMode(form), [form]);
   const normalizedPreferredDeviceId =
     form.preferredDeviceId === "auto" || detectedDeviceIds.has(form.preferredDeviceId) ? form.preferredDeviceId : "auto";
+  const gpuControlsDisabled = executionMode === "cpu";
+  const executionModeMeta =
+    EXECUTION_MODE_OPTIONS.find((option) => option.value === executionMode) ??
+    EXECUTION_MODE_OPTIONS[0];
 
   const hasEndpointErrors = Object.keys(endpointErrors).length > 0;
   const shouldShowValidationAlert =
@@ -480,7 +548,7 @@ export default function OptimizationSettings() {
         description:
           normalizedResponse?.validation_status === false
             ? "Backend accepted the update, but validation still requires review."
-            : "CUDA and runtime acceleration settings were updated successfully.",
+            : "CUDA and CPU runtime settings were updated successfully.",
       });
       await loadSettings();
     } catch (error) {
@@ -551,13 +619,55 @@ export default function OptimizationSettings() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Zap className="h-4 w-4" />
-              CUDA Acceleration
+              CUDA / CPU Execution
             </CardTitle>
             <CardDescription>
-              Production runtime controls for GPU discovery, memory use, device preference, batching, and CPU fallback.
+              Choose how Karen uses local compute resources. CUDA is the primary
+              path, CPU-only is the fallback path, and auto mode keeps both
+              available.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            <div className="space-y-3 rounded-2xl border border-border/50 bg-muted/20 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="execution-mode">Execution target</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Controls whether the backend should prefer CUDA, lock to CPU,
+                    or keep both available for live fallback.
+                  </p>
+                </div>
+                <Badge
+                  variant="outline"
+                  className="h-6 rounded-full px-3 text-[10px] font-semibold uppercase tracking-wide"
+                >
+                  {executionModeMeta.label}
+                </Badge>
+              </div>
+              <Select
+                value={executionMode}
+                onValueChange={(value) =>
+                  setForm((current) =>
+                    applyExecutionMode(current, value as ExecutionMode),
+                  )
+                }
+              >
+                <SelectTrigger id="execution-mode" className="h-11 bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {EXECUTION_MODE_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {executionModeMeta.description}
+              </p>
+            </div>
+
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="optimization-level">Optimization profile</Label>
@@ -574,18 +684,24 @@ export default function OptimizationSettings() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="preferred-device-id">Preferred GPU device</Label>
-                <Select value={normalizedPreferredDeviceId} onValueChange={(value) => setForm((current) => ({ ...current, preferredDeviceId: value }))}>
-                  <SelectTrigger id="preferred-device-id">
+                <Select
+                  value={normalizedPreferredDeviceId}
+                  onValueChange={(value) =>
+                    setForm((current) => ({ ...current, preferredDeviceId: value }))
+                  }
+                  disabled={gpuControlsDisabled}
+                >
+                  <SelectTrigger id="preferred-device-id" className="bg-background">
                     <SelectValue />
                   </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="auto">Auto select</SelectItem>
-                      {detectedDevices.map((device) => (
-                        <SelectItem key={device.id} value={String(device.id)}>
-                          GPU {device.id}: {device.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
+                  <SelectContent>
+                    <SelectItem value="auto">Auto select</SelectItem>
+                    {detectedDevices.map((device) => (
+                      <SelectItem key={device.id} value={String(device.id)}>
+                        GPU {device.id}: {device.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
               </div>
             </div>
@@ -598,7 +714,13 @@ export default function OptimizationSettings() {
                   value={form.memoryFraction}
                   onChange={(event) => setForm((current) => ({ ...current, memoryFraction: event.target.value }))}
                   placeholder="0.8"
+                  disabled={gpuControlsDisabled}
                 />
+                {gpuControlsDisabled && (
+                  <p className="text-xs text-amber-600">
+                    CPU-only mode ignores GPU memory tuning.
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="optimization-interval">Optimization interval seconds</Label>
@@ -616,11 +738,9 @@ export default function OptimizationSettings() {
             <div className="grid gap-4 md:grid-cols-2">
               {[
                 ["enableOptimizationSystem", "Enable optimization system", "Master switch for runtime optimization and admin-managed performance controls."],
-                ["enableCuda", "Enable CUDA acceleration", "Allow GPU acceleration when CUDA-capable devices and drivers are available."],
                 ["autoDetectDevices", "Auto-detect GPU devices", "Continuously discover CUDA devices instead of pinning to a single GPU."],
                 ["enableMemoryOptimization", "Enable GPU memory optimization", "Allow cache cleanup and controlled memory allocation for large inference workloads."],
                 ["enableBatchProcessing", "Enable GPU batch processing", "Batch compatible requests for better throughput under concurrency."],
-                ["fallbackToCpu", "Enable CPU fallback", "Keep production inference running if GPU resources are unavailable or fail."],
                 ["enablePerformanceOptimization", "Enable performance optimization", "Allow background optimization logic to tune runtime behavior."],
                 ["enablePerformanceAlerts", "Enable performance alerts", "Surface admin warnings when runtime thresholds are crossed."],
                 ["enableStreaming", "Enable optimized streaming", "Keep streaming enabled for production response delivery paths."],
@@ -636,6 +756,12 @@ export default function OptimizationSettings() {
                   <Switch
                     checked={Boolean(form[key as keyof OptimizationFormState])}
                     onCheckedChange={(checked) => setForm((current) => ({ ...current, [key]: checked }))}
+                    disabled={
+                      gpuControlsDisabled &&
+                      ["autoDetectDevices", "enableMemoryOptimization", "enableBatchProcessing"].includes(
+                        String(key),
+                      )
+                    }
                   />
                 </div>
               ))}
@@ -701,8 +827,16 @@ export default function OptimizationSettings() {
                 <span className="font-medium">{gpuSnapshot?.runtime?.cuda_enabled ? "Enabled" : "Disabled"}</span>
               </div>
               <div className="flex justify-between">
+                <span className="text-muted-foreground">Execution mode</span>
+                <span className="font-medium">{executionModeMeta.label}</span>
+              </div>
+              <div className="flex justify-between">
                 <span className="text-muted-foreground">CUDA detected</span>
                 <span className="font-medium">{gpuSnapshot?.cuda?.available ? "Available" : "Unavailable"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">CPU fallback</span>
+                <span className="font-medium">{gpuSnapshot?.runtime?.cpu_fallback_enabled ? "Enabled" : "Disabled"}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Detected GPUs</span>
@@ -843,7 +977,8 @@ export default function OptimizationSettings() {
             </CardHeader>
             <CardContent className="space-y-2 text-sm text-muted-foreground">
               <p>Use CUDA only when the host has stable NVIDIA drivers and production VRAM headroom.</p>
-              <p>Keep CPU fallback enabled in production unless you explicitly want hard failures on GPU outages.</p>
+              <p>Auto fallback is the safest production default because it keeps CPU fallback available when CUDA fails.</p>
+              <p>Use CPU-only mode for local fallback, driver outages, or hosts that do not expose a working GPU.</p>
               <p>Batch processing and memory optimization should stay enabled together for sustained multi-request workloads.</p>
             </CardContent>
           </Card>

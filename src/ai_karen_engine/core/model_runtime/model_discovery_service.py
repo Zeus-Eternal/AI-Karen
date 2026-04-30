@@ -104,6 +104,8 @@ class ModelSummary:
     estimated_vram_gb: Optional[float] = None
     adapter_only: bool = False
     base_model_ref: Optional[str] = None
+    runtime_visible: bool = True
+    system_reserved: bool = False
     security_flags: tuple[str, ...] = field(default_factory=tuple)
     runtime_notes: tuple[str, ...] = field(default_factory=tuple)
     _status: str = "available"
@@ -134,6 +136,8 @@ class ModelSummary:
             estimated_vram_gb=record.get("estimated_vram_gb"),
             adapter_only=bool(record.get("adapter_only", False)),
             base_model_ref=record.get("base_model_ref"),
+            runtime_visible=bool(record.get("runtime_visible", True)),
+            system_reserved=bool(record.get("system_reserved", False)),
             security_flags=tuple(record.get("security_flags") or ()),
             runtime_notes=tuple(record.get("runtime_notes") or ()),
             _status=str(record.get("status") or "available"),
@@ -327,6 +331,8 @@ class ModelDiscoveryService:
         if runtime:
             runtime = runtime.lower()
             models = [item for item in models if runtime in {entry.lower() for entry in item.compatible_runtimes}]
+        if runtime in {"vllm", "builtin_vllm", "transformers_direct", "builtin_transformers"}:
+            models = [item for item in models if item.runtime_visible and item.weights_present]
         if capability:
             capability = capability.lower()
             models = [item for item in models if capability in {entry.lower() for entry in item.capabilities}]

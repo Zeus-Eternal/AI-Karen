@@ -96,8 +96,8 @@ class LLMConfig:
     """LLM configuration."""
 
     default_provider: str = "builtin_transformers"
-    default_model: str = "auto"
-    default_lightweight_model_id: str = "auto"
+    default_model: str = "/app/models/transformers/gpt2"
+    default_lightweight_model_id: str = "gpt2"
     default_nlp_model_id: str = "distilbert-base-uncased"
     default_classifier_model_id: str = "default-classifier-model"
     models_dir: str = "models"
@@ -116,8 +116,8 @@ class LLMConfig:
         default_factory=lambda: {
             "openai": "gpt-4o-mini",
             "deepseek": "deepseek-chat",
-            "builtin_vllm": "auto",
-            "builtin_transformers": "auto",
+            "builtin_vllm": "/models/transformers/gpt2",
+            "builtin_transformers": "/app/models/transformers/gpt2",
             "gemini": "gemini-1.5-flash",
             "huggingface": "microsoft/DialoGPT-large",
         }
@@ -260,8 +260,8 @@ DEFAULT_CONFIG = {
     },
     "llm": {
         "default_provider": "builtin_transformers",
-        "default_model": "auto",
-        "default_lightweight_model_id": "auto",
+        "default_model": "/app/models/transformers/gpt2",
+        "default_lightweight_model_id": "gpt2",
         "default_nlp_model_id": "distilbert-base-uncased",
         "default_classifier_model_id": "default-classifier-model",
         "models_dir": "models",
@@ -270,8 +270,8 @@ DEFAULT_CONFIG = {
         "provider_defaults": {
             "openai": "gpt-4o-mini",
             "deepseek": "deepseek-chat",
-            "builtin_vllm": "auto",
-            "builtin_transformers": "auto",
+            "builtin_vllm": "/models/transformers/gpt2",
+            "builtin_transformers": "/app/models/transformers/gpt2",
             "gemini": "gemini-1.5-flash",
             "huggingface": "microsoft/DialoGPT-large",
         },
