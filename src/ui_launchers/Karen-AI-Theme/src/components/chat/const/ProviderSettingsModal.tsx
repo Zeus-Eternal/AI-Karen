@@ -1,5 +1,12 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
@@ -10,218 +17,353 @@ import type { ProviderDetails } from '../types';
 
 export type { ProviderDetails };
 
-export const ProviderSettingsModal = ({
-  selectableProviders,
-  selectedProvider,
-  selectedModel,
-  applyModelSelection,
-  isUpdatingModelSelection
-}: {
+type ProviderGroupKey = 'builtIn' | 'local' | 'thirdParty' | 'custom';
+
+interface ProviderSettingsModalProps {
   selectableProviders: ProviderDetails[];
   selectedProvider: string;
   selectedModel: string;
   applyModelSelection: (providerId: string, modelId: string) => Promise<void>;
   isUpdatingModelSelection: boolean;
-}) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [localProvider, setLocalProvider] = useState(selectedProvider);
-    const [localModel, setLocalModel] = useState(selectedModel);
-    
-    // Sync local state when modal opens
-    useEffect(() => {
-      if (isOpen) {
-        setLocalProvider(selectedProvider);
-        setLocalModel(selectedModel);
-      }
-    }, [isOpen]);
+}
 
-    const activeProviderDetails = selectableProviders.find(p => p.id === localProvider);
-    const providerModels = activeProviderDetails?.models || [];
-    const groupedProviders = useMemo(() => {
-      const builtInProviders = selectableProviders.filter((provider) => getRuntimeProviderBucket(provider) === 'builtIn');
-      const localProviders = selectableProviders.filter((provider) => getRuntimeProviderBucket(provider) === 'local');
-      const thirdPartyProviders = selectableProviders.filter((provider) => getRuntimeProviderBucket(provider) === 'thirdParty');
-      const customProviders = selectableProviders.filter((provider) => getRuntimeProviderBucket(provider) === 'custom');
-      return { builtInProviders, localProviders, thirdPartyProviders, customProviders };
-    }, [selectableProviders]);
+interface ProviderGroupConfig {
+  key: ProviderGroupKey;
+  label: string;
+  providers: ProviderDetails[];
+}
 
-    useEffect(() => {
-      if (!isOpen || !activeProviderDetails) {
-        return;
-      }
+const PROVIDER_GROUP_LABELS: Record<ProviderGroupKey, string> = {
+  builtIn: 'Built-in Runtime',
+  local: 'Local Providers',
+  thirdParty: 'Cloud Providers',
+  custom: 'Custom Integrations',
+};
 
-      setLocalModel(activeProviderDetails.selected_model || activeProviderDetails.models[0]?.id || '');
-    }, [isOpen, activeProviderDetails]);
+const cleanString = (value: unknown): string => {
+  return typeof value === 'string' ? value.trim() : '';
+};
 
-    const handleApply = async () => {
-      await applyModelSelection(localProvider, localModel);
-      setIsOpen(false);
-    };
+const getProviderLabel = (provider: ProviderDetails | null | undefined): string => {
+  return getRuntimeDisplayName(
+    cleanString(provider?.id),
+    cleanString(provider?.display_name),
+  );
+};
 
-    return (
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogTrigger asChild>
-            <Button
-              variant="outline"
-              className="flex items-center gap-2 h-9 px-3 border border-input bg-background hover:bg-accent hover:text-accent-foreground font-medium"
-            >
-              <Bot className="h-4 w-4" />
-            MODELS
-            </Button>
-          </DialogTrigger>
-        <DialogContent className="sm:max-w-[850px] gap-0 p-0 overflow-hidden">
-          <DialogHeader className="sr-only">
-            <DialogTitle>AI Provider Settings</DialogTitle>
-            <DialogDescription>
-              Configure AI providers, models, and connection settings for Karen.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex h-[600px]">
-            {/* Sidebar: Provider Selection */}
-            <div className="w-[180px] bg-muted/30 border-r border-border p-3 flex flex-col gap-1 overflow-y-auto">
-              <div className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground mb-2 px-2">Runtime Providers</div>
-              <div className="space-y-2">
-                {groupedProviders.builtInProviders.length > 0 && (
-                  <div className="space-y-1">
-                    <div className="px-2 text-[9px] uppercase tracking-[0.2em] text-muted-foreground">Built-in Runtime</div>
-                    {groupedProviders.builtInProviders.map((p) => (
-                      <button
-                        key={p.id}
-                        onClick={() => {
-                          setLocalProvider(p.id);
-                        }}
-                        className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors text-left w-full ${
-                          localProvider === p.id
-                            ? 'bg-primary text-primary-foreground font-medium'
-                            : 'hover:bg-muted text-muted-foreground hover:text-foreground'
-                        }`}
-                      >
-                        <Bot className={`h-4 w-4 ${localProvider === p.id ? 'opacity-100' : 'opacity-60'}`} />
-                        <span className="truncate">{getRuntimeDisplayName(p.id, p.display_name)}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {groupedProviders.localProviders.length > 0 && (
-                  <div className="space-y-1">
-                    <div className="px-2 text-[9px] uppercase tracking-[0.2em] text-muted-foreground">Local Providers</div>
-                    {groupedProviders.localProviders.map((p) => (
-                      <button
-                        key={p.id}
-                        onClick={() => {
-                          setLocalProvider(p.id);
-                        }}
-                        className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors text-left w-full ${
-                          localProvider === p.id
-                            ? 'bg-primary text-primary-foreground font-medium'
-                            : 'hover:bg-muted text-muted-foreground hover:text-foreground'
-                        }`}
-                      >
-                        <Bot className={`h-4 w-4 ${localProvider === p.id ? 'opacity-100' : 'opacity-60'}`} />
-                        <span className="truncate">{getRuntimeDisplayName(p.id, p.display_name)}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {groupedProviders.thirdPartyProviders.length > 0 && (
-                  <div className="space-y-1">
-                    <div className="px-2 text-[9px] uppercase tracking-[0.2em] text-muted-foreground">Cloud Providers</div>
-                    {groupedProviders.thirdPartyProviders.map((p) => (
-                      <button
-                        key={p.id}
-                        onClick={() => {
-                          setLocalProvider(p.id);
-                        }}
-                        className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors text-left w-full ${
-                          localProvider === p.id
-                            ? 'bg-primary text-primary-foreground font-medium'
-                            : 'hover:bg-muted text-muted-foreground hover:text-foreground'
-                        }`}
-                      >
-                        <Bot className={`h-4 w-4 ${localProvider === p.id ? 'opacity-100' : 'opacity-60'}`} />
-                        <span className="truncate">{getRuntimeDisplayName(p.id, p.display_name)}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {groupedProviders.customProviders.length > 0 && (
-                  <div className="space-y-1">
-                    <div className="px-2 text-[9px] uppercase tracking-[0.2em] text-muted-foreground">Custom Integrations</div>
-                    {groupedProviders.customProviders.map((p) => (
-                      <button
-                        key={p.id}
-                        onClick={() => {
-                          setLocalProvider(p.id);
-                        }}
-                        className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors text-left w-full ${
-                          localProvider === p.id
-                            ? 'bg-primary text-primary-foreground font-medium'
-                            : 'hover:bg-muted text-muted-foreground hover:text-foreground'
-                        }`}
-                      >
-                        <Bot className={`h-4 w-4 ${localProvider === p.id ? 'opacity-100' : 'opacity-60'}`} />
-                        <span className="truncate">{getRuntimeDisplayName(p.id, p.display_name)}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+const getFirstAvailableModelId = (
+  provider: ProviderDetails | null | undefined,
+): string => {
+  if (!provider) {
+    return '';
+  }
+
+  /*
+   * The backend is the source of truth for selected/default model.
+   * We only fall back to the first advertised model so the modal remains usable
+   * when a provider has models but no saved selected_model yet.
+   */
+  return (
+    cleanString(provider.selected_model) ||
+    cleanString(provider.default_model) ||
+    cleanString(provider.models?.[0]?.id)
+  );
+};
+
+const getProviderById = (
+  providers: ProviderDetails[],
+  providerId: string,
+): ProviderDetails | null => {
+  return providers.find((provider) => provider.id === providerId) ?? null;
+};
+
+const getFallbackProviderId = (
+  providers: ProviderDetails[],
+  preferredProviderId: string,
+): string => {
+  const preferred = cleanString(preferredProviderId);
+
+  if (preferred && providers.some((provider) => provider.id === preferred)) {
+    return preferred;
+  }
+
+  return providers[0]?.id || '';
+};
+
+const getProviderGroups = (
+  providers: ProviderDetails[],
+): ProviderGroupConfig[] => {
+  /*
+   * Provider buckets come from the existing runtime inventory helper.
+   * Do not hardcode provider IDs here. That would recreate the old UI problem
+   * where display logic accidentally became provider-routing logic.
+   */
+  const grouped = providers.reduce<Record<ProviderGroupKey, ProviderDetails[]>>(
+    (groups, provider) => {
+      const bucket = getRuntimeProviderBucket(provider) as ProviderGroupKey;
+      const safeBucket: ProviderGroupKey = bucket in groups ? bucket : 'custom';
+
+      groups[safeBucket].push(provider);
+      return groups;
+    },
+    {
+      builtIn: [],
+      local: [],
+      thirdParty: [],
+      custom: [],
+    },
+  );
+
+  return (Object.keys(PROVIDER_GROUP_LABELS) as ProviderGroupKey[])
+    .map((key) => ({
+      key,
+      label: PROVIDER_GROUP_LABELS[key],
+      providers: grouped[key],
+    }))
+    .filter((group) => group.providers.length > 0);
+};
+
+export const ProviderSettingsModal = ({
+  selectableProviders,
+  selectedProvider,
+  selectedModel,
+  applyModelSelection,
+  isUpdatingModelSelection,
+}: ProviderSettingsModalProps) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [localProvider, setLocalProvider] = useState(selectedProvider);
+  const [localModel, setLocalModel] = useState(selectedModel);
+
+  const providerGroups = useMemo(
+    () => getProviderGroups(selectableProviders),
+    [selectableProviders],
+  );
+
+  const activeProviderDetails = useMemo(() => {
+    return getProviderById(selectableProviders, localProvider);
+  }, [selectableProviders, localProvider]);
+
+  const providerModels = activeProviderDetails?.models ?? [];
+  const activeProviderLabel =
+    getProviderLabel(activeProviderDetails) || 'Select Runtime';
+
+  /*
+   * The modal keeps local draft state so users can browse providers/models
+   * without immediately changing the active runtime. We reset that draft state
+   * only when the modal opens, preserving the saved backend selection.
+   */
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const resolvedProviderId = getFallbackProviderId(
+      selectableProviders,
+      selectedProvider,
+    );
+    const resolvedProvider = getProviderById(selectableProviders, resolvedProviderId);
+
+    setLocalProvider(resolvedProviderId);
+    setLocalModel(cleanString(selectedModel) || getFirstAvailableModelId(resolvedProvider));
+  }, [isOpen, selectableProviders, selectedProvider, selectedModel]);
+
+  /*
+   * When the user switches provider inside the modal, choose that provider's
+   * saved/default model. This avoids carrying an incompatible model ID from
+   * the previously selected provider into the Apply call.
+   */
+  useEffect(() => {
+    if (!isOpen || !activeProviderDetails) {
+      return;
+    }
+
+    const modelExistsOnProvider = providerModels.some(
+      (model) => model.id === localModel,
+    );
+
+    if (!modelExistsOnProvider) {
+      setLocalModel(getFirstAvailableModelId(activeProviderDetails));
+    }
+  }, [isOpen, activeProviderDetails, providerModels, localModel]);
+
+  const handleProviderSelect = (providerId: string) => {
+    const nextProvider = getProviderById(selectableProviders, providerId);
+
+    setLocalProvider(providerId);
+    setLocalModel(getFirstAvailableModelId(nextProvider));
+  };
+
+  const handleApply = async () => {
+    if (!localProvider || !localModel || isUpdatingModelSelection) {
+      return;
+    }
+
+    /*
+     * Provider/model persistence remains owned by the existing caller.
+     * This modal only collects the draft selection and invokes the supplied
+     * applyModelSelection callback.
+     */
+    await applyModelSelection(localProvider, localModel);
+    setIsOpen(false);
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          className="flex h-9 items-center gap-2 border border-input bg-background px-3 font-medium hover:bg-accent hover:text-accent-foreground"
+          aria-label="Open model and provider settings"
+        >
+          <Bot className="h-4 w-4" />
+          MODELS
+        </Button>
+      </DialogTrigger>
+
+      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-[850px]">
+        <DialogHeader className="sr-only">
+          <DialogTitle>AI Provider Settings</DialogTitle>
+          <DialogDescription>
+            Configure AI providers, models, and connection settings for Karen.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex h-[600px]">
+          {/* Provider sidebar: display-only grouping. Runtime truth comes from backend provider records. */}
+          <div className="flex w-[180px] flex-col gap-1 overflow-y-auto border-r border-border bg-muted/30 p-3">
+            <div className="mb-2 px-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              Runtime Providers
             </div>
 
-            {/* Main Content Area */}
-            <div className="flex-1 flex flex-col min-w-0">
-              <DialogHeader className="p-6 pb-2">
-                <DialogTitle className="flex items-center gap-2">
-                  {getRuntimeDisplayName(activeProviderDetails?.id || '', activeProviderDetails?.display_name || '') || 'Select Runtime'} Models
-                </DialogTitle>
-                <DialogDescription className="text-xs">
-                  Choose from the providers and models already configured in settings.
-                </DialogDescription>
-              </DialogHeader>
-
-              <ScrollArea className="flex-1 p-6 pt-2">
-                <div className="space-y-3">
-                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Available Models</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {providerModels.map((m) => (
-                      <button
-                        key={m.id}
-                        onClick={() => setLocalModel(m.id)}
-                        className={`p-3 rounded-lg border text-left transition-all ${
-                          localModel === m.id 
-                            ? 'bg-primary/5 border-primary ring-1 ring-primary' 
-                            : 'border-border hover:bg-muted/50 hover:border-muted-foreground/30'
-                        }`}
-                      >
-                        <div className="text-sm font-medium leading-tight truncate">{m.name}</div>
-                        <div className="text-[10px] text-muted-foreground mt-1 truncate">{m.id}</div>
-                      </button>
-                    ))}
-                    {providerModels.length === 0 && (
-                      <div className="col-span-2 py-8 text-center border border-dashed rounded-lg text-muted-foreground text-sm">
-                        No configured models found for this provider. Use Application Settings to configure one.
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </ScrollArea>
-
-              <div className="p-6 pt-4 border-t border-border bg-muted/10 flex justify-end gap-3">
-                <Button variant="ghost" onClick={() => setIsOpen(false)} className="h-9">
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleApply} 
-                  disabled={isUpdatingModelSelection || !localModel}
-                  className="h-9 min-w-[120px]"
-                >
-                  {isUpdatingModelSelection ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                  Apply Changes
-                </Button>
+            {providerGroups.length === 0 ? (
+              <div className="rounded-md border border-dashed px-3 py-4 text-xs text-muted-foreground">
+                No selectable providers are currently configured.
               </div>
+            ) : (
+              <div className="space-y-2">
+                {providerGroups.map((group) => (
+                  <div key={group.key} className="space-y-1">
+                    <div className="px-2 text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
+                      {group.label}
+                    </div>
+
+                    {group.providers.map((provider) => {
+                      const isActive = localProvider === provider.id;
+                      const label = getProviderLabel(provider);
+
+                      return (
+                        <button
+                          key={provider.id}
+                          type="button"
+                          onClick={() => handleProviderSelect(provider.id)}
+                          className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors ${
+                            isActive
+                              ? 'bg-primary font-medium text-primary-foreground'
+                              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                          }`}
+                          aria-pressed={isActive}
+                          title={label}
+                        >
+                          <Bot
+                            className={`h-4 w-4 ${
+                              isActive ? 'opacity-100' : 'opacity-60'
+                            }`}
+                          />
+                          <span className="truncate">{label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex min-w-0 flex-1 flex-col">
+            <DialogHeader className="p-6 pb-2">
+              <DialogTitle className="flex items-center gap-2">
+                {activeProviderLabel} Models
+              </DialogTitle>
+              <DialogDescription className="text-xs">
+                Choose from the providers and models already configured in settings.
+              </DialogDescription>
+            </DialogHeader>
+
+            <ScrollArea className="flex-1 p-6 pt-2">
+              <div className="space-y-3">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Available Models
+                </Label>
+
+                <div className="grid grid-cols-2 gap-2">
+                  {providerModels.map((model) => {
+                    const isActive = localModel === model.id;
+
+                    return (
+                      <button
+                        key={model.id}
+                        type="button"
+                        onClick={() => setLocalModel(model.id)}
+                        className={`rounded-lg border p-3 text-left transition-all ${
+                          isActive
+                            ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                            : 'border-border hover:border-muted-foreground/30 hover:bg-muted/50'
+                        }`}
+                        aria-pressed={isActive}
+                        title={model.id}
+                      >
+                        <div className="truncate text-sm font-medium leading-tight">
+                          {model.name || model.id}
+                        </div>
+                        <div className="mt-1 truncate text-[10px] text-muted-foreground">
+                          {model.id}
+                        </div>
+                      </button>
+                    );
+                  })}
+
+                  {providerModels.length === 0 && (
+                    <div className="col-span-2 rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
+                      No configured models found for this provider. Use Application
+                      Settings to configure one.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </ScrollArea>
+
+            <div className="flex justify-end gap-3 border-t border-border bg-muted/10 p-6 pt-4">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setIsOpen(false)}
+                className="h-9"
+                disabled={isUpdatingModelSelection}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                type="button"
+                onClick={() => void handleApply()}
+                disabled={
+                  isUpdatingModelSelection ||
+                  !localProvider ||
+                  !localModel ||
+                  providerModels.length === 0
+                }
+                className="h-9 min-w-[120px]"
+              >
+                {isUpdatingModelSelection ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                Apply Changes
+              </Button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
-    );
-  };
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};

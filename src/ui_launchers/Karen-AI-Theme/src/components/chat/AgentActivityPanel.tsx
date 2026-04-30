@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { AgentStepEvent } from '@/lib/api';
 
 interface AgentActivityPanelProps {
@@ -9,165 +9,328 @@ interface AgentActivityPanelProps {
 
 type ActionIconMap = Record<string, React.ReactNode>;
 
-const renderToolInfo = (metadata?: Record<string, unknown>): React.ReactNode | null => {
-  if (!metadata?.tool) return null;
-  const toolValue = metadata.tool;
+type AgentStepMetadata = Record<string, unknown>;
+
+const PANEL_CONTENT_ID = 'agent-activity-panel-content';
+
+const cleanString = (value: unknown): string => {
+  return typeof value === 'string' ? value.trim() : '';
+};
+
+const stringifyMetadataValue = (value: unknown): string => {
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+
+  if (value == null) {
+    return '';
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+};
+
+const getSafeTimestamp = (timestamp: unknown): string => {
+  if (!timestamp) {
+    return '';
+  }
+
+  const date = new Date(
+    typeof timestamp === 'string' || typeof timestamp === 'number'
+      ? timestamp
+      : String(timestamp),
+  );
+
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  return date.toLocaleTimeString();
+};
+
+const getActionLabel = (type: string): string => {
+  switch (type) {
+    case 'agent_step_started':
+      return 'Processing';
+    case 'agent_step_completed':
+      return 'Completed';
+    case 'tool_execution_started':
+      return 'Executing tool';
+    case 'tool_execution_completed':
+      return 'Tool complete';
+    case 'web_search_started':
+      return 'Searching web';
+    case 'web_search_sources_found':
+      return 'Sources found';
+    case 'extension_execution_started':
+      return 'Running extension';
+    case 'extension_execution_completed':
+      return 'Extension complete';
+    case 'citation_bundle_ready':
+      return 'Citations ready';
+    case 'degraded_mode_entered':
+      return 'Degraded mode';
+    case 'provider_selection_started':
+      return 'Selecting provider';
+    case 'provider_selected':
+      return 'Provider selected';
+    case 'provider_fallback_started':
+      return 'Trying fallback';
+    case 'provider_fallback_succeeded':
+      return 'Fallback succeeded';
+    case 'provider_invocation_failed':
+      return 'Provider failed';
+    case 'streaming_started':
+      return 'Streaming started';
+    case 'streaming_completed':
+      return 'Streaming complete';
+    default:
+      return type.replace(/_/g, ' ');
+  }
+};
+
+const actionIcons: ActionIconMap = {
+  agent_step_started: (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+    </svg>
+  ),
+  agent_step_completed: (
+    <svg className="h-4 w-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+    </svg>
+  ),
+  tool_execution_started: (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+  ),
+  tool_execution_completed: (
+    <svg className="h-4 w-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+    </svg>
+  ),
+  web_search_started: (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.5 18a7.5 7.5 0 110-15 7.5 7.5 0 010 15z" />
+    </svg>
+  ),
+  web_search_sources_found: (
+    <svg className="h-4 w-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg>
+  ),
+  extension_execution_started: (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-5" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4.5 4.5 1.5-6L18.5 2.5z" />
+    </svg>
+  ),
+  extension_execution_completed: (
+    <svg className="h-4 w-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4" />
+    </svg>
+  ),
+  citation_bundle_ready: (
+    <svg className="h-4 w-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+    </svg>
+  ),
+  degraded_mode_entered: (
+    <svg className="h-4 w-4 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+    </svg>
+  ),
+  provider_invocation_failed: (
+    <svg className="h-4 w-4 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12A9 9 0 113 12a9 9 0 0118 0z" />
+    </svg>
+  ),
+  provider_fallback_succeeded: (
+    <svg className="h-4 w-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v6h6M20 20v-6h-6" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 19A9 9 0 0119 5" />
+    </svg>
+  ),
+  streaming_started: (
+    <svg className="h-4 w-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7h16M4 12h10M4 17h16" />
+    </svg>
+  ),
+  streaming_completed: (
+    <svg className="h-4 w-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4" />
+    </svg>
+  ),
+};
+
+const renderMetadataLine = (
+  label: string,
+  value: unknown,
+  className: string,
+): React.ReactNode | null => {
+  const text = stringifyMetadataValue(value);
+
+  if (!text) {
+    return null;
+  }
+
   return (
-    <p className="text-xs text-blue-600 dark:text-blue-400">
-      Tool: {typeof toolValue === 'string' ? toolValue : JSON.stringify(toolValue)}
+    <p className={className}>
+      {label}: {text}
     </p>
   );
 };
 
-const renderExtensionInfo = (metadata?: Record<string, unknown>): React.ReactNode | null => {
-  if (!metadata?.extension_id) return null;
-  const extValue = metadata.extension_id;
-  return (
-    <p className="text-xs text-purple-600 dark:text-purple-400">
-      Extension: {typeof extValue === 'string' ? extValue : JSON.stringify(extValue)}
-    </p>
+const renderToolInfo = (
+  metadata?: AgentStepMetadata,
+): React.ReactNode | null => {
+  return renderMetadataLine(
+    'Tool',
+    metadata?.tool,
+    'text-xs text-blue-600 dark:text-blue-400',
+  );
+};
+
+const renderExtensionInfo = (
+  metadata?: AgentStepMetadata,
+): React.ReactNode | null => {
+  return renderMetadataLine(
+    'Extension',
+    metadata?.extension_id,
+    'text-xs text-purple-600 dark:text-purple-400',
+  );
+};
+
+const renderProviderInfo = (
+  metadata?: AgentStepMetadata,
+): React.ReactNode | null => {
+  const provider =
+    metadata?.actual_provider ??
+    metadata?.provider ??
+    metadata?.requested_provider;
+
+  return renderMetadataLine(
+    'Provider',
+    provider,
+    'text-xs text-emerald-700 dark:text-emerald-400',
+  );
+};
+
+const renderFallbackInfo = (
+  metadata?: AgentStepMetadata,
+): React.ReactNode | null => {
+  return renderMetadataLine(
+    'Fallback',
+    metadata?.fallback_reason ?? metadata?.degradation_reason,
+    'text-xs text-yellow-700 dark:text-yellow-400',
   );
 };
 
 export default function AgentActivityPanel({ steps }: AgentActivityPanelProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  if (!steps || steps.length === 0) {
+  const normalizedSteps = useMemo(() => {
+    return Array.isArray(steps) ? steps.filter(Boolean) : [];
+  }, [steps]);
+
+  if (normalizedSteps.length === 0) {
     return null;
   }
 
-  const actionIcons: ActionIconMap = {
-    agent_step_started: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7h7l-9-7v7h2V10z" />
-      </svg>
-    ),
-    tool_execution_started: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065-2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37" />
-      </svg>
-    ),
-    tool_execution_completed: (
-      <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-      </svg>
-    ),
-    web_search_started: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9-9m9 9a9 9 0 01-9-9m9 9a9 9 0 01-9-9" />
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 12h4m-2-2v4m-2 2h4" />
-      </svg>
-    ),
-    web_search_sources_found: (
-      <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-      </svg>
-    ),
-    extension_execution_started: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-5" />
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4.5 4.5a2.121 2.121 0 013-3L21.5 2.5z" />
-      </svg>
-    ),
-    extension_execution_completed: (
-      <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4" />
-      </svg>
-    ),
-    citation_bundle_ready: (
-      <svg className="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-      </svg>
-    ),
-    degraded_mode_entered: (
-      <svg className="w-4 h-4 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.932-3L13.932 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.932 3h13.856c1.54 0 2.502-1.667 1.932-3z" />
-      </svg>
-    ),
-  };
-
-  const getActionLabel = (type: string) => {
-    switch (type) {
-      case 'agent_step_started':
-        return 'Processing';
-      case 'agent_step_completed':
-        return 'Completed';
-      case 'tool_execution_started':
-        return 'Executing tool';
-      case 'tool_execution_completed':
-        return 'Tool complete';
-      case 'web_search_started':
-        return 'Searching web';
-      case 'web_search_sources_found':
-        return 'Sources found';
-      case 'extension_execution_started':
-        return 'Running extension';
-      case 'extension_execution_completed':
-        return 'Extension complete';
-      case 'citation_bundle_ready':
-        return 'Citations ready';
-      case 'degraded_mode_entered':
-        return 'Degraded mode';
-      default:
-        return type.replace(/_/g, ' ');
-    }
-  };
-
   return (
-    <div className="border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+    <div className="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
       <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors"
+        type="button"
+        onClick={() => setIsExpanded((current) => !current)}
+        className="flex w-full items-center justify-between border-b border-gray-200 p-3 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-750"
+        aria-expanded={isExpanded}
+        aria-controls={PANEL_CONTENT_ID}
       >
         <div className="flex items-center gap-2">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2h2a2 2 0 002-2z" />
           </svg>
+
           <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Agent Activity ({steps.length})
+            Agent Activity ({normalizedSteps.length})
           </span>
         </div>
+
         <svg
-          className={`w-4 h-4 transform transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+          className={`h-4 w-4 transform transition-transform ${
+            isExpanded ? 'rotate-180' : ''
+          }`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
+          aria-hidden="true"
         >
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
 
       {isExpanded && (
-        <div className="max-h-64 overflow-y-auto p-2 space-y-2">
-          {steps.map((step, index) => (
-            <div
-              key={`${step.step_id}-${index}`}
-              className="flex items-start gap-3 p-2 rounded-md bg-gray-50 dark:bg-gray-750 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            >
-              <span className="flex-shrink-0 mt-0.5">
-                {actionIcons[step.type] || actionIcons.agent_step_started}
-              </span>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {getActionLabel(step.type)}
-                  </span>
-                  {step.metadata && (
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {step.timestamp && new Date(step.timestamp).toLocaleTimeString()}
+        <div
+          id={PANEL_CONTENT_ID}
+          className="max-h-64 space-y-2 overflow-y-auto p-2"
+          /*
+           * This panel is observability UI only. It must display backend events,
+           * not infer provider routing or invent fallback truth.
+           */
+          aria-live="polite"
+        >
+          {normalizedSteps.map((step, index) => {
+            const metadata =
+              step.metadata && typeof step.metadata === 'object'
+                ? (step.metadata as AgentStepMetadata)
+                : undefined;
+            const timestamp = getSafeTimestamp(step.timestamp);
+            const icon = actionIcons[step.type] || actionIcons.agent_step_started;
+
+            return (
+              <div
+                key={`${step.step_id || step.type || 'step'}-${index}`}
+                className="flex items-start gap-3 rounded-md bg-gray-50 p-2 transition-colors hover:bg-gray-100 dark:bg-gray-750 dark:hover:bg-gray-700"
+              >
+                <span className="mt-0.5 flex-shrink-0">{icon}</span>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {getActionLabel(cleanString(step.type) || 'agent_step_started')}
                     </span>
+
+                    {timestamp && (
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {timestamp}
+                      </span>
+                    )}
+                  </div>
+
+                  {typeof step.action_type === 'string' && step.action_type.trim() && (
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      {step.action_type}
+                    </p>
                   )}
+
+                  {renderToolInfo(metadata)}
+                  {renderExtensionInfo(metadata)}
+                  {renderProviderInfo(metadata)}
+                  {renderFallbackInfo(metadata)}
                 </div>
-                {step.action_type && typeof step.action_type === 'string' && (
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
-                    {step.action_type}
-                  </p>
-                )}
-                {renderToolInfo(step.metadata)}
-                {renderExtensionInfo(step.metadata)}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

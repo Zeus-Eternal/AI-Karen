@@ -58,7 +58,7 @@ Tuning env:
 * **AI/ML**: HuggingFace Transformers, llama-cpp-python, scikit-learn 1.5, spaCy 3.7
 * **Infrastructure**: Docker, Prometheus, nginx (optional), Kubernetes support
 
-**🚀 Quick Note on Performance**: AI-Karen includes two startup modes - standard (`start.py`) for development with all features, and optimized (`start_optimized.py`) for production with 99%+ faster startup and 50%+ memory reduction. See the Launch Services section below for details.
+**🚀 Quick Note on Performance**: AI-Karen ships a single Python launcher, `start.py`, plus Docker Compose for full-stack startup. Use the Docker path for the full infrastructure stack, and use `start.py` when you want to run the server directly on the host with external services already available.
 
 ---
 
@@ -204,13 +204,66 @@ pip install -r requirements.txt
 ### Launch Services
 
 ```bash
-# start databases and supporting services
-docker compose up -d
+# start the full default stack, including the built-in vLLM service
+docker compose up
 
 # initialize core tables and default admin user
 python create_tables.py
 python create_admin_user.py  # follow prompts
 ```
+
+`docker compose up` starts the core platform without waiting on the optional vLLM image. If you also want the built-in vLLM service, start it separately with `docker compose --profile vllm up -d vllm`.
+
+The default compose stack includes:
+
+- PostgreSQL
+- Redis
+- Elasticsearch
+- Milvus
+- Prometheus
+- Grafana
+- the FastAPI API
+- the Next.js UI
+- the built-in `vllm` service when launched with `--profile vllm`
+
+Optional services remain optional and are still launched by profile when you need them:
+
+```bash
+docker compose --profile ollama up
+docker compose --profile local-gguf up
+```
+
+For CUDA-specific local model support, use the CUDA compose overlay instead:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.cuda.yml up
+```
+
+That path keeps the same built-in `vllm` provider identity and also enables the CUDA-local GGUF service defined in `docker-compose.cuda.yml`.
+
+To start the built-in vLLM service itself, add the profile explicitly:
+
+```bash
+docker compose --profile vllm up -d vllm
+```
+
+The default `VLLM_IMAGE` is pinned to `vllm/vllm-openai:v0.6.6` because that image uses an older CUDA runtime that is a better fit for consumer Turing cards such as the RTX 2080 Super. You can still override it when the host driver is new enough:
+
+```bash
+VLLM_IMAGE=vllm/vllm-openai:latest docker compose --profile vllm up -d vllm
+```
+
+If the host driver is older than the vLLM image expects, you can try:
+
+```bash
+VLLM_ENABLE_CUDA_COMPATIBILITY=1 docker compose --profile vllm up -d vllm
+```
+
+vLLM documents this compatibility mode for some older-driver systems, but it is not a substitute for a working NVIDIA driver and is only supported on select professional/datacenter GPUs. For GeForce cards, use a compatible driver/image pair instead.
+
+For cards like the RTX 2080 Super, keep `KAREN_BUILTIN_VLLM_DTYPE=float16` so vLLM does not try to use `bfloat16` and then fall back at startup.
+
+If Docker cannot reach Docker Hub during the pull, the app itself can still start. The backend will route to Ollama first when available, then Transformers, then the deterministic fallback response. vLLM becomes an additional runtime once its image finishes downloading and the container becomes healthy.
 
 #### Ollama Options
 
@@ -265,42 +318,36 @@ Windows note:
 - Docker Desktop already supports `host.docker.internal`.
 - No extra systemd step is required, but Ollama still needs to be reachable from the host gateway path.
 
-#### Choose Your Startup Mode
+### Non-Docker Launch
 
-AI-Karen provides two startup scripts optimized for different use cases:
+Use `start.py` when you want to run the FastAPI server directly on the host.
 
-**🚀 Standard Mode** (Recommended for Development)
 ```bash
 python start.py
 ```
-- **Full feature startup**: All services and components loaded immediately
-- **Startup time**: 3-5 seconds
-- **Memory usage**: Standard resource consumption
-- **Best for**: Development, debugging, full feature testing
-- **Use when**: You need all AI-Karen features available immediately
 
-**⚡ Optimized Mode** (Recommended for Production/Resource-Constrained Environments)
-```bash
-python start_optimized.py
-```
-- **Lazy loading**: Services start only when first accessed
-- **Startup time**: <1 second (99%+ faster)
-- **Memory usage**: 50%+ reduction in initial footprint
-- **Resource monitoring**: Built-in resource cleanup and monitoring
-- **Best for**: Production deployments, containers, low-resource environments
-- **Use when**: You need fast startup and efficient resource usage
+That launcher starts the server process only. Any external systems you want AI-Karen to use still need to be running somewhere reachable:
 
-#### Environment Configuration
+- PostgreSQL
+- Redis
+- Elasticsearch
+- Milvus
+- Ollama, if you want host Ollama fallback
+- vLLM, if you want the `builtin_vllm` runtime path outside Docker
 
-For even more aggressive optimization:
+For CUDA-capable local runs, keep the same launcher and point the server at CUDA-ready services and models through environment variables:
 
 ```bash
-# Ultra-minimal startup (container deployments)
-KARI_ULTRA_MINIMAL=true python start_optimized.py
-
-# Custom optimization settings
-KARI_LAZY_LOADING=true KARI_MINIMAL_STARTUP=true python start_optimized.py
+CUDA_VISIBLE_DEVICES=0 \
+KAREN_BUILTIN_VLLM_ENABLED=true \
+KAREN_BUILTIN_VLLM_BASE_URL=http://localhost:8001/v1 \
+KAREN_BUILTIN_VLLM_HEALTH_URL=http://localhost:8001/health \
+python start.py
 ```
+
+If you are using local GGUF or Transformers-backed paths on a CUDA box, set the corresponding runtime variables in `.env` before starting `start.py`.
+
+The repo also includes `.env.cuda` for shell-based CUDA runs. Source it before `python start.py` if you want the built-in vLLM runtime to target CUDA endpoints outside Docker.
 
 ## Access URLs
 

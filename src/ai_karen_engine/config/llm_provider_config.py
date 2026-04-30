@@ -1102,7 +1102,6 @@ class LLMProviderConfigManager:
                 max_output_tokens=4096,
             ),
             enabled=os.getenv("KAREN_BUILTIN_VLLM_ENABLED", "true").lower() == "true",
-            fallback_eligible=os.getenv("KAREN_BUILTIN_VLLM_FALLBACK_ELIGIBLE", "true").lower() == "true",
         )
         self.add_provider(vllm_config)
 
@@ -1169,7 +1168,6 @@ class LLMProviderConfigManager:
                     max_output_tokens=4096,
                 ),
                 enabled=os.getenv("KAREN_BUILTIN_VLLM_ENABLED", "true").lower() == "true",
-                fallback_eligible=os.getenv("KAREN_BUILTIN_VLLM_FALLBACK_ELIGIBLE", "true").lower() == "true",
             ),
             ProviderConfig(
                 name="anthropic",

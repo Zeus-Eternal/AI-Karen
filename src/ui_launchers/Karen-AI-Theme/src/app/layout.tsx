@@ -22,7 +22,7 @@ const robotoMono = Roboto_Mono({
 
 export const metadata: Metadata = {
   title: 'Karen AI',
-  description: 'Intelligent Assistant Application by Firebase Studio',
+  description: 'Intelligent Assistant Application by Agustealo Studio',
 };
 
 export default function RootLayout({

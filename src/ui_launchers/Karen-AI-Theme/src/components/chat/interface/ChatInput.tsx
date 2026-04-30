@@ -1,11 +1,11 @@
-import { FormEvent, KeyboardEvent, useState } from 'react';
+import { FormEvent, KeyboardEvent, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Sparkles, Mic, MicOff } from 'lucide-react';
+import { Mic, MicOff, Sparkles } from 'lucide-react';
 import { ProviderSettingsModal } from '../const/ProviderSettingsModal';
 import { SessionHistory } from '../const/SessionHistory';
 import { ChatActionsMenu } from '../const/ChatActionsMenu';
-import type { Session, ProviderDetails } from '../types';
+import type { ProviderDetails, Session } from '../types';
 
 interface ChatInputProps {
   // Form handling
@@ -58,6 +58,12 @@ interface ChatInputProps {
   onSearchInChat?: () => void;
 }
 
+const DEFAULT_INPUT_PLACEHOLDER = 'Ask Karen anything...';
+const AUTH_LOADING_PLACEHOLDER = 'Loading your profile...';
+const EDIT_DURING_PROCESSING_PLACEHOLDER =
+  'Type while Karen is still processing...';
+const OFFLINE_PLACEHOLDER = 'Offline mode - limited functionality';
+
 export function ChatInput({
   onSubmit,
   displayedInputValue,
@@ -99,12 +105,82 @@ export function ChatInput({
 }: ChatInputProps) {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
+  const trimmedInput = displayedInputValue.trim();
+
+  const inputPlaceholder = useMemo(() => {
+    /*
+     * Placeholder priority mirrors runtime state:
+     * auth loading > editable streaming state > offline warning > live streaming status > normal prompt.
+     * This keeps transient streaming status visible without hiding hard blockers.
+     */
+    if (isAuthLoading) {
+      return AUTH_LOADING_PLACEHOLDER;
+    }
+
+    if (isLoading && isEditingDuringProcessing) {
+      return EDIT_DURING_PROCESSING_PLACEHOLDER;
+    }
+
+    if (isBackendOffline) {
+      return OFFLINE_PLACEHOLDER;
+    }
+
+    return streamingStatus || DEFAULT_INPUT_PLACEHOLDER;
+  }, [
+    isAuthLoading,
+    isLoading,
+    isEditingDuringProcessing,
+    isBackendOffline,
+    streamingStatus,
+  ]);
+
+  const canEditInput =
+    !isAuthLoading && (!showStopButton || isEditingDuringProcessing);
+
+  const canUseMic =
+    !isLoading && !isAuthLoading && !isBackendOffline && speechRecognitionSupported;
+
+  const canSuggestStarter =
+    !isLoading && !isSuggestingStarter && !isRecording && !isBackendOffline;
+
+  const canSubmitMessage =
+    !isAuthLoading &&
+    !isRecording &&
+    !isBackendOffline &&
+    (isLoading || Boolean(trimmedInput));
+
+  const submitButtonLabel = showStopButton
+    ? 'Stop current response generation'
+    : 'Send message';
+
+  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    /*
+     * While Karen is streaming, the parent may allow edit-during-processing.
+     * If not enabled, we freeze input edits so the user cannot accidentally
+     * mutate the prompt attached to the active request.
+     */
+    if (!canEditInput) {
+      return;
+    }
+
+    onInputChange(event.target.value);
+  };
+
+  const handleSubmitButtonClick = () => {
+    /*
+     * During generation, this button is the request-cancel control.
+     * Normal message submission remains owned by the form onSubmit handler.
+     */
+    if (isLoading) {
+      onStopRequest();
+    }
+  };
+
   return (
     <div id="chat-input-area">
-
-
-      <div className="chat-input-container border-t border-border p-3 md:p-4 bg-background/80 backdrop-blur-sm sticky bottom-0">
+      <div className="chat-input-container sticky bottom-0 border-t border-border bg-background/80 p-3 backdrop-blur-sm md:p-4">
         <div className="mb-2 flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          {/* Provider/session controls live above the input so the active runtime is visible before submit. */}
           <div className="flex flex-wrap gap-2">
             <ProviderSettingsModal
               selectableProviders={selectableProviders}
@@ -113,6 +189,7 @@ export function ChatInput({
               applyModelSelection={applyModelSelection}
               isUpdatingModelSelection={isUpdatingModelSelection}
             />
+
             <ChatActionsMenu
               currentSession={currentSession}
               isLoadingSessions={isLoadingSessions}
@@ -127,6 +204,7 @@ export function ChatInput({
               onClearChat={onClearChat}
               onSearchInChat={onSearchInChat}
             />
+
             <SessionHistory
               sessions={sessions}
               currentSession={currentSession}
@@ -140,106 +218,115 @@ export function ChatInput({
               createNewSession={createNewSession}
               open={isHistoryOpen}
               onOpenChange={setIsHistoryOpen}
-              hideTrigger={true}
+              hideTrigger
             />
           </div>
+
           <div className="flex self-center sm:self-auto">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={onSuggestStarter}
-              disabled={isLoading || isSuggestingStarter || isRecording}
+              disabled={!canSuggestStarter}
               className="h-9 px-3 text-xs sm:text-sm"
-              aria-label={isSuggestingStarter ? "Generating conversation starter suggestion" : "Generate a conversation starter suggestion"}
+              aria-label={
+                isSuggestingStarter
+                  ? 'Generating conversation starter suggestion'
+                  : 'Generate a conversation starter suggestion'
+              }
               aria-describedby="starter-help"
             >
               <Sparkles className="mr-2 h-4 w-4" aria-hidden="true" />
               <span className="hidden sm:inline">
-                {isSuggestingStarter ? "Getting idea..." : "Need an idea?"}
+                {isSuggestingStarter ? 'Getting idea...' : 'Need an idea?'}
               </span>
               <span className="sm:hidden">
-                {isSuggestingStarter ? "Idea..." : "Idea"}
+                {isSuggestingStarter ? 'Idea...' : 'Idea'}
               </span>
             </Button>
           </div>
         </div>
-        <form onSubmit={onSubmit} className="w-full flex gap-2 sm:gap-3 items-center">
+
+        <form
+          onSubmit={onSubmit}
+          className="flex w-full items-center gap-2 sm:gap-3"
+        >
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className={`h-10 w-10 sm:h-11 sm:w-11 ${isRecording ? 'text-destructive animate-pulse' : ''}`}
+            className={`h-10 w-10 sm:h-11 sm:w-11 ${
+              isRecording ? 'animate-pulse text-destructive' : ''
+            }`}
             onClick={onMicClick}
-            disabled={isLoading || isAuthLoading || !speechRecognitionSupported}
-            aria-label={isRecording ? "Stop voice recording" : "Start voice recording"}
+            disabled={!canUseMic && !isRecording}
+            aria-label={isRecording ? 'Stop voice recording' : 'Start voice recording'}
             aria-pressed={isRecording}
             aria-describedby="mic-help"
           >
-            {isRecording ? <MicOff className="h-5 w-5" aria-hidden="true" /> : <Mic className="h-5 w-5" aria-hidden="true" />}
+            {isRecording ? (
+              <MicOff className="h-5 w-5" aria-hidden="true" />
+            ) : (
+              <Mic className="h-5 w-5" aria-hidden="true" />
+            )}
           </Button>
+
           <Input
             type="text"
             value={displayedInputValue}
-            onChange={(e) => {
-              if (showStopButton && !isEditingDuringProcessing) {
-                return;
-              }
-              onInputChange(e.target.value);
-            }}
+            onChange={handleInputChange}
             onKeyDown={onKeyDown}
             onPaste={onPaste}
-            placeholder={
-              isAuthLoading
-                ? "Loading your profile..."
-                : isLoading && isEditingDuringProcessing
-                  ? "Type while Karen is still processing..."
-                  : isBackendOffline
-                    ? "Offline mode - limited functionality"
-                    : streamingStatus || "Ask Karen anything..."
-            }
-            className="flex-1 bg-[#292929] h-10 sm:h-11 text-sm sm:text-base"
+            placeholder={inputPlaceholder}
+            className="h-10 flex-1 bg-[#292929] text-sm sm:h-11 sm:text-base"
             disabled={isAuthLoading}
             aria-label="Chat message input"
             aria-describedby="input-help"
             aria-invalid={isBackendOffline}
             autoComplete="off"
-            spellCheck="true"
+            spellCheck
             role="textbox"
             aria-multiline="false"
           />
+
           <Button
             type={isLoading ? 'button' : 'submit'}
             size="icon"
-            onClick={isLoading ? onStopRequest : undefined}
-            disabled={
-              isAuthLoading ||
-              isRecording ||
-              isBackendOffline ||
-              (!isLoading && !displayedInputValue.trim())
-            }
-            className={`${isLoading ? 'bg-destructive hover:bg-destructive/90' : ''} h-10 w-10 sm:h-11 sm:w-11`}
-            aria-label={showStopButton ? "Stop current response generation" : "Send message"}
+            onClick={isLoading ? handleSubmitButtonClick : undefined}
+            disabled={!canSubmitMessage}
+            className={`h-10 w-10 sm:h-11 sm:w-11 ${
+              isLoading ? 'bg-destructive hover:bg-destructive/90' : ''
+            }`}
+            aria-label={submitButtonLabel}
             aria-describedby="submit-help"
           >
-            <span aria-hidden="true" className="text-lg sm:text-xl">{showStopButton ? '⏹️' : '🚀'}</span>
+            <span aria-hidden="true" className="text-lg sm:text-xl">
+              {showStopButton ? '⏹️' : '🚀'}
+            </span>
           </Button>
         </form>
       </div>
 
-      {/* Hidden help text for screen readers */}
+      {/* Screen-reader help text stays colocated with the controls that reference it. */}
       <div className="sr-only">
         <div id="starter-help">Get a suggested conversation starter from Karen AI</div>
+
         <div id="mic-help">
           {speechRecognitionSupported
-            ? "Voice input for chat messages"
-            : "Voice input not supported in this browser"}
+            ? 'Voice input for chat messages'
+            : 'Voice input not supported in this browser'}
         </div>
-        <div id="input-help">Type your message to Karen AI. Press Enter to send, Shift+Enter for new line</div>
+
+        <div id="input-help">
+          Type your message to Karen AI. Press Enter to send, Shift+Enter for new
+          line.
+        </div>
+
         <div id="submit-help">
           {showStopButton
-            ? "Stop the current AI response generation"
-            : "Send your message to Karen AI"}
+            ? 'Stop the current AI response generation'
+            : 'Send your message to Karen AI'}
         </div>
       </div>
     </div>

@@ -1,44 +1,31 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-// Card components removed as they are not used in this file
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Trash2,
+  Bot,
+  Brain,
+  Calendar,
+  Clock,
+  FileText,
+  Globe,
+  History,
+  Lightbulb,
+  Lock,
+  Mail,
+  MessageSquare,
+  MoreVertical,
   PlusCircle,
   Search,
   ShieldCheck,
-  User,
-  Globe,
-  Lightbulb,
-  MoreVertical,
-  Clock,
-  History,
-  Zap,
-  Target,
-  FileText,
-  MessageSquare,
-  Calendar,
-  Mail,
   Sparkles,
-  Brain,
-  Lock,
-  Bot
+  Target,
+  Trash2,
+  User,
+  Zap,
 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -46,153 +33,619 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-import { mockFactApi, Fact, FactVisibility, FactDomain, FactSuggestion } from '@/lib/mockFactsApi';
+import { useToast } from '@/hooks/use-toast';
+import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/utils';
+
+type FactVisibility = 'private' | 'personal' | 'global';
+type FactDomain = 'lifestyle' | 'professional' | 'business';
+
+type FactSourceType =
+  | 'manual'
+  | 'gmail'
+  | 'calendar'
+  | 'chat'
+  | 'manual_sync'
+  | string;
+
+type FactSuggestionStatus = 'accepted' | 'ignored';
+
+type Fact = {
+  id: string;
+  text: string;
+  visibility: FactVisibility;
+  domain: FactDomain;
+  category: string;
+  importance: number;
+  confidence: number;
+  source?: string;
+  sourceType?: FactSourceType;
+  usage_count: number;
+  created_at: string;
+  last_used?: string | null;
+};
+
+type FactSuggestion = {
+  id: string;
+  text: string;
+  confidence: number;
+  reasoning: string;
+  source: string;
+};
+
+type FactListResponse = {
+  facts?: Fact[];
+  items?: Fact[];
+  data?: Fact[];
+};
+
+type FactSuggestionResponse = {
+  suggestions?: FactSuggestion[];
+  items?: FactSuggestion[];
+  data?: FactSuggestion[];
+};
+
+type FactCreatePayload = {
+  text: string;
+  visibility: FactVisibility;
+  domain: FactDomain;
+  category: string;
+  importance: number;
+  confidence: number;
+  source: string;
+  sourceType: FactSourceType;
+};
+
+type ApiEndpointStatus = {
+  factsAvailable: boolean;
+  suggestionsAvailable: boolean;
+  lastError: string;
+};
+
+const FACTS_ENDPOINT = '/api/memory/facts';
+const FACT_SUGGESTIONS_ENDPOINT = '/api/memory/facts/suggestions';
+
+const DEFAULT_CATEGORY = 'General';
+const DEFAULT_VISIBILITY: FactVisibility = 'personal';
+const DEFAULT_DOMAIN: FactDomain = 'lifestyle';
+
+const cleanString = (value: unknown): string => {
+  return typeof value === 'string' ? value.trim() : '';
+};
+
+const clamp01 = (value: unknown, fallback = 0): number => {
+  const numeric = Number(value);
+
+  if (!Number.isFinite(numeric)) {
+    return fallback;
+  }
+
+  return Math.min(1, Math.max(0, numeric));
+};
+
+const normalizeVisibility = (value: unknown): FactVisibility => {
+  const normalized = cleanString(value).toLowerCase();
+
+  if (normalized === 'private' || normalized === 'personal' || normalized === 'global') {
+    return normalized;
+  }
+
+  return DEFAULT_VISIBILITY;
+};
+
+const normalizeDomain = (value: unknown): FactDomain => {
+  const normalized = cleanString(value).toLowerCase();
+
+  if (
+    normalized === 'lifestyle' ||
+    normalized === 'professional' ||
+    normalized === 'business'
+  ) {
+    return normalized;
+  }
+
+  return DEFAULT_DOMAIN;
+};
+
+const getErrorMessage = (
+  error: unknown,
+  fallback = 'Request failed.',
+): string => {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message.trim();
+  }
+
+  if (typeof error === 'string' && error.trim()) {
+    return error.trim();
+  }
+
+  return fallback;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+};
+
+const normalizeFact = (value: unknown): Fact | null => {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const id = cleanString(value.id || value.fact_id);
+  const text = cleanString(value.text || value.content || value.value);
+
+  if (!id || !text) {
+    return null;
+  }
+
+  return {
+    id,
+    text,
+    visibility: normalizeVisibility(value.visibility),
+    domain: normalizeDomain(value.domain),
+    category: cleanString(value.category) || DEFAULT_CATEGORY,
+    importance: Number.isFinite(Number(value.importance))
+      ? Number(value.importance)
+      : 5,
+    confidence: clamp01(value.confidence, 1),
+    source: cleanString(value.source),
+    sourceType: cleanString(value.sourceType || value.source_type || 'manual'),
+    usage_count: Number.isFinite(Number(value.usage_count))
+      ? Math.max(0, Number(value.usage_count))
+      : 0,
+    created_at:
+      cleanString(value.created_at || value.createdAt) || new Date().toISOString(),
+    last_used: cleanString(value.last_used || value.lastUsed) || null,
+  };
+};
+
+const normalizeSuggestion = (value: unknown): FactSuggestion | null => {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const id = cleanString(value.id || value.suggestion_id);
+  const text = cleanString(value.text || value.content || value.value);
+
+  if (!id || !text) {
+    return null;
+  }
+
+  return {
+    id,
+    text,
+    confidence: clamp01(value.confidence, 0),
+    reasoning: cleanString(value.reasoning || value.reason) || 'No reasoning supplied.',
+    source: cleanString(value.source) || 'Karen memory analyzer',
+  };
+};
+
+const extractFacts = (response: unknown): Fact[] => {
+  if (Array.isArray(response)) {
+    return response.map(normalizeFact).filter(Boolean) as Fact[];
+  }
+
+  if (!isRecord(response)) {
+    return [];
+  }
+
+  const payload = response as FactListResponse;
+  const rawFacts = payload.facts || payload.items || payload.data || [];
+
+  return rawFacts.map(normalizeFact).filter(Boolean) as Fact[];
+};
+
+const extractSuggestions = (response: unknown): FactSuggestion[] => {
+  if (Array.isArray(response)) {
+    return response.map(normalizeSuggestion).filter(Boolean) as FactSuggestion[];
+  }
+
+  if (!isRecord(response)) {
+    return [];
+  }
+
+  const payload = response as FactSuggestionResponse;
+  const rawSuggestions =
+    payload.suggestions || payload.items || payload.data || [];
+
+  return rawSuggestions.map(normalizeSuggestion).filter(Boolean) as FactSuggestion[];
+};
+
+const getSafeDateLabel = (value: unknown): string => {
+  const rawDate = cleanString(value);
+
+  if (!rawDate) {
+    return 'unknown';
+  }
+
+  const parsed = new Date(rawDate);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return 'unknown';
+  }
+
+  return parsed.toLocaleDateString();
+};
+
+const getSourceIcon = (type: string | undefined) => {
+  switch (type) {
+    case 'gmail':
+      return <Mail className="h-3 w-3" aria-hidden="true" />;
+    case 'calendar':
+      return <Calendar className="h-3 w-3" aria-hidden="true" />;
+    case 'chat':
+      return <MessageSquare className="h-3 w-3" aria-hidden="true" />;
+    case 'manual_sync':
+      return <Zap className="h-3 w-3" aria-hidden="true" />;
+    default:
+      return <FileText className="h-3 w-3" aria-hidden="true" />;
+  }
+};
+
+const getVisibilityIcon = (visibility: FactVisibility) => {
+  switch (visibility) {
+    case 'private':
+      return <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />;
+    case 'personal':
+      return <User className="h-3.5 w-3.5" aria-hidden="true" />;
+    case 'global':
+      return <Globe className="h-3.5 w-3.5" aria-hidden="true" />;
+  }
+};
 
 export default function PersonalFactsSettings() {
   const [facts, setFacts] = useState<Fact[]>([]);
   const [suggestions, setSuggestions] = useState<FactSuggestion[]>([]);
   const [loading, setLoading] = useState(true);
+  const [processingSuggestionIds, setProcessingSuggestionIds] = useState<Record<string, boolean>>({});
+  const [deletingFactIds, setDeletingFactIds] = useState<Record<string, boolean>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | FactVisibility>('all');
   const [domainFilter, setDomainFilter] = useState<'all' | FactDomain>('all');
   const [showSensitive, setShowSensitive] = useState<Record<string, boolean>>({});
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isSavingFact, setIsSavingFact] = useState(false);
+  const [endpointStatus, setEndpointStatus] = useState<ApiEndpointStatus>({
+    factsAvailable: true,
+    suggestionsAvailable: true,
+    lastError: '',
+  });
+
   const { toast } = useToast();
 
-  // Form State
   const [newFactText, setNewFactText] = useState('');
-  const [newVisibility, setNewVisibility] = useState<FactVisibility>('personal');
-  const [newDomain, setNewDomain] = useState<FactDomain>('lifestyle');
-  const [newCategory, setNewCategory] = useState('General');
+  const [newVisibility, setNewVisibility] =
+    useState<FactVisibility>(DEFAULT_VISIBILITY);
+  const [newDomain, setNewDomain] = useState<FactDomain>(DEFAULT_DOMAIN);
+  const [newCategory, setNewCategory] = useState(DEFAULT_CATEGORY);
+
+  const resetNewFactForm = useCallback(() => {
+    setNewFactText('');
+    setNewVisibility(DEFAULT_VISIBILITY);
+    setNewDomain(DEFAULT_DOMAIN);
+    setNewCategory(DEFAULT_CATEGORY);
+  }, []);
+
+  const loadFacts = useCallback(async (): Promise<Fact[]> => {
+    const response = await apiClient.get<FactListResponse | Fact[]>(FACTS_ENDPOINT);
+    return extractFacts(response);
+  }, []);
+
+  const loadSuggestions = useCallback(async (): Promise<FactSuggestion[]> => {
+    const response = await apiClient.get<FactSuggestionResponse | FactSuggestion[]>(
+      FACT_SUGGESTIONS_ENDPOINT,
+    );
+    return extractSuggestions(response);
+  }, []);
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    try {
-      const [factsData, suggestionsData] = await Promise.all([
-        mockFactApi.getFacts(),
-        mockFactApi.getSuggestions()
-      ]);
-      setFacts(factsData);
-      setSuggestions(suggestionsData);
-    } catch {
-      toast({ title: "Error", description: "Failed to load knowledge vault.", variant: "destructive" });
-    } finally {
-      setLoading(false);
+
+    /*
+     * PersonalFactsSettings is live-backed. Facts and suggestions must come
+     * from backend memory endpoints. Missing endpoints are shown honestly as
+     * unavailable instead of silently falling back to mock memory.
+     */
+    const [factsResult, suggestionsResult] = await Promise.allSettled([
+      loadFacts(),
+      loadSuggestions(),
+    ]);
+
+    if (factsResult.status === 'fulfilled') {
+      setFacts(factsResult.value);
+      setEndpointStatus((current) => ({
+        ...current,
+        factsAvailable: true,
+      }));
+    } else {
+      setFacts([]);
+      setEndpointStatus((current) => ({
+        ...current,
+        factsAvailable: false,
+        lastError: getErrorMessage(
+          factsResult.reason,
+          'Failed to load personal facts.',
+        ),
+      }));
     }
-  }, [toast]);
+
+    if (suggestionsResult.status === 'fulfilled') {
+      setSuggestions(suggestionsResult.value);
+      setEndpointStatus((current) => ({
+        ...current,
+        suggestionsAvailable: true,
+      }));
+    } else {
+      setSuggestions([]);
+      setEndpointStatus((current) => ({
+        ...current,
+        suggestionsAvailable: false,
+        lastError: getErrorMessage(
+          suggestionsResult.reason,
+          'Failed to load fact suggestions.',
+        ),
+      }));
+    }
+
+    setLoading(false);
+  }, [loadFacts, loadSuggestions]);
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, [loadData]);
 
   const filteredFacts = useMemo(() => {
-    return facts.filter(f => {
-      const matchesSearch = f.text.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                           f.category.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesVisibility = activeTab === 'all' ? true : f.visibility === activeTab;
-      const matchesDomain = domainFilter === 'all' ? true : f.domain === domainFilter;
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
+    return facts.filter((fact) => {
+      const matchesSearch =
+        !normalizedQuery ||
+        fact.text.toLowerCase().includes(normalizedQuery) ||
+        fact.category.toLowerCase().includes(normalizedQuery);
+
+      const matchesVisibility =
+        activeTab === 'all' ? true : fact.visibility === activeTab;
+
+      const matchesDomain =
+        domainFilter === 'all' ? true : fact.domain === domainFilter;
+
       return matchesSearch && matchesVisibility && matchesDomain;
     });
-  }, [facts, searchQuery, activeTab, domainFilter]);
+  }, [activeTab, domainFilter, facts, searchQuery]);
 
   const stats = useMemo(() => {
-    const maturity = Math.round((facts.reduce((acc, f) => acc + f.confidence, 0) / (facts.length || 1)) * 100);
+    const maturity = Math.round(
+      (facts.reduce((acc, fact) => acc + fact.confidence, 0) /
+        (facts.length || 1)) *
+        100,
+    );
+
     return {
       total: facts.length,
-      private: facts.filter(f => f.visibility === 'private').length,
-      maturity
+      private: facts.filter((fact) => fact.visibility === 'private').length,
+      maturity,
     };
   }, [facts]);
 
-  const handleAddFact = async () => {
-    if (!newFactText.trim()) return;
+  const handleAddFact = useCallback(async () => {
+    const text = newFactText.trim();
+
+    if (!text || isSavingFact) {
+      return;
+    }
+
+    setIsSavingFact(true);
+
     try {
-      await mockFactApi.addFact({
-        text: newFactText.trim(),
+      const payload: FactCreatePayload = {
+        text,
         visibility: newVisibility,
         domain: newDomain,
-        category: newCategory,
+        category: newCategory.trim() || DEFAULT_CATEGORY,
         importance: 5,
-        confidence: 1.0,
+        confidence: 1,
         source: 'Manual Entry',
-        sourceType: 'manual'
-      });
-      setNewFactText('');
+        sourceType: 'manual',
+      };
+
+      await apiClient.post(FACTS_ENDPOINT, payload);
+      resetNewFactForm();
       setIsAddDialogOpen(false);
-      loadData();
-      toast({ title: "Memory Updated", description: "Karen has stored this fact in the neural vault." });
-    } catch {
-      toast({ title: "Vault Failure", description: "Could not commit fact to long-term memory.", variant: "destructive" });
-    }
-  };
+      await loadData();
 
-  const handleProcessSuggestion = async (id: string, status: 'accepted' | 'ignored') => {
-    try {
-      await mockFactApi.processSuggestion(id, status);
-      loadData();
-      toast({ 
-        title: status === 'accepted' ? "Fact Confirmed" : "Suggestion Ignored", 
-        description: status === 'accepted' ? "Insight has been promoted to permanent memory." : "Karen will ignore this insight pattern." 
+      toast({
+        title: 'Memory Updated',
+        description: 'Karen stored this fact in live long-term memory.',
       });
-    } catch {
-      toast({ title: "Error", description: "Failed to process suggestion.", variant: "destructive" });
+    } catch (error) {
+      toast({
+        title: 'Memory Save Failed',
+        description: getErrorMessage(
+          error,
+          'Could not commit fact to long-term memory.',
+        ),
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingFact(false);
     }
-  };
+  }, [
+    isSavingFact,
+    loadData,
+    newCategory,
+    newDomain,
+    newFactText,
+    newVisibility,
+    resetNewFactForm,
+    toast,
+  ]);
 
-  const handleDeleteFact = async (id: string) => {
-    try {
-      await mockFactApi.deleteFact(id);
-      loadData();
-    } catch {
-      toast({ title: "Error", description: "Failed to delete fact.", variant: "destructive" });
-    }
-  };
+  const handleProcessSuggestion = useCallback(
+    async (id: string, status: FactSuggestionStatus) => {
+      if (!id || processingSuggestionIds[id]) {
+        return;
+      }
 
-  const getSourceIcon = (type: string | undefined) => {
-    switch (type) {
-      case 'gmail': return <Mail className="h-3 w-3" />;
-      case 'calendar': return <Calendar className="h-3 w-3" />;
-      case 'chat': return <MessageSquare className="h-3 w-3" />;
-      case 'manual_sync': return <Zap className="h-3 w-3" />;
-      default: return <FileText className="h-3 w-3" />;
-    }
-  };
+      setProcessingSuggestionIds((current) => ({
+        ...current,
+        [id]: true,
+      }));
 
-  const getVisibilityIcon = (v: FactVisibility) => {
-    switch(v) {
-      case 'private': return <ShieldCheck className="h-3.5 w-3.5" />;
-      case 'personal': return <User className="h-3.5 w-3.5" />;
-      case 'global': return <Globe className="h-3.5 w-3.5" />;
-    }
-  };
+      try {
+        await apiClient.post(`${FACT_SUGGESTIONS_ENDPOINT}/${encodeURIComponent(id)}`, {
+          status,
+        });
+
+        await loadData();
+
+        toast({
+          title: status === 'accepted' ? 'Fact Confirmed' : 'Suggestion Ignored',
+          description:
+            status === 'accepted'
+              ? 'Insight was promoted to live memory.'
+              : 'Karen will ignore this suggested memory pattern.',
+        });
+      } catch (error) {
+        toast({
+          title: 'Suggestion Update Failed',
+          description: getErrorMessage(error, 'Failed to process suggestion.'),
+          variant: 'destructive',
+        });
+      } finally {
+        setProcessingSuggestionIds((current) => {
+          const next = { ...current };
+          delete next[id];
+          return next;
+        });
+      }
+    },
+    [loadData, processingSuggestionIds, toast],
+  );
+
+  const handleDeleteFact = useCallback(
+    async (id: string) => {
+      if (!id || deletingFactIds[id]) {
+        return;
+      }
+
+      setDeletingFactIds((current) => ({
+        ...current,
+        [id]: true,
+      }));
+
+      try {
+        await apiClient.delete(`${FACTS_ENDPOINT}/${encodeURIComponent(id)}`);
+        await loadData();
+
+        toast({
+          title: 'Memory Deleted',
+          description: 'The fact was removed from live memory.',
+        });
+      } catch (error) {
+        toast({
+          title: 'Delete Failed',
+          description: getErrorMessage(error, 'Failed to delete fact.'),
+          variant: 'destructive',
+        });
+      } finally {
+        setDeletingFactIds((current) => {
+          const next = { ...current };
+          delete next[id];
+          return next;
+        });
+      }
+    },
+    [deletingFactIds, loadData, toast],
+  );
+
+  const memoryUnavailable =
+    !endpointStatus.factsAvailable || !endpointStatus.suggestionsAvailable;
 
   return (
     <div className="space-y-8 pb-10">
-      {/* Top Dashboard Widget - Pro Mockup Feature */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {[
-          { label: 'Neural Footprint', value: stats.total, sub: 'Verified across all domains', icon: Brain, color: 'text-indigo-400' },
-          { label: 'Secure Enclaves', value: stats.private, sub: 'Items in restricted state', icon: Lock, color: 'text-rose-400' },
-          { label: 'Knowledge Maturity', value: `${stats.maturity}%`, sub: 'Average confidence index', icon: Target, color: 'text-emerald-400' }
-        ].map((stat, i) => (
-          <div key={i} className="p-5 rounded-2xl border border-border/40 bg-card/30 backdrop-blur-sm flex items-center justify-between group hover:border-primary/20 transition-all">
-            <div className="space-y-1">
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">{stat.label}</p>
-              <h4 className={cn("text-2xl font-black tracking-tighter", stat.color)}>{stat.value}</h4>
-              <p className="text-[9px] font-medium text-muted-foreground/50 uppercase tracking-tight">{stat.sub}</p>
+      {memoryUnavailable && (
+        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-700 dark:text-amber-300">
+          <div className="flex items-start gap-3">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <div>
+              <p className="font-bold uppercase tracking-widest text-[10px]">
+                Live memory endpoint warning
+              </p>
+              <p className="mt-1 text-xs">
+                Some memory endpoints are unavailable. Karen is showing only live
+                data that could be loaded. No mock facts are being used.
+              </p>
+              {endpointStatus.lastError && (
+                <p className="mt-1 text-[10px] opacity-80">
+                  {endpointStatus.lastError}
+                </p>
+              )}
             </div>
-            <div className="p-3 rounded-xl bg-background/50 border border-border/20 group-hover:bg-primary/5 transition-colors">
-              <stat.icon className={cn("w-5 h-5", stat.color)} />
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        {[
+          {
+            label: 'Neural Footprint',
+            value: stats.total,
+            sub: 'Verified across all domains',
+            icon: Brain,
+            color: 'text-indigo-400',
+          },
+          {
+            label: 'Secure Enclaves',
+            value: stats.private,
+            sub: 'Items in restricted state',
+            icon: Lock,
+            color: 'text-rose-400',
+          },
+          {
+            label: 'Knowledge Maturity',
+            value: `${stats.maturity}%`,
+            sub: 'Average confidence index',
+            icon: Target,
+            color: 'text-emerald-400',
+          },
+        ].map((stat) => (
+          <div
+            key={stat.label}
+            className="group flex items-center justify-between rounded-2xl border border-border/40 bg-card/30 p-5 backdrop-blur-sm transition-all hover:border-primary/20"
+          >
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">
+                {stat.label}
+              </p>
+              <h4 className={cn('text-2xl font-black tracking-tighter', stat.color)}>
+                {stat.value}
+              </h4>
+              <p className="text-[9px] font-medium uppercase tracking-tight text-muted-foreground/50">
+                {stat.sub}
+              </p>
+            </div>
+            <div className="rounded-xl border border-border/20 bg-background/50 p-3 transition-colors group-hover:bg-primary/5">
+              <stat.icon className={cn('h-5 w-5', stat.color)} aria-hidden="true" />
             </div>
           </div>
         ))}
@@ -200,165 +653,262 @@ export default function PersonalFactsSettings() {
 
       <Separator className="bg-border/20" />
 
-      {/* Main Fact Management Area */}
       <div className="space-y-6">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
           <div className="space-y-1">
             <h3 className="text-xl font-bold tracking-tight">Memory Management</h3>
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest opacity-60">Personal Profile &rsaquo; Facts</p>
+            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground opacity-60">
+              Personal Profile &rsaquo; Facts
+            </p>
           </div>
+
           <div className="flex items-center gap-3">
-             <div className="relative group">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
-                <Input 
-                  placeholder="Query knowledge base..." 
-                  className="pl-10 h-10 w-full sm:w-[280px] bg-background/40 border-border/40 rounded-xl text-xs uppercase font-bold tracking-tight"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-             </div>
-             <Button onClick={() => setIsAddDialogOpen(true)} size="sm" className="rounded-xl h-10 px-5 font-bold uppercase tracking-widest text-[10px]">
-                <PlusCircle className="mr-2 h-4 w-4" /> Add Memory
-             </Button>
+            <div className="group relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
+              <Input
+                placeholder="Query knowledge base..."
+                className="h-10 w-full rounded-xl border-border/40 bg-background/40 pl-10 text-xs font-bold uppercase tracking-tight sm:w-[280px]"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+              />
+            </div>
+
+            <Button
+              type="button"
+              onClick={() => setIsAddDialogOpen(true)}
+              size="sm"
+              className="h-10 rounded-xl px-5 text-[10px] font-bold uppercase tracking-widest"
+              disabled={!endpointStatus.factsAvailable}
+            >
+              <PlusCircle className="mr-2 h-4 w-4" aria-hidden="true" />
+              Add Memory
+            </Button>
           </div>
         </div>
 
-        <div className="flex items-center gap-4 py-2 border-y border-border/20">
-           <div className="flex items-center gap-2">
-              <span className="text-[9px] font-black uppercase text-muted-foreground/60 tracking-widest pl-2">Visibility:</span>
-               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'all' | FactVisibility)} className="w-auto">
-                <TabsList className="bg-muted/40 h-8 p-1 rounded-lg border border-border/10">
-                  <TabsTrigger value="all" className="h-6 px-3 text-[9px] font-bold uppercase">All</TabsTrigger>
-                  <TabsTrigger value="personal" className="h-6 px-3 text-[9px] font-bold uppercase">Personal</TabsTrigger>
-                  <TabsTrigger value="private" className="h-6 px-3 text-[9px] font-bold uppercase">Private</TabsTrigger>
-                  <TabsTrigger value="global" className="h-6 px-3 text-[9px] font-bold uppercase">Global</TabsTrigger>
-                </TabsList>
-              </Tabs>
-           </div>
-           <Separator orientation="vertical" className="h-8" />
-           <div className="flex items-center gap-2">
-              <span className="text-[9px] font-black uppercase text-muted-foreground/60 tracking-widest">Domain:</span>
-              <div className="flex gap-1.5">
-                {(['all', 'lifestyle', 'professional', 'business'] as const).map((d) => (
-                  <button
-                    key={d}
-                    onClick={() => setDomainFilter(d)}
-                    className={cn(
-                      "px-3 py-1 rounded-lg text-[9px] font-black uppercase border transition-all",
-                      domainFilter === d 
-                        ? "bg-primary/10 border-primary/30 text-primary" 
-                        : "bg-transparent border-border/20 text-muted-foreground/40 hover:text-foreground"
-                    )}
-                  >
-                    {d}
-                  </button>
-                ))}
-              </div>
-           </div>
+        <div className="flex flex-col gap-4 border-y border-border/20 py-2 lg:flex-row lg:items-center">
+          <div className="flex items-center gap-2">
+            <span className="pl-2 text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">
+              Visibility:
+            </span>
+            <Tabs
+              value={activeTab}
+              onValueChange={(value) => setActiveTab(value as 'all' | FactVisibility)}
+              className="w-auto"
+            >
+              <TabsList className="h-8 rounded-lg border border-border/10 bg-muted/40 p-1">
+                <TabsTrigger value="all" className="h-6 px-3 text-[9px] font-bold uppercase">
+                  All
+                </TabsTrigger>
+                <TabsTrigger value="personal" className="h-6 px-3 text-[9px] font-bold uppercase">
+                  Personal
+                </TabsTrigger>
+                <TabsTrigger value="private" className="h-6 px-3 text-[9px] font-bold uppercase">
+                  Private
+                </TabsTrigger>
+                <TabsTrigger value="global" className="h-6 px-3 text-[9px] font-bold uppercase">
+                  Global
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+
+          <Separator orientation="vertical" className="hidden h-8 lg:block" />
+
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">
+              Domain:
+            </span>
+            <div className="flex gap-1.5">
+              {(['all', 'lifestyle', 'professional', 'business'] as const).map((domain) => (
+                <button
+                  key={domain}
+                  type="button"
+                  onClick={() => setDomainFilter(domain)}
+                  className={cn(
+                    'rounded-lg border px-3 py-1 text-[9px] font-black uppercase transition-all',
+                    domainFilter === domain
+                      ? 'border-primary/30 bg-primary/10 text-primary'
+                      : 'border-border/20 bg-transparent text-muted-foreground/40 hover:text-foreground',
+                  )}
+                  aria-pressed={domainFilter === domain}
+                >
+                  {domain}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         <ScrollArea className="h-[500px] w-full rounded-2xl">
           {loading ? (
-             <div className="flex flex-col items-center justify-center h-[300px] opacity-30">
-                <div className="w-10 h-10 rounded-full border-2 border-primary border-t-transparent animate-spin mb-4" />
-                <span className="text-[10px] font-black uppercase tracking-widest">Accessing Neural Store...</span>
-             </div>
+            <div
+              className="flex h-[300px] flex-col items-center justify-center opacity-30"
+              role="status"
+              aria-live="polite"
+            >
+              <div className="mb-4 h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              <span className="text-[10px] font-black uppercase tracking-widest">
+                Accessing live memory store...
+              </span>
+            </div>
           ) : filteredFacts.length > 0 ? (
             <div className="grid grid-cols-1 gap-4 pr-4">
-              {filteredFacts.map((fact) => (
-                <div key={fact.id} className="group relative p-5 rounded-2xl border border-border/40 bg-card/20 hover:bg-card/40 transition-all duration-500 overflow-hidden">
-                  <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                    <Brain className="w-12 h-12" />
-                  </div>
-                  
-                  <div className="flex items-start justify-between relative z-10">
-                    <div className="flex-1 space-y-4">
-                      <div className="flex items-center gap-4 flex-wrap">
-                        <Badge variant="outline" className="text-[9px] font-black uppercase tracking-[0.1em] h-5 px-2 bg-background/50 border-border/30">
-                          {getVisibilityIcon(fact.visibility)}
-                          <span className="ml-1.5">{fact.visibility}</span>
-                        </Badge>
-                        <Badge variant="outline" className="text-[9px] font-black uppercase tracking-[0.1em] h-5 px-2 border-primary/20 text-primary/80">
-                          {fact.domain}
-                        </Badge>
-                        <span className="text-[9px] font-bold text-zinc-600 uppercase tracking-[0.25em]">{fact.category}</span>
-                      </div>
+              {filteredFacts.map((fact) => {
+                const confidence = clamp01(fact.confidence, 0);
+                const confidencePercent = Math.round(confidence * 100);
+                const isDeleting = Boolean(deletingFactIds[fact.id]);
 
-                      <div className="relative">
-                        {fact.visibility === 'private' && !showSensitive[fact.id] ? (
-                          <div 
-                            className="p-4 rounded-xl bg-orange-500/5 border border-orange-500/10 cursor-pointer flex items-center gap-3 transition-all hover:bg-orange-500/10"
-                            onClick={() => setShowSensitive(p => ({...p, [fact.id]: true}))}
+                return (
+                  <div
+                    key={fact.id}
+                    className="group relative overflow-hidden rounded-2xl border border-border/40 bg-card/20 p-5 transition-all duration-500 hover:bg-card/40"
+                  >
+                    <div className="absolute right-0 top-0 p-4 opacity-5 transition-opacity group-hover:opacity-10">
+                      <Brain className="h-12 w-12" aria-hidden="true" />
+                    </div>
+
+                    <div className="relative z-10 flex items-start justify-between">
+                      <div className="flex-1 space-y-4">
+                        <div className="flex flex-wrap items-center gap-4">
+                          <Badge
+                            variant="outline"
+                            className="h-5 border-border/30 bg-background/50 px-2 text-[9px] font-black uppercase tracking-[0.1em]"
                           >
-                            <Lock className="w-4 h-4 text-orange-500/60" />
-                            <span className="text-[11px] font-bold text-muted-foreground/60 italic uppercase tracking-tighter">Sensitive record redacted. Resolve to view.</span>
-                          </div>
-                        ) : (
-                          <div className="space-y-3">
-                            <p className="text-base font-bold leading-relaxed tracking-tight text-foreground/90 max-w-2xl">
-                              {fact.text}
-                            </p>
-                            <div className="flex items-center gap-6">
-                               <div className="flex items-center gap-2">
-                                  <div className="w-24 h-1 bg-zinc-900 rounded-full overflow-hidden">
-                                     <div className="h-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]" style={{ width: `${fact.confidence * 100}%` }} />
+                            {getVisibilityIcon(fact.visibility)}
+                            <span className="ml-1.5">{fact.visibility}</span>
+                          </Badge>
+
+                          <Badge
+                            variant="outline"
+                            className="h-5 border-primary/20 px-2 text-[9px] font-black uppercase tracking-[0.1em] text-primary/80"
+                          >
+                            {fact.domain}
+                          </Badge>
+
+                          <span className="text-[9px] font-bold uppercase tracking-[0.25em] text-zinc-600">
+                            {fact.category}
+                          </span>
+                        </div>
+
+                        <div className="relative">
+                          {fact.visibility === 'private' && !showSensitive[fact.id] ? (
+                            <button
+                              type="button"
+                              className="flex w-full items-center gap-3 rounded-xl border border-orange-500/10 bg-orange-500/5 p-4 text-left transition-all hover:bg-orange-500/10"
+                              onClick={() =>
+                                setShowSensitive((current) => ({
+                                  ...current,
+                                  [fact.id]: true,
+                                }))
+                              }
+                            >
+                              <Lock className="h-4 w-4 text-orange-500/60" aria-hidden="true" />
+                              <span className="text-[11px] font-bold uppercase tracking-tighter text-muted-foreground/60 italic">
+                                Sensitive record redacted. Reveal to view.
+                              </span>
+                            </button>
+                          ) : (
+                            <div className="space-y-3">
+                              <p className="max-w-2xl text-base font-bold leading-relaxed tracking-tight text-foreground/90">
+                                {fact.text}
+                              </p>
+
+                              <div className="flex flex-wrap items-center gap-6">
+                                <div className="flex items-center gap-2">
+                                  <div className="h-1 w-24 overflow-hidden rounded-full bg-zinc-900">
+                                    <div
+                                      className="h-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]"
+                                      style={{ width: `${confidencePercent}%` }}
+                                    />
                                   </div>
-                                  <span className="text-[9px] font-black text-indigo-400 uppercase">{Math.round(fact.confidence * 100)}% Match</span>
-                               </div>
-                               {fact.source && (
-                                 <div className="flex items-center gap-1.5 text-[9px] font-bold text-zinc-500 uppercase tracking-tight hover:text-primary cursor-pointer transition-colors">
+                                  <span className="text-[9px] font-black uppercase text-indigo-400">
+                                    {confidencePercent}% Match
+                                  </span>
+                                </div>
+
+                                {fact.source && (
+                                  <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-tight text-zinc-500 transition-colors hover:text-primary">
                                     {getSourceIcon(fact.sourceType)}
                                     <span>{fact.source}</span>
-                                 </div>
-                               )}
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col items-end gap-2">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 rounded-full border border-transparent transition-all hover:border-border/40 hover:bg-muted/50"
+                              aria-label="Open fact actions"
+                            >
+                              <MoreVertical className="h-4 w-4" aria-hidden="true" />
+                            </Button>
+                          </DropdownMenuTrigger>
+
+                          <DropdownMenuContent
+                            align="end"
+                            className="w-48 rounded-xl border-border/40 p-1"
+                          >
+                            <DropdownMenuItem className="cursor-pointer rounded-lg text-[10px] font-bold uppercase tracking-widest">
+                              <History className="mr-2 h-3.5 w-3.5" aria-hidden="true" />
+                              Use History
+                            </DropdownMenuItem>
+
+                            <DropdownMenuItem
+                              className="cursor-pointer rounded-lg text-[10px] font-bold uppercase tracking-widest text-rose-500 focus:text-rose-500"
+                              onClick={() => void handleDeleteFact(fact.id)}
+                              disabled={isDeleting}
+                            >
+                              <Trash2 className="mr-2 h-3.5 w-3.5" aria-hidden="true" />
+                              {isDeleting ? 'Purging...' : 'Purge Memory'}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        <div className="mt-4 text-right">
+                          <p className="text-[9px] font-black uppercase tracking-tighter text-zinc-600">
+                            Usage Index
+                          </p>
+                          <p className="text-xs font-black text-foreground/40">
+                            {fact.usage_count} hits
+                          </p>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex flex-col items-end gap-2">
-                       <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border border-transparent hover:border-border/40 hover:bg-muted/50 transition-all">
-                               <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48 rounded-xl border-border/40 p-1">
-                             <DropdownMenuItem className="text-[10px] font-bold uppercase tracking-widest cursor-pointer rounded-lg">
-                                <History className="mr-2 h-3.5 w-3.5" /> Use History
-                             </DropdownMenuItem>
-                             <DropdownMenuItem className="text-[10px] font-bold uppercase tracking-widest cursor-pointer rounded-lg text-rose-500 focus:text-rose-500" onClick={() => handleDeleteFact(fact.id)}>
-                                <Trash2 className="mr-2 h-3.5 w-3.5" /> Purge Memory
-                             </DropdownMenuItem>
-                          </DropdownMenuContent>
-                       </DropdownMenu>
-                       <div className="mt-4 text-right">
-                          <p className="text-[9px] font-black text-zinc-600 uppercase tracking-tighter">Usage Index</p>
-                          <p className="text-xs font-black text-foreground/40">{fact.usage_count} hits</p>
-                       </div>
+                    <div className="mt-6 flex items-center justify-between border-t border-border/10 pt-3 opacity-40 transition-opacity group-hover:opacity-80">
+                      <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest">
+                        <Clock className="h-3 w-3" aria-hidden="true" />
+                        First Detected: {getSafeDateLabel(fact.created_at)}
+                      </span>
+
+                      {fact.last_used && (
+                        <span className="text-[9px] font-black uppercase tracking-widest text-emerald-500 underline decoration-dotted">
+                          Last context hit: {getSafeDateLabel(fact.last_used)}
+                        </span>
+                      )}
                     </div>
                   </div>
-                  
-                  <div className="mt-6 flex items-center justify-between border-t border-border/10 pt-3 opacity-40 group-hover:opacity-80 transition-opacity">
-                     <span className="text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5">
-                        <Clock className="w-3 h-3" />
-                        First Detected: {new Date(fact.created_at).toLocaleDateString()}
-                     </span>
-                     {fact.last_used && (
-                        <span className="text-[9px] font-black uppercase tracking-widest text-emerald-500 underline decoration-dotted">
-                           Last context hit: {new Date(fact.last_used).toLocaleDateString()}
-                        </span>
-                     )}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center h-[300px] border-2 border-dashed border-border/20 rounded-[2.5rem] bg-muted/5 opacity-40">
-               <Sparkles className="w-10 h-10 mb-4 text-primary animate-pulse" />
-               <h4 className="text-lg font-black uppercase tracking-tighter">Null Knowledge State</h4>
-               <p className="text-[10px] uppercase font-bold tracking-widest text-center mt-1">Initialize the neural store by committing facts manually or through plugins.</p>
+            <div className="flex h-[300px] flex-col items-center justify-center rounded-[2.5rem] border-2 border-dashed border-border/20 bg-muted/5 opacity-40">
+              <Sparkles className="mb-4 h-10 w-10 animate-pulse text-primary" aria-hidden="true" />
+              <h4 className="text-lg font-black uppercase tracking-tighter">
+                Null Knowledge State
+              </h4>
+              <p className="mt-1 text-center text-[10px] font-bold uppercase tracking-widest">
+                Initialize the live neural store by committing facts manually or through plugins.
+              </p>
             </div>
           )}
         </ScrollArea>
@@ -366,179 +916,244 @@ export default function PersonalFactsSettings() {
 
       <Separator className="bg-border/20" />
 
-      {/* Suggested Insights - Premium Review Flow */}
       <div className="space-y-6">
-         <div className="flex items-center justify-between px-2">
-            <div className="flex items-center gap-3">
-               <div className="p-2 bg-amber-500/10 rounded-xl border border-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.1)]">
-                  <Lightbulb className="w-5 h-5 text-amber-500" />
-               </div>
-               <div>
-                  <h3 className="text-lg font-black uppercase tracking-[0.1em]">Pending Neural Curation</h3>
-                  <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tight italic">AI extracted patterns awaiting user verification</p>
-               </div>
+        <div className="flex items-center justify-between px-2">
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-2 shadow-[0_0_15px_rgba(245,158,11,0.1)]">
+              <Lightbulb className="h-5 w-5 text-amber-500" aria-hidden="true" />
             </div>
-            <Badge variant="secondary" className="px-3 h-6 bg-amber-500/10 text-amber-500 font-black border-none animate-pulse">
-               {suggestions.length} NEW INSIGHTS
-            </Badge>
-         </div>
+            <div>
+              <h3 className="text-lg font-black uppercase tracking-[0.1em]">
+                Pending Neural Curation
+              </h3>
+              <p className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground/60 italic">
+                AI extracted patterns awaiting user verification
+              </p>
+            </div>
+          </div>
 
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {suggestions.map((sug) => (
-               <div key={sug.id} className="p-6 rounded-[2rem] border bg-gradient-to-br from-indigo-500/[0.04] to-transparent border-primary/20 space-y-4 relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity">
-                     <Target className="w-16 h-16 -rotate-45" />
-                  </div>
-                  
-                  <div className="flex items-center justify-between pr-4">
-                     <Badge className="bg-primary/10 text-primary border-none px-2 py-0 h-5 text-[9px] font-black tracking-widest">PATTERN DETECTED</Badge>
-                     <span className="text-[9px] font-black uppercase tracking-widest text-indigo-400">Confidence: {Math.round(sug.confidence * 100)}%</span>
-                  </div>
-                  
-                   <p className="text-base font-black leading-tight text-foreground/90">&ldquo;{sug.text}&rdquo;</p>
-                  
-                  <div className="p-4 rounded-xl bg-background/40 border border-white/5 space-y-2">
-                     <div className="flex items-center gap-1.5 text-[9px] font-black uppercase text-zinc-500">
-                        <Bot className="w-3 h-3" />
-                         Karen&apos;s Reasoning
-                     </div>
-                     <p className="text-[10px] font-medium leading-relaxed text-muted-foreground/80 italic">
-                        {sug.reasoning}
-                     </p>
-                  </div>
+          <Badge
+            variant="secondary"
+            className="h-6 border-none bg-amber-500/10 px-3 font-black text-amber-500 animate-pulse"
+          >
+            {suggestions.length} NEW INSIGHTS
+          </Badge>
+        </div>
 
-                  <div className="flex items-center justify-between pt-2">
-                     <div className="flex items-center gap-2 text-[9px] font-bold text-zinc-600 uppercase">
-                        {getSourceIcon('chat')}
-                        {sug.source}
-                     </div>
-                     <div className="flex gap-2">
-                        <Button 
-                           size="sm" 
-                           onClick={() => handleProcessSuggestion(sug.id, 'accepted')}
-                           className="h-8 rounded-lg bg-primary text-[10px] font-black tracking-widest uppercase hover:px-8 transition-all"
-                        >
-                           TRUST & SAVE
-                        </Button>
-                        <Button 
-                           size="sm" 
-                           variant="ghost" 
-                           onClick={() => handleProcessSuggestion(sug.id, 'ignored')}
-                           className="h-8 rounded-lg text-[10px] font-black tracking-widest uppercase text-zinc-600 hover:text-rose-500"
-                        >
-                           IGNORE
-                        </Button>
-                     </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {suggestions.map((suggestion) => {
+            const isProcessing = Boolean(processingSuggestionIds[suggestion.id]);
+
+            return (
+              <div
+                key={suggestion.id}
+                className="group relative space-y-4 overflow-hidden rounded-[2rem] border border-primary/20 bg-gradient-to-br from-indigo-500/[0.04] to-transparent p-6"
+              >
+                <div className="absolute right-0 top-0 p-4 opacity-[0.03] transition-opacity group-hover:opacity-[0.08]">
+                  <Target className="h-16 w-16 -rotate-45" aria-hidden="true" />
+                </div>
+
+                <div className="flex items-center justify-between pr-4">
+                  <Badge className="h-5 border-none bg-primary/10 px-2 py-0 text-[9px] font-black tracking-widest text-primary">
+                    PATTERN DETECTED
+                  </Badge>
+                  <span className="text-[9px] font-black uppercase tracking-widest text-indigo-400">
+                    Confidence: {Math.round(clamp01(suggestion.confidence, 0) * 100)}%
+                  </span>
+                </div>
+
+                <p className="text-base font-black leading-tight text-foreground/90">
+                  &ldquo;{suggestion.text}&rdquo;
+                </p>
+
+                <div className="space-y-2 rounded-xl border border-white/5 bg-background/40 p-4">
+                  <div className="flex items-center gap-1.5 text-[9px] font-black uppercase text-zinc-500">
+                    <Bot className="h-3 w-3" aria-hidden="true" />
+                    Karen&apos;s Reasoning
                   </div>
-               </div>
-            ))}
-            {suggestions.length === 0 && (
-               <div className="col-span-full p-8 rounded-[2rem] border border-dashed border-border/10 flex items-center justify-center bg-muted/5 opacity-50">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 italic">Continuous pattern monitoring active. No anomalies found.</p>
-               </div>
-            )}
-         </div>
+                  <p className="text-[10px] font-medium leading-relaxed text-muted-foreground/80 italic">
+                    {suggestion.reasoning}
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between pt-2">
+                  <div className="flex items-center gap-2 text-[9px] font-bold uppercase text-zinc-600">
+                    {getSourceIcon('chat')}
+                    {suggestion.source}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() =>
+                        void handleProcessSuggestion(suggestion.id, 'accepted')
+                      }
+                      className="h-8 rounded-lg bg-primary text-[10px] font-black uppercase tracking-widest transition-all hover:px-8"
+                      disabled={isProcessing}
+                    >
+                      {isProcessing ? 'SYNCING...' : 'TRUST & SAVE'}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() =>
+                        void handleProcessSuggestion(suggestion.id, 'ignored')
+                      }
+                      className="h-8 rounded-lg text-[10px] font-black uppercase tracking-widest text-zinc-600 hover:text-rose-500"
+                      disabled={isProcessing}
+                    >
+                      IGNORE
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {suggestions.length === 0 && (
+            <div className="col-span-full flex items-center justify-center rounded-[2rem] border border-dashed border-border/10 bg-muted/5 p-8 opacity-50">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 italic">
+                Continuous pattern monitoring active. No anomalies found.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Add Fact Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-[500px] border-white/5 bg-[#0e0e0e] rounded-[2.5rem] p-10 overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.8)]">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500" />
+        <DialogContent className="overflow-hidden rounded-[2.5rem] border-white/5 bg-[#0e0e0e] p-10 shadow-[0_0_50px_rgba(0,0,0,0.8)] sm:max-w-[500px]">
+          <div className="absolute left-0 top-0 h-1 w-full bg-gradient-to-r from-indigo-500 to-purple-500" />
           <DialogHeader className="mb-6">
-            <DialogTitle className="text-2xl font-black uppercase tracking-tighter">Initialize Memory Frame</DialogTitle>
-            <DialogDescription className="text-xs uppercase tracking-widest font-bold text-muted-foreground opacity-50">
-              Commit verified knowledge to the long-term neural store
+            <DialogTitle className="text-2xl font-black uppercase tracking-tighter">
+              Initialize Memory Frame
+            </DialogTitle>
+            <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground opacity-50">
+              Commit verified knowledge to the live long-term memory store
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="fact-text" className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 ml-1">Knowledge Content</Label>
-              <div className="relative group">
-                <FileText className="absolute left-4 top-4 w-4 h-4 text-zinc-700 group-focus-within:text-primary transition-colors" />
-                <textarea 
-                   id="fact-text" 
-                   placeholder="e.g., Primary executive directive for Q2 is infrastructure scaling." 
-                   className="w-full bg-black border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-sm font-bold placeholder:text-zinc-800 min-h-[100px] focus:outline-none focus:ring-1 focus:ring-primary/40 transition-all resize-none"
-                   value={newFactText}
-                   onChange={(e) => setNewFactText(e.target.value)}
+              <Label
+                htmlFor="fact-text"
+                className="ml-1 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600"
+              >
+                Knowledge Content
+              </Label>
+              <div className="group relative">
+                <FileText className="absolute left-4 top-4 h-4 w-4 text-zinc-700 transition-colors group-focus-within:text-primary" aria-hidden="true" />
+                <textarea
+                  id="fact-text"
+                  placeholder="e.g., Primary executive directive for Q2 is infrastructure scaling."
+                  className="min-h-[100px] w-full resize-none rounded-2xl border border-white/10 bg-black py-4 pl-12 pr-4 text-sm font-bold transition-all placeholder:text-zinc-800 focus:outline-none focus:ring-1 focus:ring-primary/40"
+                  value={newFactText}
+                  onChange={(event) => setNewFactText(event.target.value)}
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 ml-1">Visibility Level</Label>
-                <Select value={newVisibility} onValueChange={(v) => setNewVisibility(v as FactVisibility)}>
-                  <SelectTrigger className="h-12 bg-black border border-white/10 rounded-xl font-bold uppercase tracking-widest text-[10px]">
+                <Label className="ml-1 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600">
+                  Visibility Level
+                </Label>
+                <Select
+                  value={newVisibility}
+                  onValueChange={(value) => setNewVisibility(value as FactVisibility)}
+                >
+                  <SelectTrigger className="h-12 rounded-xl border border-white/10 bg-black text-[10px] font-bold uppercase tracking-widest">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-black border-white/10 rounded-xl overflow-hidden shadow-2xl">
-                    <SelectItem value="personal" className="flex items-center gap-2"><span className="text-[10px] font-black uppercase">Personal Profile</span></SelectItem>
-                    <SelectItem value="private" className="flex items-center gap-2"><span className="text-[10px] font-black uppercase">Private Enclave</span></SelectItem>
-                    <SelectItem value="global" className="flex items-center gap-2"><span className="text-[10px] font-black uppercase">Global Shared</span></SelectItem>
+                  <SelectContent className="overflow-hidden rounded-xl border-white/10 bg-black shadow-2xl">
+                    <SelectItem value="personal">
+                      <span className="text-[10px] font-black uppercase">
+                        Personal Profile
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="private">
+                      <span className="text-[10px] font-black uppercase">
+                        Private Enclave
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="global">
+                      <span className="text-[10px] font-black uppercase">
+                        Global Shared
+                      </span>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 ml-1">Context Domain</Label>
-                <Select value={newDomain} onValueChange={(v) => setNewDomain(v as FactDomain)}>
-                  <SelectTrigger className="h-12 bg-black border border-white/10 rounded-xl font-bold uppercase tracking-widest text-[10px]">
+                <Label className="ml-1 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600">
+                  Context Domain
+                </Label>
+                <Select
+                  value={newDomain}
+                  onValueChange={(value) => setNewDomain(value as FactDomain)}
+                >
+                  <SelectTrigger className="h-12 rounded-xl border border-white/10 bg-black text-[10px] font-bold uppercase tracking-widest">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-black border-white/10 rounded-xl overflow-hidden shadow-2xl">
-                    <SelectItem value="lifestyle"><span className="text-[10px] font-black uppercase">Lifestyle Core</span></SelectItem>
-                    <SelectItem value="professional"><span className="text-[10px] font-black uppercase">Professional Hub</span></SelectItem>
-                    <SelectItem value="business"><span className="text-[10px] font-black uppercase">Business Matrix</span></SelectItem>
+                  <SelectContent className="overflow-hidden rounded-xl border-white/10 bg-black shadow-2xl">
+                    <SelectItem value="lifestyle">
+                      <span className="text-[10px] font-black uppercase">
+                        Lifestyle Core
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="professional">
+                      <span className="text-[10px] font-black uppercase">
+                        Professional Hub
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="business">
+                      <span className="text-[10px] font-black uppercase">
+                        Business Matrix
+                      </span>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 ml-1">Semantic Category</Label>
-              <div className="relative group">
-                 <Target className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-700" />
-                 <Input 
-                   placeholder="e.g., Working Style, Preference, Strategy" 
-                   className="h-12 bg-black border border-white/10 rounded-xl pl-12 font-bold uppercase tracking-widest text-[10px]"
-                   value={newCategory}
-                   onChange={(e) => setNewCategory(e.target.value)}
-                 />
+              <Label className="ml-1 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600">
+                Semantic Category
+              </Label>
+              <div className="group relative">
+                <Target className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-700" aria-hidden="true" />
+                <Input
+                  placeholder="e.g., Working Style, Preference, Strategy"
+                  className="h-12 rounded-xl border border-white/10 bg-black pl-12 text-[10px] font-bold uppercase tracking-widest"
+                  value={newCategory}
+                  onChange={(event) => setNewCategory(event.target.value)}
+                />
               </div>
             </div>
           </div>
 
-          <DialogFooter className="pt-10 flex flex-col sm:flex-row gap-3">
-            <Button 
-                type="button" 
-                variant="ghost" 
-                onClick={() => setIsAddDialogOpen(false)}
-                className="flex-1 h-12 font-black uppercase tracking-[0.25em] text-[10px] text-zinc-500 hover:bg-white/5"
+          <DialogFooter className="flex flex-col gap-3 pt-10 sm:flex-row">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setIsAddDialogOpen(false)}
+              className="h-12 flex-1 text-[10px] font-black uppercase tracking-[0.25em] text-zinc-500 hover:bg-white/5"
+              disabled={isSavingFact}
             >
-                ABORT
+              ABORT
             </Button>
-            <Button 
-              type="button" 
-              onClick={handleAddFact}
-              className="flex-1 h-12 bg-indigo-600 hover:bg-indigo-500 font-black uppercase tracking-[0.25em] text-[10px] shadow-[0_10px_30px_-5px_rgba(79,70,229,0.5)]"
-              disabled={!newFactText.trim()}
+            <Button
+              type="button"
+              onClick={() => void handleAddFact()}
+              className="h-12 flex-1 bg-indigo-600 text-[10px] font-black uppercase tracking-[0.25em] shadow-[0_10px_30px_-5px_rgba(79,70,229,0.5)] hover:bg-indigo-500"
+              disabled={!newFactText.trim() || isSavingFact}
             >
-              INITIALIZE SYNC
+              {isSavingFact ? 'SYNCING...' : 'INITIALIZE SYNC'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <style jsx global>{`
-         @keyframes pulse-slow {
-           0%, 100% { opacity: 1; filter: drop-shadow(0 0 5px rgba(99,102,241,0.5)); }
-           50% { opacity: .7; filter: drop-shadow(0 0 2px rgba(99,102,241,0.2)); }
-         }
-         .animate-pulse-slow {
-           animation: pulse-slow 3s infinite;
-         }
-      `}</style>
     </div>
   );
 }

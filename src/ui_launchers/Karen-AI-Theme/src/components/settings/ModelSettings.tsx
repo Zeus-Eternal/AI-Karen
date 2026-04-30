@@ -37,13 +37,13 @@ import { cn } from '@/lib/utils';
 import {
   getRuntimeDisplayName,
 } from '@/lib/chat-response';
-import { normalizeModelSettingsResponse, loadDynamicTransformersModels, type RuntimeSettingsResponse } from '@/lib/model-runtime-inventory';
+import { normalizeModelSettingsResponse, type RuntimeSettingsResponse } from '@/lib/model-runtime-inventory';
 
 interface ProviderModel {
   id: string;
   name: string;
-  family: string;
-  source: string;
+  family?: string;
+  source?: string;
   compatible_runtimes?: string[];
   preferred_runtime?: string | null;
   compatibility_confidence?: string | null;
@@ -51,60 +51,22 @@ interface ProviderModel {
   artifact_kind?: string | null;
 }
 
-interface ProviderDetails {
-  id: string;
-  display_name: string;
-  description: string;
-  provider_type: string;
-  selectable?: boolean;
-  docs_url?: string | null;
-  base_url?: string | null;
-  default_base_url?: string | null;
-  default_model?: string | null;
-  selected_model?: string | null;
-  models: ProviderModel[];
-  requires_api_key: boolean;
-  api_key_configured: boolean;
-  api_key_masked?: string | null;
-  api_key_header: string;
-  api_key_prefix: string;
-  custom_headers: Record<string, string>;
-  supports_base_url_override: boolean;
-  supports_model_discovery: boolean;
-  supports_model_pull: boolean;
-  supports_custom_auth: boolean;
-  supports_manual_model_entry: boolean;
-  runtime_source?: 'host' | 'container' | null;
-  runtime_options?: Array<{
-    source: 'host' | 'container';
-    label: string;
-    base_url: string;
-    available: boolean;
-    active?: boolean;
-    status: string;
-    message: string;
-    setup_required?: boolean;
-    setup_command?: string | null;
-    install_supported?: boolean;
-  }>;
-}
+type ModelSettingsResponse = RuntimeSettingsResponse & {
+  chat_response_mode?: unknown;
+};
 
-type ModelSettingsResponse = RuntimeSettingsResponse;
+type ChatResponseMode = 'streaming_first' | 'auto' | 'non_streaming';
+
+const CHAT_RESPONSE_MODES: ChatResponseMode[] = [
+  'streaming_first',
+  'auto',
+  'non_streaming',
+];
 
 interface ProviderModelsResponse {
   provider: string;
   base_url?: string | null;
   models: ProviderModel[];
-}
-
-interface LocalRuntimeTagsResponse {
-  models?: Array<{
-    name?: string;
-    model?: string;
-    details?: {
-      family?: string;
-    };
-  }>;
 }
 
 function formatErrorMessage(error: unknown, fallback: string): string {
@@ -128,6 +90,16 @@ function formatProviderCredentialMessage(providerName: string, message: string):
   return `${providerName} validation failed: ${trimmed}`;
 }
 
+function normalizeChatResponseMode(value: unknown): ChatResponseMode {
+  return CHAT_RESPONSE_MODES.includes(value as ChatResponseMode)
+    ? (value as ChatResponseMode)
+    : 'streaming_first';
+}
+
+function normalizeDisplayBaseUrl(address?: string | null): string {
+  return (address || '').trim().replace(/\/api\/?$/, '').replace(/\/$/, '');
+}
+
 function isVllmCompatibleModel(model: ProviderModel): boolean {
   const preferredRuntime = String(model.preferred_runtime || '').toLowerCase();
   if (preferredRuntime === 'vllm' || preferredRuntime === 'builtin_vllm') {
@@ -149,56 +121,6 @@ function sortProviderModels(models: ProviderModel[]): ProviderModel[] {
   });
 }
 
-function normalizeLocalRuntimeAddress(address: string): string {
-  return (address.trim() || 'http://localhost:11434').replace(/\/api\/?$/, '').replace(/\/$/, '');
-}
-
-function normalizeConfiguredLocalRuntimeAddress(address?: string | null): string {
-  const normalized = normalizeLocalRuntimeAddress(address || 'http://host.docker.internal:11434');
-  try {
-    const parsed = new URL(normalized);
-    if (parsed.hostname === 'ollama') {
-      return normalized.replace('://ollama', '://host.docker.internal');
-    }
-  } catch {
-    if (normalized.startsWith('http://ollama')) {
-      return normalized.replace('http://ollama', 'http://host.docker.internal');
-    }
-  }
-  return normalized;
-}
-
-function canUseLocalRuntimeAddress(address?: string): boolean {
-  if (!address?.trim()) return false;
-  try {
-    const parsed = new URL(normalizeConfiguredLocalRuntimeAddress(address));
-    return ['localhost', '127.0.0.1'].includes(parsed.hostname);
-  } catch {
-    const normalized = normalizeConfiguredLocalRuntimeAddress(address);
-    return normalized.startsWith('http://localhost') || normalized.startsWith('http://127.0.0.1');
-  }
-}
-
-async function parseLocalRuntimeModels(response: Response): Promise<ProviderModel[]> {
-  if (!response.ok) throw new Error(`Local runtime returned HTTP ${response.status}`);
-  const data = await response.json() as LocalRuntimeTagsResponse;
-  const rawModels = Array.isArray(data.models) ? data.models : [];
-  return rawModels.map((m) => {
-    const id = m.name?.trim() || m.model?.trim() || '';
-    if (!id) return null;
-    return { id, name: id, family: m.details?.family || 'unknown', source: 'discovered' } satisfies ProviderModel;
-  }).filter((m): m is ProviderModel => m !== null);
-}
-
-async function loadLocalRuntimeModels(address: string): Promise<ProviderModel[]> {
-  const normalized = normalizeConfiguredLocalRuntimeAddress(address);
-  try {
-    return parseLocalRuntimeModels(await fetch(`${normalized}/api/tags`, { cache: 'no-store' }));
-  } catch {
-    return await parseLocalRuntimeModels(await fetch(`${normalized}/api/tags`, { cache: 'no-store' }));
-  }
-}
-
 export default function ModelSettings() {
   const isMobile = useIsMobile();
   const [settings, setSettings] = useState<ModelSettingsResponse | null>(null);
@@ -215,7 +137,7 @@ export default function ModelSettings() {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
   const [isClearingKey, setIsClearingKey] = useState(false);
-  const [chatResponseMode, setChatResponseMode] = useState('streaming_first');
+  const [chatResponseMode, setChatResponseMode] = useState<ChatResponseMode>('streaming_first');
   
   // Custom Provider State
   const [isCustomDialogOpen, setIsCustomDialogOpen] = useState(false);
@@ -256,15 +178,34 @@ export default function ModelSettings() {
     return selectedProviderDetails?.runtime_options?.find((option) => option.source === runtimeSource) ?? null;
   }, [selectedProviderDetails, runtimeSource, usesRuntimeOptions]);
 
+  const fallbackProviderModels = useMemo(
+    () =>
+      (selectedProviderDetails?.models ?? []).map((model) => ({
+        id: model.id,
+        name: model.name,
+        source: model.source ?? 'runtime',
+      })),
+    [selectedProviderDetails],
+  );
+
+  const applyNormalizedSettings = useCallback((response: ModelSettingsResponse) => {
+    const normalized = normalizeModelSettingsResponse(response);
+    setSettings(response);
+    setSelectedProvider(normalized.selected_provider);
+    setSelectedModel(normalized.selected_model);
+    setChatResponseMode(normalizeChatResponseMode(response.chat_response_mode));
+    setApiKey('');
+    setIsEditingApiKey(false);
+    setApiKeyValidationState('idle');
+    setApiKeyValidationMessage('');
+    return normalized;
+  }, []);
+
   const loadSettings = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await apiClient.get<ModelSettingsResponse>('/api/settings/model');
-      const normalized = normalizeModelSettingsResponse(response);
-      setSettings(response);
-      setSelectedProvider(normalized.selected_provider);
-      setSelectedModel(normalized.selected_model);
-      setChatResponseMode(normalized.chat_response_mode || 'streaming_first');
+      applyNormalizedSettings(response);
     } catch (error) {
       toast({
         title: 'Unable to load model settings',
@@ -274,25 +215,21 @@ export default function ModelSettings() {
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, [applyNormalizedSettings, toast]);
 
-  const loadProviderModels = useCallback(async (providerId: string, providerBaseUrl?: string) => {
+  const loadProviderModels = useCallback(async (
+    providerId: string,
+    providerBaseUrl?: string,
+    fallbackModels: ProviderModel[] = [],
+  ) => {
     if (!providerId) return;
     setIsLoadingModels(true);
     try {
-      // For transformers, load models dynamically from the models directory
-      if (providerId === 'builtin_transformers') {
-        const models = await loadDynamicTransformersModels();
-        setAvailableModels(models);
-        return;
-      }
-
-      // For other providers, use the standard settings endpoint
       const query = providerBaseUrl?.trim() ? `?base_url=${encodeURIComponent(providerBaseUrl.trim())}` : '';
-      const response = await apiClient.get<ProviderModelsResponse>(`/api/settings/model/providers/${providerId}/models${query}`);
-      setAvailableModels(sortProviderModels(response.models));
+      const response = await apiClient.get<ProviderModelsResponse>(`/api/settings/model/providers/${encodeURIComponent(providerId)}/models${query}`);
+      setAvailableModels(sortProviderModels(response.models || []));
     } catch (error) {
-      setAvailableModels((selectedProviderDetails?.models ?? []).map((m) => ({ id: m.id, name: m.name, family: 'unknown', source: m.source ?? 'runtime' })));
+      setAvailableModels(fallbackModels);
       toast({
         title: 'Model discovery failed',
         description: formatErrorMessage(error, `Karen could not refresh models for ${providerId}.`),
@@ -301,7 +238,7 @@ export default function ModelSettings() {
     } finally {
       setIsLoadingModels(false);
     }
-  }, [toast, selectedProviderDetails?.models]);
+  }, [toast]);
 
   useEffect(() => { void loadSettings(); }, [loadSettings]);
 
@@ -309,45 +246,43 @@ export default function ModelSettings() {
     if (!selectedProviderDetails) return;
     const providerDefaultModel = selectedProviderDetails.selected_model || selectedProviderDetails.default_model || selectedProviderDetails.models[0]?.id || '';
     const providerBaseUrl = usesRuntimeOptions
-      ? normalizeConfiguredLocalRuntimeAddress(selectedProviderDetails.base_url || selectedProviderDetails.default_base_url || '')
+      ? normalizeDisplayBaseUrl(selectedProviderDetails.base_url || selectedProviderDetails.default_base_url || '')
       : (selectedProviderDetails.base_url || selectedProviderDetails.default_base_url || '');
     if (usesRuntimeOptions) {
       setRuntimeSource(selectedProviderDetails.runtime_source === 'container' ? 'container' : 'host');
     }
-    setBaseUrl(usesRuntimeOptions ? providerBaseUrl.replace(/\/api$/, '') : providerBaseUrl);
+    setBaseUrl(usesRuntimeOptions ? providerBaseUrl : normalizeDisplayBaseUrl(providerBaseUrl));
     setApiKey('');
     setIsEditingApiKey(false);
     setApiKeyValidationState('idle');
     setApiKeyValidationMessage('');
     setApiKeyHeader(selectedProviderDetails.api_key_header || 'Authorization');
     setApiKeyPrefix(selectedProviderDetails.api_key_prefix ?? 'Bearer');
-    // For transformers, models are loaded dynamically, so start with empty
-    setAvailableModels(
-      selectedProviderDetails.id === 'builtin_transformers'
-        ? []
-        : selectedProviderDetails.models.map((m) => ({ id: m.id, name: m.name, family: 'unknown', source: m.source ?? 'runtime' }))
-    );
+    setAvailableModels(fallbackProviderModels);
     setSelectedModel(providerDefaultModel);
-    void loadProviderModels(selectedProviderDetails.id, providerBaseUrl);
-  }, [selectedProviderDetails, loadProviderModels, usesRuntimeOptions]);
+    void loadProviderModels(selectedProviderDetails.id, providerBaseUrl, fallbackProviderModels);
+  }, [fallbackProviderModels, loadProviderModels, selectedProviderDetails, usesRuntimeOptions]);
 
   useEffect(() => {
     if (!usesRuntimeOptions) return;
     if (!selectedRuntimeOption) return;
-    const derivedBaseUrl = normalizeConfiguredLocalRuntimeAddress(selectedRuntimeOption.base_url);
-    setBaseUrl(derivedBaseUrl.replace(/\/api$/, ''));
+    setBaseUrl(normalizeDisplayBaseUrl(selectedRuntimeOption.base_url));
   }, [selectedProviderDetails, selectedRuntimeOption, usesRuntimeOptions]);
 
   useEffect(() => {
-    if (!selectedProviderDetails?.requires_api_key) {
-      setApiKeyValidationState('idle');
-      setApiKeyValidationMessage('');
+    if (!selectedProviderDetails?.requires_api_key || !isEditingApiKey) {
+      setApiKeyValidationState(selectedProviderDetails?.api_key_configured ? 'valid' : 'idle');
+      setApiKeyValidationMessage(
+        selectedProviderDetails?.api_key_configured
+          ? `${selectedProviderLabel || selectedProviderDetails?.display_name} key is stored.`
+          : '',
+      );
       return;
     }
     const candidateKey = apiKey.trim();
     if (!candidateKey) {
       setApiKeyValidationState(selectedProviderDetails.api_key_configured ? 'valid' : 'idle');
-      setApiKeyValidationMessage(selectedProviderDetails.api_key_configured ? `${selectedProviderLabel || selectedProviderDetails.display_name} key is stored.` : '');
+      setApiKeyValidationMessage('');
       return;
     }
     const currentRequestId = ++validationRequestId.current;
@@ -381,7 +316,7 @@ export default function ModelSettings() {
       }
     }, 450);
     return () => { window.clearTimeout(timeoutId); };
-  }, [apiKey, baseUrl, selectedModel, selectedProviderDetails]);
+  }, [apiKey, baseUrl, isEditingApiKey, selectedModel, selectedProviderDetails, selectedProviderLabel]);
 
   const validateProviderCredentialsBeforeSave = async (): Promise<boolean> => {
     if (!selectedProviderDetails?.requires_api_key) return true;
@@ -443,10 +378,13 @@ export default function ModelSettings() {
     }
     setIsSaving(true);
     try {
-      const submittedApiKey = apiKey.trim();
+      const submittedApiKey = isEditingApiKey ? apiKey.trim() : '';
       if (selectedProviderDetails.requires_api_key) {
-        const credentialsValid = await validateProviderCredentialsBeforeSave();
-        if (!credentialsValid) return;
+        const needsNewKey = isEditingApiKey || !selectedProviderDetails.api_key_configured;
+        if (needsNewKey) {
+          const credentialsValid = await validateProviderCredentialsBeforeSave();
+          if (!credentialsValid) return;
+        }
       } else if (submittedApiKey && apiKeyValidationState === 'invalid') {
         throw new Error(apiKeyValidationMessage || `${selectedProviderLabel || selectedProviderDetails.display_name} API key validation failed.`);
       }
@@ -460,7 +398,7 @@ export default function ModelSettings() {
         api_key_prefix: selectedProviderDetails.supports_custom_auth ? apiKeyPrefix : undefined,
         chat_response_mode: chatResponseMode,
       });
-      setSettings(response);
+      applyNormalizedSettings(response);
       toast({ title: 'Model settings saved', description: `${selectedProviderLabel || selectedProviderDetails.display_name} is configured.` });
     } catch (error) {
       const message = formatProviderCredentialMessage(
@@ -484,7 +422,7 @@ export default function ModelSettings() {
         runtime_source: usesRuntimeOptions ? runtimeSource : undefined,
         clear_api_key: true,
       });
-      setSettings(response);
+      applyNormalizedSettings(response);
       setApiKey('');
       toast({ title: 'API key removed', description: `${selectedProviderLabel || selectedProviderDetails.display_name} credentials cleared.` });
     } catch (error) {
@@ -508,8 +446,7 @@ export default function ModelSettings() {
         api_key_header: customProviderForm.authHeader.trim() || undefined,
         api_key_prefix: customProviderForm.authPrefix,
       });
-      setSettings(response);
-      setSelectedProvider(response.selected_provider);
+      applyNormalizedSettings(response);
       setIsCustomDialogOpen(false);
       setCustomProviderForm({ name: '', displayName: '', description: '', baseUrl: '', model: '', authHeader: 'Authorization', authPrefix: 'Bearer' });
       toast({ title: 'Custom provider added', description: `${customProviderForm.displayName} is now available.` });
@@ -553,7 +490,7 @@ export default function ModelSettings() {
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent className="max-w-xs">
-                      Changing providers affects response latency, creativity, and cost. Cloud models are frontier while Local models ensure privacy.
+                      Provider behavior depends on backend runtime availability, credential status, and configured fallback policy.
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -611,7 +548,23 @@ export default function ModelSettings() {
                   </Dialog>
                 </div>
                 
-                <Select value={selectedProvider} onValueChange={setSelectedProvider}>
+                <Select
+                  value={selectedProvider}
+                  onValueChange={(providerId) => {
+                    const provider = normalizedSettings?.providers.find((item) => item.id === providerId);
+
+                    if (!provider || provider.selectable === false) {
+                      toast({
+                        title: 'Provider unavailable',
+                        description: 'This provider is visible for status, but cannot be selected.',
+                        variant: 'destructive',
+                      });
+                      return;
+                    }
+
+                    setSelectedProvider(providerId);
+                  }}
+                >
                   <SelectTrigger id="ai-provider" className="h-12 border-border/60 bg-muted/10 text-base font-medium transition-all hover:border-primary/40 focus:ring-primary/20">
                     <SelectValue placeholder="Identify your AI runtime..." />
                   </SelectTrigger>
@@ -619,7 +572,12 @@ export default function ModelSettings() {
                     <SelectGroup>
                       <SelectLabel className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground"><Server className="h-3 w-3" /> Built-in Runtime</SelectLabel>
                       {normalizedSettings?.builtInProviders.map((p) => (
-                        <SelectItem key={p.id} value={p.id} className="cursor-pointer py-3 hover:bg-primary/5">
+                        <SelectItem
+                          key={p.id}
+                          value={p.id}
+                          disabled={p.selectable === false}
+                          className="cursor-pointer py-3 hover:bg-primary/5"
+                        >
                           <div className="flex items-center gap-3">
                             <span className="font-semibold">{getRuntimeDisplayName(p.id, p.display_name)}</span>
                             <Badge variant="outline" className="h-5 text-[9px] font-bold uppercase tracking-widest text-primary/70">Core</Badge>
@@ -636,7 +594,12 @@ export default function ModelSettings() {
                     <SelectGroup>
                       <SelectLabel className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground"><HardDrive className="h-3 w-3" /> Local Providers</SelectLabel>
                       {normalizedSettings?.localProviders.map((p) => (
-                        <SelectItem key={p.id} value={p.id} className="cursor-pointer py-3">
+                        <SelectItem
+                          key={p.id}
+                          value={p.id}
+                          disabled={p.selectable === false}
+                          className="cursor-pointer py-3"
+                        >
                           <div className="flex items-center gap-3">
                             <span className="font-semibold">{getRuntimeDisplayName(p.id, p.display_name)}</span>
                             <Badge variant="outline" className="h-5 text-[9px] font-bold uppercase tracking-widest text-emerald-600/70">Local</Badge>
@@ -653,7 +616,12 @@ export default function ModelSettings() {
                     <SelectGroup>
                       <SelectLabel className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground"><HardDrive className="h-3 w-3" /> Cloud Providers</SelectLabel>
                       {normalizedSettings?.thirdPartyProviders.map((p) => (
-                        <SelectItem key={p.id} value={p.id} className="cursor-pointer py-3">
+                        <SelectItem
+                          key={p.id}
+                          value={p.id}
+                          disabled={p.selectable === false}
+                          className="cursor-pointer py-3"
+                        >
                           <div className="flex items-center gap-3">
                             <span className="font-semibold">{getRuntimeDisplayName(p.id, p.display_name)}</span>
                             <Badge variant="outline" className="h-5 text-[9px] font-bold uppercase tracking-widest text-emerald-600/70">Third-Party</Badge>
@@ -672,7 +640,12 @@ export default function ModelSettings() {
                         <SelectGroup>
                           <SelectLabel className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground"><Settings2 className="h-3 w-3" /> Custom Integrations</SelectLabel>
                           {normalizedSettings?.customProviders.map((p) => (
-                            <SelectItem key={p.id} value={p.id} className="cursor-pointer py-3">
+                            <SelectItem
+                              key={p.id}
+                              value={p.id}
+                              disabled={p.selectable === false}
+                              className="cursor-pointer py-3"
+                            >
                               <div className="flex items-center gap-3">
                                 <span className="font-semibold">{getRuntimeDisplayName(p.id, p.display_name)}</span>
                                 <Badge variant="outline" className="h-5 text-[9px] font-bold uppercase tracking-widest text-purple-600/70">API</Badge>
@@ -710,7 +683,7 @@ export default function ModelSettings() {
                 </div>
                 <Select
                   value={chatResponseMode}
-                  onValueChange={setChatResponseMode}
+                  onValueChange={(value) => setChatResponseMode(normalizeChatResponseMode(value))}
                 >
                   <SelectTrigger id="chat-response-mode" className="h-11 border-border/60 bg-muted/10 text-base font-medium transition-all hover:border-primary/40 focus:ring-primary/20">
                     <SelectValue placeholder="Select response mode..." />
@@ -766,9 +739,13 @@ export default function ModelSettings() {
                                 setRuntimeSource(value);
                                 const nextOption = selectedProviderDetails.runtime_options?.find((option) => option.source === value);
                                 if (nextOption) {
-                                  const nextBaseUrl = normalizeConfiguredLocalRuntimeAddress(nextOption.base_url);
-                                  setBaseUrl(nextBaseUrl.replace(/\/api$/, ''));
-                                  void loadProviderModels(selectedProviderDetails.id, nextBaseUrl);
+                                  const nextBaseUrl = normalizeDisplayBaseUrl(nextOption.base_url);
+                                  setBaseUrl(nextBaseUrl);
+                                  void loadProviderModels(
+                                    selectedProviderDetails.id,
+                                    nextBaseUrl,
+                                    fallbackProviderModels,
+                                  );
                                 }
                               }}
                             >
@@ -843,7 +820,13 @@ export default function ModelSettings() {
                           <div className="flex items-center justify-between">
                             <Label htmlFor="model-picker" className="font-semibold">Model Identification</Label>
                             {selectedProviderDetails.supports_model_discovery && (
-                              <Button variant="outline" size="sm" onClick={() => loadProviderModels(selectedProvider, baseUrl)} disabled={isLoadingModels} className="h-7 px-2 text-[10px] uppercase font-bold tracking-widest">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => loadProviderModels(selectedProvider, baseUrl, fallbackProviderModels)}
+                                disabled={isLoadingModels}
+                                className="h-7 px-2 text-[10px] uppercase font-bold tracking-widest"
+                              >
                                 {isLoadingModels ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <RefreshCw className="mr-1 h-3 w-3" />} Discovery
                               </Button>
                             )}
@@ -884,8 +867,12 @@ export default function ModelSettings() {
                             <Input
                               id="api-key"
                               type="password"
-                              value={isEditingApiKey ? apiKey : (apiKey || selectedProviderDetails.api_key_masked || '')}
-                              onFocus={() => setIsEditingApiKey(true)}
+                              value={isEditingApiKey ? apiKey : (selectedProviderDetails.api_key_masked || '')}
+                              readOnly={!isEditingApiKey && selectedProviderDetails.api_key_configured}
+                              onFocus={() => {
+                                setIsEditingApiKey(true);
+                                setApiKey('');
+                              }}
                               onChange={(e) => setApiKey(e.target.value)}
                               placeholder={`Enter ${selectedProviderLabel || selectedProviderDetails.display_name} API Secret...`}
                               className="h-12 border-border/60 bg-background/50 pr-10 font-mono text-sm leading-relaxed tracking-widest transition-all focus:border-primary/40 focus:ring-primary/10"
@@ -909,6 +896,15 @@ export default function ModelSettings() {
                         <div className="rounded-2xl border border-dashed border-border/50 bg-muted/5 p-4 text-xs text-muted-foreground md:col-span-2">
                           Automatic fallback runtime: <span className="font-semibold text-foreground">{normalizedSettings.systemFallbackProvider.runtime_display_name}</span>
                         </div>
+                      )}
+
+                      {selectedProviderDetails.selectable === false && (
+                        <Alert className="border-amber-500/30 bg-amber-500/10 md:col-span-2">
+                          <InfoIcon className="h-4 w-4 !text-amber-600" aria-hidden="true" />
+                          <AlertDescription className="text-xs">
+                            This provider is visible for status but is not currently selectable. Backend provider registry controls availability.
+                          </AlertDescription>
+                        </Alert>
                       )}
                     </div>
 

@@ -1,49 +1,202 @@
 import { ApiError } from '@/lib/api';
 
-export const getDegradedResponseMessage = (error: unknown): string => {
-  if (error instanceof ApiError) {
-    const errorPayload = error.details as Record<string, unknown>;
-    const runtimeMode = typeof errorPayload?.mode === 'string' ? errorPayload.mode : '';
+type ApiErrorPayload = Record<string, unknown>;
+
+const DEFAULT_FAILURE_MESSAGE =
+  'Karen could not complete this message. Check model availability and try again.';
+
+const DEFAULT_DEGRADED_MESSAGE =
+  'Karen is running in degraded mode right now. Model routing is currently unavailable or misconfigured.';
+
+const AUTH_FAILURE_MESSAGE =
+  'Karen could not use the requested provider with your current session permissions. Sign in again or switch to an available model.';
+
+const NETWORK_FAILURE_MESSAGE =
+  'Karen could not reach the chat service. Check your connection and try again.';
+
+const cleanString = (value: unknown): string => {
+  return typeof value === 'string' ? value.trim() : '';
+};
+
+const isRecord = (value: unknown): value is ApiErrorPayload => {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+};
+
+const isUsefulMessage = (value: unknown): value is string => {
+  const cleaned = cleanString(value);
+
+  if (!cleaned || cleaned.length < 3) {
+    return false;
+  }
+
+  const lowered = cleaned.toLowerCase();
+
+  return ![
+    'error',
+    'failed',
+    'unknown',
+    'undefined',
+    'null',
+    '[object object]',
+  ].includes(lowered);
+};
+
+const normalizeRuntimeMode = (value: unknown): string => {
+  return cleanString(value).toLowerCase().replace(/[\s-]+/g, '_');
+};
+
+const getNestedPayloads = (payload: unknown): ApiErrorPayload[] => {
+  if (!isRecord(payload)) {
+    return [];
+  }
+
+  const nestedKeys = ['detail', 'error', 'message', 'data', 'payload', 'runtime'];
+  const nestedPayloads: ApiErrorPayload[] = [payload];
+
+  nestedKeys.forEach((key) => {
+    const nested = payload[key];
+
+    if (isRecord(nested)) {
+      nestedPayloads.push(nested);
+    }
+  });
+
+  return nestedPayloads;
+};
+
+const extractRuntimeModeMessage = (payload: unknown): string => {
+  const payloads = getNestedPayloads(payload);
+
+  for (const item of payloads) {
+    const runtimeMode = normalizeRuntimeMode(item.mode ?? item.status);
 
     if (
-      (runtimeMode === 'maintenance' ||
-        runtimeMode === 'emergency_fallback' ||
-        runtimeMode === 'degraded') &&
-      typeof errorPayload?.message === 'string'
+      ['maintenance', 'emergency_fallback', 'degraded', 'degraded_mode'].includes(
+        runtimeMode,
+      )
     ) {
-      return errorPayload.message;
+      const message =
+        cleanString(item.message) ||
+        cleanString(item.detail) ||
+        cleanString(item.error);
+
+      if (isUsefulMessage(message)) {
+        return message;
+      }
+    }
+  }
+
+  return '';
+};
+
+const extractPayloadMessage = (payload: unknown): string => {
+  const payloads = getNestedPayloads(payload);
+
+  const keys = [
+    'message',
+    'detail',
+    'error',
+    'description',
+    'reason',
+    'failure_reason',
+    'degradation_reason',
+    'status_message',
+  ];
+
+  for (const item of payloads) {
+    for (const key of keys) {
+      const value = item[key];
+
+      if (isUsefulMessage(value)) {
+        return value;
+      }
+    }
+  }
+
+  return '';
+};
+
+const getStatusMessage = (status: number, fallbackDetail: string): string => {
+  if (status === 401 || status === 403) {
+    return AUTH_FAILURE_MESSAGE;
+  }
+
+  if (status === 408 || status === 504) {
+    return 'Karen timed out while waiting for the chat runtime. Try again or switch to another available provider.';
+  }
+
+  if (status === 404) {
+    return fallbackDetail || 'Karen could not find the requested chat endpoint or provider route.';
+  }
+
+  if (status === 429) {
+    return fallbackDetail || 'Karen hit a provider or runtime rate limit. Try again shortly or switch providers.';
+  }
+
+  if (status >= 500) {
+    return fallbackDetail || DEFAULT_DEGRADED_MESSAGE;
+  }
+
+  if (status >= 400) {
+    return fallbackDetail || 'Karen encountered an API error while processing your request.';
+  }
+
+  return fallbackDetail || DEFAULT_FAILURE_MESSAGE;
+};
+
+export const getDegradedResponseMessage = (error: unknown): string => {
+  if (error instanceof ApiError) {
+    const errorPayload = isRecord(error.details) ? error.details : {};
+    const runtimeMessage = extractRuntimeModeMessage(errorPayload);
+
+    if (runtimeMessage) {
+      return runtimeMessage;
     }
 
-    const detail = error.message?.trim();
+    const payloadMessage = extractPayloadMessage(errorPayload);
 
-    // If we have a specific informative detail, prioritize it.
-    // We no longer strip the "HTTP [code]:" prefix if it contains useful info.
-    if (detail && detail.length > 3) {
-      return detail;
+    if (payloadMessage) {
+      return getStatusMessage(error.status, payloadMessage);
     }
 
-     // If we have detailed error content in the response body, use it specifically.
-     if (errorPayload?.detail && typeof errorPayload.detail === 'string') {
-       return errorPayload.detail;
-     }
-     if (errorPayload?.error && typeof errorPayload.error === 'string') {
-       return errorPayload.error;
-     }
+    const directMessage = cleanString(error.message);
 
-     if (error.status >= 500) {
-       return detail || 'Karen is running in degraded mode right now. Model routing is currently unavailable or misconfigured.';
-     }
+    if (isUsefulMessage(directMessage)) {
+      return getStatusMessage(error.status, directMessage);
+    }
 
-     if (error.status === 401 || error.status === 403) {
-       return 'Karen could not use the requested provider with your current session permissions. Sign in again or switch to an available model.';
-     }
+    return getStatusMessage(error.status, '');
+  }
 
-     return detail || 'Karen encountered an API error while processing your request.';
-   }
+  if (error instanceof TypeError) {
+    const message = cleanString(error.message);
 
-   if (error instanceof Error) {
-     return error.message;
-   }
+    if (
+      message.toLowerCase().includes('failed to fetch') ||
+      message.toLowerCase().includes('network') ||
+      message.toLowerCase().includes('connection')
+    ) {
+      return NETWORK_FAILURE_MESSAGE;
+    }
 
-   return 'Karen is running in degraded mode right now and could not complete this message. Check model availability and try again.';
- };
+    return message || NETWORK_FAILURE_MESSAGE;
+  }
+
+  if (error instanceof DOMException && error.name === 'AbortError') {
+    return 'Karen timed out or the chat request was cancelled before completion.';
+  }
+
+  if (error instanceof Error) {
+    const message = cleanString(error.message);
+
+    if (isUsefulMessage(message)) {
+      return message;
+    }
+  }
+
+  if (isUsefulMessage(error)) {
+    return cleanString(error);
+  }
+
+  return DEFAULT_FAILURE_MESSAGE;
+};

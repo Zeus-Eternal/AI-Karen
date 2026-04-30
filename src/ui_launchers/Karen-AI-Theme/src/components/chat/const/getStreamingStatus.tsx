@@ -1,4 +1,4 @@
-export const getStreamingStatus = (
+export function getStreamingStatus(
   isBackendOffline: boolean,
   isLoading: boolean,
   processingStatus: string,
@@ -7,12 +7,46 @@ export const getStreamingStatus = (
     chunksReceived: number;
     totalBytes?: number;
     lastChunkTime?: number;
-  } | null
-): string => {
+  } | null,
+): string;
+
+export function getStreamingStatus(
+  isBackendOffline: boolean,
+  isLoading: boolean,
+  processingStatus: string,
+  streamingMetrics: {
+    connectionHealth: string;
+    chunksReceived: number;
+    totalBytes?: number;
+    lastChunkTime?: number;
+  } | null,
+  statusMetadata?: Record<string, unknown> | null,
+): string;
+
+export function getStreamingStatus(
+  isBackendOffline: boolean,
+  isLoading: boolean,
+  processingStatus: string,
+  streamingMetrics: {
+    connectionHealth: string;
+    chunksReceived: number;
+    totalBytes?: number;
+    lastChunkTime?: number;
+  } | null,
+  statusMetadata?: Record<string, unknown> | null,
+): string {
   if (isBackendOffline) return 'Offline - Limited functionality';
 
   if (isLoading && processingStatus) {
     const statusLower = processingStatus.toLowerCase();
+    const llm = isRecord(statusMetadata?.llm) ? statusMetadata.llm : statusMetadata;
+    const actualProvider = formatProviderLabel(
+      llm?.actual_provider || llm?.provider || statusMetadata?.actual_provider,
+    );
+    const requestedProvider = formatProviderLabel(
+      llm?.requested_provider || statusMetadata?.requested_provider,
+    );
+    const statusProvider = actualProvider || requestedProvider;
 
     // Priority status indicators (errors take precedence)
     if (statusLower.includes('error') || statusLower.includes('failed')) {
@@ -47,17 +81,40 @@ export const getStreamingStatus = (
       if (chunksReceived > 0) {
         const bytesFormatted = totalBytes ? formatBytes(totalBytes) : '';
         const bytesText = bytesFormatted ? ` • ${bytesFormatted}` : '';
-        return `${healthIcon} ${processingStatus} (${chunksReceived} chunks${bytesText})`;
+        const providerText = statusProvider ? ` • ${statusProvider}` : '';
+        return `${healthIcon} ${processingStatus} (${chunksReceived} chunks${bytesText}${providerText})`;
       }
 
-      return `${healthIcon} ${processingStatus}`;
+      return statusProvider
+        ? `${healthIcon} ${processingStatus} • ${statusProvider}`
+        : `${healthIcon} ${processingStatus}`;
     }
 
     // Default processing indicator
-    return `${processingStatus} 💭`;
+    return statusProvider
+      ? `${processingStatus} • ${statusProvider} 💭`
+      : `${processingStatus} 💭`;
   }
 
   return '';
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+};
+
+const formatProviderLabel = (provider: unknown): string => {
+  const normalized = typeof provider === 'string'
+    ? provider.trim().toLowerCase().replace(/[\s-]+/g, '_')
+    : String(provider ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+
+  const label = normalized.replace(/_/g, ' ');
+  if (!label) return '';
+  if (label === 'builtin vllm' || label === 'vllm') return 'vLLM';
+  if (label === 'builtin transformers' || label === 'transformers') return 'Transformers';
+  if (label === 'openai compatible') return 'OpenAI-compatible provider';
+  if (label === 'emergency static') return 'emergency fallback';
+  return label.charAt(0).toUpperCase() + label.slice(1);
 };
 
 // Helper function to format bytes

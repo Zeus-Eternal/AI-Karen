@@ -33,7 +33,7 @@ class UserProfile:
     assignments: Dict[str, ModelAssignment] = field(default_factory=dict)
     fallback_chain: List[str] = field(
         default_factory=lambda: [
-            "builtin_vllm",
+            "ollama",
             "builtin_transformers",
             "openai",
             "deepseek",

@@ -1,21 +1,73 @@
-"use client";
+'use client';
 
 /**
  * @file PluginStorePage.tsx
  * @description Main page for browsing and managing plugins from the plugin store.
- * Integrates with the plugin store API to discover, install, and manage plugins.
+ *
+ * Store/API ownership:
+ * - usePluginStore owns marketplace queries, install state, plugin details, and errors.
+ * - This page coordinates UI controls only.
+ * - Plugin lifecycle truth must stay in the backend/store, not inferred here.
  */
 
-import React, { useEffect, useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  AlertTriangle,
+  Loader2,
+  Package,
+  PlugZap,
+  RefreshCw,
+  Star,
+  TrendingUp,
+} from 'lucide-react';
+
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PlugZap, Package, TrendingUp, Star, AlertTriangle, RefreshCw, Loader2 } from 'lucide-react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
+
 import { usePluginStore } from '@/stores/PluginStore';
+import type { PluginCategory } from '@/types/plugin';
+
+import { CategoryFilter } from './CategoryFilter';
 import { PluginGrid } from './PluginGrid';
 import { SearchBar } from './SearchBar';
-import { CategoryFilter } from './CategoryFilter';
+
+type PluginStoreTab = 'browse' | 'trending' | 'installed';
+
+const DEFAULT_BROWSE_EMPTY_MESSAGE =
+  'No plugins found. Try adjusting your search or filters.';
+
+const cleanString = (value: unknown): string => {
+  return typeof value === 'string' ? value.trim() : '';
+};
+
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+
+  if (typeof error === 'string' && error.trim()) {
+    return error.trim();
+  }
+
+  return 'Plugin operation failed.';
+};
 
 export default function PluginStorePage() {
   const {
@@ -37,82 +89,162 @@ export default function PluginStorePage() {
     clearError,
   } = usePluginStore();
 
-  const [selectedCategory, setSelectedCategory] = useState(searchParams.category);
+  const [activeTab, setActiveTab] = useState<PluginStoreTab>('browse');
+  const [selectedCategory, setSelectedCategory] = useState<
+    PluginCategory | undefined
+  >(searchParams.category);
+  const [operationError, setOperationError] = useState('');
+
+  const installedPlugins = useMemo(() => {
+    return Array.isArray(plugins)
+      ? plugins.filter((plugin) => plugin.status === 'installed')
+      : [];
+  }, [plugins]);
+
+  const selectedCategoryLabel = useMemo(() => {
+    if (!selectedCategory) {
+      return '';
+    }
+
+    const match = categories.find((category) => category.name === selectedCategory);
+
+    return cleanString(match?.display_name) || cleanString(selectedCategory);
+  }, [categories, selectedCategory]);
+
+  const browseEmptyMessage = selectedCategory
+    ? `No plugins found in ${selectedCategoryLabel || selectedCategory}`
+    : DEFAULT_BROWSE_EMPTY_MESSAGE;
 
   useEffect(() => {
-    loadCategories();
-    loadTrending();
-    searchPlugins();
+    /*
+     * Initial marketplace hydration belongs to the store. The page calls the
+     * existing store actions once and lets the store manage request/cache state.
+     */
+    void loadCategories();
+    void loadTrending();
+    void searchPlugins();
   }, [loadCategories, loadTrending, searchPlugins]);
 
-  useEffect(() => {
-    setSearchParams({ category: selectedCategory });
-  }, [selectedCategory, setSearchParams]);
+  const handleSearch = useCallback(
+    (params: typeof searchParams) => {
+      setOperationError('');
+      setSearchParams(params);
 
-  const handleSearch = (params: typeof searchParams) => {
-    setSearchParams(params);
-    searchPlugins();
-  };
+      /*
+       * Keep the current store pattern: update params first, then ask the store
+       * to search. Do not duplicate query construction in this component.
+       */
+      void searchPlugins();
+    },
+    [searchPlugins, setSearchParams],
+  );
 
-  const handleInstall = async (pluginId: string, version?: string) => {
-    try {
-      await installPlugin(pluginId, version);
-    } catch (error) {
-      console.error('Failed to install plugin:', error);
-    }
-  };
+  const handleInstall = useCallback(
+    async (pluginId: string, version?: string) => {
+      setOperationError('');
 
-  const handleDetails = (pluginId: string) => {
-    getPluginDetails(pluginId);
-  };
+      try {
+        await installPlugin(pluginId, version);
+      } catch (installError) {
+        setOperationError(getErrorMessage(installError));
+      }
+    },
+    [installPlugin],
+  );
 
-  const handleDiscover = (pluginId: string) => {
-    console.log('Discover plugin:', pluginId);
-  };
+  const handleDetails = useCallback(
+    (pluginId: string) => {
+      setOperationError('');
+      void getPluginDetails(pluginId);
+    },
+    [getPluginDetails],
+  );
 
-  const handleCategoryChange = (category: typeof selectedCategory) => {
-    setSelectedCategory(category);
-  };
+  const handleDiscover = useCallback(
+    (pluginId: string) => {
+      setOperationError('');
+      void getPluginDetails(pluginId);
+    },
+    [getPluginDetails],
+  );
 
-  const handlePageChange = (page: number) => {
-    setSearchParams({ page });
-    searchPlugins();
-  };
+  const handleCategoryChange = useCallback(
+    (category: PluginCategory | undefined) => {
+      setSelectedCategory(category);
+      setSearchParams({
+        category,
+        page: 1,
+      });
+      void searchPlugins();
+    },
+    [searchPlugins, setSearchParams],
+  );
+
+  const handlePageChange = useCallback(
+    (page: number) => {
+      setSearchParams({ page });
+      void searchPlugins();
+    },
+    [searchPlugins, setSearchParams],
+  );
+
+  const handleRefresh = useCallback(() => {
+    setOperationError('');
+    void refreshPlugins();
+  }, [refreshPlugins]);
+
+  const handleBrowseFromInstalled = useCallback(() => {
+    setActiveTab('browse');
+    void searchPlugins();
+  }, [searchPlugins]);
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center space-x-3">
-          <PlugZap className="h-8 w-8 text-primary" />
+          <PlugZap className="h-8 w-8 text-primary" aria-hidden="true" />
+
           <div>
-            <h2 className="text-2xl font-semibold tracking-tight">Plugin Store</h2>
+            <h2 className="text-2xl font-semibold tracking-tight">
+              Plugin Store
+            </h2>
             <p className="text-sm text-muted-foreground">
-              Discover and install plugins to enhance Karen AI capabilities
+              Discover and install plugins to enhance Karen AI capabilities.
             </p>
           </div>
         </div>
+
         <Button
+          type="button"
           variant="outline"
           size="sm"
-          onClick={() => refreshPlugins()}
+          onClick={handleRefresh}
           disabled={loading}
         >
-          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw
+            className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`}
+            aria-hidden="true"
+          />
           Refresh
         </Button>
       </div>
 
-      {error && (
+      {(error || operationError) && (
         <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
+          <AlertTriangle className="h-4 w-4" aria-hidden="true" />
           <AlertTitle>Error</AlertTitle>
-          <AlertDescription className="flex items-center justify-between">
-            <span>{error}</span>
+          <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <span>{operationError || error}</span>
+
             <Button
+              type="button"
               variant="ghost"
               size="sm"
-              onClick={clearError}
-              className="h-6"
+              onClick={() => {
+                setOperationError('');
+                clearError();
+              }}
+              className="h-7 self-start sm:self-auto"
             >
               Dismiss
             </Button>
@@ -120,32 +252,40 @@ export default function PluginStorePage() {
         </Alert>
       )}
 
-      <Tabs defaultValue="browse" className="w-full">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as PluginStoreTab)}
+        className="w-full"
+      >
         <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
           <TabsTrigger value="browse">
-            <Package className="h-4 w-4 mr-2" />
+            <Package className="mr-2 h-4 w-4" aria-hidden="true" />
             Browse
           </TabsTrigger>
+
           <TabsTrigger value="trending">
-            <TrendingUp className="h-4 w-4 mr-2" />
+            <TrendingUp className="mr-2 h-4 w-4" aria-hidden="true" />
             Trending
           </TabsTrigger>
+
           <TabsTrigger value="installed">
-            <Star className="h-4 w-4 mr-2" />
+            <Star className="mr-2 h-4 w-4" aria-hidden="true" />
             Installed
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="browse" className="space-y-6 mt-6">
+        <TabsContent value="browse" className="mt-6 space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Discover Plugins</CardTitle>
               <CardDescription>
-                Browse the marketplace and install plugins to extend Karen AI&apos;s capabilities
+                Browse the marketplace and install plugins to extend Karen
+                AI&apos;s capabilities.
               </CardDescription>
             </CardHeader>
+
             <CardContent className="space-y-4">
-              <div className="flex flex-col lg:flex-row gap-4">
+              <div className="flex flex-col gap-4 lg:flex-row">
                 <div className="flex-1">
                   <SearchBar
                     params={searchParams}
@@ -171,40 +311,51 @@ export default function PluginStorePage() {
                 perPage={searchParams.per_page}
                 totalPages={searchResponse?.total_pages}
                 hasNext={searchResponse?.has_next}
-                hasPrev={searchParams.page > 1}
+                hasPrev={(searchParams.page ?? 1) > 1}
                 onPageChange={handlePageChange}
                 onInstall={handleInstall}
                 onDetails={handleDetails}
                 onDiscover={handleDiscover}
                 installingPlugins={installingPlugins}
-                emptyMessage={
-                  selectedCategory
-                    ? `No plugins found in ${categories.find(c => c.name === selectedCategory)?.display_name || selectedCategory}`
-                    : 'No plugins found. Try adjusting your search or filters.'
-                }
+                emptyMessage={browseEmptyMessage}
               />
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="trending" className="space-y-6 mt-6">
+        <TabsContent value="trending" className="mt-6 space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Trending Plugins</CardTitle>
               <CardDescription>
-                Popular plugins that are being installed by the community
+                Popular plugins being installed by the community.
               </CardDescription>
             </CardHeader>
+
             <CardContent>
               {loading && trendingPlugins.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-                  <p className="text-sm text-muted-foreground">Loading trending plugins...</p>
+                <div
+                  className="flex flex-col items-center justify-center py-12"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <Loader2
+                    className="mb-4 h-8 w-8 animate-spin text-primary"
+                    aria-hidden="true"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Loading trending plugins...
+                  </p>
                 </div>
               ) : trendingPlugins.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <TrendingUp className="h-12 w-12 text-muted-foreground mb-4" />
-                  <p className="text-sm text-muted-foreground">No trending plugins available yet</p>
+                  <TrendingUp
+                    className="mb-4 h-12 w-12 text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    No trending plugins available yet.
+                  </p>
                 </div>
               ) : (
                 <PluginGrid
@@ -221,31 +372,51 @@ export default function PluginStorePage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="installed" className="space-y-6 mt-6">
+        <TabsContent value="installed" className="mt-6 space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Installed Plugins</CardTitle>
               <CardDescription>
-                Manage plugins that are currently installed on your system
+                Manage plugins that are currently installed on your system.
               </CardDescription>
             </CardHeader>
+
             <CardContent>
               {loading ? (
-                <div className="flex flex-col items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-                  <p className="text-sm text-muted-foreground">Loading installed plugins...</p>
+                <div
+                  className="flex flex-col items-center justify-center py-12"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <Loader2
+                    className="mb-4 h-8 w-8 animate-spin text-primary"
+                    aria-hidden="true"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Loading installed plugins...
+                  </p>
                 </div>
-              ) : plugins.filter(p => p.status === 'installed').length === 0 ? (
+              ) : installedPlugins.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <Package className="h-12 w-12 text-muted-foreground mb-4" />
-                  <p className="text-sm text-muted-foreground mb-2">No plugins installed yet</p>
-                  <Button variant="outline" onClick={() => searchPlugins()}>
+                  <Package
+                    className="mb-4 h-12 w-12 text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                  <p className="mb-2 text-sm text-muted-foreground">
+                    No plugins installed yet.
+                  </p>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleBrowseFromInstalled}
+                  >
                     Browse Plugin Store
                   </Button>
                 </div>
               ) : (
                 <PluginGrid
-                  plugins={plugins.filter(p => p.status === 'installed')}
+                  plugins={installedPlugins}
                   loading={loading}
                   onDetails={handleDetails}
                   installingPlugins={installingPlugins}

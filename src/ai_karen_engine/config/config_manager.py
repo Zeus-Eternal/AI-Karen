@@ -266,7 +266,7 @@ DEFAULT_CONFIG = {
         "default_classifier_model_id": "default-classifier-model",
         "models_dir": "models",
         "transformers_dir": "models/transformers",
-        "fallback_chain": ["builtin_transformers", "builtin_vllm", "openai", "gemini", "deepseek", "huggingface"],
+        "fallback_chain": ["ollama", "builtin_transformers", "openai", "gemini", "deepseek", "huggingface"],
         "provider_defaults": {
             "openai": "gpt-4o-mini",
             "deepseek": "deepseek-chat",

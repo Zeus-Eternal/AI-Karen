@@ -1034,6 +1034,12 @@ class LLMRouter:
 
         provider_info = self.registry.get_provider_info(provider_name)
         if isinstance(provider_info, dict):
+            if (
+                self._provider_has_runtime_readiness(provider_name, provider_info)
+                and health.consecutive_failures == 0
+            ):
+                return True
+
             has_api_key = provider_info.get("has_api_key") is True
             api_key_valid = provider_info.get("api_key_valid") is not False
             available_models = provider_info.get("available_models")
@@ -1287,9 +1293,17 @@ class LLMRouter:
                             source="internal_fallback",
                             degraded_mode=True,
                             fallback_level=1,
-                            degradation_reason=reason,
+                            degradation_reason=(
+                                "requested_provider_unavailable"
+                                if requested_provider
+                                else reason
+                            ),
                             used_fallback=True,
-                            provider_error=str(previous_error) if previous_error else None,
+                            provider_error=(
+                                f"{requested_provider}_unavailable"
+                                if requested_provider
+                                else str(previous_error) if previous_error else None
+                            ),
                         )
                     }
                 }
@@ -2430,9 +2444,8 @@ class LLMRouter:
 
     # Runtime Fallback Executor
     RUNTIME_DEGRADED_FALLBACK_ORDER = (
-        "builtin_vllm",
-        "builtin_transformers",
         "ollama",
+        "builtin_transformers",
         "fallback",
     )
 

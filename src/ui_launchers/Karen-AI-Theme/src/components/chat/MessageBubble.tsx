@@ -1,23 +1,38 @@
-"use client";
+'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ChatMessage } from '@/lib/types';
-import { Avatar } from '@/components/ui/avatar';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import {
-  User, Bot, Speaker, Copy, Check, Info,
-  ThumbsUp, ThumbsDown, ChevronDown, ChevronUp, AlertTriangle, Zap, Clock, PlusCircle
-} from 'lucide-react';
-import { format } from 'date-fns';
+import type { SuggestedAction } from '@/lib/agent-ui/service';
 import Image from 'next/image';
+import { format } from 'date-fns';
+import {
+  AlertTriangle,
+  Bot,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Copy,
+  Info,
+  PlusCircle,
+  Speaker,
+  ThumbsDown,
+  ThumbsUp,
+  User,
+  Zap,
+} from 'lucide-react';
+
+import { Avatar } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip"
-import { Badge } from "@/components/ui/badge"
+} from '@/components/ui/tooltip';
+
 import {
   deriveCompactBadgePresentation,
   deriveDegradedPresentation,
@@ -25,7 +40,7 @@ import {
   sanitizeChatContent,
 } from '@/lib/chat-response';
 import { ChatRenderedContent } from '@/lib/chat-renderer';
-import type { SuggestedAction } from '@/lib/agent-ui/service';
+
 import CitationBadge from './CitationBadge';
 import SourceList from './SourceList';
 
@@ -34,98 +49,117 @@ interface MessageBubbleProps {
   onActionClick?: (action: SuggestedAction) => void;
 }
 
+type FeedbackValue = 'up' | 'down' | null;
+
+const COPY_RESET_DELAY_MS = 2000;
+const FEEDBACK_RESET_DELAY_MS = 3000;
+
+const isAssistantMessage = (message: ChatMessage): boolean => {
+  return message.role === 'assistant';
+};
+
+const isUserMessage = (message: ChatMessage): boolean => {
+  return message.role === 'user';
+};
+
+const getSafeTimestampLabel = (timestamp: unknown): string => {
+  const date =
+    timestamp instanceof Date
+      ? timestamp
+      : new Date(
+          typeof timestamp === 'string' || typeof timestamp === 'number'
+            ? timestamp
+            : Date.now(),
+        );
+
+  if (Number.isNaN(date.getTime())) {
+    return format(new Date(), 'h:mm a');
+  }
+
+  return format(date, 'h:mm a');
+};
+
+const copyTextFallback = (text: string): boolean => {
+  if (typeof document === 'undefined') {
+    return false;
+  }
+
+  const textArea = document.createElement('textarea');
+  textArea.value = text;
+
+  /*
+   * Keep the fallback node invisible but focusable. execCommand is deprecated,
+   * yet still the safest fallback for older/non-secure browser contexts.
+   */
+  textArea.style.position = 'fixed';
+  textArea.style.left = '-999999px';
+  textArea.style.top = '-999999px';
+  textArea.style.opacity = '0';
+
+  document.body.appendChild(textArea);
+
+  try {
+    textArea.focus();
+    textArea.select();
+
+    return document.execCommand('copy');
+  } catch {
+    return false;
+  } finally {
+    document.body.removeChild(textArea);
+  }
+};
+
+const getActionLabel = (action: SuggestedAction): string => {
+  if (action.type === 'routing.profile.list') {
+    return 'Show Available Profiles';
+  }
+
+  return action.description || action.type || 'Perform Action';
+};
+
+const renderMetadataPair = ({
+  label,
+  value,
+  title,
+  valueClassName = 'font-semibold',
+}: {
+  label: string;
+  value: string;
+  title?: string;
+  valueClassName?: string;
+}) => {
+  return (
+    <div className="flex justify-between gap-2">
+      <span className="text-muted-foreground">{label}:</span>
+      <span className={valueClassName} title={title || value}>
+        {value}
+      </span>
+    </div>
+  );
+};
+
 export function MessageBubble({ message, onActionClick }: MessageBubbleProps) {
-  const isUser = message.role === 'user';
+  const isUser = isUserMessage(message);
+  const isAssistant = isAssistantMessage(message);
   const isSystemMessage = message.role === 'system';
+
   const [copied, setCopied] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
-  const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
+  const [feedback, setFeedback] = useState<FeedbackValue>(null);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
 
-  const handleCopy = useCallback(async () => {
-    if (!message.content) return;
-
-    try {
-      // Modern clipboard API
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(message.content);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      } else {
-        // Fallback for non-secure contexts or older browsers
-        copyToClipboardFallback(message.content);
-      }
-    } catch (err) {
-      console.error('Failed to copy text: ', err);
-      // Try fallback method
-      copyToClipboardFallback(message.content);
-    }
-  }, [message.content]);
-
-  // Helper for clipboard fallback (modern approach)
-  const copyToClipboardFallback = (text: string) => {
-    if (typeof document === 'undefined') return;
-
-    try {
-      const textArea = document.createElement("textarea");
-      textArea.value = text;
-
-      // Modern approach: use Selection API instead of execCommand
-      textArea.style.position = "fixed";
-      textArea.style.left = "-999999px";
-      textArea.style.top = "-999999px";
-      textArea.style.opacity = "0";
-      document.body.appendChild(textArea);
-
-      textArea.focus();
-      textArea.select();
-
-      // Use modern Selection API
-      const selection = window.getSelection();
-      const range = document.createRange();
-      range.selectNodeContents(textArea);
-      selection?.removeAllRanges();
-      selection?.addRange(range);
-
-      // Try to copy using the Selection API
-      document.execCommand('copy'); // Still needed as fallback, but we're trying modern first
-
-      document.body.removeChild(textArea);
-      selection?.removeAllRanges();
-
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('Fallback copy failed: ', err);
-      // Could show a toast notification here for manual copy
-    }
-  };
-
-  const handleFeedback = async (type: 'up' | 'down') => {
-    const newFeedback = feedback === type ? null : type;
-    setFeedback(newFeedback);
-
-    if (newFeedback && !feedbackSubmitted) {
-      // Simulate API call for feedback submission
-      try {
-        // Future: Replace with actual API call
-        // await apiClient.post('/api/feedback', { messageId: message.id, feedback: type });
-
-        setFeedbackSubmitted(true);
-        // Reset feedback submitted state after a delay
-        setTimeout(() => setFeedbackSubmitted(false), 3000);
-      } catch (error) {
-        console.error('Failed to submit feedback:', error);
-        // Could show a toast notification here
-      }
-    }
-  };
-
+  const responseDetailsId = `response-details-${message.id}`;
+  const normalizedContent = useMemo(
+    () => sanitizeChatContent(message.content),
+    [message.content],
+  );
 
   const {
     visibleDegradedNotice,
     shouldRenderDegradedState,
   } = deriveDegradedPresentation(message.metadata);
+
   const {
     shouldRenderBadge,
     providerLabel: badgeProviderLabel,
@@ -135,6 +169,7 @@ export function MessageBubble({ message, onActionClick }: MessageBubbleProps) {
     statusLabel: badgeStatusLabel,
     isDegraded: badgeIsDegraded,
   } = deriveCompactBadgePresentation(message.metadata);
+
   const {
     hasMetadataDetails,
     requestedProviderLabel,
@@ -157,31 +192,134 @@ export function MessageBubble({ message, onActionClick }: MessageBubbleProps) {
     showTokensRow,
     tokensLabel,
   } = deriveResponseDetailsPresentation(message.metadata);
-  const normalizedContent = sanitizeChatContent(message.content);
-  const normalizedDegradedNotice = sanitizeChatContent(visibleDegradedNotice);
+
+  const normalizedDegradedNotice = useMemo(
+    () => sanitizeChatContent(visibleDegradedNotice),
+    [visibleDegradedNotice],
+  );
+
   const shouldShowDegradedNotice =
     Boolean(normalizedDegradedNotice) &&
     normalizedDegradedNotice.toLowerCase() !== normalizedContent.toLowerCase();
 
+  const hasCitations =
+    !isUser && Array.isArray(message.citations) && message.citations.length > 0;
+
+  const hasStructuredContent =
+    Boolean(message.structuredContent) &&
+    Object.keys(message.structuredContent || {}).length > 0;
+
+  const timestampLabel = useMemo(
+    () => getSafeTimestampLabel(message.timestamp),
+    [message.timestamp],
+  );
+
+  useEffect(() => {
+    if (!copied) {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      setCopied(false);
+    }, COPY_RESET_DELAY_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [copied]);
+
+  useEffect(() => {
+    if (!feedbackSubmitted) {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      setFeedbackSubmitted(false);
+    }, FEEDBACK_RESET_DELAY_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [feedbackSubmitted]);
+
+  const handleCopy = useCallback(async () => {
+    if (!message.content) {
+      return;
+    }
+
+    try {
+      if (
+        typeof navigator !== 'undefined' &&
+        navigator.clipboard &&
+        typeof window !== 'undefined' &&
+        window.isSecureContext
+      ) {
+        await navigator.clipboard.writeText(message.content);
+        setCopied(true);
+        return;
+      }
+
+      if (copyTextFallback(message.content)) {
+        setCopied(true);
+      }
+    } catch {
+      if (copyTextFallback(message.content)) {
+        setCopied(true);
+      }
+    }
+  }, [message.content]);
+
+  const handleFeedback = useCallback(
+    async (type: Exclude<FeedbackValue, null>) => {
+      const nextFeedback = feedback === type ? null : type;
+      setFeedback(nextFeedback);
+
+      if (!nextFeedback || feedbackSubmitted) {
+        return;
+      }
+
+      /*
+       * Feedback remains UI-local until the backend feedback endpoint is wired.
+       * Do not fake provider/runtime metadata from this control.
+       */
+      setFeedbackSubmitted(true);
+    },
+    [feedback, feedbackSubmitted],
+  );
+
   return (
-    <div className={`user-bubble flex items-start gap-2 sm:gap-3 my-3 sm:my-4 px-2 sm:px-0 ${isUser ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
+    <div
+      className={`user-bubble my-3 flex animate-in items-start gap-2 px-2 duration-300 fade-in slide-in-from-bottom-2 sm:my-4 sm:gap-3 sm:px-0 ${
+        isUser ? 'justify-end' : 'justify-start'
+      }`}
+    >
       {!isUser && (
-        <Avatar className={`h-8 w-8 sm:h-10 sm:w-10 self-start shrink-0 flex items-center justify-center rounded-full shadow-sm ${shouldRenderDegradedState ? 'bg-amber-500/20' : 'bg-muted'}`}>
-          <Bot className={`h-4 w-4 sm:h-5 sm:w-5 ${shouldRenderDegradedState ? 'text-amber-600' : 'text-primary'}`} />
+        <Avatar
+          className={`flex h-8 w-8 shrink-0 items-center justify-center self-start rounded-full shadow-sm sm:h-10 sm:w-10 ${
+            shouldRenderDegradedState ? 'bg-amber-500/20' : 'bg-muted'
+          }`}
+        >
+          <Bot
+            className={`h-4 w-4 sm:h-5 sm:w-5 ${
+              shouldRenderDegradedState ? 'text-amber-600' : 'text-primary'
+            }`}
+            aria-hidden="true"
+          />
         </Avatar>
       )}
-      <Card className={`shadow-md rounded-2xl border-none transition-all duration-300 max-w-[90vw] sm:max-w-xl ${
-        isUser
-          ? 'bg-primary text-primary-foreground rounded-tr-none'
-          : 'flex-1 w-full bg-card rounded-tl-none ring-1 ring-border/5'
-      }`}>
+
+      <Card
+        className={`max-w-[90vw] rounded-2xl border-none shadow-md transition-all duration-300 sm:max-w-xl ${
+          isUser
+            ? 'rounded-tr-none bg-primary text-primary-foreground'
+            : 'w-full flex-1 rounded-tl-none bg-card ring-1 ring-border/5'
+        }`}
+      >
         <CardContent className="p-2 sm:p-3 md:p-4">
-          <div className="flex justify-between items-start gap-2">
+          <div className="flex items-start justify-between gap-2">
             <div className="flex-1 space-y-2 overflow-hidden">
-              {!isUser && message.role === 'assistant' && shouldShowDegradedNotice && (
-                <div className="rounded-xl border border-amber-500/20 bg-amber-500/8 px-3 py-2 text-[11px] text-amber-200/90 flex items-center justify-between">
+              {isAssistant && shouldShowDegradedNotice && (
+                <div className="flex items-center justify-between rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-200/90">
                   <span>{normalizedDegradedNotice}</span>
-                  <span className="text-[10px] text-amber-500/70 font-medium tracking-tight animate-pulse">degraded mode</span>
+                  <span className="animate-pulse text-[10px] font-medium tracking-tight text-amber-500/70">
+                    degraded mode
+                  </span>
                 </div>
               )}
 
@@ -192,131 +330,167 @@ export function MessageBubble({ message, onActionClick }: MessageBubbleProps) {
                 />
               )}
 
-              {/* Compact Metadata Badge — always visible for assistant messages */}
-              {!isUser && message.role === 'assistant' && shouldRenderBadge && !badgeIsDegraded && (
-                <div className="flex items-center gap-2 flex-wrap mt-2 overflow-hidden">
-                  <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold tracking-wide uppercase border transition-all duration-300 ${
-                    badgeIsDegraded
-                      ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 shadow-sm shadow-amber-500/5'
-                      : 'bg-primary/5 text-primary/80 border-primary/10 shadow-sm shadow-primary/5'
-                  }`}>
-                    {badgeIsDegraded ? (
-                      <AlertTriangle className="h-3 w-3 animate-pulse" />
-                    ) : (
-                      <Zap className="h-3 w-3" />
-                    )}
-                      <span>{badgeProviderLabel}</span>
-                      <span className="text-muted-foreground/50">·</span>
-                      <span className="normal-case font-medium">
-                        {badgeModelLabel}
-                      </span>
+              {/*
+               * Compact badge and expanded details display backend metadata.
+               * They must not infer the actual provider from the selected provider.
+               */}
+              {isAssistant && shouldRenderBadge && !badgeIsDegraded && (
+                <div className="mt-2 flex flex-wrap items-center gap-2 overflow-hidden">
+                  <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/10 bg-primary/5 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-primary/80 shadow-sm shadow-primary/5 transition-all duration-300">
+                    <Zap className="h-3 w-3" aria-hidden="true" />
+
+                    <span>{badgeProviderLabel}</span>
+                    <span className="text-muted-foreground/50">·</span>
+                    <span className="font-medium normal-case">
+                      {badgeModelLabel}
+                    </span>
+
                     {badgeDurationLabel && (
                       <>
                         <span className="text-muted-foreground/50">·</span>
-                        <Clock className="h-2.5 w-2.5" />
-                        <span className="normal-case font-medium">{badgeDurationLabel}</span>
+                        <Clock className="h-2.5 w-2.5" aria-hidden="true" />
+                        <span className="font-medium normal-case">
+                          {badgeDurationLabel}
+                        </span>
                       </>
                     )}
+
                     {badgeSpeedLabel && (
                       <>
                         <span className="text-muted-foreground/50">·</span>
-                        <span className="normal-case font-medium text-emerald-500">{badgeSpeedLabel}</span>
+                        <span className="font-medium normal-case text-emerald-500">
+                          {badgeSpeedLabel}
+                        </span>
                       </>
                     )}
                   </div>
+
                   {badgeStatusLabel && (
-                    <span className="text-[10px] text-amber-500/70 font-medium tracking-tight animate-pulse">
+                    <span className="animate-pulse text-[10px] font-medium tracking-tight text-amber-500/70">
                       {badgeStatusLabel}
                     </span>
                   )}
                 </div>
               )}
 
-              {/* Collapsible Metadata Details */}
-              {!isUser && message.role === 'assistant' && hasMetadataDetails && (
+              {isAssistant && hasMetadataDetails && (
                 <div className="mt-1 overflow-hidden transition-all duration-300">
                   <button
-                    onClick={() => setShowDetails(!showDetails)}
-                    className="text-[10px] text-muted-foreground hover:text-primary flex items-center gap-1 transition-all group"
-                    aria-label={showDetails ? 'Hide response details' : 'Show response details'}
+                    type="button"
+                    onClick={() => setShowDetails((current) => !current)}
+                    className="group flex items-center gap-1 text-[10px] text-muted-foreground transition-all hover:text-primary"
+                    aria-label={
+                      showDetails ? 'Hide response details' : 'Show response details'
+                    }
                     aria-expanded={showDetails}
-                    aria-controls="response-details"
+                    aria-controls={responseDetailsId}
                   >
-                    <Info className="h-3 w-3 group-hover:scale-110 transition-transform" aria-hidden="true" />
-                    <span>{showDetails ? 'Hide response details' : 'Show response details'}</span>
-                    {showDetails ? <ChevronUp className="h-3 w-3" aria-hidden="true" /> : <ChevronDown className="h-3 w-3" aria-hidden="true" />}
+                    <Info
+                      className="h-3 w-3 transition-transform group-hover:scale-110"
+                      aria-hidden="true"
+                    />
+                    <span>
+                      {showDetails ? 'Hide response details' : 'Show response details'}
+                    </span>
+                    {showDetails ? (
+                      <ChevronUp className="h-3 w-3" aria-hidden="true" />
+                    ) : (
+                      <ChevronDown className="h-3 w-3" aria-hidden="true" />
+                    )}
                   </button>
-                  
+
                   {showDetails && (
-                    <div id="response-details" className="mt-2 p-2.5 bg-muted/40 rounded-xl border border-border/30 text-[10px] grid grid-cols-2 gap-x-4 gap-y-1.5 font-mono shadow-inner animate-in fade-in zoom-in-95 duration-200" role="region" aria-label="Response details">
-                      <div className="flex justify-between border-b border-border/20 pb-1 col-span-2 mb-1">
-                          <span className="text-muted-foreground uppercase text-[8px] font-bold tracking-wider">Engine Metadata</span>
-                          <span className="text-[8px] text-blue-500 font-bold uppercase">{engineHeaderLabel}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Requested Provider:</span>
-                        <span className="font-semibold">{requestedProviderLabel}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Actual Provider:</span>
-                        <span className="font-semibold">{providerLabel}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Requested Model:</span>
-                        <span className="font-semibold truncate max-w-[120px]" title={requestedModelLabel}>
-                          {requestedModelLabel}
+                    <div
+                      id={responseDetailsId}
+                      className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5 rounded-xl border border-border/30 bg-muted/40 p-2.5 font-mono text-[10px] shadow-inner animate-in fade-in zoom-in-95 duration-200"
+                      role="region"
+                      aria-label="Response details"
+                    >
+                      <div className="col-span-2 mb-1 flex justify-between border-b border-border/20 pb-1">
+                        <span className="text-[8px] font-bold uppercase tracking-wider text-muted-foreground">
+                          Engine Metadata
+                        </span>
+                        <span className="text-[8px] font-bold uppercase text-blue-500">
+                          {engineHeaderLabel}
                         </span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Actual Model:</span>
-                        <span className="font-semibold truncate max-w-[120px]" title={modelTitle}>
-                          {modelLabel}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Response Source:</span>
-                        <span className="font-semibold">{sourceLabel}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Fallback Level:</span>
-                        <span className="font-semibold">{fallbackLevelLabel}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Runtime Engine:</span>
-                        <span className="font-semibold">{runtimeEngineLabel}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Speed:</span>
-                        <span className="font-semibold text-emerald-500">{speedLabel}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Latency:</span>
-                        <span className="font-semibold text-blue-500">{latencyLabel}</span>
-                      </div>
+
+                      {renderMetadataPair({
+                        label: 'Requested Provider',
+                        value: requestedProviderLabel,
+                      })}
+                      {renderMetadataPair({
+                        label: 'Actual Provider',
+                        value: providerLabel,
+                      })}
+                      {renderMetadataPair({
+                        label: 'Requested Model',
+                        value: requestedModelLabel,
+                        valueClassName: 'max-w-[120px] truncate font-semibold',
+                      })}
+                      {renderMetadataPair({
+                        label: 'Actual Model',
+                        value: modelLabel,
+                        title: modelTitle,
+                        valueClassName: 'max-w-[120px] truncate font-semibold',
+                      })}
+                      {renderMetadataPair({
+                        label: 'Response Source',
+                        value: sourceLabel,
+                      })}
+                      {renderMetadataPair({
+                        label: 'Fallback Level',
+                        value: fallbackLevelLabel,
+                      })}
+                      {renderMetadataPair({
+                        label: 'Runtime Engine',
+                        value: runtimeEngineLabel,
+                      })}
+                      {renderMetadataPair({
+                        label: 'Speed',
+                        value: speedLabel,
+                        valueClassName: 'font-semibold text-emerald-500',
+                      })}
+                      {renderMetadataPair({
+                        label: 'Latency',
+                        value: latencyLabel,
+                        valueClassName: 'font-semibold text-blue-500',
+                      })}
+
                       {showStatusRow && (
-                        <div className="flex justify-between col-span-2 pt-1 mt-1 border-t border-border/20">
+                        <div className="col-span-2 mt-1 flex justify-between border-t border-border/20 pt-1">
                           <span className="text-muted-foreground">Status:</span>
-                          <span className="font-semibold text-amber-500 flex items-center gap-1">
-                            <AlertTriangle className="h-3 w-3" /> {statusLabel}
+                          <span className="flex items-center gap-1 font-semibold text-amber-500">
+                            <AlertTriangle className="h-3 w-3" aria-hidden="true" />
+                            {statusLabel}
                           </span>
                         </div>
                       )}
+
                       {showFallbackRow && (
-                        <div className="col-span-2 pt-1 mt-1 border-t border-border/20">
+                        <div className="col-span-2 mt-1 border-t border-border/20 pt-1">
                           <span className="text-muted-foreground">Fallback:</span>
-                          <span className="font-semibold text-amber-300 ml-2 break-all">{fallbackLabel}</span>
+                          <span className="ml-2 break-all font-semibold text-amber-300">
+                            {fallbackLabel}
+                          </span>
                         </div>
                       )}
+
                       {showReasonRow && (
-                        <div className="col-span-2 pt-1 mt-1 border-t border-border/20">
+                        <div className="col-span-2 mt-1 border-t border-border/20 pt-1">
                           <span className="text-muted-foreground">Reason:</span>
-                          <span className="font-semibold text-rose-400 ml-2 break-all">{reasonLabel}</span>
+                          <span className="ml-2 break-all font-semibold text-rose-400">
+                            {reasonLabel}
+                          </span>
                         </div>
                       )}
+
                       {showTokensRow && (
-                        <div className="col-span-2 pt-1 mt-1 border-t border-border/20 flex justify-between">
+                        <div className="col-span-2 mt-1 flex justify-between border-t border-border/20 pt-1">
                           <span className="text-muted-foreground">Tokens:</span>
-                          <span className="font-semibold text-amber-500">{tokensLabel}</span>
+                          <span className="font-semibold text-amber-500">
+                            {tokensLabel}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -324,98 +498,116 @@ export function MessageBubble({ message, onActionClick }: MessageBubbleProps) {
                 </div>
               )}
 
-              {message.structuredContent && Object.keys(message.structuredContent).length > 0 && (
+              {hasStructuredContent && (
                 <div className="mt-3 flex flex-col gap-2">
-                  {Object.entries(message.structuredContent).map(([key, value]) => (
-                    <div key={key} className="bg-muted/30 border border-border/50 rounded-xl p-3 text-sm shadow-inner group transition-all hover:bg-muted/40">
-                      <span className="font-semibold text-primary capitalize mb-1 block text-xs tracking-tight group-hover:text-blue-500 transition-colors">
-                        {key.replace(/_/g, ' ')}
-                      </span>
-                      {typeof value === 'string' ? (
-                        <p className="text-foreground/90 whitespace-pre-wrap text-xs leading-relaxed">{value}</p>
-                      ) : (
-                        <pre className="text-foreground/80 bg-background/50 p-2 rounded-lg text-[10px] overflow-x-auto border border-border/20">
-                          {JSON.stringify(value, null, 2)}
-                        </pre>
-                      )}
-                    </div>
-                  ))}
+                  {Object.entries(message.structuredContent || {}).map(
+                    ([key, value]) => (
+                      <div
+                        key={key}
+                        className="group rounded-xl border border-border/50 bg-muted/30 p-3 text-sm shadow-inner transition-all hover:bg-muted/40"
+                      >
+                        <span className="mb-1 block text-xs font-semibold capitalize tracking-tight text-primary transition-colors group-hover:text-blue-500">
+                          {key.replace(/_/g, ' ')}
+                        </span>
+
+                        {typeof value === 'string' ? (
+                          <p className="whitespace-pre-wrap text-xs leading-relaxed text-foreground/90">
+                            {value}
+                          </p>
+                        ) : (
+                          <pre className="overflow-x-auto rounded-lg border border-border/20 bg-background/50 p-2 text-[10px] text-foreground/80">
+                            {JSON.stringify(value, null, 2)}
+                          </pre>
+                        )}
+                      </div>
+                    ),
+                  )}
                 </div>
               )}
 
-              {/* Citations and Sources */}
-              {!isUser && message.citations && message.citations.length > 0 && (
+              {hasCitations && (
                 <CitationBadge
                   citations={message.citations}
-                  onClick={() => setShowDetails(!showDetails)}
+                  onClick={() => setShowDetails((current) => !current)}
                 />
               )}
 
-              {showDetails && !isUser && message.citations && message.citations.length > 0 && (
-                <SourceList citations={message.citations} />
+              {showDetails && hasCitations && (
+                <SourceList citations={message.citations || []} />
               )}
 
-              {/* Suggested Actions (Quick Replies / Agentic Follow-ups) */}
               {message.actions && message.actions.length > 0 && (
-                <div className="mt-3 sm:mt-4 animate-in fade-in slide-in-from-left-2 duration-500">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Badge variant="secondary" className="text-[10px] px-2 py-0.5">
+                <div className="mt-3 animate-in duration-500 fade-in slide-in-from-left-2 sm:mt-4">
+                  <div className="mb-2 flex items-center gap-2">
+                    <Badge variant="secondary" className="px-2 py-0.5 text-[10px]">
                       Suggested Actions
                     </Badge>
                   </div>
+
                   <div className="flex flex-wrap gap-1.5 sm:gap-2">
                     <TooltipProvider>
-                      {message.actions.map((action, idx) => (
-                        <Tooltip key={idx}>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => onActionClick?.(action)}
-                              className="rounded-full text-[10px] sm:text-[11px] h-7 sm:h-8 px-2 sm:px-3 bg-background/50 hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-all duration-300 shadow-sm group"
-                              aria-label={`Perform action: ${action.description || action.type || 'Perform Action'}`}
-                            >
-                              <PlusCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1 sm:mr-1.5 text-primary/60 group-hover:text-primary transition-colors" aria-hidden="true" />
-                              <span className="truncate max-w-[120px] sm:max-w-none">
-                                {action.type === 'routing.profile.list' ? 'Show Available Profiles' : (action.description || action.type || 'Perform Action')}
-                              </span>
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" className="max-w-xs">
-                            <p className="text-sm">
-                              {action.description || `Execute ${action.type} action`}
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                      ))}
+                      {message.actions.map((action, index) => {
+                        const actionLabel = getActionLabel(action);
+
+                        return (
+                          <Tooltip key={`${action.type || 'action'}-${index}`}>
+                            <TooltipTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => onActionClick?.(action)}
+                                className="group h-7 rounded-full bg-background/50 px-2 text-[10px] shadow-sm transition-all duration-300 hover:border-primary/30 hover:bg-primary/10 hover:text-primary sm:h-8 sm:px-3 sm:text-[11px]"
+                                aria-label={`Perform action: ${actionLabel}`}
+                              >
+                                <PlusCircle
+                                  className="mr-1 h-2.5 w-2.5 text-primary/60 transition-colors group-hover:text-primary sm:mr-1.5 sm:h-3 sm:w-3"
+                                  aria-hidden="true"
+                                />
+                                <span className="max-w-[120px] truncate sm:max-w-none">
+                                  {actionLabel}
+                                </span>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-xs">
+                              <p className="text-sm">
+                                {action.description || `Execute ${action.type} action`}
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        );
+                      })}
                     </TooltipProvider>
                   </div>
                 </div>
               )}
+
               {message.imageDataUri && (
-                <div className="mt-2 rounded-xl overflow-hidden border border-border/50 shadow-sm transition-transform hover:scale-[1.01] duration-300">
-                    <Image 
-                        src={message.imageDataUri}
-                        alt="Generated by AI"
-                        width={400}
-                        height={400}
-                        className="object-cover w-full h-auto"
-                    />
+                <div className="mt-2 overflow-hidden rounded-xl border border-border/50 shadow-sm transition-transform duration-300 hover:scale-[1.01]">
+                  <Image
+                    src={message.imageDataUri}
+                    alt="Generated by Karen"
+                    width={400}
+                    height={400}
+                    className="h-auto w-full object-cover"
+                  />
                 </div>
               )}
             </div>
-            {!isUser && message.role === 'assistant' && (
+
+            {isAssistant && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
+                      type="button"
                       variant="ghost"
                       size="icon"
-                      className="ml-2 h-7 w-7 text-muted-foreground hover:text-primary shrink-0 opacity-40 hover:opacity-100 transition-opacity"
-                      aria-label={"Play message audio"}
-                      disabled={true}
+                      className="ml-2 h-7 w-7 shrink-0 text-muted-foreground opacity-40 transition-opacity hover:text-primary hover:opacity-100"
+                      aria-label="Play message audio"
+                      disabled
                     >
-                      <Speaker className="h-4 w-4" />
+                      <Speaker className="h-4 w-4" aria-hidden="true" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -425,60 +617,133 @@ export function MessageBubble({ message, onActionClick }: MessageBubbleProps) {
               </TooltipProvider>
             )}
           </div>
-          
-          <div className={`flex items-center gap-2 sm:gap-3 mt-2 sm:mt-3 pt-2 border-t border-border/10 ${isUser ? 'justify-end' : 'justify-between'} flex-wrap`}>
-            {!isUser && message.role === 'assistant' && (
-              <div className="flex items-center gap-0.5 sm:gap-1 scale-90 sm:scale-100 origin-left">
-                  <button
-                   onClick={() => handleFeedback('up')}
-                   className={`p-1 rounded-md transition-all hover:bg-muted ${feedback === 'up' ? 'text-emerald-500 bg-emerald-500/10' : 'text-muted-foreground'} ${feedbackSubmitted && feedback === 'up' ? 'animate-pulse' : ''}`}
-                   aria-label={feedbackSubmitted && feedback === 'up' ? "Feedback submitted" : "Rate response positively"}
-                   aria-pressed={feedback === 'up'}
-                   title="Thumbs Up"
-                   disabled={feedbackSubmitted}
-                  >
-                    <ThumbsUp className={`h-3.5 w-3.5 ${feedback === 'up' ? 'fill-current' : ''}`} aria-hidden="true" />
-                  </button>
-                  <button
-                   onClick={() => handleFeedback('down')}
-                   className={`p-1 rounded-md transition-all hover:bg-muted ${feedback === 'down' ? 'text-rose-500 bg-rose-500/10' : 'text-muted-foreground'} ${feedbackSubmitted && feedback === 'down' ? 'animate-pulse' : ''}`}
-                   aria-label={feedbackSubmitted && feedback === 'down' ? "Feedback submitted" : "Rate response negatively"}
-                   aria-pressed={feedback === 'down'}
-                   title="Thumbs Down"
-                   disabled={feedbackSubmitted}
-                  >
-                    <ThumbsDown className={`h-3.5 w-3.5 ${feedback === 'down' ? 'fill-current' : ''}`} aria-hidden="true" />
-                  </button>
-                  <button
-                    onClick={handleCopy}
-                    className={`p-1 rounded-md transition-all hover:bg-muted ml-1 flex items-center gap-1 ${copied ? 'text-emerald-500 bg-emerald-500/10' : 'text-muted-foreground'}`}
-                    aria-label={copied ? "Response copied to clipboard" : "Copy response to clipboard"}
-                    title="Copy to clipboard"
-                  >
-                    {copied ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
-                    {copied && <span className="text-[10px] font-bold">Copied!</span>}
-                  </button>
+
+          <div
+            className={`mt-2 flex flex-wrap items-center gap-2 border-t border-border/10 pt-2 sm:mt-3 sm:gap-3 ${
+              isUser ? 'justify-end' : 'justify-between'
+            }`}
+          >
+            {isAssistant && (
+              <div className="flex origin-left scale-90 items-center gap-0.5 sm:scale-100 sm:gap-1">
+                <button
+                  type="button"
+                  onClick={() => void handleFeedback('up')}
+                  className={`rounded-md p-1 transition-all hover:bg-muted ${
+                    feedback === 'up'
+                      ? 'bg-emerald-500/10 text-emerald-500'
+                      : 'text-muted-foreground'
+                  } ${
+                    feedbackSubmitted && feedback === 'up' ? 'animate-pulse' : ''
+                  }`}
+                  aria-label={
+                    feedbackSubmitted && feedback === 'up'
+                      ? 'Feedback submitted'
+                      : 'Rate response positively'
+                  }
+                  aria-pressed={feedback === 'up'}
+                  title="Thumbs Up"
+                  disabled={feedbackSubmitted}
+                >
+                  <ThumbsUp
+                    className={`h-3.5 w-3.5 ${
+                      feedback === 'up' ? 'fill-current' : ''
+                    }`}
+                    aria-hidden="true"
+                  />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => void handleFeedback('down')}
+                  className={`rounded-md p-1 transition-all hover:bg-muted ${
+                    feedback === 'down'
+                      ? 'bg-rose-500/10 text-rose-500'
+                      : 'text-muted-foreground'
+                  } ${
+                    feedbackSubmitted && feedback === 'down' ? 'animate-pulse' : ''
+                  }`}
+                  aria-label={
+                    feedbackSubmitted && feedback === 'down'
+                      ? 'Feedback submitted'
+                      : 'Rate response negatively'
+                  }
+                  aria-pressed={feedback === 'down'}
+                  title="Thumbs Down"
+                  disabled={feedbackSubmitted}
+                >
+                  <ThumbsDown
+                    className={`h-3.5 w-3.5 ${
+                      feedback === 'down' ? 'fill-current' : ''
+                    }`}
+                    aria-hidden="true"
+                  />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => void handleCopy()}
+                  className={`ml-1 flex items-center gap-1 rounded-md p-1 transition-all hover:bg-muted ${
+                    copied
+                      ? 'bg-emerald-500/10 text-emerald-500'
+                      : 'text-muted-foreground'
+                  }`}
+                  aria-label={
+                    copied
+                      ? 'Response copied to clipboard'
+                      : 'Copy response to clipboard'
+                  }
+                  title="Copy to clipboard"
+                >
+                  {copied ? (
+                    <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+                  )}
+                  {copied && <span className="text-[10px] font-bold">Copied!</span>}
+                </button>
               </div>
             )}
+
             {isUser && (
               <button
-              onClick={handleCopy}
-              className={`p-1 rounded-md transition-all hover:bg-primary-foreground/10 mr-1 flex items-center gap-1 scale-90 origin-right ${copied ? 'text-white bg-white/10' : 'text-primary-foreground/60'}`}
-              aria-label={copied ? "Message copied to clipboard" : "Copy your message to clipboard"}
-              title="Copy your message"
-            >
-              {copied ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
-            </button>
+                type="button"
+                onClick={() => void handleCopy()}
+                className={`mr-1 flex origin-right scale-90 items-center gap-1 rounded-md p-1 transition-all hover:bg-primary-foreground/10 ${
+                  copied
+                    ? 'bg-white/10 text-white'
+                    : 'text-primary-foreground/60'
+                }`}
+                aria-label={
+                  copied
+                    ? 'Message copied to clipboard'
+                    : 'Copy your message to clipboard'
+                }
+                title="Copy your message"
+              >
+                {copied ? (
+                  <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+                )}
+              </button>
             )}
-            <p className={`text-[10px] font-medium tracking-tight ${isUser ? 'text-primary-foreground/60' : 'text-muted-foreground/70'}`}>
-              {format(new Date(message.timestamp), 'h:mm a')}
+
+            <p
+              className={`text-[10px] font-medium tracking-tight ${
+                isUser
+                  ? 'text-primary-foreground/60'
+                  : 'text-muted-foreground/70'
+              }`}
+            >
+              {timestampLabel}
             </p>
           </div>
         </CardContent>
       </Card>
+
       {isUser && (
-         <Avatar className="h-10 w-10 self-start shrink-0 flex items-center justify-center bg-muted rounded-full shadow-sm ring-2 ring-primary/20">
-          <User className="h-5 w-5 text-secondary" />
+        <Avatar className="flex h-10 w-10 shrink-0 items-center justify-center self-start rounded-full bg-muted shadow-sm ring-2 ring-primary/20">
+          <User className="h-5 w-5 text-secondary" aria-hidden="true" />
         </Avatar>
       )}
     </div>

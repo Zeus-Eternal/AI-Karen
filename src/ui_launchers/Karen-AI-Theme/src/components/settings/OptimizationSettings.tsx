@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { AlertCircle, Cpu, Gauge, RefreshCw, Save, ServerCog, Zap } from "lucide-react";
+import { AlertCircle, Cpu, Gauge, Loader2, RefreshCw, Save, ServerCog, Zap } from "lucide-react";
 
 import { apiClient } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -24,6 +24,12 @@ type OptimizationConfigResponse = {
   validation_status: boolean;
   auto_save_enabled: boolean;
 };
+
+type OptimizationConfigSaveResponse = OptimizationConfigResponse & {
+  validation_status?: boolean;
+};
+
+type EndpointErrors = Partial<Record<'config' | 'performanceConfig' | 'status', string>>;
 
 type OptimizationStatusResponse = {
   configuration_summary?: {
@@ -183,9 +189,187 @@ function toFormState(config?: PerformanceOptimizationConfigResponse["configurati
   };
 }
 
-function parseNumber(value: string, fallback: number): number {
+function safeBoolean(value: unknown, fallback: boolean): boolean {
+  return typeof value === 'boolean' ? value : fallback;
+}
+
+function normalizeOptimizationLevel(value: unknown): string {
+  const normalized = typeof value === 'string' ? value.trim() : '';
+  return ["conservative", "balanced", "aggressive"].includes(normalized)
+    ? normalized
+    : DEFAULT_FORM_STATE.optimizationLevel;
+}
+
+function clampNumber(
+  value: string,
+  fallback: number,
+  min: number,
+  max: number,
+): number {
   const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
+
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  return Math.min(max, Math.max(min, parsed));
+}
+
+function normalizeConfigSummary(
+  value: unknown,
+): OptimizationConfigResponse | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const raw = value as Partial<OptimizationConfigResponse>;
+
+  return {
+    optimization_enabled: safeBoolean(
+      raw.optimization_enabled,
+      DEFAULT_FORM_STATE.enableOptimizationSystem,
+    ),
+    optimization_level: normalizeOptimizationLevel(raw.optimization_level),
+    config_version:
+      typeof raw.config_version === 'string' ? raw.config_version : 'unknown',
+    last_updated: typeof raw.last_updated === 'string' ? raw.last_updated : '',
+    components:
+      raw.components && typeof raw.components === 'object' ? raw.components : {},
+    reasoning_preservation:
+      raw.reasoning_preservation && typeof raw.reasoning_preservation === 'object'
+        ? raw.reasoning_preservation
+        : {},
+    validation_status: safeBoolean(raw.validation_status, true),
+    auto_save_enabled: safeBoolean(raw.auto_save_enabled, false),
+  };
+}
+
+function normalizePerformanceConfig(
+  value: unknown,
+): PerformanceOptimizationConfigResponse['configuration'] | undefined {
+  if (!value || typeof value !== 'object') {
+    return undefined;
+  }
+
+  const raw = value as PerformanceOptimizationConfigResponse['configuration'];
+
+  return {
+    enable_optimization_system: safeBoolean(
+      raw?.enable_optimization_system,
+      DEFAULT_FORM_STATE.enableOptimizationSystem,
+    ),
+    optimization_level: normalizeOptimizationLevel(raw?.optimization_level),
+    cuda: {
+      enable_cuda: safeBoolean(raw?.cuda?.enable_cuda, DEFAULT_FORM_STATE.enableCuda),
+      auto_detect_devices: safeBoolean(
+        raw?.cuda?.auto_detect_devices,
+        DEFAULT_FORM_STATE.autoDetectDevices,
+      ),
+      preferred_device_id: raw?.cuda?.preferred_device_id ?? null,
+      memory_fraction:
+        typeof raw?.cuda?.memory_fraction === 'number'
+          ? raw.cuda.memory_fraction
+          : undefined,
+      enable_memory_optimization: safeBoolean(
+        raw?.cuda?.enable_memory_optimization,
+        DEFAULT_FORM_STATE.enableMemoryOptimization,
+      ),
+      enable_batch_processing: safeBoolean(
+        raw?.cuda?.enable_batch_processing,
+        DEFAULT_FORM_STATE.enableBatchProcessing,
+      ),
+      fallback_to_cpu: safeBoolean(
+        raw?.cuda?.fallback_to_cpu,
+        DEFAULT_FORM_STATE.fallbackToCpu,
+      ),
+    },
+    performance: {
+      enable_optimization: safeBoolean(
+        raw?.performance?.enable_optimization,
+        DEFAULT_FORM_STATE.enablePerformanceOptimization,
+      ),
+      optimization_interval_seconds:
+        typeof raw?.performance?.optimization_interval_seconds === 'number'
+          ? raw.performance.optimization_interval_seconds
+          : undefined,
+      enable_performance_alerts: safeBoolean(
+        raw?.performance?.enable_performance_alerts,
+        DEFAULT_FORM_STATE.enablePerformanceAlerts,
+      ),
+    },
+    streaming: {
+      enable_streaming: safeBoolean(
+        raw?.streaming?.enable_streaming,
+        DEFAULT_FORM_STATE.enableStreaming,
+      ),
+      streaming_timeout_seconds:
+        typeof raw?.streaming?.streaming_timeout_seconds === 'number'
+          ? raw.streaming.streaming_timeout_seconds
+          : undefined,
+      enable_real_time_feedback: safeBoolean(
+        raw?.streaming?.enable_real_time_feedback,
+        DEFAULT_FORM_STATE.enableRealtimeFeedback,
+      ),
+    },
+    monitoring: {
+      enable_monitoring: safeBoolean(
+        raw?.monitoring?.enable_monitoring,
+        DEFAULT_FORM_STATE.enableMonitoring,
+      ),
+      enable_real_time_alerts: safeBoolean(
+        raw?.monitoring?.enable_real_time_alerts,
+        DEFAULT_FORM_STATE.enableRealtimeAlerts,
+      ),
+      metrics_retention_hours:
+        typeof raw?.monitoring?.metrics_retention_hours === 'number'
+          ? raw.monitoring.metrics_retention_hours
+          : undefined,
+    },
+  };
+}
+
+function createOptimizationUpdates(
+  form: OptimizationFormState,
+  normalizedPreferredDeviceId: string,
+): Record<string, unknown> {
+  return {
+    enable_optimization_system: form.enableOptimizationSystem,
+    optimization_level: normalizeOptimizationLevel(form.optimizationLevel),
+    'cuda.enable_cuda': form.enableCuda,
+    'cuda.auto_detect_devices': form.autoDetectDevices,
+    'cuda.preferred_device_id':
+      normalizedPreferredDeviceId === 'auto'
+        ? null
+        : clampNumber(normalizedPreferredDeviceId, 0, 0, 32),
+    'cuda.memory_fraction': clampNumber(form.memoryFraction, 0.8, 0.05, 0.95),
+    'cuda.enable_memory_optimization': form.enableMemoryOptimization,
+    'cuda.enable_batch_processing': form.enableBatchProcessing,
+    'cuda.fallback_to_cpu': form.fallbackToCpu,
+    'performance.enable_optimization': form.enablePerformanceOptimization,
+    'performance.optimization_interval_seconds': clampNumber(
+      form.optimizationIntervalSeconds,
+      60,
+      5,
+      86400,
+    ),
+    'performance.enable_performance_alerts': form.enablePerformanceAlerts,
+    'streaming.enable_streaming': form.enableStreaming,
+    'streaming.streaming_timeout_seconds': clampNumber(
+      form.streamingTimeoutSeconds,
+      30,
+      5,
+      600,
+    ),
+    'streaming.enable_real_time_feedback': form.enableRealtimeFeedback,
+    'monitoring.enable_monitoring': form.enableMonitoring,
+    'monitoring.enable_real_time_alerts': form.enableRealtimeAlerts,
+    'monitoring.metrics_retention_hours': clampNumber(
+      form.metricsRetentionHours,
+      24,
+      1,
+      2160,
+    ),
+  };
 }
 
 export default function OptimizationSettings() {
@@ -193,21 +377,56 @@ export default function OptimizationSettings() {
   const [form, setForm] = useState<OptimizationFormState>(DEFAULT_FORM_STATE);
   const [configSummary, setConfigSummary] = useState<OptimizationConfigResponse | null>(null);
   const [status, setStatus] = useState<OptimizationStatusResponse | null>(null);
+  const [endpointErrors, setEndpointErrors] = useState<EndpointErrors>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const loadSettings = useCallback(async () => {
     setLoading(true);
     try {
-      const [configSummaryResponse, performanceConfigResponse, statusResponse] = await Promise.all([
+      const [configSummaryResult, performanceConfigResult, statusResult] = await Promise.allSettled([
         apiClient.get<OptimizationConfigResponse>("/api/optimization/config"),
         apiClient.get<PerformanceOptimizationConfigResponse>("/api/performance/optimization/config"),
         apiClient.get<OptimizationStatusResponse>("/api/optimization/status"),
       ]);
 
-      setConfigSummary(configSummaryResponse);
-      setForm(toFormState(performanceConfigResponse.configuration));
-      setStatus(statusResponse);
+      const nextErrors: EndpointErrors = {};
+
+      if (configSummaryResult.status === 'fulfilled') {
+        setConfigSummary(normalizeConfigSummary(configSummaryResult.value));
+      } else {
+        setConfigSummary(null);
+        nextErrors.config = configSummaryResult.reason instanceof Error
+          ? configSummaryResult.reason.message
+          : "Karen could not load optimization config summary.";
+      }
+
+      if (performanceConfigResult.status === 'fulfilled') {
+        setForm(toFormState(normalizePerformanceConfig(performanceConfigResult.value.configuration)));
+      } else {
+        nextErrors.performanceConfig = performanceConfigResult.reason instanceof Error
+          ? performanceConfigResult.reason.message
+          : "Karen could not load performance optimization config.";
+      }
+
+      if (statusResult.status === 'fulfilled') {
+        setStatus(statusResult.value);
+      } else {
+        setStatus(null);
+        nextErrors.status = statusResult.reason instanceof Error
+          ? statusResult.reason.message
+          : "Karen could not load optimization runtime status.";
+      }
+
+      setEndpointErrors(nextErrors);
+
+      if (Object.keys(nextErrors).length > 0) {
+        toast({
+          title: "Optimization state partially loaded",
+          description: "Some optimization endpoints failed. Showing live data that could be loaded.",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       toast({
         title: "Unable to load optimization settings",
@@ -240,39 +459,28 @@ export default function OptimizationSettings() {
   const normalizedPreferredDeviceId =
     form.preferredDeviceId === "auto" || detectedDeviceIds.has(form.preferredDeviceId) ? form.preferredDeviceId : "auto";
 
+  const hasEndpointErrors = Object.keys(endpointErrors).length > 0;
+  const shouldShowValidationAlert =
+    !loading && configSummary !== null && configSummary.validation_status === false;
+
   const handleSave = async () => {
     setSaving(true);
     try {
-      const preferredDeviceIdForSave = normalizedPreferredDeviceId;
-      const updates: Record<string, unknown> = {
-        enable_optimization_system: form.enableOptimizationSystem,
-        optimization_level: form.optimizationLevel,
-        "cuda.enable_cuda": form.enableCuda,
-        "cuda.auto_detect_devices": form.autoDetectDevices,
-        "cuda.preferred_device_id": preferredDeviceIdForSave === "auto" ? null : parseNumber(preferredDeviceIdForSave, 0),
-        "cuda.memory_fraction": parseNumber(form.memoryFraction, 0.8),
-        "cuda.enable_memory_optimization": form.enableMemoryOptimization,
-        "cuda.enable_batch_processing": form.enableBatchProcessing,
-        "cuda.fallback_to_cpu": form.fallbackToCpu,
-        "performance.enable_optimization": form.enablePerformanceOptimization,
-        "performance.optimization_interval_seconds": parseNumber(form.optimizationIntervalSeconds, 60),
-        "performance.enable_performance_alerts": form.enablePerformanceAlerts,
-        "streaming.enable_streaming": form.enableStreaming,
-        "streaming.streaming_timeout_seconds": parseNumber(form.streamingTimeoutSeconds, 30),
-        "streaming.enable_real_time_feedback": form.enableRealtimeFeedback,
-        "monitoring.enable_monitoring": form.enableMonitoring,
-        "monitoring.enable_real_time_alerts": form.enableRealtimeAlerts,
-        "monitoring.metrics_retention_hours": parseNumber(form.metricsRetentionHours, 24),
-      };
-
-      await apiClient.post("/api/optimization/config", {
+      const updates = createOptimizationUpdates(form, normalizedPreferredDeviceId);
+      const response = await apiClient.post<OptimizationConfigSaveResponse>("/api/optimization/config", {
         updates,
         validate: true,
       });
 
+      const normalizedResponse = normalizeConfigSummary(response);
+      setConfigSummary(normalizedResponse);
+
       toast({
         title: "Optimization settings saved",
-        description: "CUDA and runtime acceleration settings were updated successfully.",
+        description:
+          normalizedResponse?.validation_status === false
+            ? "Backend accepted the update, but validation still requires review."
+            : "CUDA and runtime acceleration settings were updated successfully.",
       });
       await loadSettings();
     } catch (error) {
@@ -301,7 +509,34 @@ export default function OptimizationSettings() {
         </Button>
       </div>
 
-      {!configSummary?.validation_status && (
+      {loading && (
+        <Card>
+          <CardContent
+            className="flex items-center gap-2 py-8 text-sm text-muted-foreground"
+            role="status"
+            aria-live="polite"
+          >
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            Loading live optimization settings.
+          </CardContent>
+        </Card>
+      )}
+
+      {hasEndpointErrors && (
+        <Alert className="border-amber-500/30 bg-amber-500/10">
+          <AlertCircle className="h-4 w-4 !text-amber-600" />
+          <AlertTitle>Optimization endpoints partially available</AlertTitle>
+          <AlertDescription className="space-y-1 text-xs">
+            {Object.entries(endpointErrors).map(([name, message]) => (
+              <p key={name}>
+                <strong>{name}:</strong> {message}
+              </p>
+            ))}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {shouldShowValidationAlert && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Configuration requires attention</AlertTitle>

@@ -1,32 +1,35 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import Image from 'next/image';
+import {
+  Calendar,
+  CheckCircle2,
+  Download,
+  ExternalLink,
+  GitBranch,
+  Link as LinkIcon,
+  Loader2,
+  Package,
+  Shield,
+  Star,
+  User,
+  XCircle,
+} from 'lucide-react';
+
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { PluginStatusBadge } from './PluginStatusBadge';
-import {
-  Download,
-  ExternalLink,
-  GitBranch,
-  User,
-  Star,
-  Package,
-  CheckCircle2,
-  XCircle,
-  Calendar,
-  Shield,
-  Link as LinkIcon,
-} from 'lucide-react';
-import { PluginDetails } from '@/types/plugin';
+import type { PluginDetails } from '@/types/plugin';
 import { cn } from '@/lib/utils';
+
+import { PluginStatusBadge } from './PluginStatusBadge';
 
 interface PluginDetailsModalProps {
   details: PluginDetails | null;
@@ -37,6 +40,152 @@ interface PluginDetailsModalProps {
   onInstall?: () => void;
 }
 
+type ExternalLinkConfig = {
+  label: string;
+  url: string;
+  icon: React.ReactNode;
+};
+
+const DEFAULT_PLUGIN_TITLE = 'Untitled Plugin';
+const DEFAULT_PLUGIN_DESCRIPTION = 'No description provided.';
+
+const cleanString = (value: unknown): string => {
+  return typeof value === 'string' ? value.trim() : '';
+};
+
+const getSafeUrl = (value: unknown): string => {
+  const rawUrl = cleanString(value);
+
+  if (!rawUrl) {
+    return '';
+  }
+
+  try {
+    const parsed = new URL(rawUrl);
+
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return parsed.toString();
+    }
+  } catch {
+    return '';
+  }
+
+  return '';
+};
+
+const openExternalUrl = (url: string): void => {
+  if (!url || typeof window === 'undefined') {
+    return;
+  }
+
+  window.open(url, '_blank', 'noopener,noreferrer');
+};
+
+const getPluginTitle = (plugin: NonNullable<PluginDetails['plugin']>): string => {
+  return (
+    cleanString(plugin.display_name) ||
+    cleanString(plugin.name) ||
+    cleanString(plugin.id) ||
+    DEFAULT_PLUGIN_TITLE
+  );
+};
+
+const getPluginDescription = (
+  plugin: NonNullable<PluginDetails['plugin']>,
+): string => {
+  return cleanString(plugin.description) || DEFAULT_PLUGIN_DESCRIPTION;
+};
+
+const getPluginAuthor = (plugin: NonNullable<PluginDetails['plugin']>): string => {
+  return cleanString(plugin.author) || 'Unknown author';
+};
+
+const getPluginVersion = (plugin: NonNullable<PluginDetails['plugin']>): string => {
+  return cleanString(plugin.version) || 'unknown';
+};
+
+const getInstalledDateLabel = (value: unknown): string => {
+  const rawDate = cleanString(value);
+
+  if (!rawDate) {
+    return '';
+  }
+
+  const parsed = new Date(rawDate);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return '';
+  }
+
+  return parsed.toLocaleDateString();
+};
+
+const getRatingLabel = (plugin: NonNullable<PluginDetails['plugin']>): string => {
+  const rating = plugin.rating;
+
+  if (typeof rating !== 'number' || !Number.isFinite(rating)) {
+    return '';
+  }
+
+  return rating.toFixed(1);
+};
+
+const getRatingCountLabel = (plugin: NonNullable<PluginDetails['plugin']>): string => {
+  const ratingCount = plugin.rating_count;
+
+  if (typeof ratingCount !== 'number' || !Number.isFinite(ratingCount)) {
+    return '0';
+  }
+
+  return Math.max(0, Math.floor(ratingCount)).toLocaleString();
+};
+
+const getDownloadLabel = (plugin: NonNullable<PluginDetails['plugin']>): string => {
+  const downloads = plugin.downloads;
+
+  if (typeof downloads !== 'number' || !Number.isFinite(downloads)) {
+    return '';
+  }
+
+  return Math.max(0, Math.floor(downloads)).toLocaleString();
+};
+
+const getUniqueStrings = (values: unknown): string[] => {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+
+  return values
+    .map((value) => cleanString(value))
+    .filter((value) => {
+      const normalized = value.toLowerCase();
+
+      if (!value || seen.has(normalized)) {
+        return false;
+      }
+
+      seen.add(normalized);
+      return true;
+    });
+};
+
+const isPluginCompatible = (plugin: NonNullable<PluginDetails['plugin']>): boolean => {
+  const compatibilityInfo = plugin.compatibility;
+
+  if (!compatibilityInfo) {
+    return true;
+  }
+
+  /*
+   * Compatibility evaluation is intentionally conservative here because the UI
+   * does not own version comparison. Backend should provide a resolved
+   * compatibility status when that contract exists.
+   */
+  return !compatibilityInfo.min_karen_version && !compatibilityInfo.max_karen_version;
+};
+
 export function PluginDetailsModal({
   details,
   loading = false,
@@ -45,43 +194,104 @@ export function PluginDetailsModal({
   onOpenChange,
   onInstall,
 }: PluginDetailsModalProps) {
-  const plugin = details?.plugin;
-  const analytics = details?.analytics;
-  const installed = details?.installed;
-  const updateAvailable = details?.update_available;
-
-  if (!plugin) {
+  if (!details?.plugin) {
     return null;
   }
 
-  const compatibilityInfo = plugin.compatibility;
-  const isCompatible = !compatibilityInfo || (
-    !compatibilityInfo.min_karen_version &&
-    !compatibilityInfo.max_karen_version
-  );
+  const plugin = details.plugin;
 
+  const title = getPluginTitle(plugin);
+  const description = getPluginDescription(plugin);
+  const author = getPluginAuthor(plugin);
+  const version = getPluginVersion(plugin);
+
+  const safeIconUrl = getSafeUrl(plugin?.icon);
+  const installedDateLabel = getInstalledDateLabel(plugin?.installed_at);
+  const ratingLabel = getRatingLabel(plugin);
+  const ratingCountLabel = getRatingCountLabel(plugin);
+  const downloadLabel = getDownloadLabel(plugin);
+  const dependencies = useMemo(
+    () => getUniqueStrings(plugin?.dependencies),
+    [plugin?.dependencies],
+  );
+  const tags = useMemo(() => getUniqueStrings(plugin?.tags), [plugin?.tags]);
+
+  const compatibilityInfo = plugin?.compatibility;
+  const isCompatible = isPluginCompatible(plugin);
+  const installed = Boolean(details.installed);
+  const updateAvailable = Boolean(details.update_available);
+  const canInstall = Boolean(onInstall) && !installed && isCompatible && !loading;
+
+  const externalLinks = useMemo<ExternalLinkConfig[]>(() => {
+    if (!plugin) {
+      return [];
+    }
+
+    const links: ExternalLinkConfig[] = [];
+
+    const homepageUrl = getSafeUrl(plugin.homepage_url);
+    const repositoryUrl = getSafeUrl(plugin.repository_url);
+    const marketplaceUrl = getSafeUrl(plugin.marketplace_url);
+
+    if (homepageUrl) {
+      links.push({
+        label: 'Homepage',
+        url: homepageUrl,
+        icon: <LinkIcon className="mr-2 h-4 w-4" aria-hidden="true" />,
+      });
+    }
+
+    if (repositoryUrl) {
+      links.push({
+        label: 'Repository',
+        url: repositoryUrl,
+        icon: <GitBranch className="mr-2 h-4 w-4" aria-hidden="true" />,
+      });
+    }
+
+    if (marketplaceUrl) {
+      links.push({
+        label: 'Marketplace',
+        url: marketplaceUrl,
+        icon: <ExternalLink className="mr-2 h-4 w-4" aria-hidden="true" />,
+      });
+    }
+
+    return links;
+  }, [plugin]);
+
+  /*
+   * PluginDetailsModal displays registry/marketplace metadata and invokes the
+   * install callback supplied by the owning page. It must not perform plugin
+   * discovery, lifecycle routing, or compatibility decisions beyond displaying
+   * the resolved data it has been given.
+   */
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <div className="flex items-start gap-4">
-            {plugin.icon && (
+            {safeIconUrl && (
               <Image
-                src={plugin.icon}
-                alt={`${plugin.display_name} icon`}
+                src={safeIconUrl}
+                alt=""
                 width={64}
                 height={64}
                 className="h-16 w-16 rounded-lg object-cover"
+                aria-hidden="true"
               />
-
             )}
-            <div className="flex-1 min-w-0">
-              <DialogTitle className="text-xl">{plugin.display_name}</DialogTitle>
+
+            <div className="min-w-0 flex-1">
+              <DialogTitle className="text-xl">{title}</DialogTitle>
+
               <DialogDescription className="mt-1">
-                {plugin.description}
+                {description}
               </DialogDescription>
-              <div className="flex items-center gap-2 mt-2">
+
+              <div className="mt-2 flex flex-wrap items-center gap-2">
                 <PluginStatusBadge status={plugin.status} />
+
                 {updateAvailable && (
                   <Badge variant="secondary" className="text-xs">
                     Update Available
@@ -95,42 +305,49 @@ export function PluginDetailsModal({
         <div className="space-y-6 py-4">
           <div className="flex flex-wrap gap-3">
             <div className="flex items-center gap-1 text-sm text-muted-foreground">
-              <User className="h-4 w-4" />
-              <span>{plugin.author}</span>
+              <User className="h-4 w-4" aria-hidden="true" />
+              <span>{author}</span>
             </div>
+
             <div className="flex items-center gap-1 text-sm text-muted-foreground">
-              <GitBranch className="h-4 w-4" />
-              <span>v{plugin.version}</span>
+              <GitBranch className="h-4 w-4" aria-hidden="true" />
+              <span>v{version}</span>
             </div>
+
             {plugin.license && (
               <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                <Shield className="h-4 w-4" />
+                <Shield className="h-4 w-4" aria-hidden="true" />
                 <span>{plugin.license}</span>
               </div>
             )}
-            {plugin.installed_at && (
+
+            {installedDateLabel && (
               <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                <Calendar className="h-4 w-4" />
-                <span>Installed {new Date(plugin.installed_at).toLocaleDateString()}</span>
+                <Calendar className="h-4 w-4" aria-hidden="true" />
+                <span>Installed {installedDateLabel}</span>
               </div>
             )}
           </div>
 
-          {analytics && (
+          {details.analytics && (ratingLabel || downloadLabel) && (
             <div className="flex flex-wrap gap-4">
-              {plugin.rating !== undefined && (
+              {ratingLabel && (
                 <div className="flex items-center gap-2">
-                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                  <span className="font-semibold">{plugin.rating.toFixed(1)}</span>
+                  <Star
+                    className="h-4 w-4 fill-yellow-400 text-yellow-400"
+                    aria-hidden="true"
+                  />
+                  <span className="font-semibold">{ratingLabel}</span>
                   <span className="text-sm text-muted-foreground">
-                    ({plugin.rating_count} reviews)
+                    ({ratingCountLabel} reviews)
                   </span>
                 </div>
               )}
-              {plugin.downloads !== undefined && (
+
+              {downloadLabel && (
                 <div className="flex items-center gap-2">
-                  <Package className="h-4 w-4" />
-                  <span className="font-semibold">{plugin.downloads.toLocaleString()}</span>
+                  <Package className="h-4 w-4" aria-hidden="true" />
+                  <span className="font-semibold">{downloadLabel}</span>
                   <span className="text-sm text-muted-foreground">downloads</span>
                 </div>
               )}
@@ -140,65 +357,87 @@ export function PluginDetailsModal({
           {compatibilityInfo && (
             <div className="space-y-2">
               <h4 className="text-sm font-medium">Compatibility</h4>
-              <div className={cn(
-                "flex items-start gap-2 p-3 rounded-md",
-                isCompatible
-                  ? "bg-green-500/10 text-green-600 dark:text-green-400"
-                  : "bg-red-500/10 text-red-600 dark:text-red-400"
-              )}>
-                {isCompatible ? (
-                  <CheckCircle2 className="h-5 w-5 shrink-0 mt-0.5" />
-                ) : (
-                  <XCircle className="h-5 w-5 shrink-0 mt-0.5" />
+
+              <div
+                className={cn(
+                  'flex items-start gap-2 rounded-md p-3',
+                  isCompatible
+                    ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+                    : 'bg-red-500/10 text-red-600 dark:text-red-400',
                 )}
+              >
+                {isCompatible ? (
+                  <CheckCircle2
+                    className="mt-0.5 h-5 w-5 shrink-0"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <XCircle
+                    className="mt-0.5 h-5 w-5 shrink-0"
+                    aria-hidden="true"
+                  />
+                )}
+
                 <div className="flex-1">
                   {isCompatible ? (
-                    <p className="text-sm">This plugin is compatible with your Karen AI version.</p>
+                    <p className="text-sm">
+                      This plugin is compatible with your Karen AI version.
+                    </p>
                   ) : (
                     <p className="text-sm">
                       This plugin may not be compatible with your Karen AI version.
                       {compatibilityInfo.min_karen_version && (
-                        <span> Requires version {compatibilityInfo.min_karen_version} or higher.</span>
+                        <span>
+                          {' '}
+                          Requires version {compatibilityInfo.min_karen_version} or higher.
+                        </span>
                       )}
                       {compatibilityInfo.max_karen_version && (
-                        <span> Requires version {compatibilityInfo.max_karen_version} or lower.</span>
+                        <span>
+                          {' '}
+                          Requires version {compatibilityInfo.max_karen_version} or lower.
+                        </span>
                       )}
                     </p>
                   )}
-                  {compatibilityInfo.requirements && compatibilityInfo.requirements.length > 0 && (
-                    <div className="mt-2">
-                      <p className="text-sm font-medium mb-1">Requirements:</p>
-                      <ul className="list-disc list-inside text-xs space-y-1">
-                        {compatibilityInfo.requirements.map((req, index) => (
-                          <li key={index}>{req}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+
+                  {compatibilityInfo.requirements &&
+                    compatibilityInfo.requirements.length > 0 && (
+                      <div className="mt-2">
+                        <p className="mb-1 text-sm font-medium">Requirements:</p>
+                        <ul className="list-inside list-disc space-y-1 text-xs">
+                          {getUniqueStrings(compatibilityInfo.requirements).map(
+                            (requirement) => (
+                              <li key={requirement}>{requirement}</li>
+                            ),
+                          )}
+                        </ul>
+                      </div>
+                    )}
                 </div>
               </div>
             </div>
           )}
 
-          {plugin.dependencies && plugin.dependencies.length > 0 && (
+          {dependencies.length > 0 && (
             <div className="space-y-2">
               <h4 className="text-sm font-medium">Dependencies</h4>
               <div className="flex flex-wrap gap-2">
-                {plugin.dependencies.map((dep, index) => (
-                  <Badge key={index} variant="outline" className="text-xs">
-                    {dep}
+                {dependencies.map((dependency) => (
+                  <Badge key={dependency} variant="outline" className="text-xs">
+                    {dependency}
                   </Badge>
                 ))}
               </div>
             </div>
           )}
 
-          {plugin.tags && plugin.tags.length > 0 && (
+          {tags.length > 0 && (
             <div className="space-y-2">
               <h4 className="text-sm font-medium">Tags</h4>
               <div className="flex flex-wrap gap-2">
-                {plugin.tags.map((tag, index) => (
-                  <Badge key={index} variant="secondary" className="text-xs">
+                {tags.map((tag) => (
+                  <Badge key={tag} variant="secondary" className="text-xs">
                     {tag}
                   </Badge>
                 ))}
@@ -206,61 +445,52 @@ export function PluginDetailsModal({
             </div>
           )}
 
-          <Separator />
+          {externalLinks.length > 0 && (
+            <>
+              <Separator />
 
-          <div className="flex flex-wrap gap-2">
-            {plugin.homepage_url && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.open(plugin.homepage_url, '_blank')}
-              >
-                <LinkIcon className="h-4 w-4 mr-2" />
-                Homepage
-              </Button>
-            )}
-            {plugin.repository_url && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.open(plugin.repository_url, '_blank')}
-              >
-                <GitBranch className="h-4 w-4 mr-2" />
-                Repository
-              </Button>
-            )}
-            {plugin.marketplace_url && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.open(plugin.marketplace_url, '_blank')}
-              >
-                <ExternalLink className="h-4 w-4 mr-2" />
-                Marketplace
-              </Button>
-            )}
-          </div>
+              <div className="flex flex-wrap gap-2">
+                {externalLinks.map((link) => (
+                  <Button
+                    key={link.label}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openExternalUrl(link.url)}
+                  >
+                    {link.icon}
+                    {link.label}
+                  </Button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         <DialogFooter>
           {installed ? (
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
               Close
             </Button>
           ) : (
             <Button
+              type="button"
               onClick={onInstall}
-              disabled={installing || loading || !isCompatible}
+              disabled={installing || loading || !canInstall}
               className="flex-1"
             >
               {installing ? (
                 <>
-                  <span className="animate-spin mr-2">⏳</span>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
                   Installing...
                 </>
               ) : (
                 <>
-                  <Download className="h-4 w-4 mr-2" />
+                  <Download className="mr-2 h-4 w-4" aria-hidden="true" />
                   Install Plugin
                 </>
               )}

@@ -1,18 +1,26 @@
 services:
-  # vLLM OpenAI-compatible inference server (GPU-accelerated)
+  # ──────────────────────────────────────────────────────────────────────
+  # vLLM OpenAI-compatible inference server (OPTIONAL)
+  # Starts only with --profile vllm
+  # Requires NVIDIA Container Toolkit for GPU access
+  # ──────────────────────────────────────────────────────────────────────
   vllm:
-    image: vllm/vllm-openai:latest
+    image: ${VLLM_IMAGE:-vllm/vllm-openai:v0.6.6}
     container_name: ai-karen-vllm
     ipc: host
+    restart: unless-stopped
     profiles:
       - vllm
-      - cuda
     ports:
       - "${KAREN_BUILTIN_VLLM_HOST_PORT:-8001}:8000"
     environment:
       HF_HOME: /models/huggingface
       TRANSFORMERS_CACHE: /models/huggingface
-      HUGGING_FACE_HUB_TOKEN: ${HUGGING_FACE_HUB_TOKEN:-}
+      HUGGING_FACE_HUB_TOKEN: "${HUGGING_FACE_HUB_TOKEN:-}"
+      VLLM_ENABLE_CUDA_COMPATIBILITY: "${VLLM_ENABLE_CUDA_COMPATIBILITY:-0}"
+      NVIDIA_VISIBLE_DEVICES: "${NVIDIA_VISIBLE_DEVICES:-all}"
+      NVIDIA_DRIVER_CAPABILITIES: "${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}"
+      CUDA_VISIBLE_DEVICES: "${CUDA_VISIBLE_DEVICES:-0}"
     volumes:
       - ./models:/models
     command:
@@ -25,7 +33,7 @@ services:
       - --served-model-name
       - ${KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME:-karen-vllm-local}
       - --dtype
-      - ${KAREN_BUILTIN_VLLM_DTYPE:-auto}
+      - ${KAREN_BUILTIN_VLLM_DTYPE:-float16}
       - --gpu-memory-utilization
       - ${KAREN_BUILTIN_VLLM_GPU_MEMORY_UTILIZATION:-0.80}
       - --max-model-len
@@ -34,10 +42,15 @@ services:
       - vllm
     deploy:
       resources:
+        limits:
+          memory: 12G
+          cpus: '4.0'
         reservations:
+          memory: 4G
+          cpus: '2.0'
           devices:
             - driver: nvidia
-              count: all
+              count: 1
               capabilities:
                 - gpu
     healthcheck:
@@ -46,9 +59,10 @@ services:
         - python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"
       interval: 30s
       timeout: 10s
-      retries: 5
-      start_period: 180s
-    restart: unless-stopped
+      retries: 10
+      start_period: 240s
+    networks:
+      - ai-karen-network
 
   # CUDA-enabled local GGUF service for GPU acceleration
   local-gguf-cuda:
@@ -117,9 +131,6 @@ services:
     depends_on:
       local-gguf-cuda:
         condition: service_healthy
-      vllm:
-        condition: service_healthy
-        required: false
     networks:
       - ai-karen-network
 

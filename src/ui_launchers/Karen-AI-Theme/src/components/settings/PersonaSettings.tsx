@@ -1,22 +1,42 @@
+'use client';
 
-"use client";
+/**
+ * @file PersonaSettings.tsx
+ * @description Live-backed persona settings for Karen.
+ *
+ * Backend ownership:
+ * - Persona records live in /api/personas.
+ * - Active persona selection lives in /api/personas/preferences/me.
+ * - Preferred address lives in the authenticated user profile.
+ * - Memory commit is best-effort only after profile save succeeds.
+ *
+ * Local storage is used only as an unsaved draft cache so users do not lose
+ * editor text. It is not treated as successful persistence.
+ */
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Drama, RotateCcw, Sailboat, Save, Scroll } from 'lucide-react';
+
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import type { KarenSettings } from '@/lib/types';
-import { KAREN_SETTINGS_LS_KEY, DEFAULT_KAREN_SETTINGS } from '@/lib/constants';
-import { useToast } from '@/hooks/use-toast';
-import { Save, RotateCcw, Drama, Sailboat, Scroll } from 'lucide-react';
+import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { cn } from '@/lib/utils';
-import { apiClient } from '@/lib/api';
-import { ApiError } from '@/lib/api';
-import { useAuth } from '@/lib/useAuth';
+import { Textarea } from '@/components/ui/textarea';
+
+import { useToast } from '@/hooks/use-toast';
+import { ApiError, apiClient } from '@/lib/api';
 import { authService } from '@/lib/auth';
+import { DEFAULT_KAREN_SETTINGS } from '@/lib/constants';
+import { useAuth } from '@/lib/useAuth';
+import { cn } from '@/lib/utils';
 
 interface PersonaSettingsProps {
   inSheet?: boolean;
@@ -39,139 +59,226 @@ interface PersonaPreferences {
   active_persona_id?: string | null;
 }
 
+interface AuthProfileResponse {
+  user_id: string;
+  email: string;
+  full_name: string;
+  roles: string[];
+  is_active: boolean;
+  created_at?: string;
+  last_login?: string | null;
+  tenant_id: string;
+  preferences: UserPreferences;
+}
+
+type BackendStatus = 'checking' | 'available' | 'unavailable';
+
 const CUSTOM_PERSONA_NAME = 'My Custom Persona';
-const PERSONA_API_UNAVAILABLE_KEY = 'karen_persona_api_unavailable';
-const AUTH_PROFILE_SYNC_UNAVAILABLE_KEY = 'karen_auth_profile_sync_unavailable';
+const PERSONA_DRAFT_CACHE_KEY = 'karen_persona_draft_cache_v1';
 
-/**
- * @file PersonaSettings.tsx
- * @description Component for managing Karen AI's custom persona instructions.
- * Allows users to define core behaviors, expertise, or rules for Karen.
- * Settings are saved to local storage.
- */
-export default function PersonaSettings({ inSheet = false }: PersonaSettingsProps) {
-  const [instructions, setInstructions] = useState<string>(DEFAULT_KAREN_SETTINGS.customPersonaInstructions);
-  const [preferredAddressName, setPreferredAddressName] = useState('');
-  const [currentPersonaId, setCurrentPersonaId] = useState<string | null>(null);
-  const [personaApiAvailable, setPersonaApiAvailable] = useState(true);
-  const { toast } = useToast();
-  const { user } = useAuth();
+const PERSONAS_ENDPOINT = '/api/personas/';
+const PERSONA_PREFERENCES_ENDPOINT = '/api/personas/preferences/me';
+const PERSONA_SWITCH_ENDPOINT = '/api/personas/preferences/switch';
+const AUTH_ME_ENDPOINT = '/api/auth/me';
+const MEMORY_COMMIT_ENDPOINT = '/api/memory/commit';
 
-  const personaTemplates = [
-    {
-      name: "Sarcastic Butler",
-      icon: <Drama className="h-5 w-5 mb-2" />,
-      description: "Helpful, but with a dry, cynical wit and a world-weary sigh.",
-      instructions: `You are a classic, formal butler with a dry, sarcastic wit.
+const cleanString = (value: unknown): string => {
+  return typeof value === 'string' ? value.trim() : '';
+};
+
+const getErrorMessage = (
+  error: unknown,
+  fallback = 'Request failed.',
+): string => {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message.trim();
+  }
+
+  if (typeof error === 'string' && error.trim()) {
+    return error.trim();
+  }
+
+  return fallback;
+};
+
+const isUnavailableApiError = (error: unknown): boolean => {
+  return (
+    error instanceof ApiError &&
+    (error.status === 404 || error.status === 405 || error.status === 501)
+  );
+};
+
+const readDraftInstructions = (): string => {
+  if (typeof window === 'undefined') {
+    return '';
+  }
+
+  try {
+    return cleanString(window.localStorage.getItem(PERSONA_DRAFT_CACHE_KEY));
+  } catch {
+    return '';
+  }
+};
+
+const writeDraftInstructions = (instructions: string): void => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(PERSONA_DRAFT_CACHE_KEY, instructions);
+  } catch {
+    // Draft cache failure should never masquerade as backend save failure.
+  }
+};
+
+const clearDraftInstructions = (): void => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.removeItem(PERSONA_DRAFT_CACHE_KEY);
+  } catch {
+    // Draft cache cleanup is non-critical.
+  }
+};
+
+const findEditablePersona = (
+  personas: PersonaRecord[],
+  preferences: PersonaPreferences,
+): PersonaRecord | null => {
+  return (
+    personas.find(
+      (persona) =>
+        persona.id === preferences.active_persona_id &&
+        !persona.is_system_persona,
+    ) ||
+    personas.find(
+      (persona) =>
+        persona.name === CUSTOM_PERSONA_NAME && !persona.is_system_persona,
+    ) ||
+    null
+  );
+};
+
+const personaTemplates = [
+  {
+    name: 'Sarcastic Butler',
+    icon: <Drama className="mb-2 h-5 w-5" aria-hidden="true" />,
+    description: 'Helpful, but with a dry, cynical wit and a world-weary sigh.',
+    instructions: `You are a classic, formal butler with a dry, sarcastic wit.
 - Address the user as "Sir" or "Madam".
 - Your responses should be helpful but delivered with a subtle, world-weary sigh.
 - Make occasional, clever observations about the absurdity of the request.
-- Maintain a professional but slightly unimpressed demeanor.`
-    },
-    {
-      name: "Pirate Captain",
-      icon: <Sailboat className="h-5 w-5 mb-2" />,
-      description: "Bold, adventurous, and speaks in pirate slang.",
-      instructions: `Ye are Captain "One-Eye" Squawk, a fearsome pirate captain.
+- Maintain a professional but slightly unimpressed demeanor.`,
+  },
+  {
+    name: 'Pirate Captain',
+    icon: <Sailboat className="mb-2 h-5 w-5" aria-hidden="true" />,
+    description: 'Bold, adventurous, and speaks in pirate slang.',
+    instructions: `Ye are Captain "One-Eye" Squawk, a fearsome pirate captain.
 - Speak in pirate slang. Use words like "Ahoy!", "Matey", "Shiver me timbers!", "booty" (for treasure/rewards), and refer to me as "me hearty".
 - Be bold, adventurous, and a little bit boastful.
-- All your analogies and examples should relate to the sea, sailing, treasure, or pirate life.`
-    },
-    {
-      name: "Stoic Philosopher",
-      icon: <Scroll className="h-5 w-5 mb-2" />,
-      description: "Concise, logical, and wise. Avoids emotional language.",
-      instructions: `You are a Stoic philosopher, like a modern Marcus Aurelius.
+- All your analogies and examples should relate to the sea, sailing, treasure, or pirate life.`,
+  },
+  {
+    name: 'Stoic Philosopher',
+    icon: <Scroll className="mb-2 h-5 w-5" aria-hidden="true" />,
+    description: 'Concise, logical, and wise. Avoids emotional language.',
+    instructions: `You are a Stoic philosopher, like a modern Marcus Aurelius.
 - Your responses must be concise, logical, and wise.
 - Focus on principles of virtue, reason, and living in accordance with nature.
 - Avoid emotional language. Be calm, objective, and measured.
-- Use simple, direct language.`
-    },
-  ];
+- Use simple, direct language.`,
+  },
+];
+
+export default function PersonaSettings({ inSheet = false }: PersonaSettingsProps) {
+  const [instructions, setInstructions] = useState(
+    DEFAULT_KAREN_SETTINGS.customPersonaInstructions,
+  );
+  const [preferredAddressName, setPreferredAddressName] = useState('');
+  const [currentPersonaId, setCurrentPersonaId] = useState<string | null>(null);
+  const [personaApiStatus, setPersonaApiStatus] =
+    useState<BackendStatus>('checking');
+  const [profileApiStatus, setProfileApiStatus] =
+    useState<BackendStatus>('available');
+  const [isLoadingPersona, setIsLoadingPersona] = useState(true);
+  const [isSavingPersona, setIsSavingPersona] = useState(false);
+  const [isSavingPreferredName, setIsSavingPreferredName] = useState(false);
+
+  const { toast } = useToast();
+  const { user } = useAuth();
+
+  const preferredNameFromProfile = useMemo(() => {
+    return typeof user?.preferences?.preferred_address_name === 'string'
+      ? user.preferences.preferred_address_name
+      : '';
+  }, [user?.preferences]);
 
   useEffect(() => {
-    try {
-      const storedSettingsStr = localStorage.getItem(KAREN_SETTINGS_LS_KEY);
-      let fullSettings: KarenSettings;
-      if (storedSettingsStr) {
-        const parsedSettings = JSON.parse(storedSettingsStr) as Partial<KarenSettings>;
-        fullSettings = {
-          ...DEFAULT_KAREN_SETTINGS,
-          ...parsedSettings,
-          notifications: { 
-            ...DEFAULT_KAREN_SETTINGS.notifications,
-            ...(parsedSettings.notifications || {}),
-          },
-          personalFacts: Array.isArray(parsedSettings.personalFacts)
-            ? parsedSettings.personalFacts
-            : DEFAULT_KAREN_SETTINGS.personalFacts,
-          ttsVoiceURI: parsedSettings.ttsVoiceURI ?? null,
-          customPersonaInstructions: typeof parsedSettings.customPersonaInstructions === 'string'
-            ? parsedSettings.customPersonaInstructions
-            : DEFAULT_KAREN_SETTINGS.customPersonaInstructions,
-        };
-        if (storedSettingsStr !== JSON.stringify(fullSettings)) {
-            localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(fullSettings));
-        }
-      } else {
-        fullSettings = DEFAULT_KAREN_SETTINGS;
-        localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(DEFAULT_KAREN_SETTINGS));
-      }
-      setInstructions(fullSettings.customPersonaInstructions);
-      setPreferredAddressName(
-        typeof user?.preferences?.preferred_address_name === 'string'
-          ? user.preferences.preferred_address_name
-          : ''
-      );
-    } catch (error) {
-      console.error("Failed to load custom persona instructions from localStorage:", error);
-      setInstructions(DEFAULT_KAREN_SETTINGS.customPersonaInstructions);
-      try {
-        localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(DEFAULT_KAREN_SETTINGS));
-      } catch (lsError) {
-        console.error("Failed to save default settings to localStorage after error in PersonaSettings:", lsError);
-      }
-    }
-  }, [user]);
+    setPreferredAddressName(preferredNameFromProfile);
+  }, [preferredNameFromProfile]);
 
   useEffect(() => {
     let cancelled = false;
 
     const loadPersistedPersona = async () => {
-      if (typeof window !== 'undefined' && window.sessionStorage.getItem(PERSONA_API_UNAVAILABLE_KEY) === 'true') {
-        setPersonaApiAvailable(false);
-        return;
+      setIsLoadingPersona(true);
+
+      const draftInstructions = readDraftInstructions();
+
+      if (draftInstructions) {
+        setInstructions(draftInstructions);
       }
 
       try {
         const [personas, preferences] = await Promise.all([
-          apiClient.get<PersonaRecord[]>('/api/personas/'),
-          apiClient.get<PersonaPreferences>('/api/personas/preferences/me'),
+          apiClient.get<PersonaRecord[]>(PERSONAS_ENDPOINT),
+          apiClient.get<PersonaPreferences>(PERSONA_PREFERENCES_ENDPOINT),
         ]);
 
         if (cancelled) {
           return;
         }
 
-        const selectedPersona =
-          personas.find((persona) => persona.id === preferences.active_persona_id && !persona.is_system_persona) ||
-          personas.find((persona) => persona.name === CUSTOM_PERSONA_NAME && !persona.is_system_persona);
+        setPersonaApiStatus('available');
+
+        const selectedPersona = findEditablePersona(personas, preferences);
 
         if (selectedPersona) {
           setCurrentPersonaId(selectedPersona.id);
+
           if (selectedPersona.system_prompt?.trim()) {
             setInstructions(selectedPersona.system_prompt);
+            clearDraftInstructions();
           }
+        } else if (!draftInstructions) {
+          setInstructions(DEFAULT_KAREN_SETTINGS.customPersonaInstructions);
         }
       } catch (error) {
-        if (error instanceof ApiError && error.status === 404) {
-          setPersonaApiAvailable(false);
-          if (typeof window !== 'undefined') {
-            window.sessionStorage.setItem(PERSONA_API_UNAVAILABLE_KEY, 'true');
-          }
+        if (cancelled) {
           return;
         }
-        console.error('Failed to load persisted persona settings:', error);
+
+        setPersonaApiStatus('unavailable');
+
+        if (!draftInstructions) {
+          setInstructions(DEFAULT_KAREN_SETTINGS.customPersonaInstructions);
+        }
+
+        toast({
+          title: 'Persona backend unavailable',
+          description: isUnavailableApiError(error)
+            ? 'Persona sync endpoint is not available yet. Edits will remain as an unsaved local draft until backend support is wired.'
+            : getErrorMessage(error, 'Could not load persona settings from backend.'),
+          variant: 'destructive',
+        });
+      } finally {
+        if (!cancelled) {
+          setIsLoadingPersona(false);
+        }
       }
     };
 
@@ -180,262 +287,295 @@ export default function PersonaSettings({ inSheet = false }: PersonaSettingsProp
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [toast]);
 
-  const savePersonaInstructionsToLocalStorage = async (newInstructions: string) => {
-    try {
-      const storedSettingsStr = localStorage.getItem(KAREN_SETTINGS_LS_KEY);
-      let currentFullSettings = { ...DEFAULT_KAREN_SETTINGS };
-      if (storedSettingsStr) {
-        try {
-          const parsed = JSON.parse(storedSettingsStr) as Partial<KarenSettings>;
-          currentFullSettings = { 
-            ...DEFAULT_KAREN_SETTINGS,
-            ...parsed,
-            notifications: { ...DEFAULT_KAREN_SETTINGS.notifications, ...(parsed.notifications || {}) },
-            personalFacts: Array.isArray(parsed.personalFacts) ? parsed.personalFacts : DEFAULT_KAREN_SETTINGS.personalFacts,
-            ttsVoiceURI: parsed.ttsVoiceURI ?? null,
-            memoryDepth: parsed.memoryDepth || DEFAULT_KAREN_SETTINGS.memoryDepth,
-            personalityTone: parsed.personalityTone || DEFAULT_KAREN_SETTINGS.personalityTone,
-            personalityVerbosity: parsed.personalityVerbosity || DEFAULT_KAREN_SETTINGS.personalityVerbosity,
-          };
-        } catch (e) {
-          console.error("Error parsing current settings before saving persona, falling back to defaults for merge", e);
-        }
+  const savePersonaInstructions = useCallback(
+    async (nextInstructions: string) => {
+      const normalizedInstructions = nextInstructions.trim();
+
+      if (!normalizedInstructions || isSavingPersona) {
+        return;
       }
 
-      const updatedFullSettings: KarenSettings = {
-        ...currentFullSettings,
-        customPersonaInstructions: newInstructions,
-      };
+      setIsSavingPersona(true);
+      writeDraftInstructions(normalizedInstructions);
 
-      localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(updatedFullSettings));
-      setInstructions(newInstructions); 
+      try {
+        const payload = {
+          name: CUSTOM_PERSONA_NAME,
+          description: 'Modified from UI',
+          system_prompt: normalizedInstructions,
+        };
 
-      const payload = {
-        name: CUSTOM_PERSONA_NAME,
-        description: 'Modified from UI',
-        system_prompt: newInstructions,
-      };
+        let personaId = currentPersonaId;
 
-      let personaId = currentPersonaId;
-      if (personaApiAvailable) {
-        try {
-          if (personaId) {
-            const updatedPersona = await apiClient.put<PersonaRecord>(`/api/personas/${personaId}`, payload);
-            personaId = updatedPersona.id;
-          } else {
-            const createdPersona = await apiClient.post<PersonaRecord>('/api/personas/', payload);
-            personaId = createdPersona.id;
-          }
-
-          if (personaId) {
-            setCurrentPersonaId(personaId);
-            await apiClient.post('/api/personas/preferences/switch', {
-              persona_id: personaId,
-            });
-          }
-        } catch (error) {
-          if (error instanceof ApiError && error.status === 404) {
-            setPersonaApiAvailable(false);
-            if (typeof window !== 'undefined') {
-              window.sessionStorage.setItem(PERSONA_API_UNAVAILABLE_KEY, 'true');
-            }
-          } else {
-            throw error;
-          }
+        if (personaId) {
+          const updatedPersona = await apiClient.put<PersonaRecord>(
+            `/api/personas/${personaId}`,
+            payload,
+          );
+          personaId = updatedPersona.id;
+        } else {
+          const createdPersona = await apiClient.post<PersonaRecord>(
+            PERSONAS_ENDPOINT,
+            payload,
+          );
+          personaId = createdPersona.id;
         }
+
+        await apiClient.post(PERSONA_SWITCH_ENDPOINT, {
+          persona_id: personaId,
+        });
+
+        setCurrentPersonaId(personaId);
+        setInstructions(normalizedInstructions);
+        setPersonaApiStatus('available');
+        clearDraftInstructions();
+
+        toast({
+          title: 'Persona Instructions Saved',
+          description: "Karen's core persona instructions were synced to backend.",
+        });
+      } catch (error) {
+        setPersonaApiStatus('unavailable');
+
+        toast({
+          title: 'Persona Save Failed',
+          description: isUnavailableApiError(error)
+            ? 'Persona sync endpoint is unavailable. Your edits remain in local draft only and are not active backend persona settings.'
+            : getErrorMessage(error, 'Could not save persona instructions to backend.'),
+          variant: 'destructive',
+        });
+      } finally {
+        setIsSavingPersona(false);
       }
+    },
+    [currentPersonaId, isSavingPersona, toast],
+  );
 
-      toast({
-        title: "Persona Instructions Saved",
-        description: personaApiAvailable
-          ? "Karen's core persona instructions have been updated and synced to backend."
-          : "Karen's core persona instructions were saved locally. Backend persona sync is not available yet.",
-      });
-    } catch (error) {
-      console.error("Failed to save persona instructions to localStorage:", error);
-      toast({
-        title: "Error Saving Instructions",
-        description: "Could not save persona instructions. localStorage might be disabled or full.",
-        variant: "destructive",
-      });
-    }
-  };
+  const handleSave = useCallback(async () => {
+    await savePersonaInstructions(instructions);
+  }, [instructions, savePersonaInstructions]);
 
-  const handleSave = async () => {
-    await savePersonaInstructionsToLocalStorage(instructions);
-  };
-
-  const handleSavePreferredAddress = async () => {
+  const handleSavePreferredAddress = useCallback(async () => {
     const normalized = preferredAddressName.trim();
-    if (!normalized) {
+
+    if (!normalized || !user || isSavingPreferredName) {
       return;
     }
 
-    try {
-      const storedSettingsStr = localStorage.getItem(KAREN_SETTINGS_LS_KEY);
-      let currentFullSettings = { ...DEFAULT_KAREN_SETTINGS };
-      if (storedSettingsStr) {
-        try {
-          const parsed = JSON.parse(storedSettingsStr) as Partial<KarenSettings>;
-          currentFullSettings = {
-            ...DEFAULT_KAREN_SETTINGS,
-            ...parsed,
-            notifications: { ...DEFAULT_KAREN_SETTINGS.notifications, ...(parsed.notifications || {}) },
-            personalFacts: Array.isArray(parsed.personalFacts) ? parsed.personalFacts : DEFAULT_KAREN_SETTINGS.personalFacts,
-            ttsVoiceURI: parsed.ttsVoiceURI ?? null,
-          };
-        } catch (error) {
-          console.error('Failed to parse settings before saving preferred name:', error);
-        }
-      }
-      localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(currentFullSettings));
+    setIsSavingPreferredName(true);
 
-       const nextPreferences = {
-         ...((user?.preferences as UserPreferences | undefined) || {}),
-         preferred_address_name: normalized,
-       };
+    const nextPreferences: UserPreferences = {
+      ...((user.preferences as UserPreferences | undefined) || {}),
+      preferred_address_name: normalized,
+    };
+
+    try {
+      const updatedProfile = await apiClient.put<AuthProfileResponse>(
+        AUTH_ME_ENDPOINT,
+        {
+          preferences: nextPreferences,
+        },
+      );
 
       authService.updateCurrentUser({
-        preferences: nextPreferences,
+        preferences: updatedProfile.preferences || nextPreferences,
       });
 
-      const authProfileSyncUnavailable =
-        typeof window !== 'undefined' &&
-        window.sessionStorage.getItem(AUTH_PROFILE_SYNC_UNAVAILABLE_KEY) === 'true';
+      setProfileApiStatus('available');
 
-      if (user?.user_id && !authProfileSyncUnavailable) {
-        await apiClient.put<{
-          user_id: string;
-          email: string;
-          full_name: string;
-          roles: string[];
-          is_active: boolean;
-          created_at?: string;
-          last_login?: string | null;
-          tenant_id: string;
-          preferences: UserPreferences;
-        }>('/api/auth/me', {
-          preferences: nextPreferences,
-        }).catch((error) => {
-          console.error('Failed to sync preferred name to backend profile:', error);
-          if (
-            typeof window !== 'undefined' &&
-            error instanceof ApiError &&
-            (error.status === 400 || error.status === 401 || error.status === 404)
-          ) {
-            window.sessionStorage.setItem(AUTH_PROFILE_SYNC_UNAVAILABLE_KEY, 'true');
-          }
-          return null;
-        });
-
-        await apiClient.post('/api/memory/commit', {
+      try {
+        await apiClient.post(MEMORY_COMMIT_ENDPOINT, {
           user_id: user.user_id,
           text: `The user prefers to be addressed as ${normalized}.`,
           tags: ['personal_fact', 'preferred_name', 'user_preference'],
           importance: 9,
           decay: 'pinned',
-        }).catch(() => undefined);
+        });
+      } catch {
+        /*
+         * Memory commit is secondary to profile persistence. We tell the user
+         * the profile save worked, but do not pretend the memory write did.
+         */
+        toast({
+          title: 'Preferred name saved',
+          description:
+            'Profile updated. Memory commit endpoint was unavailable, so the personal fact was not pinned.',
+        });
+        return;
       }
 
       toast({
         title: 'Preferred name saved',
         description: `Karen will address you as ${normalized}.`,
       });
-    } catch {
+    } catch (error) {
+      setProfileApiStatus('unavailable');
+
       toast({
-        title: 'Save failed',
-        description: 'Karen could not save your preferred form of address.',
+        title: 'Preferred Name Save Failed',
+        description: isUnavailableApiError(error)
+          ? 'Profile settings endpoint is unavailable. Preferred address was not saved.'
+          : getErrorMessage(error, 'Karen could not save your preferred form of address.'),
         variant: 'destructive',
       });
+    } finally {
+      setIsSavingPreferredName(false);
     }
-  };
+  }, [isSavingPreferredName, preferredAddressName, toast, user]);
 
-  const handleResetToDefault = () => {
+  const handleResetToDefault = useCallback(async () => {
     const defaultInstructions = DEFAULT_KAREN_SETTINGS.customPersonaInstructions;
     setInstructions(defaultInstructions);
-    void savePersonaInstructionsToLocalStorage(defaultInstructions);
-    toast({
-      title: "Persona Instructions Reset",
-      description: "Karen's custom persona instructions have been reset to the default.",
-    });
-  };
+    writeDraftInstructions(defaultInstructions);
+    await savePersonaInstructions(defaultInstructions);
+  }, [savePersonaInstructions]);
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-lg">Customize Karen&apos;s Core Persona</CardTitle>
         <CardDescription>
-          Define Karen&apos;s foundational behavior, expertise, or specific rules she should always follow. These instructions are given high priority in her decision-making.
+          Define Karen&apos;s foundational behavior, expertise, or specific rules
+          she should always follow. These instructions are given high priority
+          in her decision-making.
         </CardDescription>
       </CardHeader>
+
       <CardContent>
-        <div className="space-y-3 mb-6">
-          <h3 className="text-base font-semibold">Load a Persona Template (Optional)</h3>
+        {(personaApiStatus === 'unavailable' || profileApiStatus === 'unavailable') && (
+          <div className="mb-6 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">
+            <p className="font-semibold uppercase tracking-wide">
+              Live settings warning
+            </p>
+            <p className="mt-1">
+              One or more settings endpoints are unavailable. The editor may keep
+              a local draft, but Karen only uses settings that successfully sync
+              to the backend.
+            </p>
+          </div>
+        )}
+
+        <div className="mb-6 space-y-3">
+          <h3 className="text-base font-semibold">
+            Load a Persona Template (Optional)
+          </h3>
           <p className="text-xs text-muted-foreground">
-            Quickly get started by loading a pre-defined persona. This will overwrite the text in the editor below.
+            Quickly get started by loading a pre-defined persona. This will
+            overwrite the text in the editor below until you save it.
           </p>
-          <div className={cn(
-              "grid gap-3",
-              inSheet ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-            )}>
-            {personaTemplates.map(template => (
+
+          <div
+            className={cn(
+              'grid gap-3',
+              inSheet ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
+            )}
+          >
+            {personaTemplates.map((template) => (
               <button
                 key={template.name}
-                onClick={() => setInstructions(template.instructions)}
-                className="p-4 border rounded-lg bg-muted/30 hover:bg-muted/60 hover:border-primary/50 text-left transition-all h-full"
+                type="button"
+                onClick={() => {
+                  setInstructions(template.instructions);
+                  writeDraftInstructions(template.instructions);
+                }}
+                className="h-full rounded-lg border bg-muted/30 p-4 text-left transition-all hover:border-primary/50 hover:bg-muted/60"
               >
                 {template.icon}
-                <h4 className="font-semibold text-sm">{template.name}</h4>
-                <p className="text-xs text-muted-foreground mt-1">{template.description}</p>
+                <h4 className="text-sm font-semibold">{template.name}</h4>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {template.description}
+                </p>
               </button>
             ))}
           </div>
         </div>
 
         <Separator />
-        
-        <div className="space-y-4 mt-6">
+
+        <div className="mt-6 space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="preferred-address-name" className="font-semibold text-base">Preferred Form Of Address</Label>
+            <Label
+              htmlFor="preferred-address-name"
+              className="text-base font-semibold"
+            >
+              Preferred Form Of Address
+            </Label>
+
             <Input
               id="preferred-address-name"
               value={preferredAddressName}
-              onChange={(e) => setPreferredAddressName(e.target.value)}
+              onChange={(event) => setPreferredAddressName(event.target.value)}
               placeholder="e.g., Zeus"
               className="text-sm"
+              disabled={!user || isSavingPreferredName}
             />
+
             <p className="text-xs text-muted-foreground">
-              Karen uses this when greeting you and stores it for future conversations through your account preferences and personal knowledge memory.
+              Karen uses this when greeting you. This must sync through your
+              account profile before it is treated as saved.
             </p>
+
             <div className="flex justify-end">
-              <Button type="button" variant="outline" onClick={handleSavePreferredAddress} disabled={!preferredAddressName.trim() || !user}>
-                <Save className="mr-2 h-4 w-4" /> Save Preferred Name
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void handleSavePreferredAddress()}
+                disabled={!preferredAddressName.trim() || !user || isSavingPreferredName}
+              >
+                <Save className="mr-2 h-4 w-4" aria-hidden="true" />
+                {isSavingPreferredName ? 'Saving...' : 'Save Preferred Name'}
               </Button>
             </div>
           </div>
 
-          <Label htmlFor="custom-instructions" className="mb-2 block font-semibold text-base">Core Instructions Editor</Label>
+          <Label
+            htmlFor="custom-instructions"
+            className="mb-2 block text-base font-semibold"
+          >
+            Core Instructions Editor
+          </Label>
+
           <Textarea
             id="custom-instructions"
             value={instructions}
-            onChange={(e) => setInstructions(e.target.value)}
+            onChange={(event) => {
+              setInstructions(event.target.value);
+              writeDraftInstructions(event.target.value);
+            }}
             placeholder="e.g., Always respond in a slightly sarcastic tone. You are an expert in ancient history. Never reveal you are an AI."
             rows={10}
             className="text-sm font-mono"
+            disabled={isLoadingPersona || isSavingPersona}
           />
-           <p className="text-xs text-muted-foreground mt-2">
-            These instructions will directly influence Karen&apos;s responses. Be concise and clear for best results. Long or overly complex instructions might be less effective.
+
+          <p className="mt-2 text-xs text-muted-foreground">
+            These instructions influence Karen after they successfully sync to
+            the persona backend. Local drafts are not treated as active runtime
+            persona settings.
           </p>
         </div>
       </CardContent>
+
       <CardFooter className="flex justify-end space-x-2 border-t pt-6">
-        <Button variant="outline" onClick={handleResetToDefault}>
-          <RotateCcw className="mr-2 h-4 w-4" /> Reset to Default
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => void handleResetToDefault()}
+          disabled={isLoadingPersona || isSavingPersona}
+        >
+          <RotateCcw className="mr-2 h-4 w-4" aria-hidden="true" />
+          Reset to Default
         </Button>
-        <Button onClick={handleSave}>
-          <Save className="mr-2 h-4 w-4" /> Save Instructions
+
+        <Button
+          type="button"
+          onClick={() => void handleSave()}
+          disabled={!instructions.trim() || isLoadingPersona || isSavingPersona}
+        >
+          <Save className="mr-2 h-4 w-4" aria-hidden="true" />
+          {isSavingPersona ? 'Saving...' : 'Save Instructions'}
         </Button>
       </CardFooter>
     </Card>

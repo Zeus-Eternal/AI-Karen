@@ -3,21 +3,16 @@
 import type { ChatMessage, ConversationResponse, AgentStepEvent, Citation } from '@/lib/types';
 import type { SuggestedAction } from '@/lib/agent-ui/service';
 import { useState, useRef, useEffect, FormEvent, useCallback, useMemo, createContext, useContext, ReactNode } from 'react';
-import { Loader2, SendHorizontal, Mic, MicOff, Sparkles, Bot, Square, PlusCircle, ServerCrash, History, Clock, RefreshCw, AlertCircle, CheckCircle, XCircle, Edit2, Check } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { ApiError, apiClient } from '@/lib/api';
 import { useAuth } from '@/lib/useAuth';
 import { authService } from '@/lib/auth';
-import { Label } from '@/components/ui/label';
 import {
   normalizeBackendChatResponse,
   normalizeConversationMessage,
   normalizeProviderName,
 } from '@/lib/chat-response';
-import { formatModelSwitchError } from '@/lib/model-switch-errors';
-import { getRuntimeDisplayName } from '@/lib/chat-response';
 import { normalizeModelSettingsResponse, type RuntimeSettingsResponse } from '@/lib/model-runtime-inventory';
-import { toast } from "@/hooks/use-toast";
 import { useMessageInjection } from '@/providers/MessageInjectionProvider';
 // Constants and utilities
 import { getStreamingStatus } from './const/getStreamingStatus';
@@ -28,6 +23,11 @@ import {
   normalizeProcessingStatusKey,
   resolveProcessingStatusMessage,
 } from './const/constants';
+import { useGreetingSystem } from './const/greetingSystem';
+import { useModelSettings } from './const/modelSettings';
+import { useRequestHandlers } from './const/requestHandlers';
+import { useScrollManagement } from './const/scrollManagement';
+import { useUserPreferences } from './const/userPreferences';
 
 // Import interface components
 import { StatusIndicators, MessagesArea, ChatInput } from './interface';
@@ -72,26 +72,6 @@ interface SessionContextType {
   updateSessionTitle: (sessionId: string, newTitle: string) => Promise<boolean>;
 }
 
-interface ProviderDetails {
-  id: string;
-  display_name: string;
-  description?: string;
-  provider_type?: string;
-  selectable?: boolean;
-  requires_api_key?: boolean;
-  api_key_configured?: boolean;
-  base_url?: string | null;
-  default_base_url?: string | null;
-  default_model?: string | null;
-  selected_model?: string | null;
-  supports_base_url_override?: boolean;
-  models: Array<{
-    id: string;
-    name: string;
-    source?: string;
-  }>;
-}
-
 type ModelSettingsResponse = RuntimeSettingsResponse;
 
 const SESSION_BOOTSTRAP_SUPPRESSION_WINDOW_MS = 1500;
@@ -105,6 +85,11 @@ const sessionConversationBootstrapCache = new Map<string, ConversationBootstrapC
 const sessionConversationBootstrapRequests = new Map<string, Promise<ConversationResponse>>();
 const recentSessionBootstrapRuns = new Map<string, number>();
 
+/*
+ * React Strict Mode and session restore can request the same conversation twice.
+ * This short-lived cache deduplicates bootstrap calls without replacing server
+ * persistence as the source of truth.
+ */
 const cacheConversationBootstrap = (sessionId: string, response: ConversationResponse) => {
   sessionConversationBootstrapCache.set(sessionId, {
     response,
@@ -188,6 +173,8 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoadingSessions, setIsLoadingSessions] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const currentSessionRef = useRef<Session | null>(currentSession);
+  const sessionsRef = useRef<Session[]>(sessions);
 
   const persistActiveSessionId = useCallback((sessionId: string | null) => {
     if (typeof window === 'undefined') return;
@@ -201,6 +188,14 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
       // Ignore storage failures.
     }
   }, []);
+
+  useEffect(() => {
+    currentSessionRef.current = currentSession;
+  }, [currentSession]);
+
+  useEffect(() => {
+    sessionsRef.current = sessions;
+  }, [sessions]);
 
   const getPersistedActiveSessionId = useCallback((): string | null => {
     if (typeof window === 'undefined') return null;
@@ -399,14 +394,15 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
     const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
     const RENEWAL_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
-    let timeoutId: NodeJS.Timeout;
-    let renewalId: NodeJS.Timeout;
+    let timeoutId: number | undefined;
+    let renewalId: number | undefined;
 
     const renewSession = async () => {
       try {
-        if (currentSession) {
+        const activeSession = currentSessionRef.current;
+        if (activeSession) {
           // Use the update-activity endpoint which is implemented in the service
-          await apiClient.post(`/api/conversations/update-session-activity/${currentSession.id}`);
+          await apiClient.post(`/api/conversations/update-session-activity/${activeSession.id}`);
           console.log('Session activity updated successfully');
         }
       } catch (err) {
@@ -418,7 +414,8 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
 
     const checkSessionTimeout = () => {
       const lastActivity = Date.now();
-      const timeSinceLastActivity = lastActivity - (currentSession?.updatedAt.getTime() || lastActivity);
+      const activeSession = currentSessionRef.current;
+      const timeSinceLastActivity = lastActivity - (activeSession?.updatedAt.getTime() || lastActivity);
       
       if (timeSinceLastActivity > SESSION_TIMEOUT) {
         console.log('Session timed out, creating new session');
@@ -426,12 +423,12 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
       }
     };
 
-    if (currentSession) {
+    if (currentSessionRef.current) {
       // Start renewal checks
-      renewalId = setInterval(renewSession, RENEWAL_INTERVAL);
+      renewalId = window.setInterval(renewSession, RENEWAL_INTERVAL);
       
       // Start timeout checks
-      timeoutId = setInterval(checkSessionTimeout, SESSION_TIMEOUT / 2);
+      timeoutId = window.setInterval(checkSessionTimeout, SESSION_TIMEOUT / 2);
     }
 
     // Update session activity on user interaction
@@ -453,13 +450,17 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
     });
 
     return () => {
-      clearInterval(timeoutId);
-      clearInterval(renewalId);
+      if (typeof timeoutId === 'number') {
+        window.clearInterval(timeoutId);
+      }
+      if (typeof renewalId === 'number') {
+        window.clearInterval(renewalId);
+      }
       events.forEach(event => {
         document.removeEventListener(event, updateActivity);
       });
     };
-  }, [currentSession]);
+  }, [createNewSession]);
 
   // Delete a session
   const deleteSession = useCallback(async (sessionId: string) => {
@@ -581,8 +582,7 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
       try {
         const now = typeof window !== 'undefined' ? Date.now() : 0;
         const cutoffDate = new Date(now - INACTIVE_THRESHOLD);
-        // Only consider the sessions that were in state at the time of cleanup start
-        const inactiveSessions = sessions.filter(session =>
+        const inactiveSessions = sessionsRef.current.filter(session =>
           session.createdAt < cutoffDate && !session.isActive
         );
 
@@ -600,15 +600,12 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
       }
     };
 
-    const cleanupId = setInterval(cleanupSessions, CLEANUP_INTERVAL);
+    const cleanupId = window.setInterval(cleanupSessions, CLEANUP_INTERVAL);
 
     return () => {
-      clearInterval(cleanupId);
+      window.clearInterval(cleanupId);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run cleanup timer once on mount. It will use latest state via closure is tricky, 
-  // but if we want it to be dynamic we need to be careful.
-  // Actually, better to keep dependencies but debounce or check if actually needed.
+  }, [deleteSession]);
 
   // Initialize sessions on mount
   useEffect(() => {
@@ -800,7 +797,8 @@ export default function ChatInterface() {
   const [isLoading, setIsLoading] = useState(false);
   const viewportRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const shouldStickToBottomRef = useRef(true);
+  const currentSessionRef = useRef<Session | null>(currentSession);
+  const sessionsRef = useRef<Session[]>(sessions);
   const { toast } = useToast();
 
   const [isRecording, setIsRecording] = useState(false);
@@ -815,6 +813,7 @@ export default function ChatInterface() {
 
   const [processingStatus, setProcessingStatus] = useState('');
   const [streamedContent, setStreamedContent] = useState('');
+  const [streamingStatusMetadata, setStreamingStatusMetadata] = useState<Record<string, unknown> | null>(null);
   const [isEditingDuringProcessing, setIsEditingDuringProcessing] = useState(false);
   const activeRequestControllerRef = useRef<AbortController | null>(null);
   const processingStatusVariantRef = useRef<Record<string, number>>({});
@@ -859,14 +858,13 @@ export default function ChatInterface() {
     void loadModelSettings();
   }, [isAuthLoading, loadModelSettings]);
 
+  useEffect(() => {
+    currentSessionRef.current = currentSession;
+  }, [currentSession]);
 
-  type AssistResponse = {
-    answer: string;
-    structured_content?: Record<string, unknown>;
-    actions?: SuggestedAction[];
-    metadata?: Record<string, unknown>;
-    correlation_id?: string;
-  };
+  useEffect(() => {
+    sessionsRef.current = sessions;
+  }, [sessions]);
 
   // Helper variables extracted for reuse
   const showStopButton = isLoading && submitInFlightRef.current;
@@ -877,42 +875,89 @@ export default function ChatInterface() {
 
 
 
-  // User preferences
-  const preferredAddressName = useMemo(() =>
-    typeof user?.preferences?.preferred_address_name === 'string'
-      ? user.preferences.preferred_address_name.trim()
-      : '', [user?.preferences?.preferred_address_name]);
+  const {
+    preferredAddressName,
+    displayName,
+    recentMessages,
+  } = useUserPreferences(user, isAuthenticated, messages);
 
-  const fullName = user?.full_name?.trim() || '';
-  const emailName = user?.email?.split('@')[0]?.trim() || '';
-  const displayName = useMemo(() => {
-    const candidate = preferredAddressName || fullName || emailName || '';
-    return candidate || null;
-  }, [preferredAddressName, fullName, emailName]);
-
-  const firstNameOption = fullName.split(/\s+/).filter(Boolean)[0] || displayName || null;
-  const shouldPromptForPreferredName = Boolean(
-    isAuthenticated &&
-    !preferredAddressName &&
-    fullName &&
-    firstNameOption &&
-    fullName.includes(' ') &&
-    firstNameOption.toLowerCase() !== fullName.toLowerCase()
+  useGreetingSystem(
+    isAuthLoading || isLoading || isLoadingSessions || !currentSession?.id,
+    isAuthenticated,
+    user,
+    messages,
+    setMessages,
   );
 
-  const recentMessages = useMemo(() =>
-    messages
-      .filter((message) => message.role === 'user' || message.role === 'assistant')
-      .slice(-6)
-      .map((message) => ({
-        role: message.role,
-        content: message.content,
-      })), [messages]);
-
   // Streaming status
-  const streamingStatus = useMemo(() =>
-    getStreamingStatus(isBackendOffline, isLoading, processingStatus, streamingMetrics),
-    [isBackendOffline, isLoading, processingStatus, streamingMetrics]);
+  const streamingStatus = useMemo(
+    () =>
+      getStreamingStatus(
+        isBackendOffline,
+        isLoading,
+        processingStatus,
+        streamingMetrics,
+      ),
+    [
+      isBackendOffline,
+      isLoading,
+      processingStatus,
+      streamingMetrics,
+    ],
+  );
+
+  const { stopActiveRequest } = useRequestHandlers(
+    submitInFlightRef,
+    activeRequestControllerRef,
+    setIsLoading,
+    setProcessingStatus,
+  );
+
+  const { scrollChatToBottom } = useScrollManagement(
+    messages,
+    isLoading,
+    viewportRef,
+    messagesContainerRef,
+  );
+
+  const { applyModelSelection, getSelectableProviders } = useModelSettings();
+
+  const selectableProviders = useMemo(() => {
+    return modelSettings ? getSelectableProviders(modelSettings) : [];
+  }, [getSelectableProviders, modelSettings]);
+
+  const handleApplyModelSelection = useCallback(
+    async (providerId: string, modelId: string) => {
+      await applyModelSelection(
+        providerId,
+        modelId,
+        modelSettings,
+        setModelSettings,
+        setSelectedProvider,
+        setSelectedModel,
+        setIsUpdatingModelSelection,
+        toast,
+      );
+    },
+    [
+      applyModelSelection,
+      modelSettings,
+      setModelSettings,
+      setSelectedProvider,
+      setSelectedModel,
+      setIsUpdatingModelSelection,
+      toast,
+    ],
+  );
+
+  /*
+   * ChatInterface coordinates the browser-side request lifecycle:
+   * optimistic user message, streaming transport, cancellation, and UI state.
+   *
+   * It does not decide provider routing or fallback truth. Backend metadata owns:
+   * actual_provider, actual_model, runtime_engine, response_source, fallback_level,
+   * and degraded_mode.
+   */
 
   useEffect(() => {
     if (!currentSession?.id) return;
@@ -934,6 +979,7 @@ export default function ChatInterface() {
         setInput('');
         setStreamedContent('');
         setProcessingStatus('');
+        setStreamingStatusMetadata(null);
         setIsLoading(false); // Start as false, only set to true if we have an in-flight request
         setAgentSteps([]);
         setCitations([]);
@@ -1036,6 +1082,11 @@ export default function ChatInterface() {
     };
   }, [currentSession?.id, setMessages, setInput, toast]);
 
+  /*
+   * Local session snapshots protect in-progress UI state across refreshes.
+   * They are not the durable source of truth; server conversation history wins
+   * once it returns with a complete message set.
+   */
   useEffect(() => {
     if (!currentSession?.id) return;
 
@@ -1121,6 +1172,7 @@ export default function ChatInterface() {
     processingStatusVariantRef.current = {};
     setProcessingStatus(resolveProcessingStatusMessage('initializing', DEFAULT_PROCESSING_MESSAGE, 0));
     setStreamedContent('');
+    setStreamingStatusMetadata(null);
     setAgentSteps([]);
     setCitations([]);
     setDegradedMode({ active: false });
@@ -1139,35 +1191,12 @@ export default function ChatInterface() {
     const enrichStreamMetadata = (
       rawMetadata?: Record<string, unknown>,
     ): Record<string, unknown> => {
-      const metadata = { ...(rawMetadata || {}) } as Record<string, any>;
-      const llm = { ...(metadata.llm || {}) } as Record<string, any>;
-
-      if (!llm.provider) {
-        llm.provider =
-          (typeof metadata.provider === 'string' ? metadata.provider : '') ||
-          preferredProvider ||
-          'system';
-      }
-
-      if (!llm.model_id && !llm.model_name) {
-        const candidateModel =
-          (typeof metadata.model_id === 'string' ? metadata.model_id : '') ||
-          (typeof metadata.model_name === 'string' ? metadata.model_name : '') ||
-          (typeof metadata.model === 'string' ? metadata.model : '') ||
-          preferredModel ||
-          '';
-        if (candidateModel) {
-          llm.model_id = candidateModel;
-          llm.model_name = candidateModel;
-        }
-      }
-
-      if (!llm.source) {
-        llm.source =
-          (typeof metadata.source === 'string' ? metadata.source : '') ||
-          (typeof metadata.execution_path === 'string' ? metadata.execution_path : '') ||
-          'requested_model';
-      }
+      const metadata = { ...(rawMetadata || {}) } as Record<string, unknown>;
+      const rawLlm =
+        metadata.llm && typeof metadata.llm === 'object' && !Array.isArray(metadata.llm)
+          ? (metadata.llm as Record<string, unknown>)
+          : {};
+      const llm = { ...rawLlm };
 
       if (typeof llm.duration !== 'number') {
         if (typeof metadata.total_ms === 'number') {
@@ -1178,12 +1207,12 @@ export default function ChatInterface() {
       }
 
       if (typeof llm.tokens_per_second !== 'number') {
-        const tps =
+        const tokensPerSecond =
           typeof metadata.tokens_per_second === 'number'
             ? metadata.tokens_per_second
             : undefined;
-        if (typeof tps === 'number') {
-          llm.tokens_per_second = tps;
+        if (typeof tokensPerSecond === 'number') {
+          llm.tokens_per_second = tokensPerSecond;
         }
       }
 
@@ -1206,6 +1235,13 @@ export default function ChatInterface() {
         let completionContent = '';
         const controller = new AbortController();
         activeRequestControllerRef.current = controller;
+        const collectedAgentSteps: AgentStepEvent[] = [];
+        let collectedCitations: Citation[] = [];
+        let degradedModeSnapshot = {
+          active: false,
+          reason: '',
+          fallbackPath: '',
+        };
 
         const streamRequestPayload = {
           user_id: user?.user_id || 'anonymous',
@@ -1245,6 +1281,9 @@ export default function ChatInterface() {
         streamRequestPayload,
         {
           onStatus: (message, metadata) => {
+            if (metadata) {
+              setStreamingStatusMetadata(metadata);
+            }
             const statusKey =
               normalizeProcessingStatusKey(metadata?.status) ||
               normalizeProcessingStatusKey(message) ||
@@ -1252,7 +1291,7 @@ export default function ChatInterface() {
             const variantIndex = processingStatusVariantRef.current[statusKey] || 0;
             processingStatusVariantRef.current[statusKey] = variantIndex + 1;
             setProcessingStatus(
-              resolveProcessingStatusMessage(statusKey, message, variantIndex),
+              resolveProcessingStatusMessage(statusKey, message, variantIndex, metadata || undefined),
             );
           },
           onContent: (token) => {
@@ -1266,6 +1305,7 @@ export default function ChatInterface() {
           },
           onComplete: (metadata, content) => {
             completedMetadata = enrichStreamMetadata(metadata);
+            setStreamingStatusMetadata(completedMetadata || null);
             completionContent = String(
               content ||
               (completedMetadata?.formatted_content as string) ||
@@ -1281,18 +1321,25 @@ export default function ChatInterface() {
             });
           },
           onAgentStep: (event) => {
+            collectedAgentSteps.push(event);
             setAgentSteps((prevSteps) => [...prevSteps, event]);
             // Handle degraded mode events
             if (event.type === 'degraded_mode_entered') {
+              degradedModeSnapshot = {
+                active: true,
+                reason: String(event.metadata?.reason || ''),
+                fallbackPath: String(event.metadata?.fallback_path || ''),
+              };
               setDegradedMode({
                 active: true,
-                reason: event.metadata?.reason as string,
-                fallbackPath: event.metadata?.fallback_path as string,
+                reason: degradedModeSnapshot.reason,
+                fallbackPath: degradedModeSnapshot.fallbackPath,
               });
             }
           },
-          onCitationBundle: (citations) => {
-            setCitations(citations);
+          onCitationBundle: (nextCitations) => {
+            collectedCitations = nextCitations;
+            setCitations(nextCitations);
           },
         },
         controller.signal,
@@ -1327,17 +1374,18 @@ export default function ChatInterface() {
           actions: streamResponse.actions,
           metadata: {
             ...streamResponse.metadata,
-            citations: citations,
-            agentSteps: agentSteps,
-            degradedMode: degradedMode.active
+            citations: collectedCitations,
+            agentSteps: collectedAgentSteps,
+            degradedMode: degradedModeSnapshot.active,
           },
-          citations: citations,
+          citations: collectedCitations,
         };
 
         setMessages((prev) => {
           return prev.map(m => m.id === userMessage.id ? { ...m, status: 'completed' as const } : m)
             .concat(streamAssistantMessage);
         });
+        scrollChatToBottom('smooth');
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') {
           return;
@@ -1453,10 +1501,11 @@ export default function ChatInterface() {
       setIsEditingDuringProcessing(false);
       setProcessingStatus('');
       setStreamedContent('');
+      setStreamingStatusMetadata(null);
       setStreamingMetrics(null);
     }
 
-  }, [input, isLoading, isAuthLoading, input, messages, displayName, preferredAddressName, recentMessages, selectedProvider, selectedModel, toast, user, getAssistFailureMetadata, setInput, setMessages, setIsLoading, setIsEditingDuringProcessing, setProcessingStatus, setStreamedContent, setStreamingMetrics, activeRequestControllerRef, sessionIdRef, isAuthenticated]);
+  }, [input, isLoading, isAuthLoading, messages, displayName, preferredAddressName, recentMessages, selectedProvider, selectedModel, toast, user, setInput, setMessages, setIsLoading, setIsEditingDuringProcessing, setProcessingStatus, setStreamedContent, setStreamingMetrics, activeRequestControllerRef, sessionIdRef, isAuthenticated]);
 
   // Process injected messages from other parts of the app
   useEffect(() => {
@@ -1502,18 +1551,6 @@ export default function ChatInterface() {
 
     return true;
   }, [user]);
-
-  // Stop active request
-  const stopActiveRequest = useCallback(() => {
-    submitInFlightRef.current = false;
-    activeRequestControllerRef.current?.abort();
-    activeRequestControllerRef.current = null;
-    setIsLoading(false);
-    setProcessingStatus('Request cancelled by user.');
-    setTimeout(() => {
-      setProcessingStatus('');
-    }, 2000);
-  }, []);
 
   // Handle functions
   const handleActionClick = useCallback((action: SuggestedAction) => {
@@ -1752,16 +1789,6 @@ export default function ChatInterface() {
     return () => window.removeEventListener('karen:inject-message', handleInjectMessage);
   }, [handleSubmit, setInput]);
 
-  // Scroll functions
-  const scrollChatToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
-    const viewport = viewportRef.current;
-    if (!viewport) return;
-    viewport.scrollTo({
-      top: viewport.scrollHeight,
-      behavior,
-    });
-  }, []);
-
   // Handle mic click
   const handleMicClick = useCallback(async () => {
     if (!speechRecognitionSupported) return;
@@ -1826,190 +1853,19 @@ export default function ChatInterface() {
     };
   }, [setInput, setIsRecording, setShouldSubmitVoiceInput]);
 
-  // Dynamic greeting system
   useEffect(() => {
-    if (isAuthLoading || isLoading || isLoadingSessions || !currentSession?.id) return;
-
-    const generateGreeting = () => {
-      if (isAuthenticated && user) {
-        const preferredAddressName =
-          typeof user?.preferences?.preferred_address_name === 'string'
-            ? user.preferences.preferred_address_name.trim()
-            : '';
-        const fullName = user?.full_name?.trim() || '';
-        const displayName = (() => {
-          const candidate = preferredAddressName || fullName || user?.email?.split('@')[0]?.trim() || '';
-          return candidate || null;
-        })();
-
-        const firstNameOption = fullName.split(/\s+/).filter(Boolean)[0] || displayName || null;
-        const shouldPromptForPreferredName = Boolean(
-          isAuthenticated &&
-          !preferredAddressName &&
-          fullName &&
-          firstNameOption &&
-          fullName.includes(' ') &&
-          firstNameOption.toLowerCase() !== fullName.toLowerCase()
-        );
-
-        if (displayName) {
-          if (shouldPromptForPreferredName && firstNameOption) {
-            return `Hello there! I'm Karen. ${fullName}, how may I assist you today? Would you rather I address you as ${firstNameOption} or ${fullName}?`;
-          } else {
-            return `Hello there! I'm Karen. ${displayName}, how may I assist you today?`;
-          }
-        }
-      }
-
-      return "Hello! I'm Karen, your intelligent assistant. How can I help you today?";
-    };
-
-    const greeting = generateGreeting();
-
-    setMessages((currentMessages) => {
-      // Don't add greeting if we already have messages (e.g. from history load)
-      if (currentMessages.length > 0) {
-        return currentMessages;
-      }
-
-      const shouldPromptForPreferredName = isAuthenticated && user &&
-        typeof user?.preferences?.preferred_address_name === 'string' &&
-        user.preferences.preferred_address_name.trim() === '' &&
-        user?.full_name?.trim() &&
-        user.full_name.includes(' ');
-
-      return [
-        {
-          id: 'karen-initial-' + (typeof window !== 'undefined' ? Date.now() : 0),
-          role: 'assistant',
-          content: greeting,
-          timestamp: new Date(),
-          status: 'completed',
-          metadata: shouldPromptForPreferredName ? {
-            addressPreferencePrompt: true,
-            addressOptions: [
-              user.full_name.split(/\s+/).filter(Boolean)[0],
-              user.full_name
-            ],
-          } : undefined,
-        },
-      ];
-    });
-  }, [isAuthenticated, isAuthLoading, user, isLoading, isLoadingSessions, currentSession?.id]);
-
-  // Force stick to bottom when loading starts
-  useEffect(() => {
-    if (isLoading) {
-      shouldStickToBottomRef.current = true;
-    }
-  }, [isLoading]);
-
-  // Scroll stickiness
-  useEffect(() => {
-    const viewport = viewportRef.current;
-    const container = messagesContainerRef.current;
-    if (!viewport || !container) return;
-
-    const updateStickiness = () => {
-      const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
-      // Use a larger threshold (200px) to be more forgiving
-      shouldStickToBottomRef.current = distanceFromBottom < 200;
-    };
-
-    // Use ResizeObserver to detect content height changes accurately
-    const resizeObserver = new ResizeObserver(() => {
-      if (shouldStickToBottomRef.current) {
-        requestAnimationFrame(() => {
-          const behavior = (isLoading && streamedContent) ? 'auto' : 'smooth';
-          scrollChatToBottom(behavior);
-        });
-      }
-    });
-
-    resizeObserver.observe(container);
-    updateStickiness();
-    viewport.addEventListener('scroll', updateStickiness, { passive: true });
-
-    return () => {
-      viewport.removeEventListener('scroll', updateStickiness);
-      resizeObserver.disconnect();
-    };
-  }, [isLoading, streamedContent, scrollChatToBottom]);
-
-  // Messages/Loading effect (kept as backup for state-driven changes)
-  useEffect(() => {
-    if (shouldStickToBottomRef.current) {
-      requestAnimationFrame(() => {
-        const behavior = (isLoading && streamedContent) ? 'auto' : (messages.length <= 1 ? 'auto' : 'smooth');
-        scrollChatToBottom(behavior);
-      });
-    }
-  }, [messages, isLoading, streamedContent, scrollChatToBottom]);
-
-  // Selectable providers
-  const selectableProviders = useMemo(() => {
-    return modelSettings ? normalizeModelSettingsResponse(modelSettings).selectableProviders : [];
-  }, [modelSettings]);
-
-  // Apply model selection
-  const applyModelSelection = useCallback(async (providerId: string, modelId: string) => {
-    if (!modelSettings) {
+    if (!shouldSubmitVoiceInput) {
       return;
     }
 
-    const provider = modelSettings.providers.find((item) => item.id === providerId);
-    if (!provider || !modelId) {
-      return;
-    }
+    setShouldSubmitVoiceInput(false);
 
-    setIsUpdatingModelSelection(true);
-    try {
-      const response = await apiClient.put<{
-        selected_provider: string;
-        selected_model: string;
-        providers: Array<{
-          id: string;
-          display_name: string;
-          description?: string;
-          provider_type?: string;
-          selectable?: boolean;
-          requires_api_key?: boolean;
-          api_key_configured?: boolean;
-          base_url?: string | null;
-          default_base_url?: string | null;
-          default_model?: string | null;
-          selected_model?: string | null;
-          supports_base_url_override?: boolean;
-          models: Array<{
-            id: string;
-            name: string;
-            source?: string;
-          }>;
-        }>;
-      }>('/api/settings/model', {
-        provider: providerId,
-        model: modelId,
-      });
-
-      const normalized = normalizeModelSettingsResponse(response as RuntimeSettingsResponse);
-      setModelSettings(response as RuntimeSettingsResponse);
-      setSelectedProvider(normalized.selected_provider);
-      setSelectedModel(normalized.selected_model);
-      toast({
-        title: 'Settings applied',
-        description: `Karen is now using ${modelId} via ${getRuntimeDisplayName(provider.id, provider.display_name)}.`,
-      });
-    } catch (err) {
-      toast({
-        title: 'Model switch failed',
-        description: formatModelSwitchError(err, getRuntimeDisplayName(provider.id, provider.display_name)),
-        variant: 'destructive',
-      });
-    } finally {
-      setIsUpdatingModelSelection(false);
+    const voiceInput = input.trim();
+    if (voiceInput && !isLoading && !isAuthLoading) {
+      void handleSubmit(voiceInput);
     }
-  }, [modelSettings, setModelSettings, setSelectedProvider, setSelectedModel, setIsUpdatingModelSelection, toast]);
-  
+  }, [shouldSubmitVoiceInput, input, isLoading, isAuthLoading, handleSubmit]);
+
   return (
     <div className="flex flex-col flex-1">
       <StatusIndicators
@@ -2076,7 +1932,7 @@ export default function ChatInterface() {
         selectableProviders={selectableProviders}
         selectedProvider={selectedProvider}
         selectedModel={selectedModel}
-        applyModelSelection={applyModelSelection}
+        applyModelSelection={handleApplyModelSelection}
         isUpdatingModelSelection={isUpdatingModelSelection}
         sessions={sessions}
         currentSession={currentSession}

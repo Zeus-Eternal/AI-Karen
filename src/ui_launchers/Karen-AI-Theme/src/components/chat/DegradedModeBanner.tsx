@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React from 'react';
 
@@ -8,41 +8,86 @@ interface DegradedModeBannerProps {
   onDismiss?: () => void;
 }
 
-export default function DegradedModeBanner({ reason, fallbackPath, onDismiss }: DegradedModeBannerProps) {
+const DEFAULT_DEGRADED_REASON =
+  'Karen is operating with limited runtime capability. Live fallback may still be available depending on provider health.';
+
+const cleanString = (value: unknown): string => {
+  return typeof value === 'string' ? value.trim() : '';
+};
+
+export default function DegradedModeBanner({
+  reason,
+  fallbackPath,
+  onDismiss,
+}: DegradedModeBannerProps) {
+  const safeReason = cleanString(reason) || DEFAULT_DEGRADED_REASON;
+  const safeFallbackPath = cleanString(fallbackPath);
+
+  /*
+   * This banner is runtime-status display only.
+   * Provider routing, fallback order, and degraded/live/static truth must come
+   * from backend metadata, not from UI inference.
+   */
   return (
-    <div className="w-full p-4 bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 rounded-r-lg mb-4">
+    <div
+      role="status"
+      aria-live="polite"
+      className="mb-4 w-full rounded-r-lg border-l-4 border-amber-500 bg-amber-50 p-4 dark:bg-amber-900/20"
+    >
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3 flex-1">
-          <svg className="w-5 h-5 flex-shrink-0 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="flex flex-1 items-start gap-3">
+          <svg
+            className="h-5 w-5 flex-shrink-0 text-amber-600 dark:text-amber-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth={2}
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.932-3L13.932 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.932 3h13.856c1.54 0 2.502-1.667 1.932-3z"
+              d="M12 9v2m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
             />
           </svg>
+
           <div className="flex flex-col">
             <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
               System operating in degraded mode
             </p>
-            <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
-              {reason}
+
+            <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-300">
+              {safeReason}
             </p>
-            {fallbackPath && (
-              <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
-                Fallback path: {fallbackPath}
+
+            {safeFallbackPath && (
+              <p className="mt-0.5 text-xs text-amber-600 dark:text-amber-400">
+                Fallback path: {safeFallbackPath}
               </p>
             )}
           </div>
         </div>
+
         {onDismiss && (
           <button
+            type="button"
             onClick={onDismiss}
-            className="flex-shrink-0 p-1 hover:bg-amber-100 dark:hover:bg-amber-800/30 rounded transition-colors"
-            aria-label="Dismiss notification"
+            className="flex-shrink-0 rounded p-1 transition-colors hover:bg-amber-100 dark:hover:bg-amber-800/30"
+            aria-label="Dismiss degraded mode notification"
           >
-            <svg className="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="h-4 w-4 text-amber-600 dark:text-amber-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18 18 6M6 6l12 12"
+              />
             </svg>
           </button>
         )}
