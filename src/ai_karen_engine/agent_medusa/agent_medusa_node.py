@@ -2,12 +2,18 @@ from typing import Dict, Any, List
 import logging
 from .coordinator.medusa_coordinator import MedusaCoordinator
 from .contracts.runtime_request import RuntimeRequest
+from ai_karen_engine.core.cortex.runtime_policy import RuntimePolicyDecision
 
 logger = logging.getLogger(__name__)
 
 async def medusa_node(state: Dict[str, Any]) -> Dict[str, Any]:
     """LangGraph node that delegates execution to the AgentMedusa runtime"""
     logger.info("Medusa Node -> Entering AgentMedusa execution")
+    policy_decision = state.get("runtime_policy")
+    if not isinstance(policy_decision, RuntimePolicyDecision):
+        raise ValueError("Medusa execution requires RuntimePolicyDecision in state")
+    if not policy_decision.requires_medusa:
+        raise PermissionError("Medusa execution blocked by runtime policy decision")
     
     # In a full DI system, these would come from the state or a registry
     from ai_karen_engine.services.models.routing.llm_router_service import get_llm_router
