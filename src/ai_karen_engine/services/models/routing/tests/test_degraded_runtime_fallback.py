@@ -94,10 +94,11 @@ class TestDegradedRuntimeFallback:
             assert llm_metadata["fallback_chain"] == [
                 "builtin_vllm",
                 "builtin_transformers",
+                "local_gguf",
                 "fallback",
             ]
             assert "gemini" in llm_metadata["attempted_providers"]
-            assert "recovered through builtin_vllm" in llm_metadata["failure_reason"]
+            assert llm_metadata["failure_reason"] == "Gemini API key not configured"
 
             # The answer should NOT be the degraded warning
             assert result["content"] != "Requested provider gemini was unavailable; Karen continued in degraded mode."
@@ -109,9 +110,11 @@ class TestDegradedRuntimeFallback:
         """Test that when vLLM fails, Transformers fallback succeeds."""
         with patch.object(router, "registry") as mock_registry:
             # Mock get_provider_info
-            mock_registry.get_provider_info.return_value = {
-                "default_model": "transformers-model"
-            }
+            mock_registry.get_provider_info.side_effect = lambda name: (
+                {"default_model": "transformers-model", "transformers_available": True}
+                if name == "builtin_transformers"
+                else {"default_model": f"{name}-default"}
+            )
 
             # Mock get_provider - vLLM fails, Transformers succeeds
             mock_transformers_provider = MagicMock()
@@ -128,7 +131,7 @@ class TestDegradedRuntimeFallback:
 
             # Mock _is_provider_healthy - vLLM unhealthy, Transformers healthy
             async def is_healthy_side_effect(name):
-                return name in ["builtin_transformers", "fallback"]
+                return name in ["builtin_transformers", "local_gguf", "fallback"]
 
             router._is_provider_healthy = AsyncMock(side_effect=is_healthy_side_effect)
 
@@ -144,7 +147,7 @@ class TestDegradedRuntimeFallback:
             assert result["content"] == "Hello from Transformers!"
             assert result["metadata"]["llm"]["provider"] == "builtin_transformers"
             assert result["metadata"]["llm"]["fallback_from"] == "builtin_vllm"
-            assert "recovered through builtin_transformers" in result["metadata"]["llm"]["failure_reason"]
+            assert result["metadata"]["llm"]["failure_reason"] == "vLLM runtime not available"
 
     @pytest.mark.asyncio
     async def test_both_vllm_and_transformers_fail_fallback_emergency(
@@ -176,9 +179,9 @@ class TestDegradedRuntimeFallback:
 
             # Verify the result uses emergency fallback
             assert "Emergency fallback response activated" in result["content"]
-            assert result["metadata"]["llm"]["provider"] == "emergency"
-            assert result["metadata"]["llm"]["source"] == "hardcoded_emergency"
-            assert result["metadata"]["llm"]["model_id"] == "karen-fallback-v1"
+            assert result["metadata"]["llm"]["provider"] == "emergency_static"
+            assert result["metadata"]["llm"]["source"] == "emergency_static"
+            assert result["metadata"]["llm"]["model_id"] == "none"
 
     @pytest.mark.asyncio
     async def test_metadata_provider_correct_when_vllm_answers(
@@ -313,7 +316,7 @@ class TestDegradedRuntimeFallback:
 
     def test_runtime_fallback_order_constant(self, router):
         """Test that the runtime fallback order constant is correct."""
-        expected_order = ("builtin_vllm", "builtin_transformers", "fallback")
+        expected_order = ("builtin_vllm", "builtin_transformers", "local_gguf", "fallback")
         assert router.RUNTIME_DEGRADED_FALLBACK_ORDER == expected_order
 
 
@@ -356,6 +359,21 @@ class TestProviderNormalization:
         assert router._normalize_provider_name(None) is None
         assert router._normalize_provider_name("") is None
         assert router._normalize_provider_name("   ") is None
+
+    def test_normalization_uses_canonical_registry_api(self, monkeypatch):
+        router = LLMRouter()
+        calls = {"count": 0}
+
+        def _canonical(name):
+            calls["count"] += 1
+            return "builtin_vllm"
+
+        monkeypatch.setattr(
+            "ai_karen_engine.core.model_runtime.provider_registry_service.ProviderRegistryService.canonicalize_provider_id",
+            staticmethod(_canonical),
+        )
+        assert router._normalize_provider_name("vllm") == "builtin_vllm"
+        assert calls["count"] == 1
 
 
 class TestProviderPriorities:

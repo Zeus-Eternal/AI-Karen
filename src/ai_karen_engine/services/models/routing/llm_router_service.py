@@ -29,6 +29,8 @@ from typing import (
 from ai_karen_engine.config.llm_provider_config import (
     get_openai_compatible_provider_defaults,
 )
+from ai_karen_engine.config.runtime_provider_manager import RuntimeProviderManager
+from ai_karen_engine.core.model_runtime.provider_registry_service import ProviderRegistryService
 
 from ai_karen_engine.core.operations.routing_decision_persistence import (
     RoutingDecisionPersistence,
@@ -673,26 +675,7 @@ class LLMRouter:
 
     @staticmethod
     def _normalize_provider_name(provider_name: Optional[Any]) -> Optional[str]:
-        if provider_name is None:
-            return None
-
-        normalized = str(provider_name).strip().lower().replace("-", "_")
-        if not normalized:
-            return None
-
-        # Canonical provider aliases matching frontend naming convention
-        aliases = {
-            "local": "local_gguf",
-            "hf_transformers": "builtin_transformers",
-            "hugging_face": "builtin_transformers",
-            "huggingface_local": "builtin_transformers",
-            "builtin_transformers": "builtin_transformers",
-            "transformers": "builtin_transformers",
-            "vllm": "builtin_vllm",
-            "nano_vllm": "builtin_vllm",
-            "builtin_vllm": "builtin_vllm",
-        }
-        return aliases.get(normalized, normalized)
+        return ProviderRegistryService.canonicalize_provider_id(provider_name)
 
     @staticmethod
     def _normalize_model_name(model_name: Optional[Any]) -> Optional[str]:
@@ -2443,11 +2426,7 @@ class LLMRouter:
         return None
 
     # Runtime Fallback Executor
-    RUNTIME_DEGRADED_FALLBACK_ORDER = (
-        "ollama",
-        "builtin_transformers",
-        "fallback",
-    )
+    RUNTIME_DEGRADED_FALLBACK_ORDER = tuple(RuntimeProviderManager().get_runtime_fallback_chain())
 
     async def generate_with_degraded_runtime_fallback(
         self,
