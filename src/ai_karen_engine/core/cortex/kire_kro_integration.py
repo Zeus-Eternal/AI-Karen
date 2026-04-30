@@ -17,8 +17,10 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
 import uuid
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
 from langchain_core.messages import HumanMessage
@@ -29,6 +31,8 @@ from ai_karen_engine.monitoring.kire_metrics import (
 )
 from ai_karen_engine.routing.decision_logger import get_decision_logger
 from ai_karen_engine.routing.types import RouteDecision
+from ai_karen_engine.core.cortex.runtime_policy import RuntimePolicyDecision
+from ai_karen_engine.agent_medusa.agent_medusa_node import medusa_node
 
 logger = logging.getLogger(__name__)
 
@@ -239,27 +243,70 @@ class KIREKROIntegration:
                 except Exception as route_exc:
                     logger.debug(f"KIRE advisory routing unavailable: {route_exc}")
 
-            # Use LangGraph orchestrator instead of ChatOrchestrator
-            orchestrator = LangGraphOrchestrator()
+            policy_decision = RuntimePolicyDecision.from_cortex(
+                context.get("cortex_policy"),
+                correlation_id=correlation_id,
+            )
             runtime_context = {
                 "source": "kire_kro_integration",
                 "channel": context.get("channel", "kro"),
                 "conversation_history": conversation_history or [],
                 "kire_routing_advisory": routing_advisory,
+                "runtime_policy": policy_decision.to_telemetry_metadata(),
                 **context,
             }
 
-            # Execute with the canonical LangGraph process entrypoint.
-            final_state = await orchestrator.process(
-                messages=[HumanMessage(content=user_input)],
-                user_id=user_id,
-                session_id=session_id,
-                config={
-                    "runtime_context": runtime_context,
-                    "conversation_history": conversation_history or [],
-                    "streaming_enabled": bool(context.get("streaming_enabled", False)),
-                },
-            )
+            final_state: Dict[str, Any]
+            if policy_decision.requires_deep_reasoning:
+                logger.info(
+                    "langgraph_started",
+                    extra=policy_decision.to_telemetry_metadata(),
+                )
+                orchestrator = LangGraphOrchestrator()
+                final_state = await orchestrator.process(
+                    messages=[HumanMessage(content=user_input)],
+                    user_id=user_id,
+                    session_id=session_id,
+                    config={
+                        "runtime_context": runtime_context,
+                        "conversation_history": conversation_history or [],
+                        "streaming_enabled": bool(
+                            context.get("streaming_enabled", False)
+                        ),
+                        "runtime_policy": policy_decision.to_telemetry_metadata(),
+                    },
+                )
+            else:
+                logger.info(
+                    "langgraph_skipped",
+                    extra=policy_decision.to_telemetry_metadata(),
+                )
+                final_state = {
+                    "response": "Processed successfully.",
+                    "execution_path": "direct_chat",
+                    "correlation_id": correlation_id,
+                }
+
+            if policy_decision.requires_medusa:
+                logger.info(
+                    "medusa_started",
+                    extra=policy_decision.to_telemetry_metadata(),
+                )
+                final_state = await medusa_node(
+                    {
+                        "messages": [HumanMessage(content=user_input)],
+                        "session_id": session_id,
+                        "user_id": user_id,
+                        "correlation_id": correlation_id,
+                        "runtime_policy": policy_decision,
+                        **final_state,
+                    }
+                )
+            else:
+                logger.info(
+                    "medusa_skipped",
+                    extra=policy_decision.to_telemetry_metadata(),
+                )
 
             elapsed_seconds = time.time() - t0
 
