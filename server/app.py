@@ -41,7 +41,6 @@ from .middleware import configure_middleware
 from .performance import load_performance_settings
 from .routers import wire_routers
 from .startup import create_lifespan, register_startup_tasks
-from .database_config import get_database_config, database_lifespan
 from .admin_endpoints import register_admin_endpoints
 from .health_endpoints import register_health_endpoints
 from .security import validate_environment_security
@@ -104,9 +103,6 @@ def create_app() -> FastAPI:
 
     # Create lifespan manager with database configuration
     lifespan = create_lifespan(settings)
-
-    # Initialize database configuration
-    db_config = get_database_config(settings)
 
     # Create FastAPI app
     app = FastAPI(
