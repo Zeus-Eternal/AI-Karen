@@ -34,6 +34,7 @@ from ai_karen_engine.integrations.llm_router import (
 from ai_karen_engine.integrations.routing_policies import get_policy_manager
 from ai_karen_engine.integrations.registry import get_registry
 from ai_karen_engine.core.runtime.degraded_mode import get_degraded_mode_manager
+from ai_karen_engine.core.model_runtime.production_decision_service import get_production_decision_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["intelligent-router"])
@@ -92,6 +93,10 @@ class RouteDecisionModel(BaseModel):
     estimated_latency: Optional[float] = Field(description="Estimated latency in seconds")
     privacy_compliant: bool = Field(description="Whether selection meets privacy requirements")
     capabilities: List[str] = Field(description="Provider capabilities")
+    fallback_level: int = Field(default=0, description="Fallback depth level")
+    chosen_provider: Optional[str] = Field(default=None, description="Chosen provider")
+    chosen_model: Optional[str] = Field(default=None, description="Chosen model")
+    degraded_mode_reason: Optional[str] = Field(default=None, description="Degraded mode reason")
 
 
 class DryRunAnalysisModel(BaseModel):
@@ -184,10 +189,24 @@ async def route_request(
             metadata=request.metadata,
         )
         
-        # Perform routing
+        # Route-level logic is adapter-only: delegate production provider/model choice
+        runtime_decision = await get_production_decision_service().select(
+            user_preferences={
+                "provider": request.preferred_provider or "",
+                "model": request.preferred_model or "",
+            },
+            context=request.metadata,
+        )
+
         decision = intelligent_router.route(routing_request)
-        
-        # Convert to API model
+        decision["provider"] = runtime_decision.provider or decision.get("provider", "")
+        decision["model_id"] = runtime_decision.model or decision.get("model_id", "")
+        decision["fallback_chain"] = runtime_decision.fallback_chain
+        decision["fallback_level"] = runtime_decision.fallback_level
+        decision["chosen_provider"] = runtime_decision.provider
+        decision["chosen_model"] = runtime_decision.model
+        decision["degraded_mode_reason"] = runtime_decision.degraded_mode_reason
+
         return RouteDecisionModel(**decision)
         
     except ValueError as e:
