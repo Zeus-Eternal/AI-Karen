@@ -76,6 +76,56 @@ export interface NormalizedRuntimeInventory {
 
 export type RuntimeProviderBucket = 'builtIn' | 'local' | 'thirdParty' | 'custom';
 
+export const isVllmCompatibleModel = (model: RuntimeProviderModel | Record<string, unknown>): boolean => {
+  const preferredRuntime = String(model.preferred_runtime || '').toLowerCase();
+
+  if (preferredRuntime === 'vllm' || preferredRuntime === 'builtin_vllm') {
+    return true;
+  }
+
+  const compatibleRuntimes = Array.isArray(model.compatible_runtimes)
+    ? model.compatible_runtimes.map((runtime) => String(runtime).toLowerCase())
+    : [];
+
+  return (
+    compatibleRuntimes.includes('vllm') ||
+    compatibleRuntimes.includes('builtin_vllm')
+  );
+};
+
+export const sortProviderModels = (
+  models: RuntimeProviderModel[],
+): RuntimeProviderModel[] => {
+  return [...models].sort((left, right) => {
+    const leftVllm = isVllmCompatibleModel(left) ? 0 : 1;
+    const rightVllm = isVllmCompatibleModel(right) ? 0 : 1;
+
+    if (leftVllm !== rightVllm) {
+      return leftVllm - rightVllm;
+    }
+
+    const leftRuntime = String(
+      (left as any).preferred_runtime || (left as any).model_format || '',
+    ).toLowerCase();
+    const rightRuntime = String(
+      (right as any).preferred_runtime || (right as any).model_format || '',
+    ).toLowerCase();
+
+    if (leftRuntime !== rightRuntime) {
+      return leftRuntime.localeCompare(rightRuntime);
+    }
+
+    const leftName = String(
+      (left as any).display_name || left.name || left.id || '',
+    ).toLowerCase();
+    const rightName = String(
+      (right as any).display_name || right.name || right.id || '',
+    ).toLowerCase();
+
+    return leftName.localeCompare(rightName);
+  });
+};
+
 const BUILTIN_RUNTIME_SEEDS: RuntimeProviderDetails[] = [
   {
     id: 'builtin_vllm',

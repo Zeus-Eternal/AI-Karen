@@ -22,8 +22,12 @@ const DEFAULT_VOICE_SENTINEL = "_DEFAULT_VOICE_";
 
 /**
  * @file VoiceSettings.tsx
- * @description Component for selecting a preferred Text-To-Speech (TTS) voice.
- * Fetches available system voices and allows users to save their preference to local storage.
+ * @description Local-only browser voice preferences for Karen.
+ *
+ * Local-only boundary:
+ * - Text-To-Speech (TTS) voices are browser-dependent.
+ * - This preference is stored only in the browser's localStorage.
+ * - It is not synced to the backend and does not affect server-side logic.
  */
 export default function VoiceSettings() {
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);

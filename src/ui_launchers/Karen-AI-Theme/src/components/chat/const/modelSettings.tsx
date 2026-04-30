@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { apiClient } from '@/lib/api';
 import { formatModelSwitchError } from '@/lib/model-switch-errors';
+import { normalizeModelSettingsResponse } from '@/lib/model-runtime-inventory';
 import type {
   ModelDetails,
   ModelSettingsResponse,
@@ -30,7 +31,6 @@ type SetStringState = React.Dispatch<React.SetStateAction<string>>;
 type SetBooleanState = React.Dispatch<React.SetStateAction<boolean>>;
 
 const MODEL_SETTINGS_ENDPOINT = '/api/settings/model';
-const SAVED_MODEL_SOURCE = 'saved';
 
 const cleanString = (value: unknown): string => {
   return typeof value === 'string' ? value.trim() : '';
@@ -52,108 +52,11 @@ const getModelDisplayName = (model: ModelDetails | null | undefined): string => 
   return cleanString(model?.name) || cleanString(model?.id);
 };
 
-const createSavedModel = (modelId: string): ModelDetails => {
-  return {
-    id: modelId,
-    name: modelId,
-    source: SAVED_MODEL_SOURCE,
-  };
-};
-
-const dedupeModels = (models: ModelDetails[] | undefined | null): ModelDetails[] => {
-  const seen = new Set<string>();
-  const normalizedModels: ModelDetails[] = [];
-
-  for (const model of models ?? []) {
-    const id = cleanString(model?.id);
-
-    if (!id || seen.has(id)) {
-      continue;
-    }
-
-    seen.add(id);
-
-    normalizedModels.push({
-      ...model,
-      id,
-      name: cleanString(model?.name) || id,
-      source: cleanString(model?.source) || model?.source,
-    });
-  }
-
-  return normalizedModels;
-};
-
-const resolveProviderFallbackModelId = (
-  provider: ProviderDetails,
-  selectedProvider: string | undefined | null,
-  selectedModel: string | undefined | null,
-): string => {
-  return (
-    cleanString(provider.selected_model) ||
-    cleanString(provider.default_model) ||
-    (cleanString(selectedProvider) === cleanString(provider.id)
-      ? cleanString(selectedModel)
-      : '') ||
-    ''
-  );
-};
-
-const normalizeProviderModels = (
-  provider: ProviderDetails,
-  selectedProvider?: string | null,
-  selectedModel?: string | null,
-): ProviderDetails => {
-  const normalizedModels = dedupeModels(provider.models);
-  const fallbackModelId = resolveProviderFallbackModelId(
-    provider,
-    selectedProvider,
-    selectedModel,
-  );
-
-  return {
-    ...provider,
-    id: cleanString(provider.id),
-    display_name: cleanString(provider.display_name) || cleanString(provider.id),
-    selected_model: cleanString(provider.selected_model) || null,
-    default_model: cleanString(provider.default_model) || null,
-    models:
-      normalizedModels.length > 0
-        ? normalizedModels
-        : fallbackModelId
-          ? [createSavedModel(fallbackModelId)]
-          : [],
-  };
-};
-
-const normalizeModelSettings = (
-  response: ModelSettingsResponse,
-): ModelSettingsState => {
-  const selectedProvider = cleanString(response.selected_provider);
-  const selectedModel = cleanString(response.selected_model);
-
-  const providers = (response.providers ?? []).map((provider) =>
-    normalizeProviderModels(provider, selectedProvider, selectedModel),
-  );
-
-  return {
-    selected_provider: selectedProvider,
-    selected_model: selectedModel,
-    providers,
-  };
-};
-
 const getAllowedProviders = (
   modelSettings: ModelSettingsState | null,
 ): ProviderDetails[] => {
-  const selectedProvider = cleanString(modelSettings?.selected_provider);
-  const selectedModel = cleanString(modelSettings?.selected_model);
-
   return (modelSettings?.providers ?? [])
     .filter(isSelectableProvider)
-    .map((provider) =>
-      normalizeProviderModels(provider, selectedProvider, selectedModel),
-    )
     .filter((provider) => cleanString(provider.id));
 };
 
@@ -286,8 +189,8 @@ export function useModelSettings() {
           },
         );
 
-        const normalizedSettings = normalizeModelSettings(response);
-        const allowedProviders = getAllowedProviders(normalizedSettings);
+        const normalizedSettings = normalizeModelSettingsResponse(response as any);
+        const allowedProviders = getAllowedProviders(normalizedSettings as any);
 
         const resolvedProviderId = resolveSelectedProviderId(
           allowedProviders,
@@ -300,7 +203,7 @@ export function useModelSettings() {
           normalizedSettings.selected_model || requestedModelId,
         );
 
-        setModelSettings(normalizedSettings);
+        setModelSettings(normalizedSettings as any);
         setSelectedProvider(resolvedProviderId);
         setSelectedModel(resolvedModelId);
 

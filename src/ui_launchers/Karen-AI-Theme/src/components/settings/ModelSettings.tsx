@@ -37,7 +37,11 @@ import { cn } from '@/lib/utils';
 import {
   getRuntimeDisplayName,
 } from '@/lib/chat-response';
-import { normalizeModelSettingsResponse, type RuntimeSettingsResponse } from '@/lib/model-runtime-inventory';
+import {
+  normalizeModelSettingsResponse,
+  type RuntimeSettingsResponse,
+  sortProviderModels,
+} from '@/lib/model-runtime-inventory';
 
 interface ProviderModel {
   id: string;
@@ -98,27 +102,6 @@ function normalizeChatResponseMode(value: unknown): ChatResponseMode {
 
 function normalizeDisplayBaseUrl(address?: string | null): string {
   return (address || '').trim().replace(/\/api\/?$/, '').replace(/\/$/, '');
-}
-
-function isVllmCompatibleModel(model: ProviderModel): boolean {
-  const preferredRuntime = String(model.preferred_runtime || '').toLowerCase();
-  if (preferredRuntime === 'vllm' || preferredRuntime === 'builtin_vllm') {
-    return true;
-  }
-  const compatibleRuntimes = (model.compatible_runtimes || []).map((runtime) => String(runtime).toLowerCase());
-  return compatibleRuntimes.includes('vllm') || compatibleRuntimes.includes('builtin_vllm');
-}
-
-function sortProviderModels(models: ProviderModel[]): ProviderModel[] {
-  return [...models].sort((left, right) => {
-    const leftScore = isVllmCompatibleModel(left) ? 0 : 1;
-    const rightScore = isVllmCompatibleModel(right) ? 0 : 1;
-    if (leftScore !== rightScore) return leftScore - rightScore;
-    const leftRuntime = String(left.preferred_runtime || left.model_format || '').toLowerCase();
-    const rightRuntime = String(right.preferred_runtime || right.model_format || '').toLowerCase();
-    if (leftRuntime !== rightRuntime) return leftRuntime.localeCompare(rightRuntime);
-    return left.name.localeCompare(right.name);
-  });
 }
 
 export default function ModelSettings() {

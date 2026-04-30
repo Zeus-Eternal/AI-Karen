@@ -141,18 +141,6 @@ const EXTERNAL_ENDPOINT_PROVIDER_ALIASES: Record<string, string> = {
   gguf_endpoint: LOCAL_GGUF_PROVIDER,
 };
 
-const LEGACY_CORE_RUNTIME_ALIASES = new Set([
-  // 'ollama' removed - it's a valid external provider, not legacy
-  'llamacpp',
-  'llama_cpp',
-  'llama-cpp',
-  'llama.cpp',
-  'llama cpp',
-  'llama',
-  'llamacpp_optimized',
-  'llama-cpp-optimized',
-]);
-
 const LOCAL_FALLBACK_SOURCES = new Set([
   'chat_orchestrator_local_fallback',
   'configured_fallback_provider',
@@ -232,10 +220,6 @@ export const normalizeProviderName = (provider?: string | null): string => {
     return SYSTEM_PROVIDER;
   }
 
-  if (LEGACY_CORE_RUNTIME_ALIASES.has(key)) {
-    return key;
-  }
-
   return key.replace(/-/g, '_');
 };
 
@@ -250,12 +234,6 @@ export const isTransformersRuntimeProvider = (provider?: string | null): boolean
 
 export const isVllmRuntimeProvider = (provider?: string | null): boolean => {
   return normalizeProviderName(provider) === BUILTIN_VLLM_PROVIDER;
-};
-
-export const isLegacyRuntimeProvider = (provider?: string | null): boolean => {
-  const rawKey = toProviderKey(provider);
-  const normalized = normalizeProviderName(provider);
-  return LEGACY_CORE_RUNTIME_ALIASES.has(rawKey) || LEGACY_CORE_RUNTIME_ALIASES.has(normalized);
 };
 
 export const isLocalRuntimeProvider = (provider?: string | null): boolean => {
@@ -306,10 +284,6 @@ export const getRuntimeDisplayName = (
     return 'Runtime Control';
   }
 
-  if (isLegacyRuntimeProvider(provider)) {
-    return `Legacy External Runtime (${toCleanString(provider) || normalized})`;
-  }
-
   return explicit || toCleanString(provider) || normalized;
 };
 
@@ -334,10 +308,6 @@ export const getRuntimeGroupLabel = (provider?: string | null): string => {
 
   if (normalized === SYSTEM_PROVIDER) {
     return 'System';
-  }
-
-  if (isLegacyRuntimeProvider(provider)) {
-    return 'Legacy External Runtime';
   }
 
   return 'Custom';
@@ -532,9 +502,6 @@ export const deriveDegradedPresentation = (
     llm?.actual_model || safeMetadata?.actual_model || llm?.model_id || llm?.model_name || actualModel,
   );
 
-  const isLegacyMismatch =
-    isLegacyRuntimeProvider(requestedProvider) || isLegacyRuntimeProvider(actualProvider);
-
   const providerChanged = Boolean(
     normalizedRequestedProvider &&
       normalizedActualProvider &&
@@ -562,7 +529,6 @@ export const deriveDegradedPresentation = (
     localFallbackSource ||
     providerChanged ||
     modelChanged ||
-    isLegacyMismatch ||
     isKnownRuntimeControlMode(safeMetadata?.mode);
 
   const hasLlmInfo = Boolean(
@@ -582,7 +548,7 @@ export const deriveDegradedPresentation = (
   const selectedRuntimeUnavailable =
     Boolean(requestedProvider) && reasonLooksUnavailable(failureReason);
 
-  const providerOrModelChanged = providerChanged || modelChanged || isLegacyMismatch;
+  const providerOrModelChanged = providerChanged || modelChanged;
 
   const degradedStatusLabel = isSafetyBlocked
     ? 'provider policy block'
@@ -590,37 +556,17 @@ export const deriveDegradedPresentation = (
       ? `${requestedProvider || 'provider'} rate limited`
       : selectedRuntimeUnavailable
         ? `${requestedProvider || 'provider'} unavailable`
-        : isLegacyMismatch
-          ? 'legacy runtime'
-          : providerOrModelChanged
-            ? 'provider fallback'
-            : isDegraded
-              ? 'degraded mode'
-              : '';
+        : providerOrModelChanged
+          ? 'provider fallback'
+          : isDegraded
+            ? 'degraded mode'
+            : '';
 
-  const degradedBannerText = isSafetyBlocked
-    ? 'Provider policy blocked this response.'
-    : isLegacyMismatch
-      ? 'A legacy runtime was requested. Core llama.cpp/Ollama aliases are no longer normalized into local_gguf. Configure that service as an explicit external endpoint.'
-      : selectedRuntimeUnavailable
-        ? `Selected runtime is unavailable from the API container, so Karen switched to ${fallbackTargetLabel}.`
-        : requestedProvider && isExternalGgufBackedFallback && normalizedRequestedProvider === LOCAL_GGUF_PROVIDER
-          ? `${getFriendlyProviderLabel(requestedProvider)} primary path failed, recovered via explicit GGUF external fallback path${actualModel ? ` (${actualModel})` : ''}.`
-          : requestedProvider && actualProvider && providerOrModelChanged
-            ? `${getFriendlyProviderLabel(requestedProvider)} failed, switched to ${fallbackTargetLabel}.`
-            : requestedProvider && reasonLooksRateLimited(failureReason)
-              ? `${getFriendlyProviderLabel(requestedProvider)} rate limited, switched to ${fallbackTargetLabel}.`
-              : failureReason
-                ? failureReason
-                : isDegraded
-                  ? `Requested provider ${requestedProvider || 'primary'} was unavailable; Karen continued in degraded mode.`
-                  : '';
+  const degradedBannerText = failureReason || (isDegraded ? 'System is operating in degraded mode.' : '');
 
   const visibleDegradedNotice = isSafetyBlocked
-    ? degradedBannerText
-    : degradedBannerText && failureReason && degradedBannerText !== failureReason
-      ? `${degradedBannerText} Reason: ${failureReason}`
-      : degradedBannerText || failureReason;
+    ? (failureReason || 'Provider policy blocked this response.')
+    : failureReason || degradedBannerText;
 
   const shouldRenderDegradedState = isDegraded || isSafetyBlocked || Boolean(visibleDegradedNotice);
 
@@ -917,34 +863,6 @@ const mergeRequestedRuntimeMetadata = (
   return metadata;
 };
 
-const ensureLegacyRuntimeWarning = (
-  metadata: Record<string, any>,
-): Record<string, any> => {
-  const llm = isRecord(metadata.llm) ? { ...metadata.llm } : {};
-  const requestedProvider = toCleanString(llm.requested_provider);
-  const actualProvider = toCleanString(llm.provider);
-
-  if (!isLegacyRuntimeProvider(requestedProvider) && !isLegacyRuntimeProvider(actualProvider)) {
-    return metadata;
-  }
-
-  metadata.degraded_mode = true;
-  metadata.orchestrator = {
-    ...(isRecord(metadata.orchestrator) ? metadata.orchestrator : {}),
-    used_fallback: true,
-  };
-
-  llm.is_degraded = true;
-  llm.used_fallback = true;
-  llm.failure_category = llm.failure_category || 'legacy_runtime_removed';
-  llm.failure_reason =
-    llm.failure_reason ||
-    'Legacy core runtimes are no longer normalized into local_gguf. Use builtin_transformers, builtin_vllm, openai_compatible, or an explicit local_gguf endpoint.';
-
-  metadata.llm = llm;
-  return metadata;
-};
-
 const ensureProviderMismatchMetadata = (
   metadata: Record<string, any>,
   raw: BackendChatEnvelope,
@@ -1111,7 +1029,6 @@ export function normalizeBackendChatResponse(
   ensureLlmMetadata(metadata, raw);
   ensureRuntimeModeMetadata(metadata, raw);
   mergeRequestedRuntimeMetadata(metadata, options);
-  ensureLegacyRuntimeWarning(metadata);
   ensureProviderMismatchMetadata(metadata, raw);
 
   const fallbackAnswer =

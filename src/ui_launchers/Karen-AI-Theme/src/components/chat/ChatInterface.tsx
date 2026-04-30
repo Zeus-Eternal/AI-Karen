@@ -17,12 +17,11 @@ import { useMessageInjection } from '@/providers/MessageInjectionProvider';
 // Constants and utilities
 import { getStreamingStatus } from './const/getStreamingStatus';
 import { getDegradedResponseMessage } from './const/getDegradedResponseMessage';
-import { getAssistFailureMetadata } from './const/getAssistFailureMetadata';
 import {
   DEFAULT_PROCESSING_MESSAGE,
   normalizeProcessingStatusKey,
   resolveProcessingStatusMessage,
-} from './const/constants';
+} from './const/processing';
 import { useGreetingSystem } from './const/greetingSystem';
 import { useModelSettings } from './const/modelSettings';
 import { useRequestHandlers } from './const/requestHandlers';
@@ -1452,30 +1451,27 @@ export default function ChatInterface() {
         ? normalizeBackendChatResponse(runtimePayload)
         : null;
 
-      const errorAssistantMessage: ChatMessage = {
-        id: fallbackErrorResponse?.correlationId || 'assistant-error-' + Date.now(),
+      const errorAssistantMessage: ChatMessage | null = fallbackErrorResponse ? {
+        id: fallbackErrorResponse.correlationId || 'assistant-error-' + Date.now(),
         role: 'assistant',
-        content: fallbackErrorResponse?.answer || getDegradedResponseMessage(error),
+        content: fallbackErrorResponse.answer,
         timestamp: new Date(),
-        status: fallbackErrorResponse ? 'completed' : 'failed',
-        structuredContent: fallbackErrorResponse?.structuredContent,
-        actions: fallbackErrorResponse?.actions,
-        metadata:
-          fallbackErrorResponse?.metadata ||
-          getAssistFailureMetadata(
-            error,
-            preferredProvider || selectedProvider,
-            preferredModel || selectedModel,
-          ),
-      };
+        status: 'completed',
+        structuredContent: fallbackErrorResponse.structuredContent,
+        actions: fallbackErrorResponse.actions,
+        metadata: fallbackErrorResponse.metadata,
+      } : null;
+
       setMessages((prev) => {
-        // Update user message to failed and add error response
-        return prev.map(m => m.id === userMessage.id ? {
+        // Update user message to failed
+        const next = prev.map(m => m.id === userMessage.id ? {
           ...m,
           status: fallbackErrorResponse ? 'completed' as const : 'failed' as const,
-        } : m)
-          .concat(errorAssistantMessage);
+        } : m);
+        
+        return errorAssistantMessage ? next.concat(errorAssistantMessage) : next;
       });
+
       toast(
         fallbackErrorResponse
           ? {

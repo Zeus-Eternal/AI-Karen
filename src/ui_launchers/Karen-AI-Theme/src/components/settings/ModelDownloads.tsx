@@ -31,6 +31,7 @@ import {
 
 import { apiClient, ApiError } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
+import { isVllmCompatibleModel, sortProviderModels } from '@/lib/model-runtime-inventory';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -239,56 +240,6 @@ function groupChannels(
   }, {});
 }
 
-function isVllmCompatibleModel(model: Record<string, unknown>): boolean {
-  const preferredRuntime = String(model.preferred_runtime || '').toLowerCase();
-
-  if (preferredRuntime === 'vllm' || preferredRuntime === 'builtin_vllm') {
-    return true;
-  }
-
-  const compatibleRuntimes = Array.isArray(model.compatible_runtimes)
-    ? model.compatible_runtimes.map((runtime) => String(runtime).toLowerCase())
-    : [];
-
-  return (
-    compatibleRuntimes.includes('vllm') ||
-    compatibleRuntimes.includes('builtin_vllm')
-  );
-}
-
-function sortInstalledModels(
-  models: Array<Record<string, unknown>>,
-): Array<Record<string, unknown>> {
-  return [...models].sort((left, right) => {
-    const leftVllm = isVllmCompatibleModel(left) ? 0 : 1;
-    const rightVllm = isVllmCompatibleModel(right) ? 0 : 1;
-
-    if (leftVllm !== rightVllm) {
-      return leftVllm - rightVllm;
-    }
-
-    const leftRuntime = String(
-      left.preferred_runtime || left.model_format || '',
-    ).toLowerCase();
-    const rightRuntime = String(
-      right.preferred_runtime || right.model_format || '',
-    ).toLowerCase();
-
-    if (leftRuntime !== rightRuntime) {
-      return leftRuntime.localeCompare(rightRuntime);
-    }
-
-    const leftName = String(
-      left.display_name || left.name || left.model_id || '',
-    ).toLowerCase();
-    const rightName = String(
-      right.display_name || right.name || right.model_id || '',
-    ).toLowerCase();
-
-    return leftName.localeCompare(rightName);
-  });
-}
-
 function normalizeProgress(value: unknown): number {
   const numeric = Number(value);
 
@@ -470,7 +421,7 @@ export default function ModelDownloads({
   );
 
   const installedModels = useMemo(
-    () => sortInstalledModels(installed?.models ?? []),
+    () => sortProviderModels((installed?.models ?? []) as any[]),
     [installed],
   );
 
