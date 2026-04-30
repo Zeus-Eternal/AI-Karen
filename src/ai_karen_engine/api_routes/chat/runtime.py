@@ -34,7 +34,6 @@ from ai_karen_engine.core.runtime.chat_runtime_control_plane import (
     runtime_response_http_status,
 )
 from ai_karen_engine.core.runtime.chat_runtime_service import get_chat_runtime_service
-from ai_karen_engine.core.langgraph_orchestrator import LangGraphOrchestrator
 from ai_karen_engine.models.shared_types import (
     CanonicalChatRequest,
     CanonicalChatResponse,
@@ -396,10 +395,8 @@ class ChatRuntimeHelper:
 
 # Dependency functions
 async def get_chat_orchestrator():
-    """Get chat orchestrator instance"""
-    from ai_karen_engine.core.langgraph_orchestrator import get_default_orchestrator
-
-    return await get_default_orchestrator()
+    """Get chat orchestrator instance through canonical runtime service."""
+    return await get_chat_runtime_service().get_orchestrator()
 
 
 async def get_stream_processor():

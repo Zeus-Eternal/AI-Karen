@@ -16,6 +16,12 @@ class ChatRuntimeService:
         control_plane = await get_chat_runtime_control_plane()
         return await control_plane.get_runtime_response(user_context=user_context)
 
+    async def get_orchestrator(self):
+        """Canonical runtime entrypoint for orchestrator access across routes."""
+        from ai_karen_engine.core.langgraph_orchestrator import get_default_orchestrator
+
+        return await get_default_orchestrator()
+
     async def build_router_fallback_assist_payload(
         self,
         *,

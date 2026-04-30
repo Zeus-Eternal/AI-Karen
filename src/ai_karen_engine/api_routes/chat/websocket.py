@@ -26,7 +26,10 @@ from fastapi import (
 )
 from fastapi.responses import StreamingResponse
 
-from ai_karen_engine.core.langgraph_orchestrator import LangGraphOrchestrator
+from ai_karen_engine.core.runtime.chat_runtime_service import (
+    ChatRuntimeService,
+    get_chat_runtime_service,
+)
 from ai_karen_engine.models.shared_types import CanonicalChatRequest
 from ai_karen_engine.services.streaming.stream_processor import AsyncStreamProcessor
 from ai_karen_engine.services.streaming.websocket_gateway import WebSocketGateway
@@ -57,7 +60,6 @@ logger = logging.getLogger(__name__)
 # Global instances (will be initialized by dependency injection)
 websocket_gateway: Optional[WebSocketGateway] = None
 stream_processor: Optional[AsyncStreamProcessor] = None
-chat_orchestrator: Optional[LangGraphOrchestrator] = None
 
 router = APIRouter(tags=["websocket"])
 
@@ -131,16 +133,15 @@ class StreamMetricsResponse(BaseModel):
 
 
 # Dependency injection functions
-async def get_chat_orchestrator() -> LangGraphOrchestrator:
-    """Create or return the chat orchestrator instance."""
-    from ai_karen_engine.core.langgraph_orchestrator import get_default_orchestrator
-
-    return await get_default_orchestrator()
+def get_runtime_service() -> ChatRuntimeService:
+    return get_chat_runtime_service()
 
 
-async def get_websocket_gateway() -> WebSocketGateway:
+async def get_websocket_gateway(
+    runtime_service: ChatRuntimeService = Depends(get_runtime_service),
+) -> WebSocketGateway:
     """Get WebSocket gateway instance."""
-    return WebSocketGateway(await get_chat_orchestrator())
+    return WebSocketGateway(await runtime_service.get_orchestrator())
 
 
 def get_stream_processor() -> AsyncStreamProcessor:
