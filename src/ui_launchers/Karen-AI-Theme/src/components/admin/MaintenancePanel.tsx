@@ -126,6 +126,17 @@ const getErrorMessage = (error: unknown, fallback: string) => {
   return fallback;
 };
 
+const sanitizeRuntimeError = (message: string): string => {
+  const trimmed = message.trim();
+  if (!trimmed) return "Runtime control endpoint is unavailable.";
+
+  if (trimmed.startsWith('<!DOCTYPE html>') || trimmed.startsWith('<html')) {
+    return "Runtime control endpoint returned an HTML 404 page. Verify backend admin runtime routes are enabled.";
+  }
+
+  return trimmed;
+};
+
 const formatDateTime = (value: string | null | undefined) => {
   if (!value) {
     return "Not recorded";
@@ -271,9 +282,9 @@ export default function MaintenancePanel() {
 
     try {
       const [statusResponse, notificationsResponse] = await Promise.all([
-        apiClient.get<RuntimeStatusResponse>("/admin/runtime/status"),
+        apiClient.get<RuntimeStatusResponse>("/api/admin/runtime/status"),
         apiClient.get<NotificationSubscriptionResponse>(
-          "/admin/runtime/maintenance/notifications",
+          "/api/admin/runtime/maintenance/notifications",
         ),
       ]);
 
@@ -285,7 +296,7 @@ export default function MaintenancePanel() {
       );
       setMaintenanceEta(formatDateTimeForInput(statusResponse.estimated_completion_time));
     } catch (error) {
-      const message = getErrorMessage(error, "Could not load runtime control data.");
+      const message = sanitizeRuntimeError(getErrorMessage(error, "Could not load runtime control data."));
       setRuntimeError(message);
 
       toast({
@@ -302,7 +313,7 @@ export default function MaintenancePanel() {
     setRuntimeLoading(true);
 
     try {
-      await apiClient.post("/admin/runtime/check-health", {});
+      await apiClient.post("/api/admin/runtime/check-health", {});
       await fetchRuntimeStatus();
 
       toast({
@@ -340,7 +351,7 @@ export default function MaintenancePanel() {
         const autoEndPolicy = estimatedCompletionTime ? "at_time" : "manual";
 
         if (action === "enable") {
-          await apiClient.post("/admin/runtime/maintenance/enable", {
+          await apiClient.post("/api/admin/runtime/maintenance/enable", {
             reason: maintenanceReason.trim(),
             message: maintenanceMessage.trim(),
             estimated_completion_time: estimatedCompletionTime,
@@ -349,7 +360,7 @@ export default function MaintenancePanel() {
         }
 
         if (action === "update") {
-          await apiClient.put("/admin/runtime/maintenance/update", {
+          await apiClient.put("/api/admin/runtime/maintenance/update", {
             message: maintenanceMessage.trim(),
             estimated_completion_time: estimatedCompletionTime,
             auto_end_policy: autoEndPolicy,
@@ -357,7 +368,7 @@ export default function MaintenancePanel() {
         }
 
         if (action === "disable") {
-          await apiClient.post("/admin/runtime/maintenance/disable", {});
+          await apiClient.post("/api/admin/runtime/maintenance/disable", {});
         }
 
         await fetchRuntimeStatus();

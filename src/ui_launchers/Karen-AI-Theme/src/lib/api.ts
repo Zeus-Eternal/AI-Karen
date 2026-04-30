@@ -516,7 +516,11 @@ class ApiClient {
       localStorage.removeItem(this.TOKEN_REFRESH_ATTEMPTED_KEY);
       this.clearSessionWarningFlag();
     } catch (error) {
-      console.error('[ApiClient] Token refresh failed:', error);
+      if (this.isTransientError(error)) {
+        console.warn('[ApiClient] Token refresh temporarily unavailable:', error);
+      } else {
+        console.error('[ApiClient] Token refresh failed:', error);
+      }
       // Do not clear auth state here; callers decide how to handle 401.
       // This prevents accidental hard logout during transient refresh issues.
       throw error;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Clock, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ export default function SessionWarning({ onExtendSession }: SessionWarningProps)
   const [showWarning, setShowWarning] = useState(false);
   const [timeUntilExpiry, setTimeUntilExpiry] = useState<number | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
 
   useEffect(() => {
     const handleSessionWarning = (event: CustomEvent) => {
@@ -63,6 +64,7 @@ export default function SessionWarning({ onExtendSession }: SessionWarningProps)
 
   const handleExtendSession = async () => {
     setIsRefreshing(true);
+    setRefreshError(null);
     try {
       // This will trigger a proactive refresh
       await apiClient.get('/api/auth/me');
@@ -70,11 +72,21 @@ export default function SessionWarning({ onExtendSession }: SessionWarningProps)
       setTimeUntilExpiry(null);
       onExtendSession?.();
     } catch (error) {
-      console.error('Failed to extend session:', error);
+      const message = error instanceof Error ? error.message : 'Unable to extend session right now.';
+      setRefreshError(message);
     } finally {
       setIsRefreshing(false);
     }
   };
+
+
+  const refreshErrorHint = useMemo(() => {
+    if (!refreshError) return null;
+    if (refreshError.includes('503') || refreshError.toLowerCase().includes('database unavailable')) {
+      return 'Session service is temporarily unavailable. Your current session remains active until expiry.';
+    }
+    return refreshError;
+  }, [refreshError]);
 
   if (!showWarning || timeUntilExpiry === null) {
     return null;
@@ -90,6 +102,7 @@ export default function SessionWarning({ onExtendSession }: SessionWarningProps)
             Your session will expire in {formatTimeRemaining(timeUntilExpiry)}
           </span>
         </div>
+        <div className="flex items-center gap-2">
         <Button
           variant="outline"
           size="sm"
@@ -104,7 +117,9 @@ export default function SessionWarning({ onExtendSession }: SessionWarningProps)
           )}
           Extend Session
         </Button>
+        </div>
       </AlertDescription>
+      {refreshErrorHint ? <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">{refreshErrorHint}</p> : null}
     </Alert>
   );
 }
