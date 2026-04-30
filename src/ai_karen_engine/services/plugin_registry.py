@@ -1,119 +1,60 @@
-"""
-Unified Plugin Registry for Kari AI
-- Auto-discovers and loads plugins from both core and community dirs.
-- Tags plugin origin ('core', 'community').
-- Exposes: plugin_registry (dict), execute_plugin (callable)
+"""Compatibility shim for legacy plugin registry.
+
+Routes/runtime should use unified registry interface.
 """
 
 import importlib
 import pkgutil
-import logging
-
 from types import ModuleType
+from typing import Dict
 
-_METRICS: dict[str, int] = {
-    "plugins_loaded": 0,
-    "plugin_exec_total": 0,
-    "plugin_import_errors": 0,
-}
+from ai_karen_engine.extensions.unified.core.cortex_execution_registry import (
+    CortexExecutionRegistry,
+    CortexPluginRecord,
+)
 
-try:
-    from prometheus_client import Counter
-    from ai_karen_engine.integrations.llm_utils import PROM_REGISTRY
-
-    PLUGIN_EXEC_COUNT = Counter(
-        "plugin_exec_total",
-        "Total plugin execution calls",
-        registry=PROM_REGISTRY,
-    )
-    PLUGIN_LOADED_COUNT = Counter(
-        "plugins_loaded",
-        "Plugins discovered at startup",
-        registry=PROM_REGISTRY,
-    )
-    PLUGIN_IMPORT_ERROR_COUNT = Counter(
-        "plugin_import_errors",
-        "Plugin import failures",
-        ["plugin"],
-        registry=PROM_REGISTRY,
-    )
-except Exception:  # pragma: no cover - optional dep
-    class _Dummy:
-        def labels(self, *_, **__):
-            return self
-
-        def inc(self, *_args, **_kwargs) -> None:
-            pass
-
-    PLUGIN_EXEC_COUNT = PLUGIN_LOADED_COUNT = PLUGIN_IMPORT_ERROR_COUNT = _Dummy()
-
-PLUGIN_REGISTRY: dict[str, dict[str, ModuleType]] = {}
-
-logger = logging.getLogger(__name__)
+PLUGIN_REGISTRY: Dict[str, Dict[str, ModuleType]] = {}
+UNIFIED_REGISTRY = CortexExecutionRegistry()
 
 
-def _discover_plugins(base_pkg: str, type_label: str) -> dict[str, dict[str, ModuleType]]:
-    """Discover and import plugins under ``base_pkg``."""
-    plugins: dict[str, dict[str, ModuleType]] = {}
+def _discover_plugins(base_pkg: str, type_label: str) -> Dict[str, Dict[str, ModuleType]]:
+    plugins: Dict[str, Dict[str, ModuleType]] = {}
     try:
         package = importlib.import_module(base_pkg)
     except ModuleNotFoundError:
         return plugins
     for _, name, ispkg in pkgutil.iter_modules(package.__path__):
-        if not ispkg:
-            continue
-        # Skip metadata or private packages
-        if name.startswith("_"):
+        if not ispkg or name.startswith("_"):
             continue
         try:
             mod = importlib.import_module(f"{base_pkg}.{name}.handler")
             plugins[name] = {"handler": mod, "type": type_label}
-            _METRICS["plugins_loaded"] += 1
-            PLUGIN_LOADED_COUNT.inc()
-        except Exception as ex:  # pragma: no cover - safety net
-            logger.warning(
-                "Plugin load failed: %s (%s): %s", name, type_label, ex
-            )
-            _METRICS["plugin_import_errors"] += 1
-            PLUGIN_IMPORT_ERROR_COUNT.labels(plugin=name).inc()
+        except Exception:
+            continue
     return plugins
 
-def load_plugins() -> dict[str, dict[str, ModuleType]]:
-    """Reload plugin registry from available packages."""
-    core_plugins = _discover_plugins("ai_karen_engine.plugins", "core")
-    community_plugins = _discover_plugins(
-        "ai_karen_engine.community_plugins", "community"
-    )
 
-    # Merge and publish
+def load_plugins() -> Dict[str, Dict[str, ModuleType]]:
+    core_plugins = _discover_plugins("ai_karen_engine.plugins", "core")
+    community_plugins = _discover_plugins("ai_karen_engine.community_plugins", "community")
+
     PLUGIN_REGISTRY.clear()
     PLUGIN_REGISTRY.update(core_plugins)
     PLUGIN_REGISTRY.update(community_plugins)
+
+    UNIFIED_REGISTRY.register_plugins(
+        CortexPluginRecord(
+            name=name,
+            handler=entry["handler"],
+            origin=entry.get("type", "unknown"),
+            manifest={"entrypoint": "handler", "required_roles": []},
+        )
+        for name, entry in PLUGIN_REGISTRY.items()
+    )
     return PLUGIN_REGISTRY
 
-def execute_plugin(plugin_entry, user_ctx, query, context=None):
-    """
-    Executes the main entry point for a plugin.
-    """
-    handler = plugin_entry["handler"]
-    _METRICS["plugin_exec_total"] += 1
-    PLUGIN_EXEC_COUNT.inc()
-    if hasattr(handler, "run"):
-        return handler.run(user_ctx, query, context)
-    elif hasattr(handler, "main"):
-        return handler.main(user_ctx, query, context)
-    else:
-        raise RuntimeError(f"No runnable entry for plugin: {handler}")
 
-# Initialize on import (optional, or call load_plugins() on app start)
 load_plugins()
-
 plugin_registry = PLUGIN_REGISTRY
 
-__all__ = [
-    "plugin_registry",
-    "execute_plugin",
-    "load_plugins",
-    "_METRICS",
-    "PLUGIN_IMPORT_ERROR_COUNT",
-]
+__all__ = ["plugin_registry", "load_plugins", "UNIFIED_REGISTRY"]
