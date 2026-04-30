@@ -104,6 +104,17 @@ export default function AgentsPage() {
 
   const isAdmin = user?.roles?.includes("admin") ?? false;
 
+  const isTransientAuthOrRuntimeError = useCallback((message: string): boolean => {
+    const lower = message.toLowerCase();
+    return (
+      lower.includes("database unavailable") ||
+      lower.includes("session not found in memory") ||
+      lower.includes("503") ||
+      lower.includes("gateway") ||
+      lower.includes("timeout")
+    );
+  }, []);
+
   const resetCreateForm = () => {
     setNewAgentName("");
     setNewAgentDescription("");
