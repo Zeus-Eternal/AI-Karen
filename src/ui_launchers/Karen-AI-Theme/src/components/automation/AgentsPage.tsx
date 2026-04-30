@@ -184,7 +184,7 @@ export default function AgentsPage() {
      if (!isAuthenticated) {
        setAgents([]);
        setSystemMetrics(null);
-       setErrorMsg("Sign in to manage agents.");
+       setErrorMsg("Authentication is temporarily unavailable. Please retry in a moment.");
        setIsLoading(false);
        return;
      }
@@ -209,11 +209,15 @@ export default function AgentsPage() {
      } catch (err: unknown) {
        const message = err instanceof Error ? err.message : "Failed to fetch agents.";
        console.error(err);
-       setErrorMsg(message);
+       setErrorMsg(
+         isTransientAuthOrRuntimeError(message)
+           ? "Agent system is temporarily unavailable (runtime/auth dependency degraded). Please retry shortly."
+           : message,
+       );
      } finally {
        setIsLoading(false);
      }
-   }, [isAuthenticated, isAdmin]);
+   }, [isAuthenticated, isAdmin, isTransientAuthOrRuntimeError]);
 
   useEffect(() => {
     if (isAuthLoading) {
@@ -667,3 +671,13 @@ export default function AgentsPage() {
     </div>
   );
 }
+  const isTransientAuthOrRuntimeError = useCallback((message: string): boolean => {
+    const lower = message.toLowerCase();
+    return (
+      lower.includes('database unavailable') ||
+      lower.includes('session not found in memory') ||
+      lower.includes('503') ||
+      lower.includes('gateway') ||
+      lower.includes('timeout')
+    );
+  }, []);

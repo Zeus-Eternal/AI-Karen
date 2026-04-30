@@ -32,6 +32,9 @@ import { useUserPreferences } from './const/userPreferences';
 import { StatusIndicators, MessagesArea, ChatInput } from './interface';
 import AgentActivityPanel from './AgentActivityPanel';
 import DegradedModeBanner from './DegradedModeBanner';
+import RuntimeMetadataPanel from './RuntimeMetadataPanel';
+import RuntimeReceipt from './RuntimeReceipt';
+import CircuitBreakerWarning from './CircuitBreakerWarning';
 
 // Session Management Types
 export interface Session {
@@ -921,6 +924,37 @@ export default function ChatInterface() {
 
   const { applyModelSelection, getSelectableProviders } = useModelSettings();
 
+
+  const latestAssistantMetadata = useMemo(() => {
+    const lastAssistant = [...messages].reverse().find((message) => message.role === 'assistant');
+    const metadata = (lastAssistant?.metadata && typeof lastAssistant.metadata === 'object')
+      ? lastAssistant.metadata as Record<string, unknown>
+      : {};
+    const llm = (metadata.llm && typeof metadata.llm === 'object')
+      ? metadata.llm as Record<string, unknown>
+      : {};
+
+    const asText = (value: unknown): string | undefined =>
+      typeof value === 'string' && value.trim() ? value.trim() : undefined;
+
+    const degradedReason = asText(metadata.reason) || asText(metadata.degraded_reason) || asText(llm.reason);
+
+    return {
+      requestedProvider: asText(llm.requested_provider) || asText(metadata.requested_provider),
+      actualProvider: asText(llm.actual_provider) || asText(llm.provider) || asText(metadata.actual_provider),
+      requestedModel: asText(llm.requested_model) || asText(metadata.requested_model),
+      actualModel: asText(llm.actual_model) || asText(llm.model_id) || asText(metadata.actual_model),
+      runtimeEngine: asText(metadata.execution_path) || asText(llm.runtime_engine),
+      fallbackLevel: asText(llm.fallback_level),
+      correlationId: asText(metadata.correlation_id),
+      requestId: asText(metadata.request_id),
+      status: asText(metadata.status),
+      responseSource: asText(metadata.response_source) || asText(metadata.execution_path),
+      usedFallback: Boolean(llm.used_fallback || llm.is_fallback || metadata.used_fallback),
+      degradedReason,
+      showCircuitWarning: Boolean(metadata.circuit_breaker_open || metadata.dependency_degraded || degradedReason),
+    };
+  }, [messages]);
   const selectableProviders = useMemo(() => {
     return modelSettings ? getSelectableProviders(modelSettings) : [];
   }, [getSelectableProviders, modelSettings]);
@@ -1869,6 +1903,29 @@ export default function ChatInterface() {
         error={error}
         currentSession={currentSession}
         isLoading={isLoading}
+      />
+
+      <RuntimeMetadataPanel
+        requestedProvider={latestAssistantMetadata.requestedProvider}
+        actualProvider={latestAssistantMetadata.actualProvider}
+        requestedModel={latestAssistantMetadata.requestedModel}
+        actualModel={latestAssistantMetadata.actualModel}
+        runtimeEngine={latestAssistantMetadata.runtimeEngine}
+        fallbackLevel={latestAssistantMetadata.fallbackLevel}
+        correlationId={latestAssistantMetadata.correlationId}
+        requestId={latestAssistantMetadata.requestId}
+        status={latestAssistantMetadata.status}
+      />
+
+      <RuntimeReceipt
+        source={latestAssistantMetadata.responseSource}
+        usedFallback={latestAssistantMetadata.usedFallback}
+        degradedReason={latestAssistantMetadata.degradedReason}
+      />
+
+      <CircuitBreakerWarning
+        show={latestAssistantMetadata.showCircuitWarning}
+        reason={latestAssistantMetadata.degradedReason}
       />
 
       {degradedMode.active && (
