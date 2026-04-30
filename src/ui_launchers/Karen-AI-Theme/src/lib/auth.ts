@@ -287,6 +287,20 @@ class AuthService {
     return true;
   }
 
+  private isTransientAuthError(error: unknown): boolean {
+    if (!(error instanceof Error)) return false;
+    const message = error.message.toLowerCase();
+    return (
+      message.includes('502') ||
+      message.includes('503') ||
+      message.includes('504') ||
+      message.includes('fetch') ||
+      message.includes('timeout') ||
+      message.includes('database unavailable') ||
+      message.includes('session not found in memory')
+    );
+  }
+
   private async getErrorMessage(response: Response, fallback: string): Promise<string> {
     try {
       const errorData = await response.json();
@@ -472,15 +486,7 @@ class AuthService {
       console.error('Token refresh error:', error);
       
       // Don't clear auth on transient errors (like 502/503 during degraded mode)
-      if (error instanceof Error && (
-        error.message.includes('502') || 
-        error.message.includes('503') || 
-        error.message.includes('504') || 
-        error.message.includes('fetch') || 
-        error.message.includes('timeout') ||
-        error.message.includes('Database unavailable') ||
-        error.message.includes('Session not found in memory')
-      )) {
+      if (this.isTransientAuthError(error)) {
         console.warn('[AuthService] Transient error during token refresh, preserving local auth state.');
       } else {
         // Hard refresh failure should be terminal for this local session
@@ -715,6 +721,11 @@ class AuthService {
               return false;
             }
           } catch (refreshError) {
+            if (this.isTransientAuthError(refreshError) && accessToken && (currentUser || hasSessionMarker)) {
+              console.warn('[AuthService] transient refresh failure during validation; preserving local session');
+              return true;
+            }
+
             if (this.shouldPreserveFreshLoginSession()) {
               console.warn('[AuthService] preserving fresh login session despite refresh failure during validation');
               return true;
