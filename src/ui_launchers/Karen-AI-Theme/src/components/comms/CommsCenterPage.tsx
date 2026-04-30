@@ -11,31 +11,15 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Bell, Bot, CheckCircle2, Clock, FileText, Info, MessageSquarePlus, Server, AlertCircle, XCircle, Workflow, Lightbulb, Activity, ShieldAlert, BrainCircuit } from "lucide-react";
-import { format, subDays, subHours, subMinutes } from 'date-fns';
+import { Bell, Bot, Clock, FileText, Info, MessageSquarePlus, Server, AlertCircle, Workflow, Lightbulb, Activity, ShieldAlert, BrainCircuit } from "lucide-react";
+import { format } from 'date-fns';
 
-type LogStatus = "Success" | "Failed" | "InProgress";
-type LogItem = {
-    id: string;
-    type: "Task" | "Sequence";
-    name: string;
-    status: LogStatus;
-    timestamp: Date;
-    duration?: string;
-};
 type SystemAlert = {
     id: string;
     title: string;
     description: string;
     type: "info" | "warning" | "update";
     timestamp: Date;
-};
-type GeneratedNote = {
-    id: string;
-    title: string;
-    content: string;
-    timestamp: Date;
-    source: string; // e.g., "From chat on 2024-07-30"
 };
 
 type AuditEvent = {
@@ -80,7 +64,7 @@ type ObservabilitySnapshot = {
 
 /**
  * @file CommsCenterPage.tsx
- * @description A comprehensive mock-up of the Communications Center, showing system alerts, automation logs, suggested facts, and generated notes.
+ * @description Communications Center backed by live API data only.
  */
 export default function CommsCenterPage() {
     const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
@@ -148,33 +132,16 @@ export default function CommsCenterPage() {
         };
     }, [isAuthenticated, isAuthLoading]);
 
-    // Mock data for other sections
-    const mockAutomationLogs: LogItem[] = [
-        { id: "log1", type: "Task", name: "Check Urgent Emails", status: "Success", timestamp: subMinutes(new Date(), 5), duration: "0.8s" },
-        { id: "log2", type: "Sequence", name: "Weekly Blog Post Workflow", status: "Failed", timestamp: subHours(new Date(), 2), duration: "5.2min" },
-        { id: "log3", type: "Task", name: "Post Daily Facebook Summary", status: "Success", timestamp: subHours(new Date(), 4), duration: "2.1s" },
-        { id: "log4", type: "Task", name: "Generate Weekly Sales Report", status: "Success", timestamp: subDays(new Date(), 3), duration: "15.7s" },
-    ];
-    
-    const mockSystemAlerts: SystemAlert[] = [
-        { id: "alert1", title: "Plugin Update: Gmail", description: "The Gmail plugin has been conceptually updated with new automation capabilities.", type: "update", timestamp: subHours(new Date(), 8) },
-        { id: "alert2", title: "System Performance", description: "All systems are operating normally. No issues detected.", type: "info", timestamp: subDays(new Date(), 1) },
-        { id: "alert3", title: "API Key Notice (Conceptual)", description: "The key for the 'Custom Weather Service' is expiring in 7 days.", type: "warning", timestamp: subDays(new Date(), 2) },
-    ];
-    
-    const mockGeneratedNotes: GeneratedNote[] = [
-        { id: "note1", title: "Summary of 'AI in 2024' Research", content: "Key findings include the rise of multi-modal models, the increasing importance of ethical AI frameworks, and the growth of enterprise adoption...", timestamp: subHours(new Date(), 6), source: "From Research Task" },
-        { id: "note2", title: "Key Points from Morning Briefing", content: "Discussed Q3 targets, upcoming product launch, and marketing campaign alignment. Action items assigned to John (sales) and Sarah (marketing).", timestamp: subDays(new Date(), 1), source: "From Chat Conversation" },
-    ];
-
-    const getStatusIcon = (status: LogStatus) => {
-        switch (status) {
-            case "Success": return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-            case "Failed": return <XCircle className="h-4 w-4 text-destructive" />;
-            case "InProgress": return <Clock className="h-4 w-4 text-blue-500 animate-spin" />;
-        }
+    const emitCommsDegradedTelemetry = (surface: string, reason: string) => {
+        console.warn(`[comms-center][degraded] ${surface}: ${reason}`);
     };
-    
+
+    useEffect(() => {
+        if (observabilityAuthRequired) emitCommsDegradedTelemetry('observability', 'auth_required');
+        if (observabilityAccessDenied) emitCommsDegradedTelemetry('observability', 'access_denied');
+        if (observabilityError) emitCommsDegradedTelemetry('observability', observabilityError);
+    }, [observabilityAuthRequired, observabilityAccessDenied, observabilityError]);
+
     const getAlertIcon = (type: SystemAlert['type']) => {
         switch (type) {
             case "info": return <Info className="h-4 w-4 text-blue-500" />;
@@ -191,7 +158,6 @@ export default function CommsCenterPage() {
         timestamp: new Date(alert.timestamp),
     }));
 
-    const combinedAlerts = liveAlerts.length > 0 ? liveAlerts : mockSystemAlerts;
     const recentAuditEvents = observability?.audit.recent_events || [];
     const memoryStats = observability?.memory;
     const trainingEventCounts = observability?.training.event_counts || {};
@@ -297,12 +263,11 @@ export default function CommsCenterPage() {
                         </CardHeader>
                         <CardContent>
                              <ul className="space-y-3">
-                                {mockAutomationLogs.slice(0, 4).map(log => (
-                                    <li key={log.id} className="flex items-center space-x-3 text-sm">
-                                        {getStatusIcon(log.status)}
-                                        <Badge variant={log.type === 'Sequence' ? 'default' : 'secondary'} className="w-20 justify-center">{log.type}</Badge>
-                                        <span className="flex-1 truncate font-medium text-foreground">{log.name}</span>
-                                        <span className="text-xs text-muted-foreground">{format(log.timestamp, "HH:mm")}</span>
+                                {recentAuditEvents.slice(0, 4).map((event, index) => (
+                                    <li key={`${event.timestamp ?? index}-${event.event_type ?? 'event'}`} className="flex items-center space-x-3 text-sm">
+                                        <Badge variant="secondary" className="w-20 justify-center">Audit</Badge>
+                                        <span className="flex-1 truncate font-medium text-foreground">{event.message || event.event_type || 'Event'}</span>
+                                        <span className="text-xs text-muted-foreground">{event.timestamp ? format(new Date(event.timestamp), "HH:mm") : "Unknown"}</span>
                                     </li>
                                 ))}
                             </ul>
@@ -506,29 +471,31 @@ export default function CommsCenterPage() {
                     <CardContent>
                         <ScrollArea className="h-96">
                             <div className="space-y-4">
-                                {mockAutomationLogs.map(log => (
-                                    <div key={log.id} className="flex items-center space-x-4 p-2 rounded-md border bg-muted/40">
-                                        <div className="flex-shrink-0">{getStatusIcon(log.status)}</div>
-                                        <div className="flex-1 grid grid-cols-5 gap-4 items-center">
+                                {recentAuditEvents.length > 0 ? recentAuditEvents.map((event, index) => (
+                                    <div key={`${event.timestamp ?? index}-${event.event_type ?? 'event'}`} className="flex items-center space-x-4 p-2 rounded-md border bg-muted/40">
+                                        <div className="flex-1 grid grid-cols-4 gap-4 items-center">
                                             <div className="col-span-2">
-                                                <p className="font-semibold text-foreground truncate">{log.name}</p>
-                                                <Badge variant={log.type === 'Sequence' ? 'default' : 'secondary'}>{log.type}</Badge>
+                                                <p className="font-semibold text-foreground truncate">{event.message || event.event_type || 'Audit event'}</p>
+                                                <Badge variant="secondary">Audit</Badge>
                                             </div>
                                             <div className="flex items-center space-x-2">
                                                 <Clock className="h-3.5 w-3.5 text-muted-foreground"/>
-                                                <span className="text-xs text-muted-foreground">{format(log.timestamp, 'MMM d, HH:mm:ss')}</span>
+                                                <span className="text-xs text-muted-foreground">{event.timestamp ? format(new Date(event.timestamp), 'MMM d, HH:mm:ss') : 'Unknown time'}</span>
                                             </div>
                                             <div>
-                                                <Badge variant="outline" className={log.status === 'Failed' ? 'border-destructive text-destructive' : ''}>
-                                                    {log.status}
-                                                </Badge>
-                                            </div>
-                                            <div className="text-right">
-                                               {log.duration && <p className="text-xs text-muted-foreground">{log.duration}</p>}
+                                                <Badge variant="outline">{event.event_type || 'unknown'}</Badge>
                                             </div>
                                         </div>
                                     </div>
-                                ))}
+                                )) : (
+                                    <Alert variant="default" className="border-yellow-500/30 bg-yellow-500/5">
+                                        <AlertCircle className="h-4 w-4 !text-yellow-600" />
+                                        <AlertTitle>Automation logs unavailable</AlertTitle>
+                                        <AlertDescription>
+                                            Live automation run history is unavailable from the backend. No synthetic log data is shown.
+                                        </AlertDescription>
+                                    </Alert>
+                                )}
                             </div>
                         </ScrollArea>
                     </CardContent>
@@ -544,17 +511,13 @@ export default function CommsCenterPage() {
                     <CardContent>
                        <ScrollArea className="h-96">
                            <div className="space-y-4">
-                                {mockGeneratedNotes.map(note => (
-                                    <Card key={note.id} className="bg-muted/40">
-                                        <CardHeader className="pb-3">
-                                            <CardTitle className="text-base">{note.title}</CardTitle>
-                                            <CardDescription className="text-xs">{note.source} - {format(note.timestamp, 'MMM d, yyyy')}</CardDescription>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <p className="text-sm text-muted-foreground">{note.content}</p>
-                                        </CardContent>
-                                    </Card>
-                                ))}
+                                <Alert variant="default" className="border-yellow-500/30 bg-yellow-500/5">
+                                    <AlertCircle className="h-4 w-4 !text-yellow-600" />
+                                    <AlertTitle>Generated notes unavailable</AlertTitle>
+                                    <AlertDescription>
+                                        Generated notes are not currently exposed by backend APIs for this view.
+                                    </AlertDescription>
+                                </Alert>
                             </div>
                         </ScrollArea>
                     </CardContent>
@@ -570,7 +533,7 @@ export default function CommsCenterPage() {
                     <CardContent>
                         <ScrollArea className="h-96">
                             <ul className="space-y-3">
-                                {combinedAlerts.map(alert => (
+                                {liveAlerts.length > 0 ? liveAlerts.map(alert => (
                                     <li key={alert.id} className="flex items-start space-x-4 p-3 rounded-lg border bg-muted/40">
                                         <div className="mt-1">{getAlertIcon(alert.type)}</div>
                                         <div className="flex-1">
@@ -579,7 +542,15 @@ export default function CommsCenterPage() {
                                             <p className="text-xs text-muted-foreground/70 mt-1">{format(alert.timestamp, 'MMM d, HH:mm')}</p>
                                         </div>
                                     </li>
-                                ))}
+                                )) : (
+                                    <Alert variant="default" className="border-yellow-500/30 bg-yellow-500/5">
+                                        <AlertCircle className="h-4 w-4 !text-yellow-600" />
+                                        <AlertTitle>System alerts unavailable</AlertTitle>
+                                        <AlertDescription>
+                                            Live system alerts are currently unavailable from the backend.
+                                        </AlertDescription>
+                                    </Alert>
+                                )}
                             </ul>
                         </ScrollArea>
                     </CardContent>

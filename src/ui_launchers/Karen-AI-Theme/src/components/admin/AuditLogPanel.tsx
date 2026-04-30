@@ -414,7 +414,7 @@ export default function AuditLogPanel() {
               Admin Activity Log
             </CardTitle>
             <CardDescription>
-              Read-only backend audit events. This panel never displays mock security data.
+              Read-only backend audit events. This panel never displays synthetic security data.
             </CardDescription>
           </div>
 

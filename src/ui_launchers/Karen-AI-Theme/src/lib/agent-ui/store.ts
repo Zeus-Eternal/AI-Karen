@@ -124,7 +124,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
 
       set((state) => {
         const existing = state.messages[agentId] || [];
-        // Swap out the loading mock message with the actual response
+        // Swap out the loading placeholder message with the actual response
         const filtered = existing.filter(m => m.id !== loadingMessageId);
         return {
           messages: { ...state.messages, [agentId]: [...filtered, assistantMessage] },

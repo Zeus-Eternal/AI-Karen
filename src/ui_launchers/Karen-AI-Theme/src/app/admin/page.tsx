@@ -825,7 +825,7 @@ export default function AdminPage() {
                         <Card>
                             <CardHeader>
                                 <CardTitle>System Notifications</CardTitle>
-                                <CardDescription>Conceptual placeholder for sending system-wide notifications to users.</CardDescription>
+                                <CardDescription>Notification dispatch panel (backend integration pending).</CardDescription>
                             </CardHeader>
                             <CardContent className="flex items-center justify-center h-64 bg-muted/30 rounded-lg">
                                  <p className="text-muted-foreground">System Notification Manager would be displayed here.</p>
