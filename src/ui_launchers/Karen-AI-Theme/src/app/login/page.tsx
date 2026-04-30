@@ -148,7 +148,8 @@ function LoginForm() {
                 />
                 {loginMode === 'username' && (
                   <p className="text-xs text-muted-foreground">
-                    Try &quot;admin&quot; for testing
+                    Try &quot;admin&quot; or &quot;admin@kari.ai&quot; with
+                    &quot;Admin@123!&quot;
                   </p>
                 )}
               </div>

@@ -71,6 +71,7 @@ class UpdateUserRequest(BaseModel):
     roles: Optional[List[str]] = None
     preferences: Optional[Dict[str, Any]] = None
     is_active: Optional[bool] = None
+    is_verified: Optional[bool] = None
 
 
 class UserResponse(BaseModel):
@@ -113,9 +114,50 @@ def _normalize_roles(roles: Optional[List[str]]) -> List[str]:
     return normalized or ["user"]
 
 
+def _has_role(current_user: Dict[str, Any], role: str) -> bool:
+    """Case-insensitive role check for route authorization."""
+    return any(
+        str(item).strip().lower() == role.lower()
+        for item in (current_user.get("roles", []) or [])
+    )
+
+
 def error_detail(message: str) -> Dict[str, str]:
     """Return error detail payload consistent with ErrorResponse."""
     return ErrorResponse(detail=message).model_dump()
+
+
+def _serialize_user(user_data: Any) -> UserResponse:
+    """Normalize auth service user objects into the public users API shape."""
+    user_id = str(
+        getattr(user_data, "user_id", None)
+        or getattr(user_data, "id", None)
+        or ""
+    )
+    status_value = getattr(user_data, "status", None)
+    status_label = str(getattr(status_value, "value", status_value) or "").lower()
+    is_active = (
+        getattr(user_data, "is_active", None)
+        if hasattr(user_data, "is_active")
+        else status_label == "active"
+    )
+    created_at = getattr(user_data, "created_at", None)
+    updated_at = getattr(user_data, "updated_at", None)
+    last_login = getattr(user_data, "last_login", None)
+
+    return UserResponse(
+        user_id=user_id,
+        email=getattr(user_data, "email", ""),
+        full_name=getattr(user_data, "full_name", None),
+        tenant_id=str(getattr(user_data, "tenant_id", "default") or "default"),
+        roles=list(getattr(user_data, "roles", []) or []),
+        preferences=getattr(user_data, "preferences", {}) or {},
+        is_active=bool(is_active),
+        is_verified=bool(getattr(user_data, "is_verified", True)),
+        last_login=last_login.isoformat() if last_login else None,
+        created_at=created_at.isoformat() if created_at else "",
+        updated_at=updated_at.isoformat() if updated_at else "",
+    )
 
 
 error_responses = {
@@ -140,9 +182,7 @@ async def get_profile(
     db: DuckDBClient = Depends(get_db),
 ) -> UserProfile:
     # Only allow access to own profile or for admin roles
-    if current_user.get("user_id") != user_id and "admin" not in current_user.get(
-        "roles", []
-    ):
+    if current_user.get("user_id") != user_id and not _has_role(current_user, "admin"):
         raise HTTPException(
             status_code=403,
             detail=error_detail("Not authorized to access this profile"),
@@ -167,9 +207,7 @@ async def save_profile(
     db: DuckDBClient = Depends(get_db),
 ) -> UserProfile:
     # Only allow modifications to own profile or for admin roles
-    if current_user.get("user_id") != user_id and "admin" not in current_user.get(
-        "roles", []
-    ):
+    if current_user.get("user_id") != user_id and not _has_role(current_user, "admin"):
         raise HTTPException(
             status_code=403,
             detail=error_detail("Not authorized to modify this profile"),
@@ -192,7 +230,7 @@ async def create_user(
 ) -> UserResponse:
     """Create a new user (admin only)."""
     # Only allow admin users to create new users
-    if "admin" not in current_user.get("roles", []):
+    if not _has_role(current_user, "admin"):
         raise HTTPException(
             status_code=403, detail=error_detail("Not authorized to create users")
         )
@@ -213,21 +251,7 @@ async def create_user(
                 detail=error_detail(error or "Failed to create user"),
             )
 
-        return UserResponse(
-            user_id=user_data.user_id,
-            email=user_data.email,
-            full_name=getattr(user_data, "full_name", None),
-            tenant_id=user_data.tenant_id,
-            roles=user_data.roles,
-            preferences=getattr(user_data, "preferences", {}),
-            is_active=user_data.is_active,
-            is_verified=user_data.is_verified,
-            last_login=user_data.last_login.isoformat()
-            if getattr(user_data, "last_login", None)
-            else None,
-            created_at=user_data.created_at.isoformat(),
-            updated_at=user_data.updated_at.isoformat(),
-        )
+        return _serialize_user(user_data)
 
     except HTTPException:
         raise
@@ -263,9 +287,7 @@ async def get_user(
 ) -> UserResponse:
     """Get user details (own profile or admin only)."""
     # Only allow access to own profile or for admin roles
-    if current_user.get("user_id") != user_id and "admin" not in current_user.get(
-        "roles", []
-    ):
+    if current_user.get("user_id") != user_id and not _has_role(current_user, "admin"):
         raise HTTPException(
             status_code=403, detail=error_detail("Not authorized to access this user")
         )
@@ -277,21 +299,7 @@ async def get_user(
         if not user_data:
             raise HTTPException(status_code=404, detail=error_detail("User not found"))
 
-        return UserResponse(
-            user_id=user_data.user_id,
-            email=user_data.email,
-            full_name=getattr(user_data, "full_name", None),
-            tenant_id=user_data.tenant_id,
-            roles=user_data.roles,
-            preferences=getattr(user_data, "preferences", {}),
-            is_active=user_data.is_active,
-            is_verified=user_data.is_verified,
-            last_login=user_data.last_login.isoformat()
-            if getattr(user_data, "last_login", None)
-            else None,
-            created_at=user_data.created_at.isoformat(),
-            updated_at=user_data.updated_at.isoformat(),
-        )
+        return _serialize_user(user_data)
 
     except UserNotFoundError:
         raise HTTPException(status_code=404, detail=error_detail("User not found"))
@@ -314,9 +322,7 @@ async def get_user_metrics(
     hours: int = 168,
 ) -> UserMetricsResponse:
     """Get backend-derived per-user metrics (own profile or admin only)."""
-    if current_user.get("user_id") != user_id and "admin" not in current_user.get(
-        "roles", []
-    ):
+    if current_user.get("user_id") != user_id and not _has_role(current_user, "admin"):
         raise HTTPException(
             status_code=403,
             detail=error_detail("Not authorized to access this user's metrics"),
@@ -347,17 +353,17 @@ async def update_user(
     """Update user details (own profile or admin only)."""
     # Only allow modifications to own profile or for admin roles
     # Admin can modify roles, regular users cannot
-    if current_user.get("user_id") != user_id and "admin" not in current_user.get(
-        "roles", []
-    ):
+    if current_user.get("user_id") != user_id and not _has_role(current_user, "admin"):
         raise HTTPException(
             status_code=403, detail=error_detail("Not authorized to modify this user")
         )
 
-    # Only admin can modify roles and is_active status
+    # Only admin can modify roles and account status
     if (
-        request.roles is not None or request.is_active is not None
-    ) and "admin" not in current_user.get("roles", []):
+        request.roles is not None
+        or request.is_active is not None
+        or request.is_verified is not None
+    ) and not _has_role(current_user, "admin"):
         raise HTTPException(
             status_code=403,
             detail=error_detail("Not authorized to modify user roles or status"),
@@ -378,23 +384,10 @@ async def update_user(
             roles=request.roles,
             preferences=request.preferences,
             is_active=request.is_active,
+            is_verified=request.is_verified,
         )
 
-        return UserResponse(
-            user_id=updated_user.user_id,
-            email=updated_user.email,
-            full_name=getattr(updated_user, "full_name", None),
-            tenant_id=updated_user.tenant_id,
-            roles=updated_user.roles,
-            preferences=getattr(updated_user, "preferences", {}),
-            is_active=updated_user.is_active,
-            is_verified=updated_user.is_verified,
-            last_login=updated_user.last_login.isoformat()
-            if getattr(updated_user, "last_login", None)
-            else None,
-            created_at=updated_user.created_at.isoformat(),
-            updated_at=updated_user.updated_at.isoformat(),
-        )
+        return _serialize_user(updated_user)
 
     except UserNotFoundError:
         raise HTTPException(status_code=404, detail=error_detail("User not found"))
@@ -402,6 +395,9 @@ async def update_user(
         raise HTTPException(status_code=403, detail=error_detail(str(e)))
     except AuthError as e:
         raise HTTPException(status_code=400, detail=error_detail(str(e)))
+    except ValueError as e:
+        status_code = 404 if "not found" in str(e).lower() else 400
+        raise HTTPException(status_code=status_code, detail=error_detail(str(e)))
     except Exception:
         raise HTTPException(
             status_code=500, detail=error_detail("Failed to update user")
@@ -419,7 +415,7 @@ async def delete_user(
 ) -> Response:
     """Delete a user (admin only)."""
     # Only allow admin users to delete users
-    if "admin" not in current_user.get("roles", []):
+    if not _has_role(current_user, "admin"):
         raise HTTPException(
             status_code=403, detail=error_detail("Not authorized to delete users")
         )
@@ -465,7 +461,7 @@ async def list_users(
 ) -> List[UserResponse]:
     """List users (admin only)."""
     # Only allow admin users to list users
-    if "admin" not in current_user.get("roles", []):
+    if not _has_role(current_user, "admin"):
         raise HTTPException(
             status_code=403, detail=error_detail("Not authorized to list users")
         )
@@ -473,29 +469,12 @@ async def list_users(
     try:
         auth_service = await get_auth_service_instance()
         users = await auth_service.list_users(
-            tenant_id=tenant_id or current_user.get("tenant_id"),
+            tenant_id=tenant_id if tenant_id is not None else None,
             limit=limit,
             offset=offset,
         )
 
-        return [
-            UserResponse(
-                user_id=user.user_id,
-                email=user.email,
-                full_name=getattr(user, "full_name", None),
-                tenant_id=user.tenant_id,
-                roles=user.roles,
-                preferences=getattr(user, "preferences", {}),
-                is_active=user.is_active,
-                is_verified=user.is_verified,
-                last_login=user.last_login.isoformat()
-                if getattr(user, "last_login", None)
-                else None,
-                created_at=user.created_at.isoformat(),
-                updated_at=user.updated_at.isoformat(),
-            )
-            for user in users
-        ]
+        return [_serialize_user(user) for user in users]
 
     except AuthError as e:
         raise HTTPException(status_code=400, detail=error_detail(str(e)))

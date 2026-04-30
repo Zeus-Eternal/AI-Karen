@@ -274,6 +274,7 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
                     "user_id": mock_user_id,
                     "email": "admin@karen.ai",
                     "user_type": "developer",
+                    "roles": ["admin", "user"],
                     "permissions": [
                         "extension:*",
                         "chat:write",

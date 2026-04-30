@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Activity,
+  AlertCircle,
   BarChart,
   Ban,
   Bell,
@@ -10,6 +11,7 @@ import {
   BrainCircuit,
   Database,
   Eye,
+  EyeOff,
   FileText,
   GraduationCap,
   MoreHorizontal,
@@ -21,6 +23,7 @@ import {
   UserCog,
   UserPlus,
   Users,
+  X,
   Wrench,
 } from "lucide-react";
 
@@ -140,6 +143,20 @@ type UserMetricsResponse = {
   token_usage_supported: boolean;
 };
 
+type AuthStatsResponse = {
+  status?: string;
+  service?: string;
+  timestamp?: string;
+  stats?: {
+    total_users?: number;
+    active_users?: number;
+    total_sessions?: number;
+    active_sessions?: number;
+    service_status?: string;
+    error?: string;
+  };
+};
+
 type CreateUserForm = {
   name: string;
   email: string;
@@ -151,6 +168,7 @@ type EditUserForm = {
   name: string;
   email: string;
   role: UserRole;
+  status: UserStatus;
 };
 
 const ROLE_OPTIONS: Array<{ label: UserRole; value: BackendRole }> = [
@@ -158,6 +176,8 @@ const ROLE_OPTIONS: Array<{ label: UserRole; value: BackendRole }> = [
   { label: "Editor", value: "editor" },
   { label: "Admin", value: "admin" },
 ];
+
+const STATUS_OPTIONS: UserStatus[] = ["Active", "Pending", "Suspended"];
 
 const DEFAULT_CREATE_FORM: CreateUserForm = {
   name: "",
@@ -170,6 +190,7 @@ const DEFAULT_EDIT_FORM: EditUserForm = {
   name: "",
   email: "",
   role: "User",
+  status: "Active",
 };
 
 const normalizeBackendRole = (roles: string[]): UserRole => {
@@ -204,6 +225,18 @@ const getUserStatus = (user: BackendUserResponse): UserStatus => {
   }
 
   return user.is_active ? "Active" : "Suspended";
+};
+
+const getStatusUpdatePayload = (status: UserStatus) => {
+  if (status === "Pending") {
+    return { is_active: true, is_verified: false };
+  }
+
+  if (status === "Suspended") {
+    return { is_active: false, is_verified: true };
+  }
+
+  return { is_active: true, is_verified: true };
 };
 
 const getInitials = (name: string) => {
@@ -348,10 +381,13 @@ export default function AdminSettingsPage() {
   const [userMetrics, setUserMetrics] = useState<UserMetricsResponse | null>(null);
   const [userMetricsLoading, setUserMetricsLoading] = useState(false);
   const [userMetricsError, setUserMetricsError] = useState<string | null>(null);
+  const [authStats, setAuthStats] = useState<AuthStatsResponse["stats"] | null>(null);
+  const [authStatsError, setAuthStatsError] = useState<string | null>(null);
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [isUpdatingUser, setIsUpdatingUser] = useState(false);
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
 
   const [createForm, setCreateForm] = useState<CreateUserForm>(DEFAULT_CREATE_FORM);
   const [editForm, setEditForm] = useState<EditUserForm>(DEFAULT_EDIT_FORM);
@@ -372,7 +408,14 @@ export default function AdminSettingsPage() {
 
     try {
       const response = await apiClient.get<BackendUserResponse[]>("/api/users");
-      setUsers(Array.isArray(response) ? response.map(mapBackendUser) : []);
+
+      if (!Array.isArray(response)) {
+        setUsersAuthRequired(true);
+        setUsers([]);
+        return;
+      }
+
+      setUsers(response.map(mapBackendUser));
     } catch (error) {
       setUsers([]);
 
@@ -389,6 +432,20 @@ export default function AdminSettingsPage() {
       setUsersLoadError(getErrorMessage(error, "Karen could not load backend users."));
     } finally {
       setUsersLoading(false);
+    }
+  }, []);
+
+  const loadAuthStats = useCallback(async () => {
+    setAuthStatsError(null);
+
+    try {
+      const response = await apiClient.get<AuthStatsResponse>("/api/auth/status");
+      setAuthStats(response.stats || null);
+    } catch (error) {
+      setAuthStats(null);
+      setAuthStatsError(
+        getErrorMessage(error, "Karen could not load auth service statistics."),
+      );
     }
   }, []);
 
@@ -411,6 +468,10 @@ export default function AdminSettingsPage() {
   }, [loadUsers]);
 
   useEffect(() => {
+    void loadAuthStats();
+  }, [loadAuthStats]);
+
+  useEffect(() => {
     if (!editingUser) {
       setEditForm(DEFAULT_EDIT_FORM);
       return;
@@ -420,6 +481,7 @@ export default function AdminSettingsPage() {
       name: editingUser.name,
       email: editingUser.email,
       role: editingUser.role,
+      status: editingUser.status,
     });
   }, [editingUser]);
 
@@ -488,13 +550,15 @@ export default function AdminSettingsPage() {
   }, [searchQuery, users]);
 
   const userCounts = useMemo(() => {
+    const activeUsers = users.filter((user) => user.status === "Active").length;
+
     return {
-      total: users.length,
-      active: users.filter((user) => user.status === "Active").length,
+      total: users.length || authStats?.total_users || 0,
+      active: activeUsers || authStats?.active_users || 0,
       pending: users.filter((user) => user.status === "Pending").length,
       suspended: users.filter((user) => user.status === "Suspended").length,
     };
-  }, [users]);
+  }, [authStats?.active_users, authStats?.total_users, users]);
 
   const openUserDialog = (user: User, mode: DialogMode) => {
     setEditDialogMode(mode);
@@ -516,6 +580,7 @@ export default function AdminSettingsPage() {
 
     setIsCreateDialogOpen(false);
     setCreateForm(DEFAULT_CREATE_FORM);
+    setShowCreatePassword(false);
   };
 
   const validateCreateForm = () => {
@@ -569,6 +634,7 @@ export default function AdminSettingsPage() {
       });
 
       setIsCreateDialogOpen(false);
+      setShowCreatePassword(false);
       setCreateForm(DEFAULT_CREATE_FORM);
 
       await loadUsers();
@@ -612,6 +678,7 @@ export default function AdminSettingsPage() {
         {
           full_name: editForm.name.trim(),
           roles: [toBackendRole(editForm.role)],
+          ...getStatusUpdatePayload(editForm.status),
         },
       );
 
@@ -827,6 +894,14 @@ export default function AdminSettingsPage() {
               </CardHeader>
 
               <CardContent>
+                {authStatsError && (
+                  <Alert className="mb-6 border-yellow-500/30 bg-yellow-500/5">
+                    <AlertCircle className="h-4 w-4 !text-yellow-600" />
+                    <AlertTitle>Auth Statistics Unavailable</AlertTitle>
+                    <AlertDescription>{authStatsError}</AlertDescription>
+                  </Alert>
+                )}
+
                 {usersAccessDenied && (
                   <Alert className="mb-6 border-primary/20 bg-primary/5">
                     <Shield className="h-4 w-4 !text-primary" />
@@ -858,14 +933,27 @@ export default function AdminSettingsPage() {
                 )}
 
                 <div className="mb-6 flex items-center justify-between gap-4">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      placeholder="Search users by name, email, role, or status..."
-                      className="max-w-md pl-10"
-                      value={searchQuery}
-                      onChange={(event) => setSearchQuery(event.target.value)}
-                    />
+                  <div className="flex flex-1 items-center gap-2">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        placeholder="Search users by name, email, role, or status..."
+                        className="max-w-md pl-10 pr-10"
+                        value={searchQuery}
+                        onChange={(event) => setSearchQuery(event.target.value)}
+                      />
+                      {searchQuery.trim() && (
+                        <button
+                          type="button"
+                          onClick={() => setSearchQuery("")}
+                          className="absolute inset-y-0 right-0 flex items-center justify-center px-3 text-muted-foreground transition-colors hover:text-foreground"
+                          aria-label="Clear search"
+                          title="Clear search"
+                        >
+                          <X className="h-4 w-4" aria-hidden="true" />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <Dialog
@@ -885,7 +973,7 @@ export default function AdminSettingsPage() {
                       </Button>
                     </DialogTrigger>
 
-                    <DialogContent className="sm:max-w-[425px]">
+                    <DialogContent className="sm:max-w-[640px] lg:max-w-[720px] max-h-[85vh] overflow-y-auto">
                       <DialogHeader>
                         <DialogTitle>Add New User</DialogTitle>
                         <DialogDescription>
@@ -893,94 +981,115 @@ export default function AdminSettingsPage() {
                         </DialogDescription>
                       </DialogHeader>
 
-                      <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-4 items-center gap-4">
-                          <Label htmlFor="create-name" className="text-right">
-                            Name
-                          </Label>
-                          <Input
-                            id="create-name"
-                            placeholder="John Doe"
-                            className="col-span-3"
-                            value={createForm.name}
-                            onChange={(event) =>
-                              setCreateForm((current) => ({
-                                ...current,
-                                name: event.target.value,
-                              }))
-                            }
-                            disabled={isCreatingUser}
-                          />
+                      <div className="space-y-5 py-4">
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label htmlFor="create-name">Name</Label>
+                            <Input
+                              id="create-name"
+                              placeholder="John Doe"
+                              value={createForm.name}
+                              onChange={(event) =>
+                                setCreateForm((current) => ({
+                                  ...current,
+                                  name: event.target.value,
+                                }))
+                              }
+                              disabled={isCreatingUser}
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="create-email">Email</Label>
+                            <Input
+                              id="create-email"
+                              type="email"
+                              placeholder="john@example.com"
+                              className="bg-background text-foreground"
+                              value={createForm.email}
+                              onChange={(event) =>
+                                setCreateForm((current) => ({
+                                  ...current,
+                                  email: event.target.value,
+                                }))
+                              }
+                              disabled={isCreatingUser}
+                            />
+                          </div>
                         </div>
 
-                        <div className="grid grid-cols-4 items-center gap-4">
-                          <Label htmlFor="create-email" className="text-right">
-                            Email
-                          </Label>
-                          <Input
-                            id="create-email"
-                            type="email"
-                            placeholder="john@example.com"
-                            className="col-span-3"
-                            value={createForm.email}
-                            onChange={(event) =>
-                              setCreateForm((current) => ({
-                                ...current,
-                                email: event.target.value,
-                              }))
-                            }
-                            disabled={isCreatingUser}
-                          />
-                        </div>
+                        <div className="grid gap-4 md:grid-cols-[3fr_1fr]">
+                          <div className="space-y-2">
+                            <Label htmlFor="create-password">Password</Label>
+                            <div className="relative">
+                              <Input
+                                id="create-password"
+                                type={showCreatePassword ? "text" : "password"}
+                                placeholder="Temporary password"
+                                className="bg-background text-foreground pr-10"
+                                value={createForm.password}
+                                onChange={(event) =>
+                                  setCreateForm((current) => ({
+                                    ...current,
+                                    password: event.target.value,
+                                  }))
+                                }
+                                disabled={isCreatingUser}
+                              />
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setShowCreatePassword((current) => !current)
+                                }
+                                className="absolute inset-y-0 right-0 flex items-center justify-center px-3 text-muted-foreground transition-colors hover:text-foreground"
+                                aria-label={
+                                  showCreatePassword
+                                    ? "Hide password"
+                                    : "Show password"
+                                }
+                                title={
+                                  showCreatePassword
+                                    ? "Hide password"
+                                    : "Show password"
+                                }
+                                disabled={isCreatingUser}
+                              >
+                                {showCreatePassword ? (
+                                  <EyeOff className="h-4 w-4" aria-hidden="true" />
+                                ) : (
+                                  <Eye className="h-4 w-4" aria-hidden="true" />
+                                )}
+                              </button>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Password must be 8+ characters and include uppercase, lowercase, a digit, and a special character.
+                            </p>
+                          </div>
 
-                        <div className="grid grid-cols-4 items-center gap-4">
-                          <Label htmlFor="create-password" className="text-right">
-                            Password
-                          </Label>
-                          <Input
-                            id="create-password"
-                            type="password"
-                            placeholder="Temporary password"
-                            className="col-span-3"
-                            value={createForm.password}
-                            onChange={(event) =>
-                              setCreateForm((current) => ({
-                                ...current,
-                                password: event.target.value,
-                              }))
-                            }
-                            disabled={isCreatingUser}
-                          />
-                        </div>
-                        <p className="col-span-4 text-xs text-muted-foreground">
-                          Password must be 8+ characters and include uppercase, lowercase, a digit, and a special character.
-                        </p>
-
-                        <div className="grid grid-cols-4 items-center gap-4">
-                          <Label htmlFor="create-role" className="text-right">
-                            Role
-                          </Label>
-                          <Select
-                            value={createForm.role}
-                            onValueChange={(value) =>
-                              setCreateForm((current) => ({
-                                ...current,
-                                role: value as BackendRole,
-                              }))
-                            }
-                            disabled={isCreatingUser}
-                          >
-                            <SelectTrigger id="create-role" className="col-span-3">
-                              <SelectValue placeholder="Select a role" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {ROLE_OPTIONS.map((role) => (
-                                <SelectItem key={role.value} value={role.value}>
-                                  {role.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <div className="space-y-2">
+                            <Label htmlFor="create-role">Role</Label>
+                            <Select
+                              value={createForm.role}
+                              onValueChange={(value) =>
+                                setCreateForm((current) => ({
+                                  ...current,
+                                  role: value as BackendRole,
+                                }))
+                              }
+                              disabled={isCreatingUser}
+                            >
+                              <SelectTrigger id="create-role" className="bg-background text-foreground">
+                                <SelectValue placeholder="Select a role" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {ROLE_OPTIONS.map((role) => (
+                                  <SelectItem key={role.value} value={role.value}>
+                                    {role.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
                       </div>
 
@@ -1010,8 +1119,8 @@ export default function AdminSettingsPage() {
                 ) : filteredUsers.length === 0 ? (
                   <div className="rounded-xl border border-border/70 p-6 text-sm text-muted-foreground">
                     {searchQuery.trim()
-                      ? "No users match your current search."
-                      : "No backend users were returned for this tenant/session."}
+                      ? `No users match "${searchQuery.trim()}". Clear search to show all backend users.`
+                      : "No backend users were returned for this tenant or session."}
                   </div>
                 ) : (
                   <Table>
@@ -1261,7 +1370,27 @@ export default function AdminSettingsPage() {
               <Label htmlFor="edit-status" className="text-right">
                 Status
               </Label>
-              <Input id="edit-status" value={editingUser?.status || ""} className="col-span-3" disabled />
+              <Select
+                value={editForm.status}
+                onValueChange={(value) =>
+                  setEditForm((current) => ({
+                    ...current,
+                    status: value as UserStatus,
+                  }))
+                }
+                disabled={editDialogMode === "view" || isUpdatingUser}
+              >
+                <SelectTrigger id="edit-status" className="col-span-3">
+                  <SelectValue placeholder="Select a status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_OPTIONS.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {status}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid grid-cols-4 items-center gap-4">

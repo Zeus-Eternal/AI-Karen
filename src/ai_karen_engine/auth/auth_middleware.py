@@ -534,6 +534,10 @@ def get_auth_middleware() -> SecureAuthMiddleware:
 
 async def get_current_user(request: Request) -> Dict[str, Any]:
     """FastAPI dependency to get current user."""
+    state_user = getattr(request.state, "user", None)
+    if isinstance(state_user, dict):
+        return state_user
+
     auth_middleware = get_auth_middleware()
     return await auth_middleware.get_current_user(request)
 

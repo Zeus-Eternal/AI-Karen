@@ -236,11 +236,11 @@ class DatabaseServiceFactory:
 
             # Seed initial data if needed
             try:
-                from ai_karen_engine.database.seed.auth_seed import seed_auth_data
+                from ai_karen_engine.database.seed.auth_seed import seed_default_auth
                 from ai_karen_engine.database.seed.rbac_seed import seed_rbac_data
 
                 # Seed auth data
-                seed_auth_data()
+                seed_default_auth()
                 logger.info("Auth data seeded")
 
                 # Seed RBAC data

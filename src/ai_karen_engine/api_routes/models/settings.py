@@ -281,9 +281,13 @@ def _mask_api_key(secret_value: Optional[str]) -> Optional[str]:
     trimmed = secret_value.strip()
     if not trimmed:
         return None
-    if len(trimmed) <= 8:
+    if len(trimmed) <= 4:
         return "•" * len(trimmed)
-    return f"{trimmed[:4]}{'•' * max(4, len(trimmed) - 8)}{trimmed[-4:]}"
+    if len(trimmed) <= 8:
+        middle = "•" * max(1, len(trimmed) - 4)
+    else:
+        middle = "•" * (len(trimmed) - 4)
+    return f"{trimmed[:2]}{middle}{trimmed[-2:]}"
 
 
 def _normalize_base_url(base_url: Optional[str]) -> Optional[str]:

@@ -166,6 +166,12 @@ export default function ModelSettings() {
     return normalizedSettings?.providers.find((p) => p.id === selectedProvider) ?? null;
   }, [normalizedSettings, selectedProvider]);
 
+  const canSelectProvider = useCallback((provider?: { selectable?: boolean; requires_api_key?: boolean } | null) => {
+    if (!provider) return false;
+    if (provider.selectable !== false) return true;
+    return Boolean(provider.requires_api_key);
+  }, []);
+
   const selectedProviderLabel = useMemo(() => {
     if (!selectedProviderDetails) return '';
     return getRuntimeDisplayName(selectedProviderDetails.id, selectedProviderDetails.display_name);
@@ -500,7 +506,7 @@ export default function ModelSettings() {
               {/* Provider Selection */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="ai-provider" className="text-sm font-semibold uppercase tracking-wider text-muted-foreground/80">Active Provider</Label>
+                  <Label htmlFor="ai-provider" className="text-sm font-semibold uppercase tracking-wider text-muted-foreground/80">Select Provider</Label>
                   <Dialog open={isCustomDialogOpen} onOpenChange={setIsCustomDialogOpen}>
                     <DialogTrigger asChild>
                       <Button variant="ghost" size="sm" className="h-8 text-primary hover:text-primary hover:bg-primary/5">
@@ -553,10 +559,10 @@ export default function ModelSettings() {
                   onValueChange={(providerId) => {
                     const provider = normalizedSettings?.providers.find((item) => item.id === providerId);
 
-                    if (!provider || provider.selectable === false) {
+                    if (!canSelectProvider(provider)) {
                       toast({
                         title: 'Provider unavailable',
-                        description: 'This provider is visible for status, but cannot be selected.',
+                        description: 'This provider is currently unavailable.',
                         variant: 'destructive',
                       });
                       return;
@@ -565,7 +571,7 @@ export default function ModelSettings() {
                     setSelectedProvider(providerId);
                   }}
                 >
-                  <SelectTrigger id="ai-provider" className="h-12 border-border/60 bg-muted/10 text-base font-medium transition-all hover:border-primary/40 focus:ring-primary/20">
+                  <SelectTrigger id="ai-provider" className="h-12 border-border/60 bg-background text-base font-medium transition-all hover:border-primary/40 focus:ring-primary/20">
                     <SelectValue placeholder="Identify your AI runtime..." />
                   </SelectTrigger>
                   <SelectContent className="max-h-[min(80vh,500px)]">
@@ -575,15 +581,19 @@ export default function ModelSettings() {
                         <SelectItem
                           key={p.id}
                           value={p.id}
-                          disabled={p.selectable === false}
-                          className="cursor-pointer py-3 hover:bg-primary/5"
+                          disabled={!canSelectProvider(p)}
+                          className="cursor-pointer py-3 text-foreground hover:bg-primary/5 data-[disabled]:cursor-not-allowed data-[disabled]:opacity-45"
                         >
                           <div className="flex items-center gap-3">
                             <span className="font-semibold">{getRuntimeDisplayName(p.id, p.display_name)}</span>
                             <Badge variant="outline" className="h-5 text-[9px] font-bold uppercase tracking-widest text-primary/70">Core</Badge>
-                            {p.selectable === false ? (
+                            {p.selectable === false && !p.requires_api_key ? (
                               <Badge variant="outline" className="h-5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/70">
                                 Locked
+                              </Badge>
+                            ) : p.requires_api_key && !p.api_key_configured ? (
+                              <Badge variant="outline" className="h-5 text-[9px] font-bold uppercase tracking-widest text-amber-600/70">
+                                Needs Key
                               </Badge>
                             ) : null}
                           </div>
@@ -597,15 +607,19 @@ export default function ModelSettings() {
                         <SelectItem
                           key={p.id}
                           value={p.id}
-                          disabled={p.selectable === false}
-                          className="cursor-pointer py-3"
+                          disabled={!canSelectProvider(p)}
+                          className="cursor-pointer py-3 text-foreground hover:bg-primary/5 data-[disabled]:cursor-not-allowed data-[disabled]:opacity-45"
                         >
                           <div className="flex items-center gap-3">
                             <span className="font-semibold">{getRuntimeDisplayName(p.id, p.display_name)}</span>
                             <Badge variant="outline" className="h-5 text-[9px] font-bold uppercase tracking-widest text-emerald-600/70">Local</Badge>
-                            {p.selectable === false ? (
+                            {p.selectable === false && !p.requires_api_key ? (
                               <Badge variant="outline" className="h-5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/70">
                                 Locked
+                              </Badge>
+                            ) : p.requires_api_key && !p.api_key_configured ? (
+                              <Badge variant="outline" className="h-5 text-[9px] font-bold uppercase tracking-widest text-amber-600/70">
+                                Needs Key
                               </Badge>
                             ) : null}
                           </div>
@@ -619,15 +633,19 @@ export default function ModelSettings() {
                         <SelectItem
                           key={p.id}
                           value={p.id}
-                          disabled={p.selectable === false}
-                          className="cursor-pointer py-3"
+                          disabled={!canSelectProvider(p)}
+                          className="cursor-pointer py-3 text-foreground hover:bg-primary/5 data-[disabled]:cursor-not-allowed data-[disabled]:opacity-45"
                         >
                           <div className="flex items-center gap-3">
                             <span className="font-semibold">{getRuntimeDisplayName(p.id, p.display_name)}</span>
                             <Badge variant="outline" className="h-5 text-[9px] font-bold uppercase tracking-widest text-emerald-600/70">Third-Party</Badge>
-                            {p.selectable === false ? (
+                            {p.selectable === false && !p.requires_api_key ? (
                               <Badge variant="outline" className="h-5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/70">
                                 Locked
+                              </Badge>
+                            ) : p.requires_api_key && !p.api_key_configured ? (
+                              <Badge variant="outline" className="h-5 text-[9px] font-bold uppercase tracking-widest text-amber-600/70">
+                                Needs Key
                               </Badge>
                             ) : null}
                           </div>
@@ -643,15 +661,19 @@ export default function ModelSettings() {
                             <SelectItem
                               key={p.id}
                               value={p.id}
-                              disabled={p.selectable === false}
-                              className="cursor-pointer py-3"
+                              disabled={!canSelectProvider(p)}
+                              className="cursor-pointer py-3 text-foreground hover:bg-primary/5 data-[disabled]:cursor-not-allowed data-[disabled]:opacity-45"
                             >
                               <div className="flex items-center gap-3">
                                 <span className="font-semibold">{getRuntimeDisplayName(p.id, p.display_name)}</span>
                                 <Badge variant="outline" className="h-5 text-[9px] font-bold uppercase tracking-widest text-purple-600/70">API</Badge>
-                                {p.selectable === false ? (
+                                {p.selectable === false && !p.requires_api_key ? (
                                   <Badge variant="outline" className="h-5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/70">
                                     Locked
+                                  </Badge>
+                                ) : p.requires_api_key && !p.api_key_configured ? (
+                                  <Badge variant="outline" className="h-5 text-[9px] font-bold uppercase tracking-widest text-amber-600/70">
+                                    Needs Key
                                   </Badge>
                                 ) : null}
                               </div>
@@ -727,9 +749,9 @@ export default function ModelSettings() {
                 <div className="animate-in fade-in slide-in-from-top-4 duration-500 space-y-8">
                   <div className="grid gap-8">
                     {/* Endpoint & Discovery Row */}
-                      <div className="grid gap-6 md:grid-cols-2">
+                      <div className="grid items-start gap-6 md:grid-cols-[65fr_35fr]">
                         {usesRuntimeOptions ? (
-                          <div className="space-y-3 md:col-span-2">
+                          <div className="space-y-3 md:col-span-2 md:self-start">
                             <Label htmlFor="runtime-source" className="flex items-center gap-2 font-semibold">
                               <Server className="h-4 w-4 text-primary" /> Runtime Source
                             </Label>
@@ -808,7 +830,7 @@ export default function ModelSettings() {
                             </div>
                           </div>
                         ) : selectedProviderDetails.supports_base_url_override && (
-                          <div className="space-y-3">
+                          <div className="space-y-3 md:self-start">
                             <Label htmlFor="base-url" className="flex items-center gap-2 font-semibold">
                               <Server className="h-4 w-4 text-primary" /> API Endpoint
                             </Label>
@@ -816,18 +838,19 @@ export default function ModelSettings() {
                           </div>
                         )}
                         
-                        <div className="space-y-3">
+                        <div className="space-y-3 md:self-start">
                           <div className="flex items-center justify-between">
                             <Label htmlFor="model-picker" className="font-semibold">Model Identification</Label>
                             {selectedProviderDetails.supports_model_discovery && (
                               <Button
                                 variant="outline"
-                                size="sm"
+                                size="icon"
                                 onClick={() => loadProviderModels(selectedProvider, baseUrl, fallbackProviderModels)}
                                 disabled={isLoadingModels}
-                                className="h-7 px-2 text-[10px] uppercase font-bold tracking-widest"
+                                className="h-7 w-7"
+                                title="Refresh model discovery"
                               >
-                                {isLoadingModels ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <RefreshCw className="mr-1 h-3 w-3" />} Discovery
+                                {isLoadingModels ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
                               </Button>
                             )}
                           </div>
@@ -848,25 +871,26 @@ export default function ModelSettings() {
 
                       {/* API Key Section */}
                       {selectedProviderDetails.requires_api_key && (
-                        <div className="rounded-2xl border border-border/50 bg-muted/5 p-6 space-y-4">
-                          <div className="flex items-center justify-between gap-4">
-                            <div className="space-y-1">
-                              <Label htmlFor="api-key" className="flex items-center gap-2 font-semibold">
-                                <KeyRound className="h-4 w-4 text-primary" /> Credentials
-                              </Label>
-                              <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Encrypted Backend Storage</p>
-                            </div>
-                            {selectedProviderDetails.api_key_configured && (
+                        <div className="rounded-2xl border border-border/50 bg-muted/5 p-6 space-y-4 md:col-span-2 mt-2 border-t pt-6">
+                          <div className="space-y-1">
+                            <Label htmlFor="api-key" className="flex items-center gap-2 font-semibold">
+                              <KeyRound className="h-4 w-4 text-primary" /> Credentials
+                            </Label>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Encrypted Backend Storage</p>
+                          </div>
+
+                          {selectedProviderDetails.api_key_configured && (
+                            <div className="flex justify-end">
                               <Button variant="outline" size="sm" onClick={handleClearApiKey} disabled={isClearingKey} className="h-7 text-[10px] font-bold border-destructive/40 bg-destructive/5 text-destructive hover:bg-destructive/10">
                                 Clear Secret
                               </Button>
-                            )}
-                          </div>
+                            </div>
+                          )}
 
                           <div className="relative">
                             <Input
                               id="api-key"
-                              type="password"
+                              type={isEditingApiKey ? "password" : "text"}
                               value={isEditingApiKey ? apiKey : (selectedProviderDetails.api_key_masked || '')}
                               readOnly={!isEditingApiKey && selectedProviderDetails.api_key_configured}
                               onFocus={() => {

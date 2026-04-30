@@ -157,6 +157,24 @@ class DatabaseConfig:
                 }
             )
 
+            # Ensure the default auth user and RBAC roles exist on every boot.
+            # This is idempotent and keeps fresh databases from showing an empty
+            # admin user table after startup.
+            try:
+                from ai_karen_engine.database.client import MultiTenantPostgresClient
+                from ai_karen_engine.database.seed.auth_seed import seed_default_auth
+                from ai_karen_engine.database.seed.rbac_seed import seed_default_roles
+
+                seed_client = MultiTenantPostgresClient(
+                    database_url=self.settings.database_url
+                )
+                with seed_client.session_scope() as session:
+                    seed_default_auth(session)
+                    seed_default_roles(session)
+                logger.info("Default auth and RBAC seed data ensured")
+            except Exception as e:
+                logger.warning(f"Default auth seeding skipped or failed: {e}")
+
             return True
 
         except Exception as e:

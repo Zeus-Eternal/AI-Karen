@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Brain, Users, Settings, BarChart, Bell, Database, MoreHorizontal, PlusCircle, Search, Trash2, UserPlus, BrainCircuit, Eye, PenSquare, UserCog, Ban, Wrench, ShieldCheck, History, AlertCircle, Activity, Shield } from "lucide-react";
+import { Brain, Users, Settings, BarChart, Bell, Database, MoreHorizontal, PlusCircle, Search, Trash2, UserPlus, BrainCircuit, Eye, EyeOff, PenSquare, UserCog, Ban, Wrench, ShieldCheck, History, AlertCircle, Activity, Shield, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -84,6 +84,20 @@ const normalizeBackendRole = (roles: string[]): UserRole => {
 
 const toBackendRole = (role: string): string => role.trim().toLowerCase() || "user";
 
+const STATUS_OPTIONS: UserStatus[] = ["Active", "Pending", "Suspended"];
+
+const getStatusUpdatePayload = (status: UserStatus) => {
+    if (status === "Pending") {
+        return { is_active: true, is_verified: false };
+    }
+
+    if (status === "Suspended") {
+        return { is_active: false, is_verified: true };
+    }
+
+    return { is_active: true, is_verified: true };
+};
+
 const isValidEmail = (value: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 };
@@ -158,6 +172,7 @@ export default function AdminPage() {
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [isCreatingUser, setIsCreatingUser] = useState(false);
     const [isUpdatingUser, setIsUpdatingUser] = useState(false);
+    const [showCreatePassword, setShowCreatePassword] = useState(false);
     const [createForm, setCreateForm] = useState({
         name: "",
         email: "",
@@ -168,6 +183,7 @@ export default function AdminPage() {
         name: "",
         email: "",
         role: "User",
+        status: "Active" as UserStatus,
     });
 
     const mapBackendUser = (user: BackendUserResponse): User => ({
@@ -194,7 +210,16 @@ export default function AdminPage() {
                 if (!mounted) {
                     return;
                 }
-                setUsers(Array.isArray(response) ? response.map(mapBackendUser) : []);
+
+                if (!Array.isArray(response)) {
+                    setUsers([]);
+                    setUsersAuthRequired(true);
+                    setUsersAccessDenied(false);
+                    setUsersLoadError(null);
+                    return;
+                }
+
+                setUsers(response.map(mapBackendUser));
                 setUsersLoadError(null);
             } catch (error) {
                 if (!mounted) {
@@ -238,6 +263,7 @@ export default function AdminPage() {
             name: editingUser.name,
             email: editingUser.email,
             role: editingUser.role,
+            status: editingUser.status,
         });
     }, [editingUser]);
 
@@ -372,6 +398,7 @@ export default function AdminPage() {
 
             setUsers((current) => [mapBackendUser(response), ...current]);
             setIsCreateDialogOpen(false);
+            setShowCreatePassword(false);
             setCreateForm({
                 name: "",
                 email: "",
@@ -403,6 +430,7 @@ export default function AdminPage() {
             const response = await apiClient.put<BackendUserResponse>(`/api/users/${editingUser.id}`, {
                 full_name: editForm.name.trim(),
                 roles: [toBackendRole(editForm.role)],
+                ...getStatusUpdatePayload(editForm.status),
             });
 
             setUsers((current) => current.map((user) => (user.id === editingUser.id ? mapBackendUser(response) : user)));
@@ -556,72 +584,111 @@ export default function AdminPage() {
                                     </Alert>
                                 )}
                                 <div className="flex items-center justify-between gap-4 mb-6">
-                                    <div className="flex-1 relative">
+                                <div className="flex flex-1 items-center gap-2">
+                                    <div className="relative flex-1">
                                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                         <Input
                                             placeholder="Search users by name or email..."
-                                            className="pl-10 max-w-md"
+                                            className="pl-10 pr-10 max-w-md"
                                             value={searchQuery}
                                             onChange={(e) => setSearchQuery(e.target.value)}
                                         />
+                                        {searchQuery.trim() && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setSearchQuery("")}
+                                                className="absolute inset-y-0 right-0 flex items-center justify-center px-3 text-muted-foreground transition-colors hover:text-foreground"
+                                                aria-label="Clear search"
+                                                title="Clear search"
+                                            >
+                                                <X className="h-4 w-4" aria-hidden="true" />
+                                            </button>
+                                        )}
                                     </div>
-                                    <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                                </div>
+                                    <Dialog
+                                        open={isCreateDialogOpen}
+                                        onOpenChange={(open) => {
+                                            setIsCreateDialogOpen(open);
+                                            if (!open) {
+                                                setShowCreatePassword(false);
+                                            }
+                                        }}
+                                    >
                                         <DialogTrigger asChild>
                                             <Button disabled={!canManageUsers}>
                                                 <PlusCircle className="mr-2 h-4 w-4" /> Add User
                                             </Button>
                                         </DialogTrigger>
-                                        <DialogContent className="sm:max-w-[425px]">
+                                        <DialogContent className="sm:max-w-[640px] lg:max-w-[720px] max-h-[85vh] overflow-y-auto">
                                             <DialogHeader>
                                                 <DialogTitle>Add New User</DialogTitle>
                                                 <DialogDescription>Create a new user account and assign them a role.</DialogDescription>
                                             </DialogHeader>
-                                            <div className="grid gap-4 py-4">
-                                                <div className="grid grid-cols-4 items-center gap-4">
-                                                    <Label htmlFor="name" className="text-right">Name</Label>
-                                                    <Input
-                                                        id="name"
-                                                        placeholder="John Doe"
-                                                        className="col-span-3"
-                                                        value={createForm.name}
-                                                        onChange={(e) => setCreateForm((current) => ({ ...current, name: e.target.value }))}
-                                                    />
+                                            <div className="space-y-5 py-4">
+                                                <div className="grid gap-4 md:grid-cols-2">
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="name">Name</Label>
+                                                        <Input
+                                                            id="name"
+                                                            placeholder="John Doe"
+                                                            value={createForm.name}
+                                                            onChange={(e) => setCreateForm((current) => ({ ...current, name: e.target.value }))}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="email">Email</Label>
+                                                        <Input
+                                                            id="email"
+                                                            type="email"
+                                                            placeholder="john@example.com"
+                                                            className="bg-background text-foreground"
+                                                            value={createForm.email}
+                                                            onChange={(e) => setCreateForm((current) => ({ ...current, email: e.target.value }))}
+                                                        />
+                                                    </div>
                                                 </div>
-                                                <div className="grid grid-cols-4 items-center gap-4">
-                                                    <Label htmlFor="email" className="text-right">Email</Label>
-                                                    <Input
-                                                        id="email"
-                                                        type="email"
-                                                        placeholder="john@example.com"
-                                                        className="col-span-3"
-                                                        value={createForm.email}
-                                                        onChange={(e) => setCreateForm((current) => ({ ...current, email: e.target.value }))}
-                                                    />
-                                                </div>
-                                                <div className="grid grid-cols-4 items-center gap-4">
-                                                    <Label htmlFor="password" className="text-right">Password</Label>
-                                                    <Input
-                                                        id="password"
-                                                        type="password"
-                                                        placeholder="Temporary password"
-                                                        className="col-span-3"
-                                                        value={createForm.password}
-                                                        onChange={(e) => setCreateForm((current) => ({ ...current, password: e.target.value }))}
-                                                    />
-                                                </div>
-                                                <p className="col-span-4 text-xs text-muted-foreground">
-                                                    Password must be 8+ characters and include uppercase, lowercase, a digit, and a special character.
-                                                </p>
-                                                <div className="grid grid-cols-4 items-center gap-4">
-                                                    <Label htmlFor="role" className="text-right">Role</Label>
-                                                    <Select value={createForm.role} onValueChange={(value) => setCreateForm((current) => ({ ...current, role: value }))}>
-                                                        <SelectTrigger className="col-span-3"><SelectValue placeholder="Select a role" /></SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="user">User</SelectItem>
-                                                            <SelectItem value="editor">Editor</SelectItem>
-                                                            <SelectItem value="admin">Admin</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
+                                                <div className="grid gap-4 md:grid-cols-[3fr_1fr]">
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="password">Password</Label>
+                                                        <div className="relative">
+                                                            <Input
+                                                                id="password"
+                                                                type={showCreatePassword ? "text" : "password"}
+                                                                placeholder="Temporary password"
+                                                                className="bg-background text-foreground pr-10"
+                                                                value={createForm.password}
+                                                                onChange={(e) => setCreateForm((current) => ({ ...current, password: e.target.value }))}
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setShowCreatePassword((current) => !current)}
+                                                                className="absolute inset-y-0 right-0 flex items-center justify-center px-3 text-muted-foreground transition-colors hover:text-foreground"
+                                                                aria-label={showCreatePassword ? "Hide password" : "Show password"}
+                                                                title={showCreatePassword ? "Hide password" : "Show password"}
+                                                            >
+                                                                {showCreatePassword ? (
+                                                                    <EyeOff className="h-4 w-4" aria-hidden="true" />
+                                                                ) : (
+                                                                    <Eye className="h-4 w-4" aria-hidden="true" />
+                                                                )}
+                                                            </button>
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            Password must be 8+ characters and include uppercase, lowercase, a digit, and a special character.
+                                                        </p>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="role">Role</Label>
+                                                        <Select value={createForm.role} onValueChange={(value) => setCreateForm((current) => ({ ...current, role: value }))}>
+                                                            <SelectTrigger className="bg-background text-foreground"><SelectValue placeholder="Select a role" /></SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="user">User</SelectItem>
+                                                                <SelectItem value="editor">Editor</SelectItem>
+                                                                <SelectItem value="admin">Admin</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
                                                 </div>
                                             </div>
                                             <DialogFooter>
@@ -646,7 +713,7 @@ export default function AdminPage() {
                                 ) : filteredUsers.length === 0 ? (
                                     <div className="rounded-xl border border-border/70 p-4 text-sm text-muted-foreground">
                                         {searchQuery.trim()
-                                            ? "No users match your current search."
+                                            ? `No users match "${searchQuery.trim()}". Clear search to show all backend users.`
                                             : "No backend users were returned for this tenant or session."}
                                     </div>
                                 ) : (
@@ -812,7 +879,22 @@ export default function AdminPage() {
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="edit-status" className="text-right">Status</Label>
-                        <Input id="edit-status" value={editingUser?.status || ""} className="col-span-3" disabled />
+                        <Select
+                            value={editForm.status}
+                            onValueChange={(value) => setEditForm((current) => ({ ...current, status: value as UserStatus }))}
+                            disabled={editDialogMode === "view" || isUpdatingUser}
+                        >
+                            <SelectTrigger id="edit-status" className="col-span-3">
+                                <SelectValue placeholder="Select a status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {STATUS_OPTIONS.map((status) => (
+                                    <SelectItem key={status} value={status}>
+                                        {status}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="edit-last-login" className="text-right">Last Login</Label>

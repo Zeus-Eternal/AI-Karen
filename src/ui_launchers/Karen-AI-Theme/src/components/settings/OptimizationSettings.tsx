@@ -450,7 +450,7 @@ export default function OptimizationSettings() {
       const [configSummaryResult, performanceConfigResult, statusResult] = await Promise.allSettled([
         apiClient.get<OptimizationConfigResponse>("/api/optimization/config"),
         apiClient.get<PerformanceOptimizationConfigResponse>("/api/performance/optimization/config"),
-        apiClient.get<OptimizationStatusResponse>("/api/optimization/status"),
+        apiClient.get<OptimizationStatusResponse>("/api/performance/optimization/status"),
       ]);
 
       const nextErrors: EndpointErrors = {};
@@ -483,7 +483,12 @@ export default function OptimizationSettings() {
 
       setEndpointErrors(nextErrors);
 
-      if (Object.keys(nextErrors).length > 0) {
+      const allEndpointsFailed =
+        configSummaryResult.status === "rejected" &&
+        performanceConfigResult.status === "rejected" &&
+        statusResult.status === "rejected";
+
+      if (Object.keys(nextErrors).length > 0 && allEndpointsFailed) {
         toast({
           title: "Optimization state partially loaded",
           description: "Some optimization endpoints failed. Showing live data that could be loaded.",

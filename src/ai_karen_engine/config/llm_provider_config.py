@@ -1086,7 +1086,7 @@ class LLMProviderConfigManager:
             models=[
                 ProviderModel(
                     id=os.getenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME", "karen-vllm-local"),
-                    name="Local vLLM",
+                    name=os.getenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME", "karen-vllm-local"),
                     family="vllm",
                     capabilities={"text", "conversation", "chat", "streaming"},
                     context_length=int(os.getenv("KAREN_BUILTIN_VLLM_MAX_MODEL_LEN", "4096")),
@@ -1152,7 +1152,7 @@ class LLMProviderConfigManager:
                 models=[
                     ProviderModel(
                         id=os.getenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME", "karen-vllm-local"),
-                        name="Local vLLM",
+                        name=os.getenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME", "karen-vllm-local"),
                         family="vllm",
                         capabilities={"text", "conversation", "chat", "streaming"},
                         context_length=int(os.getenv("KAREN_BUILTIN_VLLM_MAX_MODEL_LEN", "4096")),

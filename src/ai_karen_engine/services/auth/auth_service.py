@@ -1591,6 +1591,64 @@ class AuthService(BaseService):
             logger.error("Failed to update user profile: %s", e)
             return None, str(e)
 
+    async def update_user(
+        self,
+        user_id: str,
+        *,
+        full_name: Optional[str] = None,
+        roles: Optional[List[str]] = None,
+        preferences: Optional[Dict[str, Any]] = None,
+        is_active: Optional[bool] = None,
+        is_verified: Optional[bool] = None,
+    ) -> UserAccount:
+        """Update admin-managed user account fields."""
+        try:
+            user_uuid = uuid.UUID(str(user_id))
+        except ValueError as exc:
+            raise ValueError("Invalid user ID") from exc
+
+        async with self._session_scope() as session:
+            result = await session.execute(
+                select(AuthUser).where(AuthUser.user_id == user_uuid)
+            )
+            auth_user = result.scalar_one_or_none()
+            if not auth_user:
+                raise ValueError("User not found")
+
+            if full_name is not None:
+                auth_user.full_name = full_name
+
+            if roles is not None:
+                auth_user.roles = [
+                    role.value if isinstance(role, UserRole) else str(role)
+                    for role in roles
+                ]
+                from sqlalchemy.orm.attributes import flag_modified
+
+                flag_modified(auth_user, "roles")
+
+            if preferences is not None:
+                current_preferences = dict(auth_user.preferences or {})
+                current_preferences.update(preferences)
+                auth_user.preferences = current_preferences
+                from sqlalchemy.orm.attributes import flag_modified
+
+                flag_modified(auth_user, "preferences")
+
+            if is_active is not None:
+                auth_user.is_active = is_active
+
+            if is_verified is not None:
+                auth_user.is_verified = is_verified
+
+            auth_user.updated_at = datetime.utcnow()
+            await session.flush()
+            await session.refresh(auth_user)
+
+            user_account = self._build_user_account(auth_user)
+            self._user_cache[str(auth_user.user_id)] = user_account
+            return user_account
+
     async def health_check(self) -> bool:
         """
         Check the health of the Authentication Service.

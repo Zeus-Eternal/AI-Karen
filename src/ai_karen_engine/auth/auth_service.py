@@ -3,9 +3,15 @@
 from __future__ import annotations
 
 import asyncio
+import uuid
 from dataclasses import asdict
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from sqlalchemy import select
+from sqlalchemy.orm.attributes import flag_modified
+
+from ai_karen_engine.database.models import AuthUser
 from ai_karen_engine.services.auth.auth_service import (
     AuthService as CoreAuthService,
     UserAccount,
@@ -171,6 +177,69 @@ class AuthService:
         if not user:
             return None
         return user_account_to_dict(user)
+
+    async def get_user_by_id(self, user_id: str) -> Optional[Dict[str, Any]]:
+        """Fetch a user record by internal identifier."""
+
+        service = await self._get_service()
+        user = await service.get_user_by_id(user_id)
+        if not user:
+            return None
+        return user_account_to_dict(user)
+
+    async def update_user(
+        self,
+        user_id: str,
+        *,
+        full_name: Optional[str] = None,
+        roles: Optional[list[str]] = None,
+        preferences: Optional[Dict[str, Any]] = None,
+        is_active: Optional[bool] = None,
+        is_verified: Optional[bool] = None,
+    ) -> Dict[str, Any]:
+        """Update admin-managed user account fields."""
+
+        service = await self._get_service()
+
+        try:
+            user_uuid = uuid.UUID(str(user_id))
+        except ValueError as exc:
+            raise ValueError("Invalid user ID") from exc
+
+        async with service._session_scope() as session:
+            result = await session.execute(
+                select(AuthUser).where(AuthUser.user_id == user_uuid)
+            )
+            auth_user = result.scalar_one_or_none()
+            if not auth_user:
+                raise ValueError("User not found")
+
+            if full_name is not None:
+                auth_user.full_name = full_name
+
+            if roles is not None:
+                auth_user.roles = roles
+                flag_modified(auth_user, "roles")
+
+            if preferences is not None:
+                current_preferences = dict(auth_user.preferences or {})
+                current_preferences.update(preferences)
+                auth_user.preferences = current_preferences
+                flag_modified(auth_user, "preferences")
+
+            if is_active is not None:
+                auth_user.is_active = is_active
+
+            if is_verified is not None:
+                auth_user.is_verified = is_verified
+
+            auth_user.updated_at = datetime.utcnow()
+            await session.flush()
+            await session.refresh(auth_user)
+
+            user = service._build_user_account(auth_user)
+            service._user_cache[str(auth_user.user_id)] = user
+            return user_account_to_dict(user)
 
     async def list_users(
         self,

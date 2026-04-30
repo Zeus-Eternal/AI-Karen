@@ -30,6 +30,14 @@ from ai_karen_engine.database.dependencies import get_async_db_session_dependenc
 logger = logging.getLogger("kari.auth_routes")
 
 
+def _has_role(current_user: Any, role: str) -> bool:
+    """Case-insensitive role check for route authorization."""
+    roles = getattr(current_user, "roles", None)
+    if roles is None and isinstance(current_user, dict):
+        roles = current_user.get("roles", [])
+    return any(str(item).strip().lower() == role.lower() for item in (roles or []))
+
+
 # Request/Response Models
 class LoginRequest(BaseModel):
     """Login request model."""
@@ -732,7 +740,7 @@ async def create_user(
 ) -> JSONResponse:
     """Create a new user (admin only)."""
     # Check if current user has admin privileges
-    if "admin" not in current_user.roles and "super_admin" not in current_user.roles:
+    if not _has_role(current_user, "admin") and not _has_role(current_user, "super_admin"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient privileges to create users",
@@ -770,7 +778,7 @@ async def get_auth_stats(
 ) -> Dict[str, Any]:
     """Get authentication statistics (admin only)."""
     # Check if current user has admin privileges
-    if "admin" not in current_user.roles and "super_admin" not in current_user.roles:
+    if not _has_role(current_user, "admin") and not _has_role(current_user, "super_admin"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient privileges to view authentication statistics",
