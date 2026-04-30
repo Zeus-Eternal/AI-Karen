@@ -22,15 +22,22 @@ def register_startup_tasks(app: FastAPI) -> None:
     # Store database availability state in app
     app.state.database_available = False
 
+    def _get_settings() -> Settings:
+        settings = getattr(app.state, "settings", None)
+        if settings is None:
+            settings = Settings()
+            app.state.settings = settings
+        return settings
+
     @app.on_event("startup")
     async def _init_database_config() -> None:
         """Initialize database configuration with enhanced settings"""
         try:
             from .database_config import get_database_config
-            from .config import Settings
 
-            settings = Settings()
+            settings = _get_settings()
             db_config = get_database_config(settings)
+            app.state.database_config = db_config
 
             # Initialize database with enhanced configuration
             success = await db_config.initialize_database()
@@ -97,12 +104,11 @@ def register_startup_tasks(app: FastAPI) -> None:
             return
 
         try:
-            from .config import Settings
             from ai_karen_engine.extensions.platform.core.registry.database_service import (
                 initialize_database_service,
             )
 
-            settings = Settings()
+            settings = _get_settings()
             database_url = settings.database_url
 
             # Initialize extension database service
@@ -131,12 +137,11 @@ def register_startup_tasks(app: FastAPI) -> None:
             from .enhanced_database_health_monitor import (
                 get_enhanced_database_health_monitor,
             )
-            from .config import Settings
 
-            settings = Settings()
+            settings = _get_settings()
 
             # Get existing components for integration
-            database_config = get_database_config(settings)
+            database_config = getattr(app.state, "database_config", None) or get_database_config(settings)
             enhanced_health_monitor = get_enhanced_database_health_monitor()
 
             # Get extension manager if available
