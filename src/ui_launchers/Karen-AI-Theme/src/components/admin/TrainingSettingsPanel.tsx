@@ -927,7 +927,7 @@ export default function TrainingSettingsPanel() {
                   <div className="font-medium text-foreground">Dataset inventory</div>
                   <div className="mt-1">
                     Reads <code>/api/training-data/datasets</code> instead of relying
-                    on mock queue state.
+                    on queue state.
                   </div>
                 </div>
 

@@ -364,7 +364,7 @@ export default function PersonalFactsSettings() {
     /*
      * PersonalFactsSettings is live-backed. Facts and suggestions must come
      * from backend memory endpoints. Missing endpoints are shown honestly as
-     * unavailable instead of silently falling back to mock memory.
+     * unavailable instead of silently falling back to synthetic memory.
      */
     const [factsResult, suggestionsResult] = await Promise.allSettled([
       loadFacts(),
@@ -593,7 +593,7 @@ export default function PersonalFactsSettings() {
               </p>
               <p className="mt-1 text-xs">
                 Some memory endpoints are unavailable. Karen is showing only live
-                data that could be loaded. No mock facts are being used.
+                data that could be loaded. No synthetic facts are being used.
               </p>
               {endpointStatus.lastError && (
                 <p className="mt-1 text-[10px] opacity-80">
