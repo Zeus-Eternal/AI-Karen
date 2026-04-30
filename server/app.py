@@ -41,7 +41,6 @@ from .middleware import configure_middleware
 from .performance import load_performance_settings
 from .routers import wire_routers
 from .startup import create_lifespan, register_startup_tasks
-from .database_config import get_database_config, database_lifespan
 from .admin_endpoints import register_admin_endpoints
 from .health_endpoints import register_health_endpoints
 from .security import validate_environment_security
@@ -91,11 +90,6 @@ def create_app() -> FastAPI:
 
     # Load configuration (environment loading is handled in config module)
     settings = Settings()
-    environment = settings.environment.lower()
-
-    # Environment loading is handled in config module
-    settings = Settings()
-    environment = settings.environment.lower()
     # Load performance configuration
     load_performance_settings(settings)
 
@@ -108,9 +102,6 @@ def create_app() -> FastAPI:
     # Create lifespan manager with database configuration
     lifespan = create_lifespan(settings)
 
-    # Initialize database configuration
-    db_config = get_database_config(settings)
-
     # Create FastAPI app
     app = FastAPI(
         title="Kari AI Assistant API",
@@ -120,6 +111,7 @@ def create_app() -> FastAPI:
         redoc_url="/redoc" if settings.environment != "production" else None,
         lifespan=lifespan,
     )
+    app.state.settings = settings
 
     # Configure middleware
     configure_middleware(app, settings, REQUEST_COUNT, REQUEST_LATENCY, ERROR_COUNT)
