@@ -89,6 +89,7 @@ from ai_karen_engine.api_routes.extensions.extensions import router as extension
 from ai_karen_engine.api_routes.plugins.management import (
     router as plugin_management_router,
 )
+from ai_karen_engine.api_routes.plugins.store import router as plugin_store_router
 from ai_karen_engine.api_routes.content.attachments import (
     router as file_attachment_router,
 )
@@ -411,6 +412,7 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
     except Exception as e:
         logger.error(f"Failed to include conversation router: {e}", exc_info=True)
     app.include_router(plugin_router, prefix="/api/plugins", tags=["plugins"])
+    app.include_router(plugin_store_router, prefix="/api", tags=["plugin-store"])
     app.include_router(plugin_public_router, tags=["plugins-public"])
     app.include_router(tool_router, prefix="/api/tools", tags=["tools"])
     # Audit router enabled
