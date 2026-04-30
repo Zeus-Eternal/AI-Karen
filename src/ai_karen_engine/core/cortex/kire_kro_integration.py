@@ -216,6 +216,7 @@ class KIREKROIntegration:
         try:
             from ai_karen_engine.core.langgraph_orchestrator import LangGraphOrchestrator
 
+            t0 = time.time()
             context = dict(context or {})
             correlation_id = str(context.get("correlation_id") or uuid.uuid4())
             context["correlation_id"] = correlation_id
@@ -373,7 +374,7 @@ class KIREKROIntegration:
                     "model": final_metadata.get("model"),
                     "degraded_mode": bool(final_state.get("degraded_mode")),
                     "status": "degraded" if final_state.get("degraded_mode") else "completed",
-                    "execution_path": final_state.get("execution_path", "langgraph"),
+                    "execution_path": final_state.get("execution_path", "standard"),
                     "assistant_message_id": final_state.get("assistant_message_id"),
                     "correlation_id": final_state.get("correlation_id", correlation_id),
                 },
