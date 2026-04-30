@@ -27,13 +27,13 @@ from ai_karen_engine.core.services.dependencies import bypass_user_context_func
 
 from ai_karen_engine.core.logging.logger import get_structured_logger
 from ai_karen_engine.core.runtime.chat_runtime_control_plane import (
-    get_chat_runtime_control_plane,
     MaintenanceResponse,
     EmergencyFallbackResponse,
     DegradedResponse,
     serialize_runtime_response,
     runtime_response_http_status,
 )
+from ai_karen_engine.core.runtime.chat_runtime_service import get_chat_runtime_service
 from ai_karen_engine.core.langgraph_orchestrator import LangGraphOrchestrator
 from ai_karen_engine.models.shared_types import (
     CanonicalChatRequest,
@@ -244,8 +244,7 @@ class ChatRuntimeHelper:
     @staticmethod
     async def gate_request() -> Optional[Any]:
         """Consult the control plane for maintenance or degradation."""
-        control_plane = await get_chat_runtime_control_plane()
-        runtime_response = await control_plane.get_runtime_response()
+        runtime_response = await get_chat_runtime_service().ensure_control_plane_ready()
 
         if runtime_response is not None:
             if isinstance(runtime_response, DegradedResponse):

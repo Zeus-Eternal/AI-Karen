@@ -31,7 +31,6 @@ from ai_karen_engine.models.shared_types import CanonicalChatRequest
 from ai_karen_engine.services.streaming.stream_processor import AsyncStreamProcessor
 from ai_karen_engine.services.streaming.websocket_gateway import WebSocketGateway
 from ai_karen_engine.core.runtime.chat_runtime_control_plane import (
-    get_chat_runtime_control_plane,
     RuntimeMode,
     MaintenanceResponse,
     EmergencyFallbackResponse,
@@ -210,8 +209,7 @@ async def websocket_chat_endpoint(
 
     try:
         # ── Control Plane Gate ──────────────────────────────────
-        control_plane = await get_chat_runtime_control_plane()
-        runtime_response = await control_plane.get_runtime_response()
+        runtime_response = await get_chat_runtime_service().ensure_control_plane_ready(current_user)
 
         if runtime_response is not None:
             await websocket.accept()
