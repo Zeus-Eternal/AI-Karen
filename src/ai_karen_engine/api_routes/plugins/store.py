@@ -16,19 +16,26 @@ from enum import Enum
 
 from sqlalchemy import select, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.security import APIKeyHeader, APIKey
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
+from ai_karen_engine.auth.session import get_current_user
+from ai_karen_engine.core.services.dependencies import get_plugin_service
+from ai_karen_engine.services.plugin_service import PluginService
+from ai_karen_engine.services.audit.audit_logging import get_audit_logger
 
 from ai_karen_engine.extensions.platform.core.registry.database_models import (
     ExtensionDBModel,
 )
-from ai_karen_engine.extensions.platform.core.registry.marketplace_discovery import (
-    MarketplaceDiscovery,
-)
-from ai_karen_engine.extensions.platform.core.host.lifecycle_manager import (
-    LifecycleManager,
-)
+try:
+    from ai_karen_engine.extensions.platform.core.registry.marketplace_discovery import (
+        MarketplaceDiscovery,
+    )
+    from ai_karen_engine.extensions.platform.core.host.lifecycle_manager import (
+        LifecycleManager,
+    )
+except ImportError:  # pragma: no cover
+    MarketplaceDiscovery = Any  # type: ignore
+    LifecycleManager = Any  # type: ignore
 
 
 logger = logging.getLogger(__name__)
@@ -643,27 +650,37 @@ class PluginStore:
 router = APIRouter(prefix="/store", tags=["plugin-store"])
 
 
+def _response_meta(request: Request) -> Dict[str, str]:
+    correlation_id = request.headers.get("X-Correlation-Id", "unknown")
+    request_id = request.headers.get("X-Request-Id", correlation_id)
+    return {"request_id": request_id, "correlation_id": correlation_id}
+
+
+async def get_db_session():
+    return None
+
+
 @router.get("/search", response_model=Dict[str, Any])
 async def search_plugins_endpoint(
-    request: PluginSearchRequest, session: AsyncSession = Depends(get_db_session)
+    request: PluginSearchRequest = Depends(),
+    http_request: Request = None,
+    plugin_service: PluginService = Depends(get_plugin_service),
 ) -> Dict[str, Any]:
-    """Search for plugins."""
-    # Initialize plugin store
-    # This would need proper dependency injection
-    # For now, create with marketplace discovery
-    from ai_karen_engine.extensions.platform.core.registry.marketplace_discovery import (
-        MarketplaceDiscovery,
-    )
-    from ai_karen_engine.extensions.platform.core.host.lifecycle_manager import (
-        LifecycleManager,
-    )
-
-    marketplace = MarketplaceDiscovery(None, None)  # Placeholder
-    lifecycle = LifecycleManager(None, None)  # Placeholder
-
-    store = PluginStore(marketplace, lifecycle)
-
-    return await store.search_plugins(session, request)
+    plugins = await plugin_service.list_plugins()
+    filtered = [p for p in plugins if not request.query or request.query.lower() in p.name.lower() or request.query.lower() in p.description.lower()]
+    if request.category:
+        filtered = [p for p in filtered if p.category.lower() == request.category.value.lower()]
+    offset = (request.page - 1) * request.per_page
+    page_plugins = filtered[offset : offset + request.per_page]
+    return {
+        "plugins": [p.model_dump() if hasattr(p, "model_dump") else p.__dict__ for p in page_plugins],
+        "total": len(filtered),
+        "page": request.page,
+        "per_page": request.per_page,
+        "total_pages": (len(filtered) + request.per_page - 1) // request.per_page,
+        "has_next": offset + request.per_page < len(filtered),
+        **(_response_meta(http_request) if http_request else {"request_id":"unknown","correlation_id":"unknown"}),
+    }
 
 
 @router.get("/plugins/{plugin_id}", response_model=Dict[str, Any])
@@ -689,140 +706,69 @@ async def get_plugin_details_endpoint(
 
 @router.post("/install", response_model=Dict[str, Any])
 async def install_plugin_endpoint(
+    http_request: Request,
     request: PluginInstallRequest,
-    api_key: Optional[str] = Depends(APIKeyHeader(name="X-API-Key", auto_error=False)),
-    current_user=Depends(get_optional_current_user),
-    session: AsyncSession = Depends(get_db_session),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    plugin_service: PluginService = Depends(get_plugin_service),
 ) -> Dict[str, Any]:
-    """Install plugin from store."""
-    # Check authentication - either API key or JWT user
-    if not api_key and not current_user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required (API key or JWT token)",
-        )
-
-    # Initialize plugin store
-    from ai_karen_engine.extensions.platform.core.registry.marketplace_discovery import (
-        MarketplaceDiscovery,
-    )
-    from ai_karen_engine.extensions.platform.core.host.lifecycle_manager import (
-        LifecycleManager,
-    )
-
-    marketplace = MarketplaceDiscovery(None, None)
-    lifecycle = LifecycleManager(None, None)
-
-    store = PluginStore(marketplace, lifecycle)
-
-    return await store.install_plugin_from_store(session, request)
+    if "admin" not in current_user.get("roles", []):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required")
+    success = await plugin_service.enable_plugin(request.plugin_id)
+    get_audit_logger().log_audit_event(user_id=current_user.get("user_id", "unknown"), event_type="plugin_install", action="install", status="ok" if success else "error", details={"plugin_id": request.plugin_id, "version": request.version})
+    return {"success": success, "plugin_id": request.plugin_id, "version": request.version, **_response_meta(http_request)}
 
 
 @router.post("/rate", response_model=Dict[str, Any])
 async def rate_plugin_endpoint(
+    http_request: Request,
     request: PluginRatingRequest,
-    api_key: APIKey = Depends(APIKeyHeader(name="X-API-Key")),
-    session: AsyncSession = Depends(get_db_session),
+    current_user: Dict[str, Any] = Depends(get_current_user),
 ) -> Dict[str, Any]:
-    """Rate a plugin."""
-    # Initialize plugin store
-    from ai_karen_engine.extensions.platform.core.registry.marketplace_discovery import (
-        MarketplaceDiscovery,
-    )
-    from ai_karen_engine.extensions.platform.core.host.lifecycle_manager import (
-        LifecycleManager,
-    )
-
-    marketplace = MarketplaceDiscovery(None, None)
-    lifecycle = LifecycleManager(None, None)
-
-    store = PluginStore(marketplace, lifecycle)
-
-    return await store.rate_plugin(session, request)
+    if "admin" not in current_user.get("roles", []):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required")
+    get_audit_logger().log_audit_event(user_id=current_user.get("user_id", "unknown"), event_type="plugin_rate", action="rate", status="ok", details={"plugin_id": request.plugin_id, "rating": request.rating})
+    return {"success": True, "message": "Rating captured", "plugin_id": request.plugin_id, "rating": request.rating, **_response_meta(http_request)}
 
 
 @router.get("/statistics", response_model=PluginStoreStats)
 async def get_statistics_endpoint(
-    session: AsyncSession = Depends(get_db_session),
+    plugin_service: PluginService = Depends(get_plugin_service),
 ) -> PluginStoreStats:
-    """Get store statistics."""
-    # Initialize plugin store
-    from ai_karen_engine.extensions.platform.core.registry.marketplace_discovery import (
-        MarketplaceDiscovery,
-    )
-    from ai_karen_engine.extensions.platform.core.host.lifecycle_manager import (
-        LifecycleManager,
-    )
-
-    marketplace = MarketplaceDiscovery(None, None)
-    lifecycle = LifecycleManager(None, None)
-
-    store = PluginStore(marketplace, lifecycle)
-
-    return await store.get_store_statistics(session)
+    plugins = await plugin_service.list_plugins()
+    active = [p for p in plugins if getattr(p, "enabled", False)]
+    return PluginStoreStats(total_plugins=len(plugins), active_plugins=len(active), total_downloads=0, total_ratings=0, recent_updates=0)
 
 
 @router.get("/categories", response_model=List[Dict[str, Any]])
 async def get_categories_endpoint(
-    session: AsyncSession = Depends(get_db_session),
+    plugin_service: PluginService = Depends(get_plugin_service),
 ) -> List[Dict[str, Any]]:
-    """Get plugin categories."""
-    # Initialize plugin store
-    from ai_karen_engine.extensions.platform.core.registry.marketplace_discovery import (
-        MarketplaceDiscovery,
-    )
-    from ai_karen_engine.extensions.platform.core.host.lifecycle_manager import (
-        LifecycleManager,
-    )
-
-    marketplace = MarketplaceDiscovery(None, None)
-    lifecycle = LifecycleManager(None, None)
-
-    store = PluginStore(marketplace, lifecycle)
-
-    return await store.get_categories(session)
+    plugins = await plugin_service.list_plugins()
+    counts: Dict[str, int] = {}
+    for plugin in plugins:
+        counts[plugin.category] = counts.get(plugin.category, 0) + 1
+    return [{"name": k, "display_name": k.replace("_", " ").title(), "plugin_count": v} for k, v in sorted(counts.items())]
 
 
 @router.get("/trending", response_model=List[Dict[str, Any]])
 async def get_trending_endpoint(
-    limit: int = Query(10, ge=1, le=50), session: AsyncSession = Depends(get_db_session)
+    limit: int = Query(10, ge=1, le=50), plugin_service: PluginService = Depends(get_plugin_service)
 ) -> List[Dict[str, Any]]:
-    """Get trending plugins."""
-    # Initialize plugin store
-    from ai_karen_engine.extensions.platform.core.registry.marketplace_discovery import (
-        MarketplaceDiscovery,
-    )
-    from ai_karen_engine.extensions.platform.core.host.lifecycle_manager import (
-        LifecycleManager,
-    )
-
-    marketplace = MarketplaceDiscovery(None, None)
-    lifecycle = LifecycleManager(None, None)
-
-    store = PluginStore(marketplace, lifecycle)
-
-    return await store.get_trending_plugins(session, limit)
+    plugins = await plugin_service.list_plugins()
+    ranked = sorted(plugins, key=lambda p: getattr(p, "execution_count", 0), reverse=True)
+    return [p.model_dump() if hasattr(p, "model_dump") else p.__dict__ for p in ranked[:limit]]
 
 
 @router.get("/updates", response_model=List[Dict[str, Any]])
 async def get_updates_endpoint(
-    session: AsyncSession = Depends(get_db_session),
+    http_request: Request,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    plugin_service: PluginService = Depends(get_plugin_service),
 ) -> List[Dict[str, Any]]:
-    """Get available updates for installed plugins."""
-    # Initialize plugin store
-    from ai_karen_engine.extensions.platform.core.registry.marketplace_discovery import (
-        MarketplaceDiscovery,
-    )
-    from ai_karen_engine.extensions.platform.core.host.lifecycle_manager import (
-        LifecycleManager,
-    )
-
-    marketplace = MarketplaceDiscovery(None, None)
-    lifecycle = LifecycleManager(None, None)
-
-    store = PluginStore(marketplace, lifecycle)
-
-    return await store.get_updates(session)
+    if "admin" not in current_user.get("roles", []):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required")
+    get_audit_logger().log_audit_event(user_id=current_user.get("user_id", "unknown"), event_type="plugin_update_check", action="updates", status="ok", details=_response_meta(http_request))
+    return []
 
 
 # Helper function to get database session
