@@ -41,7 +41,7 @@ import ChatInterface, {
   SessionProvider,
 } from "@/components/chat/ChatInterface";
 import CommsCenterPage from "@/components/comms/CommsCenterPage";
-import AdminSettingsPage from "@/components/admin/AdminSettingsPage";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -75,7 +75,6 @@ type ActiveView =
   | "commsCenter"
   | "account"
   | "settings"
-  | "admin"
   | "automationOverview"
   | "agents"
   | "tasks"
@@ -292,7 +291,6 @@ export default function DashboardPage() {
       cronJobs: <CronJobsPage />,
       commsCenter: <CommsCenterPage />,
       account: <AccountPage />,
-      admin: <AdminSettingsPage />,
     }),
     [],
   );
@@ -470,14 +468,14 @@ export default function DashboardPage() {
 
                   <SidebarMenu>
                     <SidebarMenuItem>
-                      <SidebarMenuButton
-                        onClick={() => setActiveMainView("admin")}
-                        isActive={activeMainView === "admin"}
-                        className="w-full text-rose-500/80 transition-colors hover:text-rose-500"
-                      >
-                        <Shield className="h-4 w-4" />
-                        <span>Admin Settings</span>
-                      </SidebarMenuButton>
+                      <Link href="/admin" className="block">
+                        <SidebarMenuButton
+                          className="w-full text-rose-500/80 transition-colors hover:text-rose-500"
+                        >
+                          <Shield className="h-4 w-4" />
+                          <span>Admin Settings</span>
+                        </SidebarMenuButton>
+                      </Link>
                     </SidebarMenuItem>
                   </SidebarMenu>
 

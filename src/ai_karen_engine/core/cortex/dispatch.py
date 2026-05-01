@@ -35,6 +35,7 @@ from ai_karen_engine.core.cortex.errors import CortexDispatchError
 from ai_karen_engine.core.cortex.intent import resolve_intent as resolve_base_intent
 from ai_karen_engine.core.cortex.routing_intents import (
     extract_routing_parameters,
+    resolve_capability_decision,
     resolve_routing_intent as resolve_intent,
 )
 
@@ -271,6 +272,11 @@ async def evaluate_cortex(
             intent, intent_meta = fallback_intent, fallback_meta
 
     trace.append({"stage": "intent_resolved", "intent": intent, "meta": intent_meta})
+    capability_decision = resolve_capability_decision(
+        query,
+        confidence=float(intent_meta.get("confidence", 0.6)),
+    )
+    trace.append({"stage": "capability_resolved", "decision": capability_decision.to_dict()})
 
     predictors = _classify_predictors(intent, query, dict(context or {}))
     trace.append({"stage": "predictors_scored", "predictors": asdict(predictors)})
@@ -354,6 +360,7 @@ async def dispatch(
         return {
             "intent": cortex.intent.primary_intent,
             "confidence": cortex.intent.confidence,
+            "capability_decision": _normalize(resolve_capability_decision(query, confidence=cortex.intent.confidence).to_dict()),
             "route_family": cortex.routing.route_family.value,
             "execution_mode": cortex.routing.execution_mode.value,
             "requires_reasoning": cortex.kire.requires_reasoning,
