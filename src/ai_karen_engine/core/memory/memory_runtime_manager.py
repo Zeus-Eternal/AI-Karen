@@ -22,6 +22,7 @@ import logging
 import uuid
 from contextlib import suppress
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
 from sqlalchemy import func, select
@@ -1159,6 +1160,25 @@ def get_memory_manager() -> MemoryRuntimeManager:
 def init_memory() -> MemoryRuntimeManager:
     """Compatibility initializer used by startup code."""
     logger.info("Initializing memory runtime manager")
+    repo_src = Path(__file__).resolve().parents[3] / "ai_karen_engine"
+    for py_file in repo_src.rglob("*.py"):
+        if "core/neuro_vault" in str(py_file):
+            continue
+        try:
+            text = py_file.read_text(encoding="utf-8")
+        except Exception:
+            continue
+        if "core.neuro_vault" in text or "from ai_karen_engine.core.neuro_vault" in text:
+            logger.warning(
+                "memory.neuro_vault_runtime_import_detected",
+                extra={
+                    "module": str(py_file.relative_to(repo_src)),
+                    "import_path": "ai_karen_engine.core.neuro_vault",
+                    "severity": "warning",
+                    "replacement": "ai_karen_engine.core.memory",
+                    "correlation_id": "startup-memory-audit",
+                },
+            )
     memory_manager._ensure_db_session_factory()
     return memory_manager
 
@@ -1169,11 +1189,16 @@ async def close() -> None:
 
 
 async def recall_context(
+    *,
     user_id: Any,
+    tenant_id: str,
     query: str,
+    conversation_id: Optional[str] = None,
+    session_id: Optional[str] = None,
     top_k: int = 10,
+    correlation_id: Optional[str] = None,
+    activation: Optional[Any] = None,
     tiers: Optional[Sequence[str]] = None,
-    tenant_id: Optional[str] = None,
     include_embeddings: bool = False,
     **kwargs,
 ) -> Dict[str, Any]:
@@ -1188,7 +1213,6 @@ async def recall_context(
         effective_top_k = int(kwargs.get("limit", top_k) or top_k)
         user_ctx = user_id if isinstance(user_id, dict) else kwargs.get("user_ctx")
         if isinstance(user_ctx, dict):
-            tenant_id = tenant_id or user_ctx.get("tenant_id")
             user_id = user_ctx.get("user_id") or user_ctx.get("id") or user_id
 
         if not tenant_id:

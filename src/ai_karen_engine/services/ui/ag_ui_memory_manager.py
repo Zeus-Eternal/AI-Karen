@@ -117,10 +117,10 @@ class AGUIMemoryManager:
                 return []
 
             recall_response = await recall_context(
-                user_ctx,
-                "",
-                limit=limit,
+                user_id=user_ctx,
                 tenant_id=tenant_id,
+                query="",
+                top_k=limit,
             )
             raw_memories = recall_response.get("results", []) if isinstance(recall_response, dict) else []
 
@@ -327,10 +327,10 @@ class AGUIMemoryManager:
 
             semantic_results = []
             recall_response = await recall_context(
-                user_ctx,
-                query,
-                limit=limit * 2,
+                user_id=user_ctx,
                 tenant_id=tenant_id,
+                query=query,
+                top_k=limit * 2,
             )
             raw_results = recall_response.get("results", []) if isinstance(recall_response, dict) else []
             for result in raw_results:
