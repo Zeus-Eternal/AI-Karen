@@ -1,4 +1,5 @@
 import type { ChatMessage, MessageResponse } from '@/lib/types';
+import { getDegradationReasonLabel } from '@/components/chat/const/constants';
 
 type PrimitiveMetadataValue = string | number | boolean | null | undefined;
 
@@ -555,18 +556,18 @@ export const deriveDegradedPresentation = (
     : reasonLooksRateLimited(failureReason)
       ? `${requestedProvider || 'provider'} rate limited`
       : selectedRuntimeUnavailable
-        ? `${requestedProvider || 'provider'} unavailable`
+        ? 'requested provider unavailable'
         : providerOrModelChanged
           ? 'provider fallback'
           : isDegraded
             ? 'degraded mode'
             : '';
 
-  const degradedBannerText = failureReason || (isDegraded ? 'System is operating in degraded mode.' : '');
+  const degradedBannerText = getDegradationReasonLabel(failureReason) || (isDegraded ? 'System is operating in degraded mode.' : '');
 
   const visibleDegradedNotice = isSafetyBlocked
     ? (failureReason || 'Provider policy blocked this response.')
-    : failureReason || degradedBannerText;
+    : getDegradationReasonLabel(failureReason) || degradedBannerText;
 
   const shouldRenderDegradedState = isDegraded || isSafetyBlocked || Boolean(visibleDegradedNotice);
 
@@ -652,7 +653,7 @@ export const deriveResponseDetailsPresentation = (
   const showFallbackRow = degraded.shouldRenderFallbackDetails;
   const fallbackLabel = degraded.fallbackDetailsText;
   const showReasonRow = Boolean(degraded.failureReason);
-  const reasonLabel = degraded.failureReason;
+  const reasonLabel = getDegradationReasonLabel(degraded.failureReason);
   const showTokensRow = Boolean(llm?.usage);
 
   const tokensLabel = promptTokens || completionTokens

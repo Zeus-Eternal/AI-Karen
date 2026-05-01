@@ -22,6 +22,7 @@ import {
   normalizeProcessingStatusKey,
   resolveProcessingStatusMessage,
 } from './const/processing';
+import { getDegradationReasonLabel } from './const/constants';
 import { useGreetingSystem } from './const/greetingSystem';
 import { useModelSettings } from './const/modelSettings';
 import { useRequestHandlers } from './const/requestHandlers';
@@ -937,7 +938,10 @@ export default function ChatInterface() {
     const asText = (value: unknown): string | undefined =>
       typeof value === 'string' && value.trim() ? value.trim() : undefined;
 
-    const degradedReason = asText(metadata.reason) || asText(metadata.degraded_reason) || asText(llm.reason);
+    const degradedReasonRaw = asText(metadata.reason) || asText(metadata.degraded_reason) || asText(llm.reason);
+    const degradedReason = getDegradationReasonLabel(degradedReasonRaw) || degradedReasonRaw;
+    const statusRaw = asText(metadata.status);
+    const status = getDegradationReasonLabel(statusRaw) || statusRaw;
 
     return {
       requestedProvider: asText(llm.requested_provider) || asText(metadata.requested_provider),
@@ -948,7 +952,7 @@ export default function ChatInterface() {
       fallbackLevel: asText(llm.fallback_level),
       correlationId: asText(metadata.correlation_id),
       requestId: asText(metadata.request_id),
-      status: asText(metadata.status),
+      status,
       responseSource: asText(metadata.response_source) || asText(metadata.execution_path),
       usedFallback: Boolean(llm.used_fallback || llm.is_fallback || metadata.used_fallback),
       degradedReason,

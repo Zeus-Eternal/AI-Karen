@@ -213,6 +213,27 @@ export const DEGRADED_REASON_LABELS: Record<string, string> = {
   model_unavailable: "Model unavailable",
   all_live_providers_unavailable: "All live providers unavailable",
   runtime_control_plane_unavailable: "Runtime control plane unavailable",
+  gemini_unavailable: "Gemini unavailable",
+  openai_unavailable: "OpenAI unavailable",
+  anthropic_unavailable: "Anthropic unavailable",
+};
+
+export const getDegradationReasonLabel = (reason: unknown): string => {
+  const normalized = typeof reason === "string" ? reason.trim().toLowerCase() : String(reason ?? "").trim().toLowerCase();
+
+  if (!normalized) {
+    return "";
+  }
+
+  if (DEGRADED_REASON_LABELS[normalized]) {
+    return DEGRADED_REASON_LABELS[normalized];
+  }
+
+  if (normalized.endsWith("_unavailable")) {
+    return `${normalized.replace(/_unavailable$/, "").replace(/_/g, " ")} unavailable`;
+  }
+
+  return normalized.replace(/_/g, " ");
 };
 
 // -----------------------------------------------------------------------------
