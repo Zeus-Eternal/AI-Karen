@@ -144,6 +144,7 @@ type OptimizationFormState = {
   enableMonitoring: boolean;
   enableRealtimeAlerts: boolean;
   metricsRetentionHours: string;
+  graphRelationshipsEnabled: boolean;
 };
 
 type ExecutionMode = "auto" | "cuda" | "cpu";
@@ -167,6 +168,7 @@ const DEFAULT_FORM_STATE: OptimizationFormState = {
   enableMonitoring: true,
   enableRealtimeAlerts: true,
   metricsRetentionHours: "24",
+  graphRelationshipsEnabled: true,
 };
 
 const EXECUTION_MODE_OPTIONS: Array<{
@@ -211,6 +213,7 @@ function toFormState(config?: PerformanceOptimizationConfigResponse["configurati
     enableMonitoring: config?.monitoring?.enable_monitoring ?? DEFAULT_FORM_STATE.enableMonitoring,
     enableRealtimeAlerts: config?.monitoring?.enable_real_time_alerts ?? DEFAULT_FORM_STATE.enableRealtimeAlerts,
     metricsRetentionHours: String(config?.monitoring?.metrics_retention_hours ?? DEFAULT_FORM_STATE.metricsRetentionHours),
+    graphRelationshipsEnabled: safeBoolean((config as Record<string, unknown> | undefined)?.graph_relationships_enabled, DEFAULT_FORM_STATE.graphRelationshipsEnabled),
   };
 }
 
@@ -432,6 +435,7 @@ function createOptimizationUpdates(
       1,
       2160,
     ),
+    graph_relationships_enabled: form.graphRelationshipsEnabled,
   };
 }
 
@@ -752,6 +756,7 @@ export default function OptimizationSettings() {
                 ["enableRealtimeFeedback", "Enable real-time streaming feedback", "Send live progress and streaming feedback while generation is running."],
                 ["enableMonitoring", "Enable monitoring", "Collect runtime metrics for admin review and operational health checks."],
                 ["enableRealtimeAlerts", "Enable real-time monitoring alerts", "Emit operational alerts from monitoring when thresholds are exceeded."],
+                ["graphRelationshipsEnabled", "Enable LeanGraph relationship projection", "Safely enable/disable graph relationship projection used for memory-link expansion. Disabling avoids graph writes without crashing chat."],
               ].map(([key, title, description]) => (
                 <div key={key} className="flex items-start justify-between gap-4 rounded-xl border border-border/50 p-4">
                   <div className="space-y-1">

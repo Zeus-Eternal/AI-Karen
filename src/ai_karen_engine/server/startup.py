@@ -145,6 +145,15 @@ async def init_ai_services(settings: Any) -> None:
 
             logger.info("AI services initialized")
 
+        # Initialize LeanGraph relationship projection service separately from
+        # chat/provider startup so graph degradation does not block API startup.
+        try:
+            from ai_karen_engine.core.memory.graph.service import get_leangraph_service
+            svc = get_leangraph_service()
+            svc.initialize()
+        except Exception as graph_exc:  # pragma: no cover - defensive startup guard
+            logger.warning("LeanGraph initialization degraded: %s", str(graph_exc))
+
     except Exception as e:  # pragma: no cover - defensive
         logger.error("AI services initialization failed: %s", str(e))
         if lazy_loading_enabled or _optimization_enabled:
