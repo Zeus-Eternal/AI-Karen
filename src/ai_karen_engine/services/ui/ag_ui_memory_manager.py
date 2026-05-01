@@ -15,7 +15,6 @@ from ai_karen_engine.core.memory.memory_runtime_manager import (
     recall_context,
     update_memory,
 )
-from ai_karen_engine.core.neuro_vault import NeuroVault
 
 # Import NLP services - unified manager provides both spaCy and DistilBERT
 try:
@@ -88,7 +87,6 @@ class AGUIMemoryManager:
     """Enhanced memory manager with AG-UI data visualization capabilities."""
 
     def __init__(self):
-        self.neuro_vault = NeuroVault()
         self._memory_cache: Dict[str, List[MemoryGridRow]] = {}
         self._analytics_cache: Dict[str, MemoryAnalytics] = {}
 
@@ -114,9 +112,17 @@ class AGUIMemoryManager:
             tenant_id = user_ctx.get("tenant_id")
 
             # Get raw memories from existing system
-            raw_memories = recall_context(
-                user_ctx, "", limit=limit, tenant_id=tenant_id
+            if not tenant_id:
+                logger.warning("Missing tenant_id in AG-UI memory grid request; returning empty result")
+                return []
+
+            recall_response = await recall_context(
+                user_ctx,
+                "",
+                limit=limit,
+                tenant_id=tenant_id,
             )
+            raw_memories = recall_response.get("results", []) if isinstance(recall_response, dict) else []
 
             if not raw_memories:
                 return []
@@ -158,7 +164,7 @@ class AGUIMemoryManager:
                     grid_rows.append(asdict(row))
 
             # Cache results
-            cache_key = f"{user_id}_{tenant_id or 'default'}"
+            cache_key = f"{user_id}_{tenant_id or 'missing'}"
             self._memory_cache[cache_key] = [MemoryGridRow(**row) for row in grid_rows]
 
             logger.info(
@@ -187,7 +193,7 @@ class AGUIMemoryManager:
             user_id = user_ctx.get("user_id", "anonymous")
 
             # Get cached or fresh memory data
-            cache_key = f"{user_id}_{user_ctx.get('tenant_id', 'default')}"
+            cache_key = f"{user_id}_{user_ctx.get('tenant_id', 'missing')}"
             if cache_key not in self._memory_cache:
                 await self.get_memory_grid_data(user_ctx, limit=max_nodes)
 
@@ -255,7 +261,7 @@ class AGUIMemoryManager:
             user_id = user_ctx.get("user_id", "anonymous")
 
             # Get memory data
-            cache_key = f"{user_id}_{user_ctx.get('tenant_id', 'default')}"
+            cache_key = f"{user_id}_{user_ctx.get('tenant_id', 'missing')}"
             if cache_key not in self._memory_cache:
                 await self.get_memory_grid_data(user_ctx, limit=1000)
 
@@ -313,36 +319,29 @@ class AGUIMemoryManager:
             Filtered and ranked search results with semantic similarity scores
         """
         try:
-            # First try semantic search using NeuroVault (vector search)
             user_id = user_ctx.get("user_id", "anonymous")
+            tenant_id = user_ctx.get("tenant_id")
+            if not tenant_id:
+                logger.warning("Missing tenant_id in AG-UI semantic search request; returning empty result")
+                return []
+
             semantic_results = []
-
-            try:
-                # Use NeuroVault for semantic similarity search
-                semantic_results = self.neuro_vault.query(
-                    user_id, query, top_k=limit * 2
+            recall_response = await recall_context(
+                user_ctx,
+                query,
+                limit=limit * 2,
+                tenant_id=tenant_id,
+            )
+            raw_results = recall_response.get("results", []) if isinstance(recall_response, dict) else []
+            for result in raw_results:
+                semantic_results.append(
+                    {
+                        **result,
+                        "semantic_score": self._calculate_semantic_similarity(
+                            query, str(result.get("result", ""))
+                        ),
+                    }
                 )
-                logger.info(
-                    f"NeuroVault semantic search returned {len(semantic_results)} results"
-                )
-            except Exception as e:
-                logger.warning(f"NeuroVault semantic search failed: {e}")
-
-            # Fallback to existing recall_context if NeuroVault fails
-            if not semantic_results:
-                raw_results = recall_context(user_ctx, query, limit=limit * 2)
-                if raw_results:
-                    # Transform raw results to include semantic scores
-                    semantic_results = []
-                    for result in raw_results:
-                        semantic_results.append(
-                            {
-                                **result,
-                                "semantic_score": self._calculate_semantic_similarity(
-                                    query, str(result.get("result", ""))
-                                ),
-                            }
-                        )
 
             if not semantic_results:
                 return []
@@ -440,7 +439,7 @@ class AGUIMemoryManager:
             if success:
                 # Clear cache to force refresh
                 user_id = user_ctx.get("user_id", "anonymous")
-                cache_key = f"{user_id}_{user_ctx.get('tenant_id', 'default')}"
+                cache_key = f"{user_id}_{user_ctx.get('tenant_id', 'missing')}"
                 self._memory_cache.pop(cache_key, None)
                 self._analytics_cache.pop(cache_key, None)
 

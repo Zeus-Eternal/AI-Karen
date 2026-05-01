@@ -1191,6 +1191,9 @@ async def recall_context(
             tenant_id = tenant_id or user_ctx.get("tenant_id")
             user_id = user_ctx.get("user_id") or user_ctx.get("id") or user_id
 
+        if not tenant_id:
+            raise ValueError("tenant_id is required for memory recall; refusing default tenant fallback")
+
         from .types import MemoryQuery
         from .retrieval.retrieval_router import get_retrieval_router
 
@@ -1198,7 +1201,7 @@ async def recall_context(
         query_model = MemoryQuery(
             text=str(query or ""),
             user_id=str(user_id) if user_id is not None else None,
-            tenant_id=str(tenant_id or "default"),
+            tenant_id=str(tenant_id),
             top_k=effective_top_k
         )
         
