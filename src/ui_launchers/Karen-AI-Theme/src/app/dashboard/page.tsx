@@ -31,10 +31,10 @@ import SettingsDialogComponent from "@/components/settings/SettingsDialog";
 import { PluginHost } from "@/components/plugins/PluginHost";
 import { PluginErrorBoundary } from "@/plugin_host/PluginErrorBoundary";
 import PluginOverviewPage from "@/components/plugins/PluginOverviewPage";
-import AutomationOverviewPage from "@/components/automation/AutomationOverviewPage";
+import AgentsOverviewPage from "@/components/automation/AgentsOverviewPage";
 import AgentsPage from "@/components/automation/AgentsPage";
 import TasksPage from "@/components/automation/TasksPage";
-import SequencesPage from "@/components/automation/SequencesPage";
+import JobsPage from "@/components/automation/JobsPage";
 import CronJobsPage from "@/components/automation/CronJobsPage";
 import AccountPage from "@/components/account/AccountPage";
 import ChatInterface, {
@@ -75,10 +75,10 @@ type ActiveView =
   | "commsCenter"
   | "account"
   | "settings"
-  | "automationOverview"
+  | "agentsOverview"
   | "agents"
   | "tasks"
-  | "sequences"
+  | "jobs"
   | "cronJobs"
   | "pluginOverview"
   | string;
@@ -128,13 +128,13 @@ const PRIMARY_NAV: Array<{
 
 const RUNTIME_SUBGROUPS: NavSubgroup[] = [
   {
-    label: "Automation Hub",
+    label: "Agents & Workflows",
     icon: Binary,
     items: [
-      { key: "automationOverview", label: "Hub Overview", icon: LayoutGrid },
+      { key: "agentsOverview", label: "Agents Overview", icon: LayoutGrid },
       { key: "agents", label: "Agents", icon: BotIcon },
       { key: "tasks", label: "Tasks", icon: ScrollText },
-      { key: "sequences", label: "Sequences", icon: LayoutGrid },
+      { key: "jobs", label: "Jobs", icon: LayoutGrid },
       { key: "cronJobs", label: "Cron Jobs", icon: Binary },
     ],
   },
@@ -284,10 +284,10 @@ export default function DashboardPage() {
       ),
       settings: <SettingsDialogComponent />,
       pluginOverview: <PluginOverviewPage />,
-      automationOverview: <AutomationOverviewPage />,
+      agentsOverview: <AgentsOverviewPage />,
       agents: <AgentsPage />,
       tasks: <TasksPage />,
-      sequences: <SequencesPage />,
+      jobs: <JobsPage />,
       cronJobs: <CronJobsPage />,
       commsCenter: <CommsCenterPage />,
       account: <AccountPage />,
@@ -463,21 +463,8 @@ export default function DashboardPage() {
 
                 <SidebarGroup>
                   <SidebarGroupLabel className="mb-2 px-2 text-xs font-bold uppercase tracking-widest text-primary/70">
-                    Models & Runtime
+                    Agents & Plugins
                   </SidebarGroupLabel>
-
-                  <SidebarMenu>
-                    <SidebarMenuItem>
-                      <Link href="/admin" className="block">
-                        <SidebarMenuButton
-                          className="w-full text-rose-500/80 transition-colors hover:text-rose-500"
-                        >
-                          <Shield className="h-4 w-4" />
-                          <span>Admin Settings</span>
-                        </SidebarMenuButton>
-                      </Link>
-                    </SidebarMenuItem>
-                  </SidebarMenu>
 
                   <div className="mt-4 space-y-4 px-2">
                     {RUNTIME_SUBGROUPS.map((subgroup) => {

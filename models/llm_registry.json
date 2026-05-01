@@ -8,7 +8,7 @@
     "requires_api_key": false,
     "default_model": "auto",
     "health_status": "unhealthy",
-    "last_health_check": 1777604503.0894797,
+    "last_health_check": 1777639141.1842897,
     "error_message": "builtin_vllm unreachable at http://vllm:8000/health: [Errno 111] Connection refused"
   },
   {
@@ -20,7 +20,7 @@
     "requires_api_key": false,
     "default_model": "auto",
     "health_status": "healthy",
-    "last_health_check": 1777604503.0903904,
+    "last_health_check": 1777639141.205497,
     "error_message": null
   },
   {
@@ -32,7 +32,7 @@
     "requires_api_key": false,
     "default_model": "starcoder:128k",
     "health_status": "healthy",
-    "last_health_check": 1777604503.0931003,
+    "last_health_check": 1777639141.2087083,
     "error_message": null
   },
   {
@@ -56,7 +56,7 @@
     "requires_api_key": true,
     "default_model": "glm-4.5",
     "health_status": "unhealthy",
-    "last_health_check": 1777604503.5152237,
+    "last_health_check": 1777639141.94318,
     "error_message": "Error code: 401 - {'error': {'code': '401', 'message': 'token expired or incorrect'}}"
   },
   {
@@ -68,7 +68,7 @@
     "requires_api_key": true,
     "default_model": "gemini-2.5-flash",
     "health_status": "unhealthy",
-    "last_health_check": 1777604503.081574,
+    "last_health_check": 1777639142.4108372,
     "error_message": "Quota exceeded or rate limited"
   },
   {
@@ -116,7 +116,7 @@
     "requires_api_key": false,
     "default_model": "kari-fallback-v1",
     "health_status": "degraded",
-    "last_health_check": 1777604503.082844,
+    "last_health_check": 1777639142.4120374,
     "error_message": null
   },
   {
@@ -128,7 +128,7 @@
     "requires_api_key": false,
     "default_model": "Phi-3-mini-4k-instruct-q4.gguf",
     "health_status": "unhealthy",
-    "last_health_check": 1777604503.0833015,
+    "last_health_check": 1777639142.412707,
     "error_message": "No OpenAI API key provided. Set OPENAI_API_KEY environment variable."
   },
   {
@@ -140,7 +140,7 @@
     "requires_api_key": false,
     "default_model": "Phi-3-mini-4k-instruct-q4.gguf",
     "health_status": "unhealthy",
-    "last_health_check": 1777604503.083897,
+    "last_health_check": 1777639142.439057,
     "error_message": "No OpenAI API key provided. Set OPENAI_API_KEY environment variable."
   }
 ]

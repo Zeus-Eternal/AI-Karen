@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 
 /**
  * @file AutomationOverviewPage.tsx
- * @description An overview of the Automation Hub, providing live statistics for Agents, Tasks, and Cron Jobs.
+ * @description An overview of the Agents & Workflows, providing live statistics for Agents, Tasks, and Cron Jobs.
  */
 export default function AutomationOverviewPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
@@ -61,7 +61,7 @@ export default function AutomationOverviewPage() {
         <div className="flex items-center space-x-3">
           <Settings className="h-8 w-8 text-primary" />
           <div>
-            <h2 className="text-2xl font-semibold tracking-tight">Automation Hub</h2>
+            <h2 className="text-2xl font-semibold tracking-tight">Agents Overview</h2>
             <p className="text-sm text-muted-foreground">
               Orchestrate autonomous operations with persistent agents and workflows.
             </p>
@@ -83,7 +83,7 @@ export default function AutomationOverviewPage() {
         <Info className="h-4 w-4" />
         <AlertTitle>System Operational</AlertTitle>
         <AlertDescription>
-          The Automation Hub is connected to the live backend. All metrics below represent real-time activity across your agents and scheduled jobs.
+          The Agents & Workflows section of Karen AI is connected to the live backend. All metrics below represent real-time activity across your agents and scheduled jobs.
         </AlertDescription>
       </Alert>
 

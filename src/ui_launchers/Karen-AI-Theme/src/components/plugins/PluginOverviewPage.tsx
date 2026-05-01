@@ -1070,10 +1070,10 @@ export default function PluginOverviewPage() {
 
       <Alert className="mt-6">
         <Puzzle className="h-4 w-4" aria-hidden={true} />
-        <AlertTitle>Connecting to the Automation Hub</AlertTitle>
+        <AlertTitle>Connecting to the Agents & Workflows</AlertTitle>
         <AlertDescription>
           The tools provided by these plugins are building blocks for agent
-          skills in the Automation Hub. Assign them to agents to support complex,
+          skills in the Agents & Workflows section. Assign them to agents to support complex,
           governed automated tasks.
         </AlertDescription>
       </Alert>

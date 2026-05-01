@@ -1,7 +1,7 @@
 """
 API Routes for Automation Statistics.
 
-Aggregates statistics from tasks, jobs, and cron schedules for the Automation Hub dashboard.
+Aggregates statistics from tasks, jobs, and cron schedules for the Agents & Workflows dashboard.
 """
 
 from fastapi import APIRouter, Depends
