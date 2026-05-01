@@ -41,6 +41,25 @@ else:
     get_eval_harness = _get_eval_harness
     MemoryEvalHarness = _MemoryEvalHarness
 
+try:
+    from .neuro import (
+        MemoryClass,
+        MemoryActivationMode,
+        MemoryActivationDecision,
+        MemoryCandidate,
+        ConsolidationDecision,
+        ProcedureArtifact,
+        LessonArtifact,
+    )
+except ImportError:
+    MemoryClass = None
+    MemoryActivationMode = None
+    MemoryActivationDecision = None
+    MemoryCandidate = None
+    ConsolidationDecision = None
+    ProcedureArtifact = None
+    LessonArtifact = None
+
 __all__ = [
     "get_memory_manager",
     "MemoryRuntimeManager",
@@ -65,4 +84,11 @@ __all__ = [
     "ProjectionStatus",
     "ConsentScope",
     "RetentionPolicy"
+    ,"MemoryClass"
+    ,"MemoryActivationMode"
+    ,"MemoryActivationDecision"
+    ,"MemoryCandidate"
+    ,"ConsolidationDecision"
+    ,"ProcedureArtifact"
+    ,"LessonArtifact"
 ]
