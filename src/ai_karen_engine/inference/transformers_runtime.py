@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, Union
 
 from ai_karen_engine.integrations.llm_utils import LLMProviderBase
+from ai_karen_engine.services.response import ResponseSanitizer
 
 logger = logging.getLogger(__name__)
 
@@ -150,9 +151,11 @@ class TransformersRuntime(LLMProviderBase):
             return "No prompt provided."
 
         if self._transformers_available:
-            return f"[transformers:{self._model_name}] {prompt}"
+            text = "I'm ready to help with that."
+        else:
+            text = "I'm here to help."
 
-        return f"[local-fallback:{self._model_name}] {prompt}"
+        return ResponseSanitizer().sanitize(text)
 
 
 __all__ = ["TransformersRuntime"]

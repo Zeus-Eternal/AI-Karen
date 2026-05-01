@@ -29,6 +29,7 @@ from ai_karen_engine.core.model_runtime.provider_health_monitor import (
 )
 from ai_karen_engine.services.cache import get_response_cache, get_request_deduplicator
 from ai_karen_engine.services.audit.audit_logging import get_audit_logger
+from ai_karen_engine.services.response import ResponseContract, ResponsePromptBuilder, ResponseSanitizer
 
 logger = logging.getLogger(__name__)
 
@@ -1217,7 +1218,14 @@ Provider Information:
 - Alternative Providers: {", ".join(analysis_context.get("alternative_providers", []))}
 """
 
-        return f"""You are Karen's intelligent error analysis system. Analyze the following error and provide actionable guidance.
+        contract = ResponseContract(
+            purpose="error_analysis",
+            latest_user_message="Analyze this error and provide concise actionable guidance.",
+            error_context=analysis_context,
+            allow_markdown=False,
+        )
+        prompt = ResponsePromptBuilder().build_fallback_text_prompt(contract)
+        return prompt + f"""
 
 Error Details:
 - Message: {context.error_message}
@@ -1266,7 +1274,14 @@ Provider Status: {provider_health.get("status", "unknown")}
 Alternative Providers: {", ".join(analysis_context.get("alternative_providers", []))}
 """
 
-        return f"""You are Karen's intelligent error enhancement system. Improve the following error response with additional insights.
+        contract = ResponseContract(
+            purpose="error_enhancement",
+            latest_user_message="Improve this error response with concise actionable context.",
+            error_context=analysis_context,
+            allow_markdown=False,
+        )
+        prompt = ResponsePromptBuilder().build_fallback_text_prompt(contract)
+        return prompt + f"""
 
 Original Error:
 - Message: {context.error_message}
@@ -1301,7 +1316,7 @@ Respond with only the JSON object, no additional text."""
         """Parse and validate AI-generated error response"""
         try:
             # Clean the response to extract JSON
-            response_text = ai_response.strip()
+            response_text = ResponseSanitizer().sanitize(ai_response).strip()
             if response_text.startswith("```json"):
                 response_text = response_text[7:]
             if response_text.endswith("```"):

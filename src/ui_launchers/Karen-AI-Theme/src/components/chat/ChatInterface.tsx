@@ -1207,7 +1207,7 @@ export default function ChatInterface() {
     setIsLoading(true);
     setIsEditingDuringProcessing(false);
     processingStatusVariantRef.current = {};
-    setProcessingStatus(resolveProcessingStatusMessage('initializing', DEFAULT_PROCESSING_MESSAGE, 0));
+    setProcessingStatus(resolveProcessingStatusMessage('initializing', DEFAULT_PROCESSING_MESSAGE, 0, metadataRef.current || undefined));
     setStreamedContent('');
     setStreamingStatusMetadata(null);
     setAgentSteps([]);

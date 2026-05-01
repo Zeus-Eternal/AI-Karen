@@ -38,6 +38,7 @@ from ai_karen_engine.core.operations.routing_decision_persistence import (
 )
 # from ai_karen_engine.integrations.llm_registry import get_registry, LLMRegistry  <- Moved to local scope
 from ai_karen_engine.integrations.llm_utils import LLMProviderBase
+from ai_karen_engine.services.response import ResponseContract, ResponsePromptBuilder, ResponseSanitizer
 
 try:
     from ai_karen_engine.core.operations.provider_metrics import (
@@ -257,6 +258,8 @@ class LLMRouter:
 
         self.rate_limit_backoff = 15.0
         self.latency_history_size = 20
+        self._response_prompt_builder = ResponsePromptBuilder()
+        self._response_sanitizer = ResponseSanitizer()
 
         self.default_rate_limit = {"max_requests": 30, "window_seconds": 60}
         self.rate_limit_config: Dict[str, Dict[str, float]] = {
@@ -1433,7 +1436,7 @@ class LLMRouter:
             raise RuntimeError(f"Provider {provider_name} returned no response")
         if isinstance(result, bytes):
             result = result.decode("utf-8", errors="ignore")
-        result_text = self._sanitize_provider_completion(str(result))
+        result_text = self._response_sanitizer.sanitize(self._sanitize_provider_completion(str(result)))
         if not result_text:
             raise RuntimeError(f"Provider {provider_name} returned an empty response")
         if self._looks_like_bad_completion(request, result_text):
@@ -1446,62 +1449,19 @@ class LLMRouter:
         """Build a grounded prompt from request context for plain-text providers."""
 
         context = request.context if isinstance(request.context, dict) else {}
-        recent_messages = context.get("recent_messages")
-        has_recent_history = False
-        if isinstance(recent_messages, list):
-            for item in recent_messages:
-                if not isinstance(item, dict):
-                    continue
-                role = str(item.get("role", "")).strip()
-                content = str(item.get("content", "")).strip()
-                if role in {"user", "assistant"} and content:
-                    has_recent_history = True
-                    break
+        structured_messages = context.get("messages") if isinstance(context.get("messages"), list) else None
+        if structured_messages:
+            contract = ResponseContract(latest_user_message=request.message)
+            return self._response_prompt_builder.build_fallback_text_prompt(contract)
 
-        first_turn_value = "yes" if not has_recent_history else "no"
-        lines: List[str] = [
-            "You are Karen, an intelligent assistant.",
-            "Answer only the user's latest message.",
-            "Be brief, direct, and relevant.",
-            "Do not continue unrelated text.",
-            "Do not repeat instructions or metadata.",
-            f"First turn: {first_turn_value}.",
-            "Greet only if the latest user message is a greeting and this is the first turn.",
-            "Do not prepend a greeting to non-greeting questions.",
-        ]
-
-        profile = (
-            context.get("conversation_profile")
-            if isinstance(context.get("conversation_profile"), dict)
-            else {}
+        contract = ResponseContract(
+            purpose="chat",
+            latest_user_message=request.message,
+            runtime_metadata=context.get("runtime_metadata") if isinstance(context.get("runtime_metadata"), dict) else {},
+            max_words=80 if self._is_simple_request(request.message) else None,
         )
-        display_name = str(
-            profile.get("preferred_address_name") or profile.get("display_name") or ""
-        ).strip()
-        if display_name:
-            lines.append(f"Known user name: {display_name}.")
+        return self._response_prompt_builder.build_fallback_text_prompt(contract)
 
-        if isinstance(recent_messages, list):
-            rendered_messages: List[str] = []
-            for item in recent_messages[-6:]:
-                if not isinstance(item, dict):
-                    continue
-                role = str(item.get("role", "")).strip()
-                content = str(item.get("content", "")).strip()
-                if role in {"user", "assistant"} and content:
-                    speaker = "User" if role == "user" else "Assistant"
-                    rendered_messages.append(f"{speaker}: {content}")
-            if rendered_messages:
-                lines.append("Recent conversation:")
-                lines.extend(rendered_messages)
-
-        if request.memory_context:
-            lines.append("Memory context:")
-            lines.append(str(request.memory_context))
-        lines.append("Latest user message:")
-        lines.append(request.message)
-        lines.append("Assistant:")
-        return "\n".join(lines)
 
     def _looks_like_bad_completion(
         self, request: ChatRequest, result_text: str

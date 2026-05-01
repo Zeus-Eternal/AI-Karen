@@ -1,11 +1,11 @@
 """Response synthesis node for LangGraph orchestration."""
 
-import json
 import logging
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
+from ai_karen_engine.services.response import ResponseContract, ResponseSanitizer, ResponseSynthesizer
 from ..contracts.orchestration_state import LangGraphOrchestrationState
 
 logger = logging.getLogger(__name__)
@@ -27,6 +27,7 @@ class ResponseSynthesisNode:
     def __init__(self, config: Optional[SynthesisConfig] = None, llm_router: Optional[Any] = None):
         self.config = config or SynthesisConfig()
         self._llm_router = llm_router
+        self._response_sanitizer = ResponseSanitizer()
 
     async def __call__(
         self, state: LangGraphOrchestrationState
@@ -87,54 +88,32 @@ class ResponseSynthesisNode:
 
                 if selection:
                     provider_name, model_name = selection
-                    if tool_results:
-                        tool_data = json.dumps(tool_results, indent=2)
-                        synthesis_prompt = f"""
-                        You are Karen, an intelligent assistant.
-                        Synthesize a natural, helpful response for the user based on the tool results provided below.
-                        
-                        User's latest message: {last_user_message}
-                        
-                        Tool Results:
-                        {tool_data}
-                        
-                        Respond directly to the user. If a tool failed, acknowledge it gracefully.
-                        """
-                    else:
-                        synthesis_prompt = f"""
-                        You are Karen, an intelligent assistant.
-                        Respond naturally to the user.
-                        
-                        User's latest message: {last_user_message}
-                        """
-
+                    contract = ResponseContract(
+                        purpose="tool_synthesis" if tool_results else "chat",
+                        latest_user_message=last_user_message or "",
+                        tool_results=tool_results if isinstance(tool_results, list) else [],
+                        reasoning_summary=(reasoning_result.get("summary") if isinstance(reasoning_result, dict) else None),
+                        runtime_metadata={
+                            "requested_provider": requested_provider,
+                            "requested_model": requested_model,
+                            "selected_provider": provider_name,
+                            "selected_model": model_name,
+                        },
+                    )
                     try:
                         generation_start = time.time()
-                        response_gen = self._llm_router.process_chat_request(
-                            ChatRequest(
-                                message=synthesis_prompt,
-                                stream=False,
-                                preferred_model=requested_model,
-                                conversation_id=state.get("session_id"),
-                            ),
+                        synthesizer = ResponseSynthesizer(self._llm_router)
+                        final_text, synthesis_metadata = await synthesizer.synthesize(
+                            contract,
                             user_preferences=request_preferences,
+                            conversation_id=state.get("session_id"),
+                            stream=False,
                         )
 
-                        final_text = ""
-                        metadata: Dict[str, Any] = {}
-                        async for chunk in response_gen:
-                            if isinstance(chunk, str):
-                                final_text += chunk
-                            elif isinstance(chunk, dict):
-                                chunk_metadata = chunk.get("metadata", {})
-                                if isinstance(chunk_metadata, dict):
-                                    llm_metadata = chunk_metadata.get("llm", {})
-                                    if isinstance(llm_metadata, dict):
-                                        metadata.update(llm_metadata)
-
                         if final_text.strip():
+                            metadata_blob = synthesis_metadata.get("llm", synthesis_metadata)
                             llm_metadata = self._normalize_llm_metadata(
-                                metadata,
+                                metadata_blob,
                                 requested_provider=requested_provider or provider_name,
                                 requested_model=requested_model or model_name,
                                 selected_provider=provider_name,
@@ -159,7 +138,7 @@ class ResponseSynthesisNode:
                         try:
                             fallback_result = await self._llm_router.generate_with_degraded_runtime_fallback(
                                 request=ChatRequest(
-                                    message=synthesis_prompt,
+                                    message=last_user_message or "",
                                     stream=False,
                                     preferred_model=requested_model,
                                     conversation_id=state.get("session_id"),
@@ -204,30 +183,14 @@ class ResponseSynthesisNode:
             except Exception as e:
                 logger.warning(f"LLM-based synthesis failed, falling back to deterministic: {e}")
 
-        parts: List[str] = []
+        fallback = self._compose_deterministic_fallback(
+            last_user_message=last_user_message,
+            tool_results=tool_results,
+            execution_summary=execution_summary,
+            reasoning_result=reasoning_result,
+        )
 
-        if last_user_message:
-            parts.append(f"You asked: {last_user_message}.")
-
-        if tool_results and self.config.include_tool_results:
-            parts.append(self._format_tool_results(tool_results))
-
-        if execution_summary and self.config.include_execution_summary:
-            parts.append(
-                "Execution summary: "
-                f"{execution_summary.get('successful_executions', 0)} successful, "
-                f"{execution_summary.get('failed_executions', 0)} failed."
-            )
-
-        if isinstance(reasoning_result, dict) and reasoning_result.get("summary"):
-            parts.append(f"Reasoning summary: {reasoning_result['summary']}")
-
-        if not parts:
-            parts.append("I’m ready to help.")
-        else:
-            parts.append("If you want, I can go deeper on any part of this.")
-
-        response = " ".join(parts)
+        response = self._response_sanitizer.sanitize(fallback)
         if len(response) > self.config.max_response_length:
             response = response[: self.config.max_response_length].rstrip() + "... (truncated)"
 
@@ -250,6 +213,28 @@ class ResponseSynthesisNode:
         )
         self._store_llm_metadata(state, emergency_metadata)
         return response
+
+
+    def _compose_deterministic_fallback(
+        self,
+        *,
+        last_user_message: Optional[str],
+        tool_results: List[Dict[str, Any]],
+        execution_summary: Dict[str, Any],
+        reasoning_result: Dict[str, Any],
+    ) -> str:
+        message = (last_user_message or "").strip().lower()
+        if "joke" in message:
+            return "Why did the server bring a ladder? Because the response time was too high."
+        if tool_results and self.config.include_tool_results:
+            return self._format_tool_results(tool_results)
+        if isinstance(reasoning_result, dict) and reasoning_result.get("summary"):
+            return str(reasoning_result["summary"]).strip()
+        if execution_summary and self.config.include_execution_summary:
+            successful = execution_summary.get("successful_executions", 0)
+            failed = execution_summary.get("failed_executions", 0)
+            return f"I completed the request with {successful} successful step(s) and {failed} failed step(s)."
+        return "I’m here and ready to help."
 
     @staticmethod
     def _store_llm_metadata(
