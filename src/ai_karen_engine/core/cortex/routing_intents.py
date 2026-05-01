@@ -22,21 +22,21 @@ CAPABILITY_ROUTES: Dict[str, Dict[str, Any]] = {
         "requires_live_data": True,
         "allow_llm_only": False,
     },
-    "web.search": {
+    "search.general": {
         "triggers": ["search the internet", "look online", "find current", "latest", "web search"],
-        "required_capability": "web_search",
+        "required_capability": "internet_search",
         "preferred_plugin": "intelligent-search",
         "handler": "general",
         "fallback_tool": "search",
         "requires_live_data": True,
         "allow_llm_only": False,
     },
-    "weather.current": {
+    "search.weather": {
         "triggers": ["weather", "forecast", "temperature", "rain today"],
-        "required_capability": "weather",
+        "required_capability": "internet_search",
         "preferred_plugin": "intelligent-search",
         "handler": "weather",
-        "fallback_tool": "weather",
+        "fallback_tool": "search",
         "requires_live_data": True,
         "allow_llm_only": False,
     },
@@ -103,7 +103,7 @@ def resolve_routing_intent(query: str, user_ctx: Dict[str, Any]) -> Tuple[str, D
 
 def extract_routing_parameters(query: str) -> Dict[str, Any]:
     """Extract routing parameters from query."""
-    providers = ["openai", "deepseek", "local_gguf", "huggingface", "gemini"]
+    providers = ["openai", "deepseek", "huggingface", "gemini", "builtin_transformers", "builtin_vllm", "ollama"]
     models = ["gpt-4", "gpt-3.5-turbo", "deepseek-chat", "llama2", "gemini-pro"]
     
     detected_provider = None
