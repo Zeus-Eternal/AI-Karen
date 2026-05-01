@@ -62,6 +62,52 @@ except Exception:  # pragma: no cover - gracefully handle missing optional depen
     SecretManager = None  # type: ignore[assignment]
 
 
+def _is_simple_chat_request(message: str) -> bool:
+    """Heuristic classifier for short, low-complexity chat requests."""
+
+    normalized = (message or "").strip().lower()
+
+    if not normalized:
+        return True
+
+    simple_triggers = (
+        "hi",
+        "hello",
+        "hey",
+        "thanks",
+        "thank you",
+        "tell me a joke",
+        "joke",
+        "fun fact",
+        "what is",
+        "who is",
+    )
+
+    if normalized in simple_triggers:
+        return True
+
+    if len(normalized.split()) <= 12 and not any(
+        marker in normalized
+        for marker in (
+            "analyze",
+            "audit",
+            "refactor",
+            "implement",
+            "debug",
+            "compare",
+            "research",
+            "search",
+            "weather",
+            "schedule",
+            "create file",
+            "write plugin",
+        )
+    ):
+        return True
+
+    return False
+
+
 class _DummyMetric:  # type: ignore[too-few-public-methods]
     """Fallback metric collector when prometheus-client is unavailable."""
 
@@ -1458,7 +1504,7 @@ class LLMRouter:
             purpose="chat",
             latest_user_message=request.message,
             runtime_metadata=context.get("runtime_metadata") if isinstance(context.get("runtime_metadata"), dict) else {},
-            max_words=80 if self._is_simple_request(request.message) else None,
+            max_words=80 if _is_simple_chat_request(request.message) else None,
         )
         return self._response_prompt_builder.build_fallback_text_prompt(contract)
 
@@ -1554,25 +1600,6 @@ class LLMRouter:
                 return True
 
         return False
-
-    def _is_simple_request(self, message: str) -> bool:
-        """Small classifier for concise fallback prompt constraints."""
-        text = (message or "").strip().lower()
-        if not text:
-            return True
-        if len(text.split()) <= 8:
-            return True
-        simple_starts = (
-            "hi",
-            "hello",
-            "hey",
-            "thanks",
-            "thank you",
-            "what time",
-            "weather",
-            "search",
-        )
-        return any(text.startswith(prefix) for prefix in simple_starts)
 
     @staticmethod
     def _sanitize_provider_completion(result_text: str) -> str:

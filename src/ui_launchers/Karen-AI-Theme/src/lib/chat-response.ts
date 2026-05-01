@@ -135,12 +135,15 @@ const EXTERNAL_ENDPOINT_PROVIDER_ALIASES: Record<string, string> = {
   'openai-compatible-endpoint': OPENAI_COMPATIBLE_PROVIDER,
   openai_compatible_endpoint: OPENAI_COMPATIBLE_PROVIDER,
 
-  'local-gguf': LOCAL_GGUF_PROVIDER,
-  local_gguf: LOCAL_GGUF_PROVIDER,
-  gguf: LOCAL_GGUF_PROVIDER,
-  'gguf-endpoint': LOCAL_GGUF_PROVIDER,
-  gguf_endpoint: LOCAL_GGUF_PROVIDER,
 };
+
+const REMOVED_LEGACY_PROVIDERS = new Set([
+  'local_gguf',
+  'local_gguf_optimized',
+  'llamacpp',
+  'llama_cpp',
+  'llama.cpp',
+]);
 
 const LOCAL_FALLBACK_SOURCES = new Set([
   'chat_orchestrator_local_fallback',
@@ -213,6 +216,12 @@ export const normalizeProviderName = (provider?: string | null): string => {
     return EXTERNAL_ENDPOINT_PROVIDER_ALIASES[key];
   }
 
+  const canonical = key.replace(/-/g, '_');
+
+  if (REMOVED_LEGACY_PROVIDERS.has(canonical)) {
+    return canonical;
+  }
+
   if (key === FALLBACK_PROVIDER) {
     return FALLBACK_PROVIDER;
   }
@@ -221,7 +230,7 @@ export const normalizeProviderName = (provider?: string | null): string => {
     return SYSTEM_PROVIDER;
   }
 
-  return key.replace(/-/g, '_');
+  return canonical;
 };
 
 export const isBuiltInRuntimeProvider = (provider?: string | null): boolean => {
@@ -251,7 +260,7 @@ export const isOpenAiCompatibleProvider = (provider?: string | null): boolean =>
 
 export const isExternalEndpointProvider = (provider?: string | null): boolean => {
   const normalized = normalizeProviderName(provider);
-  return normalized === OPENAI_COMPATIBLE_PROVIDER || normalized === LOCAL_GGUF_PROVIDER || normalized === 'openai';
+  return normalized === OPENAI_COMPATIBLE_PROVIDER || normalized === 'openai';
 };
 
 export const getRuntimeDisplayName = (
@@ -273,8 +282,8 @@ export const getRuntimeDisplayName = (
     return explicit || 'OpenAI-Compatible Endpoint';
   }
 
-  if (normalized === LOCAL_GGUF_PROVIDER) {
-    return explicit || 'GGUF External Endpoint';
+  if (normalized === LOCAL_GGUF_PROVIDER || REMOVED_LEGACY_PROVIDERS.has(normalized)) {
+    return 'Provider removed from current runtime';
   }
 
   if (normalized === FALLBACK_PROVIDER) {
