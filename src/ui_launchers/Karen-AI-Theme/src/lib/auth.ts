@@ -346,8 +346,7 @@ class AuthService {
           body: JSON.stringify(credentials),
         });
 
-      let response: Response;
-      response = await sendLogin();
+      const response = await sendLogin();
 
       if (!response.ok) {
         throw new Error(await this.getErrorMessage(response, 'Login failed'));

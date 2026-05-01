@@ -143,7 +143,7 @@ export const ProviderSettingsModal = ({
     return getProviderById(selectableProviders, localProvider);
   }, [selectableProviders, localProvider]);
 
-  const providerModels = activeProviderDetails?.models ?? [];
+  const providerModels = useMemo(() => activeProviderDetails?.models ?? [], [activeProviderDetails]);
   const activeProviderLabel =
     getProviderLabel(activeProviderDetails) || 'Select Runtime';
 

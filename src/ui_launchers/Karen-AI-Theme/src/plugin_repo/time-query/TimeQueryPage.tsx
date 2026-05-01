@@ -26,11 +26,11 @@ const TimeQueryPage: React.FC = () => {
   const timeApi = useMemo(() => new TimeQueryApi(api), [api]);
 
   // Specific Feature hooks
-  const { data: timeData, loading: timeLoading, error: timeError, refresh: refreshTime } = useTimeQuery(timeApi);
+  const { data: timeData, error: timeError, refresh: refreshTime } = useTimeQuery(timeApi);
   const enrichedTime = useTimePayload(timeData);
-  
-  const { savedClocks, multiClocksData, searchWorldTime, addClock, removeClock, refreshClocks } = useWorldClocks(timeApi);
-  const { state: stopwatchState, loading: stopwatchLoading, performAction: performStopwatchAction } = useStopwatch(timeApi);
+
+  const { multiClocksData, searchWorldTime, addClock, removeClock, refreshClocks } = useWorldClocks(timeApi);
+  const { state: stopwatchState, performAction: performStopwatchAction } = useStopwatch(timeApi);
   const { alarms, createAlarm, deleteAlarm, toggleAlarm } = useAlarms(timeApi);
 
   if (!isReady) {
@@ -64,7 +64,7 @@ const TimeQueryPage: React.FC = () => {
           </div>
           <div className="lg:col-span-1 border border-border rounded-xl bg-card relative">
             {/* The Stopwatch */}
-            <StopwatchPanel state={stopwatchState} loading={stopwatchLoading} onAction={performStopwatchAction} />
+            <StopwatchPanel state={stopwatchState} onAction={performStopwatchAction} />
           </div>
         </div>
 

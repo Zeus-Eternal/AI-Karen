@@ -342,6 +342,7 @@ export default function PrivacySettings() {
     parsedDataTypes,
     setActionAccessDenied,
     tenantId,
+    toast,
     userId,
   ]);
 
@@ -395,6 +396,7 @@ export default function PrivacySettings() {
     parsedDataTypes,
     setActionAccessDenied,
     tenantId,
+    toast,
     userId,
   ]);
 
@@ -467,7 +469,7 @@ export default function PrivacySettings() {
     } finally {
       setIsProcessingRequest(false);
     }
-  }, [handleRequestError, requestId, setActionAccessDenied, verificationToken]);
+  }, [handleRequestError, requestId, setActionAccessDenied, toast, verificationToken]);
 
   return (
     <Card>

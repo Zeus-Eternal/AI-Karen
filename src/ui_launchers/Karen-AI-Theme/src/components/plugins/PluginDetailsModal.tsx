@@ -4,9 +4,7 @@ import {
   Calendar,
   CheckCircle2,
   Download,
-  ExternalLink,
   GitBranch,
-  Link as LinkIcon,
   Loader2,
   Package,
   Shield,
@@ -194,39 +192,20 @@ export function PluginDetailsModal({
   onOpenChange,
   onInstall,
 }: PluginDetailsModalProps) {
+  // Early return for invalid props
   if (!details?.plugin) {
     return null;
   }
 
   const plugin = details.plugin;
 
-  const title = getPluginTitle(plugin);
-  const description = getPluginDescription(plugin);
-  const author = getPluginAuthor(plugin);
-  const version = getPluginVersion(plugin);
-
-  const safeIconUrl = getSafeUrl(plugin?.icon);
-  const installedDateLabel = getInstalledDateLabel(plugin?.installed_at);
-  const ratingLabel = getRatingLabel(plugin);
-  const ratingCountLabel = getRatingCountLabel(plugin);
-  const downloadLabel = getDownloadLabel(plugin);
+  // All React hooks must be called unconditionally at the top level
   const dependencies = useMemo(
     () => getUniqueStrings(plugin?.dependencies),
     [plugin?.dependencies],
   );
   const tags = useMemo(() => getUniqueStrings(plugin?.tags), [plugin?.tags]);
-
-  const compatibilityInfo = plugin?.compatibility;
-  const isCompatible = isPluginCompatible(plugin);
-  const installed = Boolean(details.installed);
-  const updateAvailable = Boolean(details.update_available);
-  const canInstall = Boolean(onInstall) && !installed && isCompatible && !loading;
-
   const externalLinks = useMemo<ExternalLinkConfig[]>(() => {
-    if (!plugin) {
-      return [];
-    }
-
     const links: ExternalLinkConfig[] = [];
 
     const homepageUrl = getSafeUrl(plugin.homepage_url);
@@ -237,7 +216,7 @@ export function PluginDetailsModal({
       links.push({
         label: 'Homepage',
         url: homepageUrl,
-        icon: <LinkIcon className="mr-2 h-4 w-4" aria-hidden="true" />,
+        icon: 'external-link',
       });
     }
 
@@ -245,7 +224,7 @@ export function PluginDetailsModal({
       links.push({
         label: 'Repository',
         url: repositoryUrl,
-        icon: <GitBranch className="mr-2 h-4 w-4" aria-hidden="true" />,
+        icon: 'github',
       });
     }
 
@@ -253,12 +232,28 @@ export function PluginDetailsModal({
       links.push({
         label: 'Marketplace',
         url: marketplaceUrl,
-        icon: <ExternalLink className="mr-2 h-4 w-4" aria-hidden="true" />,
+        icon: 'shopping-bag',
       });
     }
 
     return links;
   }, [plugin]);
+
+  // Computed values (not hooks)
+  const title = getPluginTitle(plugin);
+  const description = getPluginDescription(plugin);
+  const author = getPluginAuthor(plugin);
+  const version = getPluginVersion(plugin);
+  const safeIconUrl = getSafeUrl(plugin?.icon);
+  const installedDateLabel = getInstalledDateLabel(plugin?.installed_at);
+  const ratingLabel = getRatingLabel(plugin);
+  const ratingCountLabel = getRatingCountLabel(plugin);
+  const downloadLabel = getDownloadLabel(plugin);
+  const compatibilityInfo = plugin?.compatibility;
+  const isCompatible = isPluginCompatible(plugin);
+  const installed = Boolean(details.installed);
+  const updateAvailable = Boolean(details.update_available);
+  const canInstall = Boolean(onInstall) && !installed && isCompatible && !loading;
 
   /*
    * PluginDetailsModal displays registry/marketplace metadata and invokes the

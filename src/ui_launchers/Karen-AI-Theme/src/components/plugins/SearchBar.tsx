@@ -307,6 +307,7 @@ export function SearchBar({
                   key={historyItem}
                   type="button"
                   role="option"
+                  aria-selected="false"
                   className="w-full rounded-sm px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent"
                   onClick={() => executeSearch(historyItem)}
                 >

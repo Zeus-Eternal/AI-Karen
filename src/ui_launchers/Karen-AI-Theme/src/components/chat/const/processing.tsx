@@ -1224,7 +1224,6 @@ const buildStalledMessage = (
 export const resolveProcessingStatusMessage = (
   status: unknown,
   fallbackMessage?: string,
-  _variantIndex = 0,
   context?: ProcessingRuntimeMetadata,
 ): string => {
   const runtime = getRuntimeMetadata(context);

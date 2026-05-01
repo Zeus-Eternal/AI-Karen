@@ -1,4 +1,5 @@
 import { ExtensionAPI } from '@/lib/extensions/hooks/usePluginExtension';
+import type { AlarmCreateParams, AlarmUpdateParams } from '../types';
 
 export class TimeQueryApi {
   private api: ExtensionAPI;
@@ -42,18 +43,18 @@ export class TimeQueryApi {
     return this.api.execute({ mode: 'alarm', action: 'list' });
   }
 
-  async createAlarm(data: any) {
+  async createAlarm(data: AlarmCreateParams) {
     return this.api.execute({ mode: 'alarm', action: 'create', ...data });
   }
 
-  async updateAlarm(alarm_id: string, data: any) {
+  async updateAlarm(alarm_id: string, data: AlarmUpdateParams) {
     return this.api.execute({ mode: 'alarm', action: 'update', alarm_id, ...data });
   }
 
   async deleteAlarm(alarm_id: string) {
     return this.api.execute({ mode: 'alarm', action: 'delete', alarm_id });
   }
-  
+
   async setAlarmStatus(alarm_id: string, enabled: boolean) {
     return this.api.execute({ mode: 'alarm', action: enabled ? 'enable' : 'disable', alarm_id });
   }

@@ -40,8 +40,12 @@ export function useIntelligentSearch() {
       const payload = buildPayload(state.mode, state.query, state.options);
       const response = await IntelligentSearchApi.executeSearch(payload);
       setState((prev) => ({ ...prev, isLoading: false, response }));
-    } catch (error: any) {
-      setState((prev) => ({ ...prev, isLoading: false, error }));
+    } catch (error: unknown) {
+      setState((prev) => ({
+        ...prev,
+        isLoading: false,
+        error: error instanceof Error ? error : new Error(String(error))
+      }));
     }
   }, [state.query, state.mode, state.options, buildPayload]);
 

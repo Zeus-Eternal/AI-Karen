@@ -28,7 +28,6 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>("dark");
 
   useEffect(() => {
-    const root = window.document.documentElement;
     const currentUserTheme = authService.getCurrentUser()?.preferences?.theme;
     const storedTheme = localStorage.getItem("theme") as Theme | null;
     const initialTheme =

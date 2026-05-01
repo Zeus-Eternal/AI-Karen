@@ -377,7 +377,7 @@ export default function FallbackModelSettings() {
     return normalizedSettings?.providers.find((provider) => provider.id === form.provider);
   }, [form.provider, normalizedSettings?.providers]);
 
-  const availableModels = currentProvider?.models ?? [];
+  const availableModels = useMemo(() => currentProvider?.models ?? [], [currentProvider]);
   const usesRuntimeOptions = Boolean(currentProvider?.runtime_options?.length);
 
   const selectedRuntimeOption = useMemo(() => {

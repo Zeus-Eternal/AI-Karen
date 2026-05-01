@@ -184,7 +184,7 @@ const toProviderKey = (value?: unknown): string => {
   return toCleanString(value).toLowerCase().replace(/\s+/g, '-');
 };
 
-const isRecord = (value: unknown): value is Record<string, any> => {
+const isRecord = (value: unknown): value is Record<string, unknown> => {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
 };
 
@@ -383,18 +383,7 @@ const getFriendlyModelLabel = (
   return getDisplayModelName(modelId, modelName);
 };
 
-const getFallbackTargetLabel = (
-  providerLabel: string,
-  modelLabel: string,
-): string => {
-  if (providerLabel && modelLabel) {
-    return `${providerLabel} (${modelLabel})`;
-  }
-
-  return providerLabel || modelLabel || 'fallback';
-};
-
-const isLocalFallbackSource = (llm: Record<string, any>): boolean => {
+const isLocalFallbackSource = (llm: Record<string, unknown>): boolean => {
   const source = toCleanString(llm?.source);
   const fallbackLevel = toCleanString(llm?.fallback_level).toLowerCase();
   const provider = normalizeProviderName(llm?.provider);
@@ -467,8 +456,8 @@ export const sanitizeChatContent = (content?: string | null): string => {
 };
 
 export const sanitizeStructuredContent = (
-  structuredContent?: Record<string, any> | null,
-): Record<string, any> => {
+  structuredContent?: Record<string, unknown> | null,
+): Record<string, unknown> => {
   const source = isRecord(structuredContent) ? structuredContent : {};
 
   return Object.fromEntries(
@@ -477,7 +466,7 @@ export const sanitizeStructuredContent = (
 };
 
 export const deriveDegradedPresentation = (
-  metadata?: Record<string, any>,
+  metadata?: Record<string, unknown>,
 ): DegradedPresentation => {
   const safeMetadata = isRecord(metadata) ? metadata : {};
   const llm = isRecord(safeMetadata?.llm) ? safeMetadata.llm : {};
@@ -553,8 +542,6 @@ export const deriveDegradedPresentation = (
     ? 'GGUF External Endpoint'
     : getFriendlyProviderLabel(actualProvider);
 
-  const fallbackTargetLabel = getFallbackTargetLabel(actualProviderLabel, actualModel);
-
   const selectedRuntimeUnavailable =
     Boolean(requestedProvider) && reasonLooksUnavailable(failureReason);
 
@@ -618,7 +605,7 @@ export const deriveDegradedPresentation = (
 };
 
 export const deriveResponseDetailsPresentation = (
-  metadata?: Record<string, any>,
+  metadata?: Record<string, unknown>,
 ): ResponseDetailsPresentation => {
   const safeMetadata = isRecord(metadata) ? metadata : {};
   const llm = isRecord(safeMetadata?.llm) ? safeMetadata.llm : {};
@@ -696,7 +683,7 @@ export const deriveResponseDetailsPresentation = (
 };
 
 export const deriveCompactBadgePresentation = (
-  metadata?: Record<string, any>,
+  metadata?: Record<string, unknown>,
 ): CompactBadgePresentation => {
   const safeMetadata = isRecord(metadata) ? metadata : {};
   const llm = isRecord(safeMetadata?.llm) ? safeMetadata.llm : {};
@@ -758,9 +745,9 @@ const mapBackendStatusToMessageStatus = (
 };
 
 const ensureLlmMetadata = (
-  metadata: Record<string, any>,
+  metadata: Record<string, unknown>,
   raw: BackendChatEnvelope,
-): Record<string, any> => {
+): Record<string, unknown> => {
   const llm = isRecord(metadata.llm) ? { ...metadata.llm } : {};
 
   if (raw.model && !llm.model_name && !llm.model_id) {
@@ -783,9 +770,9 @@ const ensureLlmMetadata = (
 };
 
 const ensureRuntimeModeMetadata = (
-  metadata: Record<string, any>,
+  metadata: Record<string, unknown>,
   raw: BackendChatEnvelope,
-): Record<string, any> => {
+): Record<string, unknown> => {
   const runtimeMode = toCleanString(raw.mode || metadata.mode);
 
   if (!runtimeMode) {
@@ -846,12 +833,12 @@ const ensureRuntimeModeMetadata = (
 };
 
 const mergeRequestedRuntimeMetadata = (
-  metadata: Record<string, any>,
+  metadata: Record<string, unknown>,
   options?: {
     requestedProvider?: string;
     requestedModel?: string;
   },
-): Record<string, any> => {
+): Record<string, unknown> => {
   const requestedProvider = toCleanString(options?.requestedProvider);
   const requestedModel = toCleanString(options?.requestedModel);
 
@@ -874,9 +861,9 @@ const mergeRequestedRuntimeMetadata = (
 };
 
 const ensureProviderMismatchMetadata = (
-  metadata: Record<string, any>,
+  metadata: Record<string, unknown>,
   raw: BackendChatEnvelope,
-): Record<string, any> => {
+): Record<string, unknown> => {
   const llm = isRecord(metadata.llm) ? { ...metadata.llm } : {};
 
   const requestedProvider = normalizeProviderName(llm.requested_provider || metadata.requested_provider);
@@ -977,8 +964,8 @@ const ensureProviderMismatchMetadata = (
 };
 
 const ensurePersistenceMetadata = (
-  metadata: Record<string, any>,
-): Record<string, any> => {
+  metadata: Record<string, unknown>,
+): Record<string, unknown> => {
   const existingPersistence = isRecord(metadata.persistence) ? metadata.persistence : {};
 
   metadata.persistence = {
@@ -1008,7 +995,7 @@ export function normalizeBackendChatResponse(
     `assistant-${Date.now()}`,
   );
 
-  const metadata: Record<string, any> = isRecord(raw.metadata) ? { ...raw.metadata } : {};
+  const metadata: Record<string, unknown> = isRecord(raw.metadata) ? { ...raw.metadata } : {};
 
   metadata.correlation_id = metadata.correlation_id || correlationId;
   metadata.response_id = metadata.response_id || raw.response_id;
@@ -1063,7 +1050,7 @@ export function normalizeBackendChatResponse(
 export function normalizeConversationMessage(
   message: MessageResponse,
 ): ChatMessage {
-  const metadata: Record<string, any> = isRecord(message.metadata) ? { ...message.metadata } : {};
+  const metadata: Record<string, unknown> = isRecord(message.metadata) ? { ...message.metadata } : {};
 
   if (message.ui_source && !metadata.ui_source) {
     metadata.ui_source = message.ui_source;

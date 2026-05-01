@@ -21,7 +21,6 @@ import {
   RefreshCw,
   ScrollText,
   SettingsIcon as SettingsIconLucide,
-  Shield,
   SlidersHorizontal,
   UserCircle,
 } from "lucide-react";
@@ -41,7 +40,6 @@ import ChatInterface, {
   SessionProvider,
 } from "@/components/chat/ChatInterface";
 import CommsCenterPage from "@/components/comms/CommsCenterPage";
-import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import {

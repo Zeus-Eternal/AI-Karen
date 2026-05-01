@@ -15,12 +15,12 @@ export interface SearchSourceItem {
   content?: string;
   full_content?: string;
   markdown?: string;
-  extracted_data?: any;
+  extracted_data?: Record<string, unknown>;
   publishedDate?: string;
   relevanceScore?: number;
   domain?: string;
   links?: Array<{ url: string; text: string; category?: string }>;
-  media?: Record<string, any>;
+  media?: Record<string, unknown>;
 }
 
 export interface SearchResultItem {
@@ -32,7 +32,7 @@ export interface SearchResultItem {
   content?: string;
   score?: number;
   markdown?: string;
-  extracted_data?: any;
+  extracted_data?: Record<string, unknown>;
 }
 
 export interface SearchDiagnostics {
@@ -97,7 +97,7 @@ export interface IntelligentSearchResponse {
   can_execute?: boolean;
   reason?: string;
   sources?: SearchSourceItem[];
-  extractedData?: any;
+  extractedData?: Record<string, unknown>;
   insights?: string[];
   diagnostics?: SearchDiagnostics;
   results?: SearchResultItem[];
@@ -106,10 +106,10 @@ export interface IntelligentSearchResponse {
     query?: string;
     expanded_queries?: string[];
     urls?: string[];
-    crawl_results?: any[];
-    processed_chunks?: any[];
+    crawl_results?: Array<Record<string, unknown>>;
+    processed_chunks?: Array<Record<string, unknown>>;
   };
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   execution_time_ms?: number;
   weather?: WeatherResult;
 }

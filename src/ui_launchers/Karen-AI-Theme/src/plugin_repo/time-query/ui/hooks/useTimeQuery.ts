@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { TimeQueryApi } from '../services/timeQueryApi';
-import { TimePayload, TimeQueryState } from '../types';
+import { TimePayload } from '../types';
 
 export const useTimeQuery = (api: TimeQueryApi) => {
   const [data, setData] = useState<TimePayload | null>(null);
@@ -17,8 +17,8 @@ export const useTimeQuery = (api: TimeQueryApi) => {
       } else {
         setError(res?.error || 'Failed to fetch time');
       }
-    } catch (err: any) {
-      setError(err.message || 'Error occurred');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error occurred');
     } finally {
       setLoading(false);
     }

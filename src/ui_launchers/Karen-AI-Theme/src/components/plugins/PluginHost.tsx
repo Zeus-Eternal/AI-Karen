@@ -115,7 +115,7 @@ export function PluginHost({ pluginId, fallback }: PluginHostProps) {
 
   const isRegistered = useMemo(
     () => isPluginRegistered(normalizedId),
-    [normalizedId, pluginComponent, isLoading],
+    [normalizedId],
   );
 
   useEffect(() => {

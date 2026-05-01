@@ -36,9 +36,9 @@ export const useAgentStore = create<AgentState>((set, get) => ({
         agents: { ...state.agents, ...agentsRecord },
         loading: { ...state.loading, agents: false },
       }));
-    } catch (err: any) {
+    } catch (err: unknown) {
       set((state) => ({
-        error: { ...state.error, agents: err.message || 'Failed to fetch agents' },
+        error: { ...state.error, agents: err instanceof Error ? err.message : 'Failed to fetch agents' },
         loading: { ...state.loading, agents: false },
       }));
     }
@@ -67,7 +67,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   },
 
   sendMessage: async (agentId: string, content: string) => {
-    const { sessionIds, messages, agents } = get();
+    const { sessionIds, agents } = get();
     
     // Ensure session is initialized
     if (!sessionIds[agentId]) {
@@ -131,7 +131,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
           loading: { ...state.loading, [agentId]: false }
         };
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       set((state) => {
         const existing = state.messages[agentId] || [];
         const filtered = existing.filter(m => m.id !== loadingMessageId);

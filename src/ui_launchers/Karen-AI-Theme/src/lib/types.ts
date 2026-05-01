@@ -125,14 +125,14 @@ export interface ConversationResponse {
   message_count: number;
   last_message_at?: string;
   session_id?: string;
-  ui_context: Record<string, any>;
-  ai_insights: Record<string, any>;
-  user_settings: Record<string, any>;
+  ui_context: Record<string, unknown>;
+  ai_insights: Record<string, unknown>;
+  user_settings: Record<string, unknown>;
   summary?: string;
   tags: string[];
   last_ai_response_id?: string;
   status: string;
   priority: string;
-  context_memories: any[];
+  context_memories: unknown[];
   proactive_suggestions: string[];
 }

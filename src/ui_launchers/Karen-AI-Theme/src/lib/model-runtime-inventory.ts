@@ -105,10 +105,14 @@ export const sortProviderModels = (
     }
 
     const leftRuntime = String(
-      (left as any).preferred_runtime || (left as any).model_format || '',
+      (left as { preferred_runtime?: unknown; model_format?: unknown }).preferred_runtime ||
+      (left as { preferred_runtime?: unknown; model_format?: unknown }).model_format ||
+      '',
     ).toLowerCase();
     const rightRuntime = String(
-      (right as any).preferred_runtime || (right as any).model_format || '',
+      (right as { preferred_runtime?: unknown; model_format?: unknown }).preferred_runtime ||
+      (right as { preferred_runtime?: unknown; model_format?: unknown }).model_format ||
+      '',
     ).toLowerCase();
 
     if (leftRuntime !== rightRuntime) {
@@ -116,10 +120,10 @@ export const sortProviderModels = (
     }
 
     const leftName = String(
-      (left as any).display_name || left.name || left.id || '',
+      (left as { display_name?: unknown }).display_name || left.name || left.id || '',
     ).toLowerCase();
     const rightName = String(
-      (right as any).display_name || right.name || right.id || '',
+      (right as { display_name?: unknown }).display_name || right.name || right.id || '',
     ).toLowerCase();
 
     return leftName.localeCompare(rightName);

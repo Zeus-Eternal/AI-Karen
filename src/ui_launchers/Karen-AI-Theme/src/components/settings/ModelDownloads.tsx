@@ -25,13 +25,15 @@ import {
   Shield,
   ShieldAlert,
   Square,
-  TimerReset,
-  Trash2,
 } from 'lucide-react';
 
 import { apiClient, ApiError } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
-import { isVllmCompatibleModel, sortProviderModels } from '@/lib/model-runtime-inventory';
+import {
+  isVllmCompatibleModel,
+  sortProviderModels,
+  type RuntimeProviderModel,
+} from '@/lib/model-runtime-inventory';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -130,7 +132,14 @@ type DownloadValidation = {
 };
 
 type InstalledModelsResponse = {
-  models: Array<Record<string, unknown>>;
+  models: Array<
+    RuntimeProviderModel & {
+      size_bytes?: number | null;
+      capabilities?: string[];
+      preferred_runtime?: string | null;
+      compatible_runtimes?: string[];
+    }
+  >;
   total: number;
   statistics: Record<string, unknown>;
 };
@@ -421,7 +430,7 @@ export default function ModelDownloads({
   );
 
   const installedModels = useMemo(
-    () => sortProviderModels((installed?.models ?? []) as any[]),
+    () => sortProviderModels((installed?.models ?? []) as RuntimeProviderModel[]),
     [installed],
   );
 
@@ -1101,22 +1110,283 @@ export default function ModelDownloads({
         </Card>
       </div>
 
-      {/* The bottom half of your uploaded component can remain structurally the same,
-          with these required targeted replacements:
-          - Use normalizeProgress(job.progress) instead of job.progress * 100.
-          - Use encodeURIComponent(job.job_id) in job action URLs, already handled above.
-          - Disable Pause unless canPauseJob(job.status).
-          - Disable Resume unless canResumeJob(job.status).
-          - Disable Cancel unless canCancelJob(job.status).
-          - Add type="button" and aria-hidden to all buttons/icons.
-          - Use safeStringList(model.capabilities) before mapping capabilities.
-      */}
+      <Card className="border-border/50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <RefreshCw className="h-4 w-4 text-primary" aria-hidden="true" />
+            Download Queue
+          </CardTitle>
+          <CardDescription>
+            Active and historical model download jobs from the control plane.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {jobs.length === 0 ? (
+            <div className="flex h-32 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 bg-muted/5 text-sm text-muted-foreground">
+              <Download className="h-8 w-8 opacity-20" aria-hidden="true" />
+              No active or recent download jobs.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {jobs.map((job) => (
+                <div
+                  key={job.job_id}
+                  className={[
+                    'rounded-xl border p-4 shadow-sm transition-colors',
+                    statusTone(job.status),
+                  ].join(' ')}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="flex items-center gap-2 font-semibold">
+                        <span className="truncate">{job.model_id}</span>
+                        {job.revision && (
+                          <Badge variant="secondary" className="text-[10px] font-mono">
+                            {job.revision}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-xs opacity-90">{job.message}</div>
+                    </div>
 
-      <div className="rounded-xl border border-border/50 bg-muted/20 p-4 text-sm text-muted-foreground">
-        Continue rendering the existing Download Queue, Installed Models,
-        Discovery Snapshot, and Channel Structure sections with the targeted
-        replacements listed above. The control-plane logic above is the part
-        that needed hardening without adding new patterns.
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        disabled={!canPauseJob(job.status) || busyJobs[job.job_id]}
+                        onClick={() => void actOnJob(job.job_id, 'pause')}
+                      >
+                        <Pause className="h-4 w-4" aria-hidden="true" />
+                        <span className="sr-only">Pause</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        disabled={!canResumeJob(job.status) || busyJobs[job.job_id]}
+                        onClick={() => void actOnJob(job.job_id, 'resume')}
+                      >
+                        <Play className="h-4 w-4" aria-hidden="true" />
+                        <span className="sr-only">Resume</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        disabled={!canCancelJob(job.status) || busyJobs[job.job_id]}
+                        onClick={() => void actOnJob(job.job_id, 'cancel')}
+                      >
+                        <Square className="h-4 w-4" aria-hidden="true" />
+                        <span className="sr-only">Cancel</span>
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 space-y-2">
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-black/10">
+                      <div
+                        className="h-full bg-current transition-all duration-500"
+                        style={{ width: `${normalizeProgress(job.progress)}%` }}
+                        role="progressbar"
+                        aria-valuenow={normalizeProgress(job.progress)}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] font-medium opacity-80">
+                      <span>{normalizeProgress(job.progress).toFixed(1)}%</span>
+                      <span className="capitalize">{job.status.replace('_', ' ')}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card className="border-border/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <HardDrive className="h-4 w-4 text-primary" aria-hidden="true" />
+              Installed Models
+            </CardTitle>
+            <CardDescription>
+              Inventory of locally cached model artifacts.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold">vLLM Compatible</h3>
+              {vllmInstalledModels.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-border/60 p-4 text-center text-xs text-muted-foreground">
+                  No vLLM-compatible models found.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {vllmInstalledModels.map((model) => (
+                    <div
+                      key={model.id}
+                      className="rounded-xl border border-border/50 bg-muted/20 p-3"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="truncate text-sm font-semibold">
+                            {model.name || model.id}
+                          </div>
+                          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                            <span>{formatBytes(model.size_bytes)}</span>
+                            <span>•</span>
+                            <span>{model.source || 'local'}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {safeStringList(model.capabilities).map((cap) => (
+                          <Badge
+                            key={cap}
+                            variant="secondary"
+                            className="text-[9px] px-1.5 py-0 h-4"
+                          >
+                            {cap}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <Separator className="bg-border/40" />
+
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold">Other Runtimes</h3>
+              {otherInstalledModels.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-border/60 p-4 text-center text-xs text-muted-foreground">
+                  No other model runtimes found.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {otherInstalledModels.map((model) => (
+                    <div
+                      key={model.id}
+                      className="rounded-xl border border-border/50 bg-muted/20 p-3"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="truncate text-sm font-semibold">
+                            {model.name || model.id}
+                          </div>
+                          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                            <span>{formatBytes(model.size_bytes)}</span>
+                            <span>•</span>
+                            <span>{model.source || 'local'}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {safeStringList(model.capabilities).map((cap) => (
+                          <Badge
+                            key={cap}
+                            variant="secondary"
+                            className="text-[9px] px-1.5 py-0 h-4"
+                          >
+                            {cap}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="space-y-6">
+          <Card className="border-border/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <CheckCircle2 className="h-4 w-4 text-primary" aria-hidden="true" />
+                Discovery Snapshot
+              </CardTitle>
+              <CardDescription>
+                Real-time backend inventory scan progress.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <div className="text-xs font-semibold">Discovery Progress</div>
+                <pre className="overflow-auto rounded-lg bg-muted/50 p-3 text-[10px] font-mono leading-relaxed">
+                  {JSON.stringify(discoveryProgress, null, 2)}
+                </pre>
+              </div>
+              <div className="space-y-2">
+                <div className="text-xs font-semibold">Discovery Statistics</div>
+                <pre className="overflow-auto rounded-lg bg-muted/50 p-3 text-[10px] font-mono leading-relaxed">
+                  {JSON.stringify(discoveryStats, null, 2)}
+                </pre>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <HardDrive className="h-4 w-4 text-primary" aria-hidden="true" />
+                Channel Structure
+              </CardTitle>
+              <CardDescription>
+                Download channel groupings and gated storage roots.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {Object.entries(groupedChannels).map(([group, channelsInGroup]) => (
+                  <div key={group} className="space-y-2">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      {group}
+                    </h3>
+                    <div className="grid gap-2">
+                      {channelsInGroup.map((channel) => (
+                        <div
+                          key={channel.id}
+                          className="rounded-lg border border-border/40 bg-muted/10 p-2 text-xs"
+                        >
+                          <div className="flex items-center justify-between font-semibold">
+                            <span>{channel.label}</span>
+                            <Badge variant="outline" className="text-[9px] h-4">
+                              {channel.id}
+                            </Badge>
+                          </div>
+                          <div className="mt-1 text-muted-foreground line-clamp-2">
+                            {channel.description}
+                          </div>
+                          <div className="mt-2 flex items-center justify-between text-[9px] text-muted-foreground">
+                            <span>
+                              Root: <span className="font-mono">{channel.storage_key}</span>
+                            </span>
+                            {channel.admin_only && (
+                              <Badge variant="destructive" className="h-3 text-[8px] px-1">
+                                Admin Only
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

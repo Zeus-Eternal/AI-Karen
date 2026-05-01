@@ -1,10 +1,9 @@
 import { useCallback } from 'react';
 import { apiClient } from '@/lib/api';
 import { formatModelSwitchError } from '@/lib/model-switch-errors';
-import { normalizeModelSettingsResponse } from '@/lib/model-runtime-inventory';
+import { normalizeModelSettingsResponse, type RuntimeSettingsResponse } from '@/lib/model-runtime-inventory';
 import type {
   ModelDetails,
-  ModelSettingsResponse,
   ProviderDetails,
 } from './types';
 
@@ -181,7 +180,7 @@ export function useModelSettings() {
       setIsUpdatingModelSelection(true);
 
       try {
-        const response = await apiClient.put<ModelSettingsResponse>(
+        const response = await apiClient.put<RuntimeSettingsResponse>(
           MODEL_SETTINGS_ENDPOINT,
           {
             provider: requestedProviderId,
@@ -189,8 +188,8 @@ export function useModelSettings() {
           },
         );
 
-        const normalizedSettings = normalizeModelSettingsResponse(response as any);
-        const allowedProviders = getAllowedProviders(normalizedSettings as any);
+        const normalizedSettings = normalizeModelSettingsResponse(response);
+        const allowedProviders = getAllowedProviders(normalizedSettings);
 
         const resolvedProviderId = resolveSelectedProviderId(
           allowedProviders,
@@ -203,7 +202,7 @@ export function useModelSettings() {
           normalizedSettings.selected_model || requestedModelId,
         );
 
-        setModelSettings(normalizedSettings as any);
+        setModelSettings(normalizedSettings);
         setSelectedProvider(resolvedProviderId);
         setSelectedModel(resolvedModelId);
 

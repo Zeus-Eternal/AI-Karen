@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/lib/useAuth';
 import { apiClient } from '@/lib/api';
  
@@ -17,7 +17,7 @@ export class PluginExtensionError extends Error {
 }
  
 export interface ExtensionAPI {
-  execute: (command: any) => Promise<any>;
+  execute: (command: unknown) => Promise<unknown>;
   getStatus: () => Promise<{ isReady: boolean; error?: string }>;
 }
  
@@ -33,16 +33,16 @@ export interface UsePluginExtensionReturn {
  * Provides a unified interface for executing plugin commands and managing plugin state.
  */
 export function usePluginExtension(pluginId: string): UsePluginExtensionReturn {
-  const { user } = useAuth();
+  useAuth();
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
  
   // Create the API object with execute method - memoized to prevent loops
   const api: ExtensionAPI = useMemo(() => ({
-    execute: async (command: any) => {
+    execute: async (command: unknown) => {
       try {
-        const data: any = await apiClient.post(`/api/plugins/${pluginId}/execute`, {
+        const data: unknown = await apiClient.post(`/api/plugins/${pluginId}/execute`, {
           plugin_name: pluginId,
           parameters: command
         });
@@ -62,8 +62,8 @@ export function usePluginExtension(pluginId: string): UsePluginExtensionReturn {
         }
         
         return data;
-      } catch (err: any) {
-        const errorMessage = err.message || 'Unknown error';
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
         setError(errorMessage);
         throw err;
       }
@@ -71,13 +71,14 @@ export function usePluginExtension(pluginId: string): UsePluginExtensionReturn {
  
     getStatus: async () => {
       try {
-        const data: any = await apiClient.get('/api/plugins/health');
+        const data: unknown = await apiClient.get('/api/plugins/health');
+        const statusData = data as { status?: string; error?: string };
         return {
-          isReady: data.status === 'healthy' || data.status === 'ok',
-          error: data.error || null
+          isReady: statusData.status === 'healthy' || statusData.status === 'ok',
+          error: statusData.error || null
         };
-      } catch (err: any) {
-        const errorMessage = err.message || 'Unknown error';
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
         setError(errorMessage);
         return {
           isReady: false,
@@ -110,7 +111,7 @@ export function usePluginExtension(pluginId: string): UsePluginExtensionReturn {
     };
 
     initializePlugin();
-  }, [pluginId]);
+  }, [pluginId, api]);
 
   return {
     api,

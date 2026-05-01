@@ -15,10 +15,10 @@ export const getChatContentClassName = (emphasize = false): string =>
   }`;
 
 export const chatMarkdownComponents = {
-  p: ({ node, ...props }: any) => (
+  p: (props: React.ComponentProps<'p'>) => (
     <p className="mb-2 last:mb-0 whitespace-pre-wrap leading-relaxed" {...props} />
   ),
-  a: ({ node, ...props }: any) => (
+  a: (props: React.ComponentProps<'a'>) => (
     <a
       className="text-blue-400 hover:underline font-medium"
       target="_blank"
@@ -26,14 +26,14 @@ export const chatMarkdownComponents = {
       {...props}
     />
   ),
-  ul: ({ node, ...props }: any) => (
+  ul: (props: React.ComponentProps<'ul'>) => (
     <ul className="list-disc pl-5 mb-3 space-y-1" {...props} />
   ),
-  ol: ({ node, ...props }: any) => (
+  ol: (props: React.ComponentProps<'ol'>) => (
     <ol className="list-decimal pl-5 mb-3 space-y-1" {...props} />
   ),
-  li: ({ node, ...props }: any) => <li className="mb-1" {...props} />,
-  code: ({ node, className, children, ...props }: any) => {
+  li: (props: React.ComponentProps<'li'>) => <li className="mb-1" {...props} />,
+  code: ({ className, children, ...props }: React.ComponentProps<'code'>) => {
     const match = /language-(\w+)/.exec(className || '');
     const isInline = !match && !String(children).includes('\n');
     return !isInline ? (

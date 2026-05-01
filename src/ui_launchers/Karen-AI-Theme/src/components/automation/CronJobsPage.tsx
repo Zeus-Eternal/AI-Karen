@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-import { Clock, PlusCircle, Trash2, Edit, AlertTriangle, Info } from "lucide-react";
+import { Clock, PlusCircle, Trash2, AlertTriangle, Info } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel, SelectSeparator } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -15,17 +15,40 @@ import { useState, useEffect, useCallback } from "react";
 import useAuth from "@/lib/useAuth";
 import { ApiError, apiClient } from "@/lib/api";
 
+interface CronJob {
+  id: string;
+  name: string;
+  schedule: string;
+  target_id: string;
+  type: string;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+interface Task {
+  id: string;
+  name: string;
+  [key: string]: unknown;
+}
+
+interface Sequence {
+  id: string;
+  name: string;
+  [key: string]: unknown;
+}
+
 /**
  * @file CronJobsPage.tsx
  * @description Preview page for scheduling Tasks using cron expressions.
  */
-let cronJobsFetchPromise: Promise<any[]> | null = null;
+let cronJobsFetchPromise: Promise<CronJob[]> | null = null;
 
 async function sleep(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function loadCronJobsWithRetry(): Promise<any[]> {
+async function loadCronJobsWithRetry(): Promise<CronJob[]> {
   const retryDelaysMs = [250, 750];
   let lastError: unknown;
 
@@ -33,7 +56,7 @@ async function loadCronJobsWithRetry(): Promise<any[]> {
     try {
       if (!cronJobsFetchPromise) {
         cronJobsFetchPromise = apiClient
-          .get<any[]>("/api/automation/cron")
+          .get<CronJob[]>("/api/automation/cron")
           .finally(() => {
             cronJobsFetchPromise = null;
           });
@@ -57,9 +80,9 @@ async function loadCronJobsWithRetry(): Promise<any[]> {
 
 export default function CronJobsPage() {
 
-  const [jobs, setJobs] = useState<any[]>([]);
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [sequences, setSequences] = useState<any[]>([]);
+  const [jobs, setJobs] = useState<CronJob[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [sequences, setSequences] = useState<Sequence[]>([]);
   const [loading, setLoading] = useState(true);
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   
@@ -74,8 +97,8 @@ export default function CronJobsPage() {
     if (!isAuthenticated) return;
     try {
       const [tasksRes, seqsRes] = await Promise.all([
-        apiClient.get<any[]>("/api/tasks"),
-        apiClient.get<any[]>("/api/automation/jobs")
+        apiClient.get<Task[]>("/api/tasks"),
+        apiClient.get<Sequence[]>("/api/automation/jobs")
       ]);
       setTasks(tasksRes || []);
       setSequences(seqsRes || []);

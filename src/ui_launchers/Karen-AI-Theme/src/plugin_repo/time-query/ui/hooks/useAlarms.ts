@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { TimeQueryApi } from '../services/timeQueryApi';
-import { AlarmItem } from '../types';
+import { AlarmItem, AlarmCreateParams } from '../types';
 import { PluginExtensionError } from '@/lib/extensions/hooks/usePluginExtension';
 
 const isRateLimitError = (error: unknown) =>
@@ -26,7 +26,7 @@ export const useAlarms = (api: TimeQueryApi) => {
     }
   }, [api]);
 
-  const createAlarm = async (data: any) => {
+  const createAlarm = async (data: AlarmCreateParams) => {
     await api.createAlarm(data);
     await fetchAlarms();
   };

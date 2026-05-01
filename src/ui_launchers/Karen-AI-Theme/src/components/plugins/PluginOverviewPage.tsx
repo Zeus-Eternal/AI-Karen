@@ -527,7 +527,7 @@ function PluginHealthCard({
      * signal here, not a substitute for backend lifecycle state.
      */
     return isPluginUiRegistered(normalizedPluginId);
-  }, [normalizedPluginId, health.frontendMountState]);
+  }, [normalizedPluginId]);
 
   const derivedBackendStatusDetail = useMemo(
     () => deriveBackendStatusDetail(health.backendState),

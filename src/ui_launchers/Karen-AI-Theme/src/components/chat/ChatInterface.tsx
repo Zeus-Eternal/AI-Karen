@@ -817,7 +817,6 @@ export default function ChatInterface() {
 
   const [processingStatus, setProcessingStatus] = useState('');
   const [streamedContent, setStreamedContent] = useState('');
-  const [streamingStatusMetadata, setStreamingStatusMetadata] = useState<Record<string, unknown> | null>(null);
   const [isEditingDuringProcessing, setIsEditingDuringProcessing] = useState(false);
   const activeRequestControllerRef = useRef<AbortController | null>(null);
   const processingStatusVariantRef = useRef<Record<string, number>>({});
@@ -829,7 +828,6 @@ export default function ChatInterface() {
     lastChunkTime: number;
   } | null>(null);
   const [agentSteps, setAgentSteps] = useState<AgentStepEvent[]>([]);
-  const [citations, setCitations] = useState<Citation[]>([]);
   const [degradedMode, setDegradedMode] = useState<{
     active: boolean;
     reason?: string;
@@ -1017,10 +1015,8 @@ export default function ChatInterface() {
         setInput('');
         setStreamedContent('');
         setProcessingStatus('');
-        setStreamingStatusMetadata(null);
         setIsLoading(false); // Start as false, only set to true if we have an in-flight request
         setAgentSteps([]);
-        setCitations([]);
         setDegradedMode({ active: false });
         submitInFlightRef.current = false;
       }
@@ -1141,6 +1137,35 @@ export default function ChatInterface() {
     });
   }, [currentSession?.id, messages, input, isLoading, processingStatus, streamedContent]);
 
+  // Save preferred address name
+  const savePreferredAddressName = useCallback(async (preferredName: string) => {
+    if (!user) {
+      return false;
+    }
+
+    const nextPreferences = {
+      ...(user.preferences || {}),
+      preferred_address_name: preferredName,
+    };
+
+    await apiClient.put('/api/auth/me', {
+      preferences: nextPreferences,
+    });
+
+    authService.updateCurrentUser({
+      preferences: nextPreferences,
+    });
+
+    await apiClient.post('/api/memory/commit', {
+      user_id: user.user_id,
+      text: `The user prefers to be addressed as ${preferredName}.`,
+      tags: ['personal_fact', 'preferred_name', 'user_preference'],
+      importance: 9,
+      decay: 'pinned',
+    }).catch(() => undefined);
+
+    return true;
+  }, [user]);
 
 
 
@@ -1210,9 +1235,7 @@ export default function ChatInterface() {
     processingStatusVariantRef.current = {};
     setProcessingStatus(resolveProcessingStatusMessage('initializing', DEFAULT_PROCESSING_MESSAGE));
     setStreamedContent('');
-    setStreamingStatusMetadata(null);
     setAgentSteps([]);
-    setCitations([]);
     setDegradedMode({ active: false });
 
     const preferredProvider = selectedProvider;
@@ -1223,7 +1246,6 @@ export default function ChatInterface() {
     let completedMetadata: Record<string, unknown> | undefined;
     let streamFailed = false;
     let streamFailureMessage = '';
-    let retryCount = 0;
     const MAX_RETRIES = 2;
 
     const enrichStreamMetadata = (
@@ -1319,9 +1341,6 @@ export default function ChatInterface() {
         streamRequestPayload,
         {
           onStatus: (message, metadata) => {
-            if (metadata) {
-              setStreamingStatusMetadata(metadata);
-            }
             const statusKey =
               normalizeProcessingStatusKey(metadata?.status) ||
               normalizeProcessingStatusKey(message) ||
@@ -1357,7 +1376,6 @@ export default function ChatInterface() {
           },
           onComplete: (metadata, content) => {
             completedMetadata = enrichStreamMetadata(metadata);
-            setStreamingStatusMetadata(completedMetadata || null);
             completionContent = String(
               content ||
               (completedMetadata?.formatted_content as string) ||
@@ -1391,7 +1409,6 @@ export default function ChatInterface() {
           },
           onCitationBundle: (nextCitations) => {
             collectedCitations = nextCitations;
-            setCitations(nextCitations);
           },
         },
         controller.signal,
@@ -1464,7 +1481,6 @@ export default function ChatInterface() {
         const shouldRetry = attempt < MAX_RETRIES && (isApiRetryable || isGenericTimeout);
 
         if (shouldRetry) {
-          retryCount++;
           const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
           console.log(`Retrying stream attempt ${attempt + 1}/${MAX_RETRIES} after ${delay}ms...`);
           await new Promise(resolve => setTimeout(resolve, delay));
@@ -1550,11 +1566,10 @@ export default function ChatInterface() {
       setIsEditingDuringProcessing(false);
       setProcessingStatus('');
       setStreamedContent('');
-      setStreamingStatusMetadata(null);
       setStreamingMetrics(null);
     }
 
-  }, [input, isLoading, isAuthLoading, messages, displayName, preferredAddressName, recentMessages, selectedProvider, selectedModel, toast, user, setInput, setMessages, setIsLoading, setIsEditingDuringProcessing, setProcessingStatus, setStreamedContent, setStreamingMetrics, activeRequestControllerRef, sessionIdRef, isAuthenticated]);
+  }, [input, isAuthLoading, messages, displayName, preferredAddressName, recentMessages, selectedProvider, selectedModel, toast, user, setInput, setMessages, setIsLoading, setIsEditingDuringProcessing, setProcessingStatus, setStreamedContent, setStreamingMetrics, activeRequestControllerRef, sessionIdRef, isAuthenticated, processingStatus, savePreferredAddressName, scrollChatToBottom]);
 
   // Process injected messages from other parts of the app
   useEffect(() => {
@@ -1570,36 +1585,6 @@ export default function ChatInterface() {
       popMessage(nextMessage.id);
     }
   }, [pendingMessages, isAuthLoading, isLoading, handleSubmit, setInput, popMessage]);
-
-  // Save preferred address name
-  const savePreferredAddressName = useCallback(async (preferredName: string) => {
-    if (!user) {
-      return false;
-    }
-
-    const nextPreferences = {
-      ...(user.preferences || {}),
-      preferred_address_name: preferredName,
-    };
-
-    await apiClient.put('/api/auth/me', {
-      preferences: nextPreferences,
-    });
-
-    authService.updateCurrentUser({
-      preferences: nextPreferences,
-    });
-
-    await apiClient.post('/api/memory/commit', {
-      user_id: user.user_id,
-      text: `The user prefers to be addressed as ${preferredName}.`,
-      tags: ['personal_fact', 'preferred_name', 'user_preference'],
-      importance: 9,
-      decay: 'pinned',
-    }).catch(() => undefined);
-
-    return true;
-  }, [user]);
 
   // Handle functions
   const handleActionClick = useCallback((action: SuggestedAction) => {
@@ -1627,11 +1612,6 @@ export default function ChatInterface() {
       setIsSuggestingStarter(false);
     }
   }, [setIsSuggestingStarter, setInput]);
-
-  const handleNewChat = useCallback(async () => {
-    if (isLoading) stopActiveRequest();
-    await createNewSession();
-  }, [isLoading, stopActiveRequest, createNewSession]);
 
   const handleExportCurrentChat = useCallback(async () => {
     if (!currentSession) {

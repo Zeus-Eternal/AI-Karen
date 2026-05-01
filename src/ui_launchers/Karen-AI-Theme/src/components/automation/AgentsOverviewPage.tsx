@@ -9,13 +9,21 @@ import { Bot, Clock, Info, ArrowRight, LayoutDashboard, Lightbulb, PlusCircle, W
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
+interface AutomationStats {
+  activeAgents: string;
+  tasksToday: string;
+  activeSequences: string;
+  nextJob: string;
+  nextJobTime: string;
+}
+
 /**
  * @file AutomationOverviewPage.tsx
  * @description An overview of the Agents & Workflows, providing live statistics for Agents, Tasks, and Cron Jobs.
  */
 export default function AutomationOverviewPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<AutomationStats>({
     activeAgents: "0 / 0",
     tasksToday: "0",
     activeSequences: "0",
@@ -32,7 +40,7 @@ export default function AutomationOverviewPage() {
     
     try {
       const { apiClient } = await import('@/lib/api');
-      const data = await apiClient.get<any>('/api/automation/stats/');
+      const data = await apiClient.get<AutomationStats>('/api/automation/stats/');
       if (data) {
         setStats({
           activeAgents: data.activeAgents || "0 / 0",

@@ -549,7 +549,6 @@ export const SessionHistory = ({
                     role="button"
                     tabIndex={0}
                     aria-current={session.isActive ? 'true' : undefined}
-                    aria-selected={isSelected}
                     className={`group relative cursor-pointer rounded-xl border p-3 transition-all hover:bg-muted/50 ${
                       session.isActive ? 'border-primary/50 bg-muted' : 'border-border'
                     } ${

@@ -16,7 +16,7 @@ export function ModeSpecificControls({ modeConfig, options, onOptionsChange, dis
   const renderInput = (field: keyof IntelligentSearchOptions, label: string, type: string = 'text', placeholder?: string) => {
     if (!visible.includes(field)) return null;
 
-    const value = options[field] as any;
+    const value = options[field] as IntelligentSearchOptions[keyof IntelligentSearchOptions];
     
     if (type === 'checkbox') {
       return (

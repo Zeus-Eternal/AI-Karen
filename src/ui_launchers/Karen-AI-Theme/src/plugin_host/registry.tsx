@@ -286,7 +286,7 @@ export function PluginRegistryProvider({ children }: { children: ReactNode }) {
       const normalised = raw.map(normaliseEntry);
       setState({ plugins: normalised, loading: false, error: null });
       console.log(`[PluginRegistry] Loaded ${normalised.length} plugins from backend.`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to load plugin catalog';
       console.error('[PluginRegistry] Error fetching catalog:', err);
       setState({ plugins: [], loading: false, error: message });

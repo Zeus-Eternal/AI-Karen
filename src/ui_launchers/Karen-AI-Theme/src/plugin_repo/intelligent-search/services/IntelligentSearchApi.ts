@@ -40,7 +40,7 @@ function normalizeSearchResponse(value: unknown): IntelligentSearchResponse {
 }
 
 export const IntelligentSearchApi = {
-  executeSearch: async (payload: any): Promise<IntelligentSearchResponse> => {
+  executeSearch: async (payload: Record<string, unknown>): Promise<IntelligentSearchResponse> => {
     const response = await apiClient.post<PluginExecutionEnvelope<IntelligentSearchResponse> | IntelligentSearchResponse>(
       '/api/plugins/execute',
       {

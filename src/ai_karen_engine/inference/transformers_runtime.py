@@ -176,9 +176,10 @@ class TransformersRuntime(LLMProviderBase):
             return "No prompt provided."
 
         if self._transformers_available:
-            text = "I'm ready to help with that."
+            # If we reach here, Transformers is installed but generation failed/bypassed
+            text = "I'm processing your request using local resources, but I'm currently experiencing high latency. Please bear with me or try again in a moment."
         else:
-            text = "I'm here to help."
+            text = "I'm currently operating in a limited capacity mode. Please check my configuration or try again later."
 
         return ResponseSanitizer().sanitize(text)
 

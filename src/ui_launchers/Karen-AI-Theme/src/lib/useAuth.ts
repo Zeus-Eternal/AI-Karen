@@ -11,7 +11,6 @@ interface AuthState {
 }
 
 export function useAuth() {
-  const initializeInFlightRef = useRef<Promise<void> | null>(null);
   const [state, setState] = useState<AuthState>({
     user: null,
     isAuthenticated: false,
@@ -25,7 +24,7 @@ export function useAuth() {
       setState((prev: AuthState) => ({ ...prev, isLoading: true, error: null }));
 
       // Skip full validation if we have a fresh login session to prevent flash
-      const hasFreshLogin = (authService as any).hasFreshLoginMarker?.() || false;
+      const hasFreshLogin = (authService as { hasFreshLoginMarker?: () => boolean }).hasFreshLoginMarker?.() || false;
       const currentUser = authService.getCurrentUser();
       const hasAccessToken = !!authService.getAccessToken();
 
