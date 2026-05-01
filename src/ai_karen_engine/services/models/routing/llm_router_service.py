@@ -1555,6 +1555,25 @@ class LLMRouter:
 
         return False
 
+    def _is_simple_request(self, message: str) -> bool:
+        """Small classifier for concise fallback prompt constraints."""
+        text = (message or "").strip().lower()
+        if not text:
+            return True
+        if len(text.split()) <= 8:
+            return True
+        simple_starts = (
+            "hi",
+            "hello",
+            "hey",
+            "thanks",
+            "thank you",
+            "what time",
+            "weather",
+            "search",
+        )
+        return any(text.startswith(prefix) for prefix in simple_starts)
+
     @staticmethod
     def _sanitize_provider_completion(result_text: str) -> str:
         """Normalize low-quality local completions before malformed-response checks."""
