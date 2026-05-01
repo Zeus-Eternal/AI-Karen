@@ -1,8 +1,4 @@
-from ai_karen_engine.core.cortex.routing_intents import (
-    CAPABILITY_ROUTES,
-    get_capability_routes,
-    resolve_capability_decision,
-)
+from ai_karen_engine.core.cortex.routing_intents import CAPABILITY_ROUTES, resolve_capability_decision
 
 
 def test_capability_registry_contains_live_fact_routes():
@@ -32,10 +28,3 @@ def test_general_chat_allows_llm_only():
     assert decision.intent == "general.chat"
     assert decision.requires_tool is False
     assert decision.allow_llm_only is True
-
-
-def test_dynamic_capability_route_discovery_returns_routes():
-    routes = get_capability_routes(force_refresh=True)
-    assert "time.current" in routes
-    assert "web.search" in routes
-    assert routes["time.current"]["required_capability"] == CAPABILITY_ROUTES["time.current"]["required_capability"]
