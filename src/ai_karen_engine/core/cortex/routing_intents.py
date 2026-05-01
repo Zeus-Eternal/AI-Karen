@@ -1,7 +1,6 @@
-"""
-CORTEX routing intent extension - adds routing intents to existing dispatch system.
-"""
-from typing import Any, Dict, Tuple, List
+"""CORTEX routing intent extensions and capability-routing contract."""
+from dataclasses import asdict, dataclass, field
+from typing import Any, Dict, Tuple, List, Optional
 from ai_karen_engine.core.cortex.intent import resolve_intent as base_resolve
 
 # Routing-specific intent patterns
@@ -12,6 +11,76 @@ ROUTING_INTENT_MAP = {
     "routing profile": "routing.profile",
     "model selection": "routing.select"
 }
+
+CAPABILITY_ROUTES: Dict[str, Dict[str, Any]] = {
+    "time.current": {
+        "triggers": ["what time", "current time", "time in", "timezone"],
+        "required_capability": "time_query",
+        "preferred_plugin": "time-query",
+        "handler": "current_time",
+        "fallback_tool": "time",
+        "requires_live_data": True,
+        "allow_llm_only": False,
+    },
+    "web.search": {
+        "triggers": ["search the internet", "look online", "find current", "latest", "web search"],
+        "required_capability": "web_search",
+        "preferred_plugin": "intelligent-search",
+        "handler": "general",
+        "fallback_tool": "search",
+        "requires_live_data": True,
+        "allow_llm_only": False,
+    },
+    "weather.current": {
+        "triggers": ["weather", "forecast", "temperature", "rain today"],
+        "required_capability": "weather",
+        "preferred_plugin": "intelligent-search",
+        "handler": "weather",
+        "fallback_tool": "weather",
+        "requires_live_data": True,
+        "allow_llm_only": False,
+    },
+}
+
+
+@dataclass(slots=True)
+class CapabilityDecision:
+    intent: str
+    confidence: float
+    requires_tool: bool
+    requires_live_data: bool
+    capability: Optional[str] = None
+    preferred_plugin: Optional[str] = None
+    handler: Optional[str] = None
+    allow_llm_only: bool = True
+    missing_requirements: List[str] = field(default_factory=list)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+
+def resolve_capability_decision(query: str, *, confidence: float = 0.9) -> CapabilityDecision:
+    q = query.lower().strip()
+    for intent, config in CAPABILITY_ROUTES.items():
+        if any(trigger in q for trigger in config.get("triggers", [])):
+            return CapabilityDecision(
+                intent=intent,
+                confidence=confidence,
+                requires_tool=True,
+                requires_live_data=bool(config.get("requires_live_data", False)),
+                capability=config.get("required_capability"),
+                preferred_plugin=config.get("preferred_plugin"),
+                handler=config.get("handler"),
+                allow_llm_only=bool(config.get("allow_llm_only", False)),
+            )
+
+    return CapabilityDecision(
+        intent="general.chat",
+        confidence=confidence,
+        requires_tool=False,
+        requires_live_data=False,
+        allow_llm_only=True,
+    )
 
 
 def resolve_routing_intent(query: str, user_ctx: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:

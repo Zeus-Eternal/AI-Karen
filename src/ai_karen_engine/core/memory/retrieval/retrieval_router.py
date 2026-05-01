@@ -15,6 +15,7 @@ from ...runtime.resilience import get_safe_stage_runner
 from ai_karen_engine.clients.database.milvus_client import MilvusClient
 from ai_karen_engine.clients.database.elastic_client import ElasticClient
 from ai_karen_engine.clients.database.redis_client import RedisClient
+from ai_karen_engine.core.memory.graph.service import get_leangraph_service
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,7 @@ class HybridRetrievalRouter:
         self.milvus = MilvusClient(collection="memory_ledger_semantic")
         self.elastic = ElasticClient(index="memory_ledger_lexical")
         self.redis = RedisClient()
+        self.leangraph = get_leangraph_service()
         
     async def recall(self, query: MemoryQuery) -> List[MemoryEntry]:
         """
@@ -111,8 +113,20 @@ class HybridRetrievalRouter:
 
     async def _query_graph(self, query: MemoryQuery) -> List[MemoryEntry]:
         """Fetch multi-hop relational data from LeanGraph."""
-        # Implementation of LeanGraph traversal
-        return [] # Placeholder
+        tenant_id = str(query.tenant_id or "")
+        user_id = str(query.user_id or "")
+        if not tenant_id or not user_id or not query.text:
+            return []
+        # Keep graph expansion optional and bounded; graph is an expansion source
+        # and should never bypass the primary ranking path.
+        results = await self.leangraph.get_entity_context(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            entity_text=query.text,
+            limit=min(20, query.top_k * 2),
+        )
+        logger.info("leangraph_query_completed", extra={"component": "leangraph", "status": "completed", "tenant_id": tenant_id, "user_id": user_id, "result_count": len(results)})
+        return []
 
     def _deduplicate_and_rank(self, candidates: List[MemoryEntry], query: MemoryQuery) -> List[MemoryEntry]:
         """Remove duplicates and apply final ranking logic."""

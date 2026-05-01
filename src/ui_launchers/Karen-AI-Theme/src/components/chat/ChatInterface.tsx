@@ -20,6 +20,7 @@ import { getDegradedResponseMessage } from './const/getDegradedResponseMessage';
 import {
   DEFAULT_PROCESSING_MESSAGE,
   normalizeProcessingStatusKey,
+  resolveProcessingStatus,
   resolveProcessingStatusMessage,
 } from './const/processing';
 import { getDegradationReasonLabel } from './const/constants';
@@ -1327,9 +1328,23 @@ export default function ChatInterface() {
               'processing';
             const variantIndex = processingStatusVariantRef.current[statusKey] || 0;
             processingStatusVariantRef.current[statusKey] = variantIndex + 1;
-            setProcessingStatus(
-              resolveProcessingStatusMessage(statusKey, message, variantIndex, metadata || undefined),
+            const resolved = resolveProcessingStatus(
+              statusKey,
+              message,
+              variantIndex,
+              {
+                ...(metadata || {}),
+                status: (metadata?.status as string | undefined) || statusKey,
+                stage: (metadata?.stage as string | undefined) || statusKey,
+                node: metadata?.node as string | undefined,
+                started_at: metadata?.started_at as string | number | undefined,
+                elapsed_ms: metadata?.elapsed_ms as number | string | undefined,
+              },
             );
+            const statusMessage = resolved.elapsedLabel
+              ? `${resolved.message} (${resolved.elapsedLabel})`
+              : resolved.message;
+            setProcessingStatus(statusMessage);
           },
           onContent: (token) => {
             collectedContent += token;
