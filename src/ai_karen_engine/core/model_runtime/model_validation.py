@@ -12,6 +12,52 @@ class ModelValidationResult:
     security_flags: tuple[str, ...] = field(default_factory=tuple)
 
 
+@dataclass(slots=True)
+class ModelCapabilityProfile:
+    provider: str
+    model: str
+    chat_capable: bool
+    fallback_eligible: bool
+    capabilities: set[str]
+    unsuitable_for: set[str]
+
+
+CODE_MODEL_PATTERNS = (
+    "starcoder",
+    "codellama",
+    "deepseek-coder",
+    "codegemma",
+    "wizardcoder",
+    "stable-code",
+    "sqlcoder",
+    "granite-code",
+)
+
+
+def infer_model_capabilities(model_name: str, provider: str = "") -> ModelCapabilityProfile:
+    """Infer model capabilities based on naming patterns."""
+    normalized = model_name.lower()
+
+    if any(pattern in normalized for pattern in CODE_MODEL_PATTERNS):
+        return ModelCapabilityProfile(
+            provider=provider,
+            model=model_name,
+            chat_capable=False,
+            fallback_eligible=False,
+            capabilities={"code_generation", "code_completion", "repo_analysis"},
+            unsuitable_for={"general.chat", "direct_answer", "creative.chat"},
+        )
+
+    return ModelCapabilityProfile(
+        provider=provider,
+        model=model_name,
+        chat_capable=True,
+        fallback_eligible=True,
+        capabilities={"general_chat"},
+        unsuitable_for=set(),
+    )
+
+
 def validate_model_record(
     record: Mapping[str, Any],
     discovery_config: Mapping[str, Any] | None = None,

@@ -31,10 +31,16 @@ class DiscoveryStatus(str, Enum):
 class DiscoveryProgress:
     status: DiscoveryStatus
     total_scanned: int = 0
+    total_models: int = 0  # Alias for total_scanned for compatibility
     discovered_models: int = 0
+    validated_models: int = 0  # For model validation tracking
     skipped_models: int = 0
     last_path: Optional[str] = None
     message: str = ""
+    current_operation: str = ""
+    start_time: float = 0.0
+    estimated_completion: Optional[float] = None
+    errors: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

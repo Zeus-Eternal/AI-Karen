@@ -309,11 +309,13 @@ async def evaluate_cortex(
     cortex = _build_cortex_output(
         intent=IntentSignal(
             primary_intent=intent,
+            subtype=capability_decision.subtype,
             secondary_intents=list(intent_meta.get("secondary_intents", [])),
             entities=list(intent_meta.get("entities", [])),
             confidence=float(intent_meta.get("confidence", 0.6)),
             category=str(intent_meta.get("category", "general")),
             requested_modality=str(intent_meta.get("requested_modality", "text")),
+            requires_chat_capable_model=capability_decision.requires_chat_capable_model,
         ),
         predictors=predictors,
         kire=kire,

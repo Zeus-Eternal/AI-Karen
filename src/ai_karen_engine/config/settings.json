@@ -1,11 +1,11 @@
 {
-  "provider": "gemini",
-  "model": "gemini-2.5-flash",
+  "provider": "ollama",
+  "model": "qwen3:4b",
   "use_memory": true,
   "context_length": 512,
   "decay": 0.1,
   "features": {
-    "copilot_cloud_enabled": true,
+    "copilot_cloud_enabled": false,
     "copilot_advanced_ui": true,
     "copilot_batch_operations": true
   },
@@ -75,7 +75,7 @@
       }
     }
   },
-  "last_selected_model": "gemini-2.5-flash",
+  "last_selected_model": "qwen3:4b",
   "model_providers": {
     "zai": {
       "last_model": "glm-4.7-flash",
@@ -104,7 +104,8 @@
       "base_url": "https://api.anthropic.com/v1"
     },
     "gemini": {
-      "last_model": "gemini-2.5-flash"
+      "last_model": "gemini-2.5-flash",
+      "base_url": "https://generativelanguage.googleapis.com/v1beta"
     },
     "ollama": {
       "last_model": "qwen3:4b",

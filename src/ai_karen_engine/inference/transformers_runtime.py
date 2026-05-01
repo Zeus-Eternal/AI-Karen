@@ -43,68 +43,86 @@ class TransformersRuntime(LLMProviderBase):
         self.provider_name = kwargs.get("provider_name", "builtin_transformers")
         self._transformers_available = _lazy_import_transformers()
         self._model_name = self._resolve_model_name(model_path)
+        self._pipeline = None
+        self._lock = threading.Lock()
 
         if not self._transformers_available:
             logger.info("Transformers not installed; using deterministic fallback runtime")
+        elif model_path:
+            # Pre-warm if model path is provided
+            threading.Thread(target=self.warm, args=(model_path,), daemon=True).start()
 
-    @staticmethod
-    def _resolve_model_name(model_path: Optional[str]) -> str:
-        if not model_path:
-            return "auto"
-        return Path(model_path).name or "auto"
+    def warm(self, model_path: Optional[str] = None) -> bool:
+        """Pre-load the model pipeline to avoid cold-start latency."""
+        if not self._transformers_available:
+            return False
+            
+        target_path = model_path or self.model_path
+        if not target_path:
+            logger.debug("No model path provided for pre-warming")
+            return False
 
-    @staticmethod
-    def is_available() -> bool:
-        """Check if transformers runtime is available (best-effort always true due to fallbacks)."""
-        return True
+        with self._lock:
+            if self._pipeline and (not model_path or target_path == self.model_path):
+                return True
 
-    @classmethod
-    def get_instance(cls, **kwargs: Any) -> "TransformersRuntime":
-        if cls._instance is None:
-            cls._instance = cls(**kwargs)
-        return cls._instance
+            try:
+                import torch
+                from transformers import pipeline
 
-    def get_provider_info(self) -> Dict[str, Any]:
-        """Get provider metadata with initialization status."""
-        from ai_karen_engine.integrations.llm_registry import get_registry
-        registry = get_registry()
-        # Call private method safely to avoid recursion if get_provider_info is called from registry
-        models = registry._get_models_for_provider(self.provider_name)
-        
-        return {
-            "name": self.provider_name,
-            "model": self._model_name,
-            "transformers_available": self._transformers_available,
-            "available_models": list(models.keys()),
-            "supports_streaming": False,
-            "supports_embeddings": True,
-            "requires_api_key": False,
-        }
-
-    def health_check(self) -> Dict[str, Any]:
-        return {
-            "status": "healthy" if self._transformers_available else "degraded",
-            "provider": self.provider_name,
-            "model_path": self.model_path,
-            "model": self._model_name,
-            "transformers_available": self._transformers_available,
-            "message": (
-                "Local transformers runtime ready"
-                if self._transformers_available
-                else "Transformers package unavailable; deterministic local fallback only"
-            ),
-            "response_source": (
-                "live_model" if self._transformers_available else "deterministic_fallback"
-            ),
-        }
-
-    def load_model(self, model_path: Optional[str] = None) -> bool:
-        if model_path:
-            self.model_path = model_path
-            self._model_name = self._resolve_model_name(model_path)
-        return True
+                logger.info(f"Pre-warming Transformers pipeline for {target_path} on {self.device}")
+                
+                # Determine device index
+                device_idx = -1
+                if self.device == "auto":
+                    device_idx = 0 if torch.cuda.is_available() else -1
+                elif self.device.startswith("cuda"):
+                    try:
+                        device_idx = int(self.device.split(":")[1]) if ":" in self.device else 0
+                    except (ValueError, IndexError):
+                        device_idx = 0
+                
+                dtype = torch.float16 if torch.cuda.is_available() and self.torch_dtype == "auto" else "auto"
+                
+                self._pipeline = pipeline(
+                    "text-generation",
+                    model=target_path,
+                    device=device_idx,
+                    torch_dtype=dtype,
+                    model_kwargs={"low_cpu_mem_usage": True}
+                )
+                self.model_path = target_path
+                self._model_name = self._resolve_model_name(target_path)
+                logger.info(f"Transformers pipeline warmed successfully for {self._model_name}")
+                return True
+            except Exception as e:
+                logger.error(f"Failed to pre-warm Transformers pipeline: {e}")
+                return False
 
     def generate(self, prompt: str, **kwargs: Any) -> str:
+        """Generate text using warmed pipeline or fallback."""
+        if self._pipeline:
+            try:
+                max_new_tokens = kwargs.get("max_new_tokens") or kwargs.get("max_tokens") or 128
+                temperature = kwargs.get("temperature", 0.7)
+                
+                result = self._pipeline(
+                    prompt, 
+                    max_new_tokens=max_new_tokens,
+                    temperature=temperature,
+                    do_sample=temperature > 0,
+                    pad_token_id=self._pipeline.tokenizer.eos_token_id
+                )
+                
+                if result and isinstance(result, list) and "generated_text" in result[0]:
+                    generated = result[0]["generated_text"]
+                    # Strip prompt if it's echoed
+                    if generated.startswith(prompt):
+                        generated = generated[len(prompt):].strip()
+                    return generated
+            except Exception as e:
+                logger.warning(f"Transformers generation failed: {e}. Falling back.")
+
         return self._fallback_generate(prompt, **kwargs)
 
     def stream(self, prompt: str, **kwargs: Any) -> Iterator[str]:
@@ -134,7 +152,14 @@ class TransformersRuntime(LLMProviderBase):
 
         return results[0] if is_single else results
 
-    def get_model_info(self) -> Dict[str, Any]:
+    @classmethod
+    def get_instance(cls, **kwargs: Any) -> "TransformersRuntime":
+        if cls._instance is None:
+            cls._instance = cls(**kwargs)
+        return cls._instance
+
+    def get_provider_info(self) -> Dict[str, Any]:
+
         return {
             "model": self._model_name,
             "device": self.device,

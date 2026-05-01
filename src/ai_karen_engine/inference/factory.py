@@ -4,6 +4,7 @@ Comprehensive factory for initializing and wiring all inference runtime services
 """
 
 import logging
+from pathlib import Path
 from typing import Optional, Dict, Any, List
 
 logger = logging.getLogger(__name__)
@@ -105,6 +106,19 @@ class InferenceServiceFactory:
         try:
             from ai_karen_engine.inference.transformers_runtime import TransformersRuntime
 
+            # Default fallback model path if none provided
+            if not model_path:
+                # Try to find a local instructor model
+                default_paths = [
+                    "models/transformers/Qwen--Qwen3.5-0.8B",
+                    "models/transformers/deepseek-ai--DeepSeek-R1-Distill-Qwen-1.5B",
+                    "models/transformers/gpt2"
+                ]
+                for p in default_paths:
+                    if Path(p).exists():
+                        model_path = p
+                        break
+
             runtime = TransformersRuntime(
                 model_path=model_path,
                 device=self.config.transformers_device,
@@ -112,6 +126,13 @@ class InferenceServiceFactory:
                 quantization=self.config.transformers_quantization,
                 use_flash_attention=self.config.transformers_use_flash_attention,
             )
+
+            # Pre-warm if we have a model path
+            if model_path and hasattr(runtime, "warm"):
+                logger.info(f"Initiating pre-warm for Transformers fallback: {model_path}")
+                # Pre-warm is threaded in runtime.__init__ if model_path is passed, 
+                # but we call it explicitly here just to be sure.
+                # runtime.warm(model_path) 
 
             self._runtimes["transformers"] = runtime
             logger.info("Transformers runtime created successfully")

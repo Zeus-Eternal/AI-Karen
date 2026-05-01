@@ -449,9 +449,7 @@ async def get_model_status(
 
         # Get model info from router
         active_models = await router_instance.get_active_model_info()
-        model_info = next(
-            (m for m in active_models if m.get("model_id") == model_id), None
-        )
+        model_info = active_models.get(model_id)
 
         if not model_info:
             # Generate mock status for demonstration
@@ -487,24 +485,27 @@ async def get_model_status(
             )
 
         # Extract real status information
+        model_details = model_info.get("model_info", {})
+        performance = model_info.get("performance", {})
+
         return ModelStatusResponse(
             model_id=model_id,
-            model_name=model_info.get("name", model_id),
+            model_name=model_details.get("name", model_id),
             provider=model_info.get("provider", "unknown"),
-            status=model_info.get("status", "unknown"),
-            availability=model_info.get("availability", 0.0),
-            response_time=model_info.get("response_time", 0.0),
-            memory_usage=model_info.get("memory_usage", 0.0),
-            cpu_usage=model_info.get("cpu_usage", 0.0),
-            gpu_usage=model_info.get("gpu_usage"),
-            active_connections=model_info.get("active_connections", 0),
-            requests_per_minute=model_info.get("requests_per_minute", 0.0),
-            error_rate=model_info.get("error_rate", 0.0),
-            last_request=model_info.get("last_request", 0.0),
-            uptime=model_info.get("uptime", 0.0),
-            health_score=model_info.get("health_score", 0.0),
-            issues=model_info.get("issues", []),
-            performance_trend=model_info.get("performance_trend", "stable"),
+            status="online",  # Connected models are online
+            availability=performance.get("availability_score", 1.0),
+            response_time=performance.get("average_response_time", 0.0),
+            memory_usage=0.0,  # Not tracked in current implementation
+            cpu_usage=0.0,  # Not tracked in current implementation
+            gpu_usage=None,  # Not tracked in current implementation
+            active_connections=performance.get("total_requests", 0),
+            requests_per_minute=performance.get("total_requests", 0.0),
+            error_rate=1.0 - performance.get("success_rate", 1.0),
+            last_request=model_info.get("last_used", 0.0),
+            uptime=0.0,  # Not tracked in current implementation
+            health_score=performance.get("availability_score", 0.0),
+            issues=[],  # Not tracked in current implementation
+            performance_trend="stable",  # Not tracked in current implementation
         )
 
     except Exception as ex:

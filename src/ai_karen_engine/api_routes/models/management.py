@@ -17,6 +17,7 @@ import json
 import logging
 import os
 import tempfile
+import time
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
@@ -391,7 +392,7 @@ async def list_local_models(
 @router.post("/models/local/upload")
 async def upload_model(
     background_tasks: BackgroundTasks,
-    file: UploadFile = File(...),
+    file: UploadFile = File(...),  # type: ignore[var-annotated]
     name: Optional[str] = Form(None),
     description: str = Form(""),
     tags: str = Form("[]")  # JSON string
@@ -710,7 +711,7 @@ async def delete_job(job_id: str):
 
 async def _handle_model_upload(
     job_id: str,
-    file: UploadFile,
+    file: UploadFile,  # type: ignore[var-annotated]
     name: str,
     description: str,
     tags: List[str]
@@ -1831,26 +1832,26 @@ async def get_all_models():
         # 2) Registered models in the model store database (if any)
         try:
             for md in model_store.list_models():
-                runtime_compat = md.get("compatible_runtimes") or []
+                runtime_compat = md.compatible_runtimes or []
                 models.append({
-                    "id": md.get("id") or md.get("name") or "unknown",
-                    "name": md.get("name", "Unknown Model"),
-                    "family": md.get("family") or "",
-                    "format": md.get("format") or "",
-                    "size": md.get("size"),
-                    "parameters": md.get("parameters"),
-                    "quantization": md.get("quantization"),
-                    "context_length": md.get("context_length"),
-                    "capabilities": list(md.get("capabilities", [])) or ["text"],
-                    "local_path": md.get("local_path"),
-                    "download_url": md.get("download_url"),
-                    "provider": md.get("provider") or ("local" if md.get("local_path") else (md.get("source") or "unknown")),
+                    "id": md.id or md.name or "unknown",
+                    "name": md.name or "Unknown Model",
+                    "family": md.family or "",
+                    "format": md.format or "",
+                    "size": md.size,
+                    "parameters": md.parameters,
+                    "quantization": md.quantization,
+                    "context_length": md.context_length,
+                    "capabilities": list(md.capabilities) or ["text"],
+                    "local_path": md.local_path,
+                    "download_url": md.download_url,
+                    "provider": md.provider or ("local" if md.local_path else (md.source or "unknown")),
                     "runtime_compatibility": runtime_compat,
-                    "tags": list(md.get("tags", [])),
-                    "license": md.get("license"),
-                    "description": md.get("description") or "",
-                    "created_at": md.get("created_at"),
-                    "updated_at": md.get("updated_at"),
+                    "tags": list(md.tags),
+                    "license": md.license,
+                    "description": md.description or "",
+                    "created_at": md.created_at,
+                    "updated_at": md.updated_at,
                 })
         except Exception as e:
             logger.debug(f"Model store listing failed: {e}")
@@ -2167,7 +2168,7 @@ async def get_local_models_status():
 
 
 @router.post("/models/local/upload/validate")
-async def validate_model_upload(file: UploadFile = File(...)):
+async def validate_model_upload(file: UploadFile = File(...)):  # type: ignore[var-annotated]
     """Validate a model file before upload without actually uploading it."""
     try:
         # Check file extension
@@ -2445,11 +2446,11 @@ async def get_local_models_disk_usage():
 
 def _format_bytes(bytes_value: int) -> str:
     """Format bytes into human readable string."""
-    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-        if bytes_value < 1024.0:
-            return f"{bytes_value:.1f} {unit}"
-        bytes_value /= 1024.0
-    return f"{bytes_value:.1f} PB"
+    for unit in ["B", "KB", "MB", "GB", "TB"]:
+        if bytes_value < 1024:
+            return f"{bytes_value} {unit}"
+        bytes_value //= 1024
+    return f"{bytes_value} PB"
 
 
 def _get_available_disk_space(path: Path) -> Optional[int]:
@@ -3012,18 +3013,20 @@ async def get_popular_models(
         # Convert to simplified format for popular models display
         popular_models = []
         for model in models:
+            description = model.description or ""
+            description_display = (description[:200] + "...") if len(description) > 200 else description
             popular_models.append({
                 "id": model.id,
                 "name": model.name,
                 "author": model.author,
-                "description": model.description[:200] + "..." if len(model.description) > 200 else model.description,
+                "description": description_display,
                 "downloads": model.downloads,
                 "likes": model.likes,
                 "family": model.family,
                 "parameters": model.parameters,
                 "format": model.format,
                 "size_human": _format_bytes(model.size) if model.size else "Unknown",
-                "tags": model.tags[:5]  # Limit tags for display
+                "tags": (model.tags or [])[:5]  # Limit tags for display
             })
         
         return {

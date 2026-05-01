@@ -39,6 +39,8 @@ from ai_karen_engine.core.operations.routing_decision_persistence import (
 # from ai_karen_engine.integrations.llm_registry import get_registry, LLMRegistry  <- Moved to local scope
 from ai_karen_engine.integrations.llm_utils import LLMProviderBase
 from ai_karen_engine.services.response import ResponseContract, ResponsePromptBuilder, ResponseSanitizer
+from ai_karen_engine.services.response.response_validator import ResponseValidator
+from ai_karen_engine.core.model_runtime.model_validation import infer_model_capabilities, ModelCapabilityProfile
 
 try:
     from ai_karen_engine.core.operations.provider_metrics import (
@@ -243,6 +245,9 @@ class ChatRequest:
     """Chat request model for LLM Router"""
 
     message: str
+    intent: str = "general.chat"
+    subtype: Optional[str] = None
+    response_mode: str = "direct_answer"
     context: Optional[Dict[str, Any]] = None
     tools: Optional[List[str]] = None
     memory_context: Optional[str] = None
@@ -253,6 +258,7 @@ class ChatRequest:
     stream: bool = True
     max_tokens: Optional[int] = None
     temperature: Optional[float] = None
+    requires_chat_capable_model: bool = True
 
 
 class LLMRouter:
@@ -269,8 +275,8 @@ class LLMRouter:
         self.registry: Any = registry or get_registry()
         self.provider_health: Dict[str, ProviderHealth] = {}
         self.health_check_interval = 300  # 5 minutes
-        self.max_consecutive_failures = 3
-        self.response_timeout = 30  # seconds
+        self.max_consecutive_failures = 2
+        self.response_timeout = 5.0  # seconds
 
         # Routing policy configuration
         self.routing_policy: RoutingPolicy = RoutingPolicy.PRIORITY
@@ -299,13 +305,14 @@ class LLMRouter:
         self.retry_max_delay = 10.0
         self.retry_jitter = 0.5
 
-        self.circuit_breaker_threshold = 3
+        self.circuit_breaker_threshold = 2
         self.circuit_breaker_timeout = 60.0
 
         self.rate_limit_backoff = 15.0
         self.latency_history_size = 20
         self._response_prompt_builder = ResponsePromptBuilder()
         self._response_sanitizer = ResponseSanitizer()
+        self._response_validator = ResponseValidator()
 
         self.default_rate_limit = {"max_requests": 30, "window_seconds": 60}
         self.rate_limit_config: Dict[str, Dict[str, float]] = {
@@ -901,6 +908,15 @@ class LLMRouter:
         if request.stream and not provider_info.get("supports_streaming", False):
             return False
 
+        # Check chat capability if requested
+        if request.requires_chat_capable_model and request.intent == "general.chat":
+            model_to_check = request.preferred_model or provider_info.get("default_model", "")
+            if model_to_check:
+                profile = infer_model_capabilities(model_to_check, provider_name)
+                if not profile.chat_capable:
+                    logger.debug(f"Model {model_to_check} on {provider_name} is not chat capable, skipping for general chat")
+                    return False
+
         # Check if API key is required and available
         if provider_info.get("requires_api_key", False):
             if not self._is_api_key_configured(provider_name, provider_info):
@@ -1475,9 +1491,22 @@ class LLMRouter:
                 f"Provider {provider_name} does not support text generation"
             )
 
-        result = generator_callable(provider_prompt, **provider_params)
-        if inspect.isawaitable(result):
-            result = await result
+        # Apply hard timeout for non-streaming generation
+        timeout = float(self._get_config_value("request_timeout", 8.0))
+        
+        try:
+            if inspect.isawaitable(generator_callable) or asyncio.iscoroutinefunction(generator_callable):
+                result = await asyncio.wait_for(generator_callable(provider_prompt, **provider_params), timeout=timeout)
+            else:
+                # Wrap synchronous call in a thread to prevent blocking the event loop
+                # and allow wait_for to at least time out the await, even if the thread continues.
+                result = await asyncio.wait_for(
+                    asyncio.to_thread(generator_callable, provider_prompt, **provider_params), 
+                    timeout=timeout
+                )
+        except asyncio.TimeoutError:
+            raise RuntimeError(f"Provider {provider_name} timed out after {timeout}s")
+
         if result is None:
             raise RuntimeError(f"Provider {provider_name} returned no response")
         if isinstance(result, bytes):
@@ -1485,9 +1514,15 @@ class LLMRouter:
         result_text = self._response_sanitizer.sanitize(self._sanitize_provider_completion(str(result)))
         if not result_text:
             raise RuntimeError(f"Provider {provider_name} returned an empty response")
-        if self._looks_like_bad_completion(request, result_text):
+        
+        # Comprehensive quality validation
+        contract = ResponseContract(latest_user_message=request.message, response_mode=request.response_mode)
+        validation = self._response_validator.validate(result_text, contract)
+        
+        if not validation.valid or self._looks_like_bad_completion(request, result_text):
+            logger.warning(f"Provider {provider_name} response failed validation: {validation.reason or 'bad_completion'}")
             raise RuntimeError(
-                f"Provider {provider_name} returned a malformed response"
+                f"Provider {provider_name} returned a malformed response: {validation.reason or 'quality_gate_failed'}"
             )
         yield result_text
 
@@ -1853,10 +1888,17 @@ class LLMRouter:
             request.stream,
         )
 
-        async for chunk in self._process_with_provider(
-            provider_name, request, model_name
-        ):
-            yield chunk
+        try:
+            async for chunk in self._process_with_provider(
+                provider_name, request, model_name
+            ):
+                yield chunk
+        except Exception as exc:
+            if not isinstance(exc, ProviderProcessingError):
+                raise ProviderProcessingError(
+                    f"Error processing with {provider_name}: {exc}", last_error=exc
+                ) from exc
+            raise
 
         # Yield metadata for successful generation
         yield {

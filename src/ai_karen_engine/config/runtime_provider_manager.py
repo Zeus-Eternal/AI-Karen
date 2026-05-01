@@ -132,7 +132,7 @@ class RuntimeProviderManager:
             normalized = [p for p in canonical if p]
             if normalized:
                 return normalized
-        return ["builtin_vllm", "builtin_transformers", "local_gguf", "fallback"]
+        return ["builtin_vllm", "ollama", "builtin_transformers", "local_gguf", "fallback"]
     
     # ---------- Provider Switching ----------
     

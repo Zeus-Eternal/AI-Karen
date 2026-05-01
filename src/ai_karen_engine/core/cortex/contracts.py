@@ -32,11 +32,13 @@ class ExecutionMode(str, Enum):
 @dataclass(slots=True)
 class IntentSignal:
     primary_intent: str
+    subtype: Optional[str] = None
     secondary_intents: List[str] = field(default_factory=list)
     entities: List[str] = field(default_factory=list)
     confidence: float = 0.0
     category: str = "general"
     requested_modality: str = "text"
+    requires_chat_capable_model: bool = True
 
 
 @dataclass(slots=True)

@@ -93,6 +93,7 @@ class TestDegradedRuntimeFallback:
             assert llm_metadata["fallback_from"] == "gemini"
             assert llm_metadata["fallback_chain"] == [
                 "builtin_vllm",
+                "ollama",
                 "builtin_transformers",
                 "local_gguf",
                 "fallback",
@@ -316,7 +317,7 @@ class TestDegradedRuntimeFallback:
 
     def test_runtime_fallback_order_constant(self, router):
         """Test that the runtime fallback order constant is correct."""
-        expected_order = ("builtin_vllm", "builtin_transformers", "local_gguf", "fallback")
+        expected_order = ("builtin_vllm", "ollama", "builtin_transformers", "local_gguf", "fallback")
         assert router.RUNTIME_DEGRADED_FALLBACK_ORDER == expected_order
 
 

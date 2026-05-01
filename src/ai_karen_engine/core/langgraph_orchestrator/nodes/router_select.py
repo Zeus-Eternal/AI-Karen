@@ -75,8 +75,26 @@ class RouterSelectNode:
                 if profile_chat_preference:
                     preferred_model_name = str(profile_chat_preference)
 
+            cortex = state.get("cortex")
+            intent = "general.chat"
+            subtype = None
+            requires_chat_capable_model = True
+            
+            if cortex and hasattr(cortex, "intent"):
+                intent = cortex.intent.primary_intent
+                subtype = getattr(cortex.intent, "subtype", None)
+                requires_chat_capable_model = getattr(cortex.intent, "requires_chat_capable_model", True)
+            elif isinstance(cortex, dict):
+                intent_data = cortex.get("intent", {})
+                if isinstance(intent_data, dict):
+                    intent = intent_data.get("primary_intent", "general.chat")
+                    subtype = intent_data.get("subtype")
+                    requires_chat_capable_model = intent_data.get("requires_chat_capable_model", True)
+
             request = ChatRequest(
                 message=conversation_history[-1]["content"],
+                intent=intent,
+                subtype=subtype,
                 context={
                     "conversation": conversation_history,
                     "plan": plan,
@@ -88,6 +106,7 @@ class RouterSelectNode:
                 preferred_model=preferred_model_name,
                 conversation_id=state.get("session_id"),
                 stream=bool(state.get("streaming_enabled")),
+                requires_chat_capable_model=requires_chat_capable_model,
             )
 
             if self._llm_router:

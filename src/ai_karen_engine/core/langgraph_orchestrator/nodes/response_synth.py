@@ -88,8 +88,28 @@ class ResponseSynthesisNode:
 
                 if selection:
                     provider_name, model_name = selection
+                    
+                    cortex = state.get("cortex")
+                    intent = "general.chat"
+                    subtype = None
+                    requires_chat_capable_model = True
+                    
+                    if cortex and hasattr(cortex, "intent"):
+                        intent = cortex.intent.primary_intent
+                        subtype = getattr(cortex.intent, "subtype", None)
+                        requires_chat_capable_model = getattr(cortex.intent, "requires_chat_capable_model", True)
+                    elif isinstance(cortex, dict):
+                        intent_data = cortex.get("intent", {})
+                        if isinstance(intent_data, dict):
+                            intent = intent_data.get("primary_intent", "general.chat")
+                            subtype = intent_data.get("subtype")
+                            requires_chat_capable_model = intent_data.get("requires_chat_capable_model", True)
+
                     contract = ResponseContract(
                         purpose="tool_synthesis" if tool_results else "chat",
+                        intent=intent,
+                        subtype=subtype,
+                        requires_chat_capable_model=requires_chat_capable_model,
                         latest_user_message=last_user_message or "",
                         tool_results=tool_results if isinstance(tool_results, list) else [],
                         reasoning_summary=(reasoning_result.get("summary") if isinstance(reasoning_result, dict) else None),
@@ -223,9 +243,6 @@ class ResponseSynthesisNode:
         execution_summary: Dict[str, Any],
         reasoning_result: Dict[str, Any],
     ) -> str:
-        message = (last_user_message or "").strip().lower()
-        if "joke" in message:
-            return "Why did the server bring a ladder? Because the response time was too high."
         if tool_results and self.config.include_tool_results:
             return self._format_tool_results(tool_results)
         if isinstance(reasoning_result, dict) and reasoning_result.get("summary"):
@@ -234,7 +251,7 @@ class ResponseSynthesisNode:
             successful = execution_summary.get("successful_executions", 0)
             failed = execution_summary.get("failed_executions", 0)
             return f"I completed the request with {successful} successful step(s) and {failed} failed step(s)."
-        return "I’m here and ready to help."
+        return "I’m here and ready to help, but I’m currently operating with limited capacity. Please try again in a moment."
 
     @staticmethod
     def _store_llm_metadata(
