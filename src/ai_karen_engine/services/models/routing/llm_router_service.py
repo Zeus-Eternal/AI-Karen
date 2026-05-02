@@ -182,6 +182,19 @@ PROVIDER_FAILURE_COUNTER = _get_or_create_metric(
 )
 
 logger = logging.getLogger(__name__)
+from ai_karen_engine.core.model_runtime.provider_policy import (
+    BUILTIN_EXPRESSION_ENGINES,
+    EXTERNAL_PROVIDER_OPTIONS,
+    LOCAL_PROVIDER_OPTIONS,
+    REMOVED_INTERNAL_PROVIDERS,
+    evaluate_provider_policy,
+)
+
+ALLOWED_LIVE_FALLBACK_PROVIDERS = (set(BUILTIN_EXPRESSION_ENGINES) | set(LOCAL_PROVIDER_OPTIONS) | {
+    "builtin_vllm",
+    "builtin_transformers",
+    "openai_compatible",
+} | set(EXTERNAL_PROVIDER_OPTIONS)) - {p.replace('-', '_').replace(' ', '_') for p in REMOVED_INTERNAL_PROVIDERS}
 
 
 class ProviderPriority(Enum):
@@ -1751,6 +1764,11 @@ class LLMRouter:
         fallback_providers = []
 
         for provider_name in all_providers:
+            normalized = str(provider_name).strip().lower().replace("-", "_").replace(" ", "_")
+            if not evaluate_provider_policy(normalized, local_enabled=True, external_enabled=True).allowed:
+                continue
+            if normalized not in ALLOWED_LIVE_FALLBACK_PROVIDERS:
+                continue
             if (
                 provider_name != failed_provider
                 and await self._is_provider_healthy(provider_name)
@@ -2449,13 +2467,12 @@ class LLMRouter:
 
             manager.activate_degraded_mode(degraded_reason, failed_providers)
 
-            provider_name = "provider"
+            provider_name = str(getattr(request, "preferred_provider", "") or "provider")
             provider_cause = "The provider failed while handling the request."
             suggestion = "Try again shortly or switch to a different model in Settings."
 
             if failure_records:
                 primary_failure = failure_records[0]
-                provider_name = primary_failure.get("provider", "provider")
                 provider_cause = self._classify_failure_detail(
                     primary_failure.get("error", "")
                 )

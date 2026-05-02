@@ -118,6 +118,10 @@ const LOCAL_GGUF_PROVIDER = 'local_gguf';
 const FALLBACK_PROVIDER = 'fallback';
 const SYSTEM_PROVIDER = 'system';
 
+
+export const REMOVED_PROVIDER_WARNING =
+  'This provider is no longer available as a built-in runtime. Configure llama.cpp/GGUF as a third-party endpoint if needed.';
+
 const BUILTIN_PROVIDER_ALIASES: Record<string, string> = {
   transformers: BUILTIN_TRANSFORMERS_PROVIDER,
   'builtin-transformers': BUILTIN_TRANSFORMERS_PROVIDER,
@@ -364,7 +368,7 @@ export const getRuntimeDisplayName = (
   }
 
   if (normalized === LOCAL_GGUF_PROVIDER || REMOVED_LEGACY_PROVIDERS.has(normalized)) {
-    return 'Provider removed from current runtime';
+    return REMOVED_PROVIDER_WARNING;
   }
 
   if (normalized === FALLBACK_PROVIDER) {
