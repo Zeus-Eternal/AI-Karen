@@ -177,10 +177,10 @@ export default function AgentsPage() {
         nextGroups.set(category, next);
       }
 
-      const grouped = Array.from(nextGroups.entries()).map(([groupName, tools]) => [
-        groupName,
-        tools.sort((left, right) => left.label.localeCompare(right.label)),
-      ]);
+       const grouped: Array<[string, ToolOption[]]> = Array.from(nextGroups.entries()).map(([groupName, tools]) => [
+         groupName,
+         tools.sort((left, right) => left.label.localeCompare(right.label)),
+       ]);
 
       grouped.sort((left, right) => left[0].localeCompare(right[0]));
       setAvailableToolGroups(grouped);

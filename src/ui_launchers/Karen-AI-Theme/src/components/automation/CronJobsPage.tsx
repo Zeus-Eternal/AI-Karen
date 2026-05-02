@@ -24,6 +24,8 @@ interface CronJob {
   enabled: boolean;
   created_at: string;
   updated_at: string;
+  taskName?: string;
+  nextRun?: string;
 }
 
 interface Task {

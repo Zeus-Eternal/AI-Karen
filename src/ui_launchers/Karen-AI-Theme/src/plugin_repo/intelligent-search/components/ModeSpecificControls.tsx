@@ -39,11 +39,11 @@ export function ModeSpecificControls({ modeConfig, options, onOptionsChange, dis
         <label className="text-xs font-medium text-foreground">{label}</label>
         <input
           type={type}
-          value={value || ''}
+          value={typeof value === 'string' || typeof value === 'number' ? value : ''}
           placeholder={placeholder}
           disabled={disabled}
-          onChange={(e) => onOptionsChange({ 
-            [field]: type === 'number' ? parseInt(e.target.value) || undefined : e.target.value 
+          onChange={(e) => onOptionsChange({
+            [field]: type === 'number' ? parseInt(e.target.value) || undefined : e.target.value
           })}
           className="w-full bg-background border border-border px-3 py-1.5 rounded-md text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary transition-all disabled:opacity-50"
         />

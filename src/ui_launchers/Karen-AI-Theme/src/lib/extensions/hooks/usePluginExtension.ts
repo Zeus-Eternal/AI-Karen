@@ -18,7 +18,7 @@ export class PluginExtensionError extends Error {
  
 export interface ExtensionAPI {
   execute: (command: unknown) => Promise<unknown>;
-  getStatus: () => Promise<{ isReady: boolean; error?: string }>;
+  getStatus: () => Promise<{ isReady: boolean; error?: string | null }>;
 }
  
 export interface UsePluginExtensionReturn {
@@ -42,10 +42,10 @@ export function usePluginExtension(pluginId: string): UsePluginExtensionReturn {
   const api: ExtensionAPI = useMemo(() => ({
     execute: async (command: unknown) => {
       try {
-        const data: unknown = await apiClient.post(`/api/plugins/${pluginId}/execute`, {
+        const data = await apiClient.post(`/api/plugins/${pluginId}/execute`, {
           plugin_name: pluginId,
           parameters: command
-        });
+        }) as { success?: boolean; error?: string; result?: unknown };
         
         // Handle the standard PluginExecutionResponse wrapper
         if (data && typeof data === 'object') {

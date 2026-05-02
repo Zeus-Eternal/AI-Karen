@@ -6,6 +6,10 @@ export interface RuntimeProviderModel {
   name: string;
   family?: string;
   source?: string;
+  size_bytes?: number | null;
+  capabilities?: string[];
+  preferred_runtime?: string | null;
+  compatible_runtimes?: string[];
 }
 
 export interface RuntimeProviderDetails {
@@ -93,9 +97,9 @@ export const isVllmCompatibleModel = (model: RuntimeProviderModel | Record<strin
   );
 };
 
-export const sortProviderModels = (
-  models: RuntimeProviderModel[],
-): RuntimeProviderModel[] => {
+export const sortProviderModels = <T extends RuntimeProviderModel>(
+  models: T[],
+): T[] => {
   return [...models].sort((left, right) => {
     const leftVllm = isVllmCompatibleModel(left) ? 0 : 1;
     const rightVllm = isVllmCompatibleModel(right) ? 0 : 1;

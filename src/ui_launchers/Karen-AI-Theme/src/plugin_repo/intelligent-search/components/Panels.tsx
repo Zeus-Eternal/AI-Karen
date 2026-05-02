@@ -14,30 +14,45 @@ type ViewMode = 'snippet' | 'markdown' | 'json';
 const sendToChat = (item: SearchResultItem | SearchSourceItem): void => {
   let content = `I found this information for you:\n\n**${item.title || 'Search Result'}**\n\n`;
 
-  if (item.extracted_data || item.extractedData) {
-    const data = item.extracted_data || item.extractedData;
+  if (item.extracted_data) {
+    const data = item.extracted_data;
     content += `### Structured Data\n\`\`\`json\n${JSON.stringify(data, null, 2)}\n\`\`\`\n\n`;
   }
-  
-  if (item.markdown || item.full_content) {
-    const fullText = item.markdown || item.full_content;
+
+  // full_content only exists on SearchSourceItem, not SearchResultItem
+  const fullText = item.markdown || ('full_content' in item ? item.full_content : undefined);
+  if (fullText) {
     content += `### Content\n${fullText}\n\n`;
   } else if (item.content || item.snippet) {
     content += `${item.content || item.snippet}\n\n`;
   } else {
     content += '_No preview content was available for this item._\n\n';
   }
-  
+
   if (item.url) {
     content += `Source: ${item.url}`;
   }
-  
-  const event = new CustomEvent('karen:inject-message', { 
-    detail: { 
+
+  const event = new CustomEvent('karen:inject-message', {
+    detail: {
       content,
       role: 'user',
-      autoSubmit: true 
-    } 
+      autoSubmit: true
+    }
+  });
+  window.dispatchEvent(event);
+};
+
+/**
+ * Helper function to send custom content to the chat
+ */
+const sendContentToChat = (title: string, content: string): void => {
+  const event = new CustomEvent('karen:inject-message', {
+    detail: {
+      content: `**${title}**\n\n${content}`,
+      role: 'user',
+      autoSubmit: true
+    }
   });
   window.dispatchEvent(event);
 };
@@ -89,7 +104,7 @@ export function ResultsPanel({ response }: PanelProps) {
             <h3 className="text-xl font-semibold text-foreground">Synthesis of {sourceCount} sources</h3>
           </div>
           <button 
-            onClick={() => sendToChat({ title: 'Search Summary', snippet: response.summary, url: 'Live Search Intelligence' })}
+            onClick={() => sendToChat({ id: 'summary', title: 'Search Summary', snippet: response.summary, url: 'Live Search Intelligence' } as any)}
             className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-bold uppercase tracking-wider text-primary-foreground transition-all hover:scale-105 shadow-lg active:scale-95"
           >
             <Send className="h-3.5 w-3.5" />
@@ -103,7 +118,7 @@ export function ResultsPanel({ response }: PanelProps) {
               {response.summary || <span className="italic">Karen was unable to generate a summary for this crawl.</span>}
             </div>
             <div className="flex flex-wrap gap-2 pt-2">
-              <MetricPill label="Provider" value={providerLabel} />
+              <MetricPill label="Provider" value={String(providerLabel)} />
               <MetricPill label="Sources" value={sourceCount} />
               <MetricPill label="Passages" value={resultCount} />
               <MetricPill label="Time" value={`${response.execution_time_ms || 0}ms`} />
