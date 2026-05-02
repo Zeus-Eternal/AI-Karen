@@ -1389,6 +1389,23 @@ class LLMRouter:
                 previous_error = error.last_error or error
 
         degraded_reason = self._infer_degraded_reason(failure_records)
+        runtime_fallback = await self.generate_with_degraded_runtime_fallback(
+            request=request,
+            requested_provider=requested_provider or provider_name,
+            requested_model=requested_model or model_name,
+            failure_reason=str(degraded_reason),
+        )
+        runtime_fallback_llm = (
+            runtime_fallback.get("metadata", {}).get("llm", {})
+            if isinstance(runtime_fallback, dict)
+            else {}
+        )
+        if runtime_fallback and runtime_fallback_llm.get("actual_provider") != "emergency_static":
+            self._record_selection_metric(str(runtime_fallback_llm.get("actual_provider")), "runtime_fallback_success")
+            yield str(runtime_fallback.get("content", "")).strip()
+            yield {"type": "metadata", "metadata": {"llm": runtime_fallback_llm}}
+            return
+
         degraded_message = await self._generate_degraded_fallback(
             request,
             failure_records,
@@ -1895,9 +1912,7 @@ class LLMRouter:
                 yield chunk
         except Exception as exc:
             if not isinstance(exc, ProviderProcessingError):
-                raise ProviderProcessingError(
-                    f"Error processing with {provider_name}: {exc}", last_error=exc
-                ) from exc
+                raise ProviderProcessingError(provider_name, [exc]) from exc
             raise
 
         # Yield metadata for successful generation
