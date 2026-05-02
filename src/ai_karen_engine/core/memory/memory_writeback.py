@@ -22,6 +22,15 @@ from ai_karen_engine.core.memory.retrieval.curated_recall import (
     DEFAULT_CURATED_MEMORY_CLASSES,
     is_curated_memory_metadata,
 )
+from ai_karen_engine.core.memory.neuro import (
+    MemoryCandidate,
+    MemoryClass,
+    classify_memory_candidate,
+    decay_score,
+    decide_consolidation,
+    emit_memory_event,
+    evaluate_guardrails,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +85,16 @@ class WritebackEntry:
     importance: int = 5
     metadata: Dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=datetime.utcnow)
+
+
+@dataclass
+class WritebackCandidate:
+    candidate_type: str
+    text: str
+    memory_class: MemoryClass
+    confidence: float
+    requires_review: bool = False
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 class FeedbackMetrics(BaseModel):
@@ -234,6 +253,15 @@ class MemoryWritebackSystem:
 
             # Apply categorization and tagging
             await self._apply_categorization(writeback_entry)
+            emit_memory_event(
+                "memory.writeback.started",
+                {
+                    "correlation_id": correlation_id,
+                    "user_id": user_id,
+                    "tenant_id": org_id,
+                    "writeback_id": writeback_id,
+                },
+            )
 
             logger.debug(
                 f"Queued writeback entry: {writeback_id}",
@@ -278,13 +306,21 @@ class MemoryWritebackSystem:
                         continue
 
                     # Commit to memory service
-                    # Assume we have access to tenant_id through the service
-                    tenant_id = str(
-                        entry.org_id
-                        or entry.user_id
-                        or entry.session_id
-                        or "default"
-                    )
+                    tenant_id = str(entry.org_id or "")
+                    if not tenant_id:
+                        logger.warning(
+                            "Skipping writeback without tenant_id",
+                            extra={"writeback_id": entry.id, "user_id": entry.user_id},
+                        )
+                        emit_memory_event(
+                            "memory.writeback.skipped",
+                            {
+                                "correlation_id": entry.correlation_id,
+                                "user_id": entry.user_id,
+                                "reason": "missing_tenant_id",
+                            },
+                        )
+                        continue
 
                     response = await self.memory_service.commit(
                         tenant_id=tenant_id,
@@ -294,6 +330,15 @@ class MemoryWritebackSystem:
 
                     if response.success:
                         processed_count += 1
+                        emit_memory_event(
+                            "memory.writeback.completed",
+                            {
+                                "correlation_id": entry.correlation_id,
+                                "user_id": entry.user_id,
+                                "tenant_id": tenant_id,
+                                "writeback_id": entry.id,
+                            },
+                        )
 
                         # Update shard usage tracking
                         await self._update_shard_usage_tracking(entry)
@@ -330,6 +375,14 @@ class MemoryWritebackSystem:
         from ai_karen_engine.core.memory.unified_memory_service import MemoryCommitRequest
 
         metadata = dict(entry.metadata or {})
+        candidate_infos = self._extract_candidates(entry)
+        if not candidate_infos:
+            return None
+
+        approved_candidates = [c for c in candidate_infos if not c.requires_review]
+        if not approved_candidates:
+            return None
+
         if not is_curated_memory_metadata(
             metadata,
             allowed_classes=DEFAULT_CURATED_MEMORY_CLASSES,
@@ -350,6 +403,8 @@ class MemoryWritebackSystem:
             "writeback_id": entry.id,
             "writeback_timestamp": entry.created_at.isoformat(),
             "curated": True,
+            "candidate_types": [c.candidate_type for c in approved_candidates],
+            "memory_classes": [c.memory_class.value for c in approved_candidates],
         }
 
         if entry.source_shards:
@@ -372,6 +427,37 @@ class MemoryWritebackSystem:
             decay=decay_tier,
             metadata=enhanced_metadata,
         )
+
+    def _extract_candidates(self, entry: WritebackEntry) -> List[WritebackCandidate]:
+        text = (entry.content or "").strip()
+        if not text:
+            return []
+        base_candidate = MemoryCandidate(
+            id=entry.id,
+            text=text,
+            memory_class=MemoryClass.EPISODIC,
+            source=str(entry.metadata.get("source", "conversation")),
+            tenant_id=str(entry.org_id or ""),
+            user_id=entry.user_id,
+            confidence=float(entry.metadata.get("confidence", 0.8)),
+            importance=min(1.0, max(0.0, entry.importance / 10.0)),
+            freshness=1.0,
+            metadata=dict(entry.metadata or {}),
+        )
+        base_candidate.memory_class = classify_memory_candidate(base_candidate)
+        guard = evaluate_guardrails(base_candidate)
+        if guard.outcome.value in {"reject", "quarantine"}:
+            return [WritebackCandidate("quarantine", text, MemoryClass.QUARANTINE, 0.0, True, {"guard_reasons": guard.reasons})]
+
+        sensitivity_markers = {"health", "court", "legal", "financial", "religion", "political", "intimate"}
+        lower = text.lower()
+        is_sensitive = any(marker in lower for marker in sensitivity_markers)
+        consolidation = decide_consolidation(base_candidate)
+        score = decay_score(base_candidate)
+        requires_review = is_sensitive or consolidation.requires_review or score < 0.55
+
+        ctype = "profile_fact" if base_candidate.memory_class == MemoryClass.SEMANTIC else "deadline" if "deadline" in lower or "by friday" in lower else "procedure" if base_candidate.memory_class == MemoryClass.PROCEDURAL else "lesson" if base_candidate.memory_class == MemoryClass.LESSON else "project_fact"
+        return [WritebackCandidate(ctype, text, base_candidate.memory_class, score, requires_review, {"consolidation_reason": consolidation.reason})]
 
     async def calculate_feedback_metrics(
         self,
