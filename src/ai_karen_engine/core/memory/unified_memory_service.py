@@ -37,10 +37,10 @@ from ai_karen_engine.core.memory.memory_writeback import (
     MemoryWritebackSystem,
     ShardUsageType,
 )
-from ai_karen_engine.core.logging.structured_logging import PIIRedactor
+from ai_karen_engine.core.logging import get_logger, PIIRedactor
 from ai_karen_engine.utils.pydantic_base import ISO8601Model
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 # Unified data models for consistent interface

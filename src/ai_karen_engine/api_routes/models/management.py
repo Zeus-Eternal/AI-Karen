@@ -1797,13 +1797,13 @@ async def get_all_models():
 
         models: list[dict[str, Any]] = []
 
-        # 1) Local models from repo models directory (GGUF prioritized)
+        # 1) Local models from repo models directory (safetensors prioritized)
         try:
             repo_models_dir = Path("models")
             local_files = model_store.scan_local_models(str(repo_models_dir))
             for lm in local_files:
                 is_gguf = (lm.format or "").lower() == "gguf"
-                runtime_compat = ["local_gguf"] if is_gguf else []
+                runtime_compat = ["openai_compatible"] if is_gguf else []
                 capabilities = ["text"] + (["local_execution"] if is_gguf else [])
 
                 models.append({
@@ -2254,7 +2254,7 @@ async def get_supported_formats():
     
     return {
         "supported_formats": formats,
-        "recommended_format": "gguf",
+        "recommended_format": "safetensors",
         "conversion_available": True,
         "quantization_available": True
     }

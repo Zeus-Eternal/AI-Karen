@@ -19,8 +19,8 @@ from ai_karen_engine.api_routes.shared.schemas import (
 from ai_karen_engine.core.memory.unified_memory_service import (
     MemoryCommitRequest,
     MemoryQueryRequest,
-    PIIRedactor,
 )
+from ai_karen_engine.core.logging import get_logger, PIIRedactor
 from ai_karen_engine.core.memory.runtime_gateway import resolve_memory_runtime
 from ai_karen_engine.monitoring.metrics_service import MetricsService
 from ai_karen_engine.monitoring.structured_logging_service import (
@@ -32,7 +32,7 @@ from ai_karen_engine.monitoring.correlation_service import (
 )
 from ai_karen_engine.utils.pydantic_base import ISO8601Model
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 _metrics_service: Optional[MetricsService] = None
 
 try:

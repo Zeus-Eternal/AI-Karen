@@ -6,7 +6,6 @@ fallback chains to ensure system resilience when providers are unavailable.
 """
 
 import asyncio
-import logging
 import os
 import threading
 import time
@@ -15,6 +14,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Type, Union
 
+from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.core.model_runtime.provider_endpoint import (
     BUILTIN_PROVIDER_ENDPOINTS,
     ProviderEndpoint,
@@ -29,7 +29,7 @@ from ai_karen_engine.integrations.provider_registry import (
 )
 from ai_karen_engine.core.model_runtime.provider_health_monitor import HealthStatus
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class ProviderCapability(str, Enum):

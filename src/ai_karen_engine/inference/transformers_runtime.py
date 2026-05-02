@@ -3,6 +3,7 @@ from __future__ import annotations
 """Neutral local runtime backed by optional Transformers support."""
 
 import logging
+import threading
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, Union
 

@@ -178,7 +178,7 @@ OPENAI_COMPATIBLE_PROVIDER_DEFAULTS: Dict[str, Dict[str, Any]] = {
         "base_url": os.getenv("KAREN_BUILTIN_VLLM_BASE_URL", "http://vllm:8000/v1"),
         "display_name": "vLLM",
         "common_models": [
-            os.getenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME", "karen-vllm-local"),
+            os.getenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME", "auto"),
         ],
     },
 }
@@ -1083,18 +1083,8 @@ class LLMProviderConfigManager:
                 health_endpoint=os.getenv("KAREN_BUILTIN_VLLM_HEALTH_URL", "http://vllm:8000/health"),
                 timeout=int(os.getenv("KAREN_BUILTIN_VLLM_TIMEOUT_SECONDS", "120")),
             ),
-            models=[
-                ProviderModel(
-                    id=os.getenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME", "karen-vllm-local"),
-                    name=os.getenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME", "karen-vllm-local"),
-                    family="vllm",
-                    capabilities={"text", "conversation", "chat", "streaming"},
-                    context_length=int(os.getenv("KAREN_BUILTIN_VLLM_MAX_MODEL_LEN", "4096")),
-                    max_tokens=4096,
-                    supports_streaming=True,
-                )
-            ],
-            default_model=os.getenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME", "karen-vllm-local"),
+            models=[],
+            default_model=os.getenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME", "auto"),
             capabilities={"streaming", "chat_completion", "text_generation"},
             limits=ProviderLimits(
                 concurrent_requests=12,
@@ -1149,18 +1139,8 @@ class LLMProviderConfigManager:
                     health_endpoint=os.getenv("KAREN_BUILTIN_VLLM_HEALTH_URL", "http://vllm:8000/health"),
                     timeout=int(os.getenv("KAREN_BUILTIN_VLLM_TIMEOUT_SECONDS", "120")),
                 ),
-                models=[
-                    ProviderModel(
-                        id=os.getenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME", "karen-vllm-local"),
-                        name=os.getenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME", "karen-vllm-local"),
-                        family="vllm",
-                        capabilities={"text", "conversation", "chat", "streaming"},
-                        context_length=int(os.getenv("KAREN_BUILTIN_VLLM_MAX_MODEL_LEN", "4096")),
-                        max_tokens=4096,
-                        supports_streaming=True,
-                    )
-                ],
-                default_model=os.getenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME", "karen-vllm-local"),
+                models=[],
+                default_model=os.getenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME", "auto"),
                 capabilities={"streaming", "chat_completion", "text_generation"},
                 limits=ProviderLimits(
                     concurrent_requests=12,

@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-import logging
 from collections import defaultdict
 from dataclasses import asdict
 from pathlib import Path
 
+from ai_karen_engine.core.logging import get_logger
 from ..config import LeanGraphConfig
 from ..models import AssertionNode, EntityNode, GraphEdge, MemoryEventNode
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class KuzuGraphAdapter:

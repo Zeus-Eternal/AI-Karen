@@ -15,7 +15,8 @@ from ai_karen_engine.core.memory.signals.spacy_service import SpacyService, Spac
 from ai_karen_engine.core.memory.signals.distilbert_service import DistilBertService, DistilBertHealthStatus
 from ai_karen_engine.core.memory.signals.nlp_config import NLPConfig
 
-logger = logging.getLogger(__name__)
+from ai_karen_engine.core.logging import get_logger
+logger = get_logger(__name__)
 
 
 @dataclass

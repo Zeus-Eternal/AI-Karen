@@ -33,7 +33,8 @@ from ai_karen_engine.core.memory.signals.nlp_config import (
 )
 from ai_karen_engine.config.config_manager import config_manager
 
-logger = logging.getLogger(__name__)
+from ai_karen_engine.core.logging import get_logger
+logger = get_logger(__name__)
 
 
 class NLPServiceManager:

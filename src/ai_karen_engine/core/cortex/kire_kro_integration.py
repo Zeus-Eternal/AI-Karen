@@ -34,7 +34,8 @@ from ai_karen_engine.routing.types import RouteDecision
 from ai_karen_engine.core.cortex.runtime_policy import RuntimePolicyDecision
 from ai_karen_engine.agent_medusa.agent_medusa_node import medusa_node
 
-logger = logging.getLogger(__name__)
+from ai_karen_engine.core.logging import get_logger
+logger = get_logger(__name__)
 
 
 @dataclass

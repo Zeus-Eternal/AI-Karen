@@ -26,7 +26,8 @@ from ..types import MemoryEntry, MemoryMetadata, MemoryNamespace, MemoryQuery, M
 from .fusion import dedupe_by_id, reciprocal_rank_fusion
 from .rerank import rerank_entries
 
-logger = logging.getLogger(__name__)
+from ai_karen_engine.core.logging import get_logger
+logger = get_logger(__name__)
 
 
 class HybridRetrievalRouter:

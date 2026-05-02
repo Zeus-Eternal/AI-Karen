@@ -4,9 +4,9 @@ Projection Manager for AI Karen Memory System.
 Orchestrates multiple projection workers to fan out memory events.
 """
 
-import logging
 import asyncio
 from typing import Dict, Any, Optional
+from ai_karen_engine.core.logging import get_logger
 
 from .base import ProjectionWorker
 from .milvus_worker import MilvusWorker

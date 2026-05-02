@@ -4,11 +4,11 @@ Redis Projection Worker for AI Karen Memory System.
 Projects memory ledger events into Redis for fast hot-state retrieval.
 """
 
-import logging
 import asyncio
 import json
 from datetime import datetime
 from typing import Any, Dict, Optional
+from ai_karen_engine.core.logging import get_logger
 
 from .base import ProjectionWorker
 from ai_karen_engine.clients.database.redis_client import RedisClient

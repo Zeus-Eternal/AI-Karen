@@ -1882,7 +1882,7 @@ class LLMRegistry:
         provider_configs = settings.get("provider_configs", {})
 
         served_vllm_model = os.getenv(
-            "KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME", "karen-vllm-local"
+            "KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME", "auto"
         )
         if "builtin_vllm" not in provider_configs:
             provider_configs["builtin_vllm"] = {}

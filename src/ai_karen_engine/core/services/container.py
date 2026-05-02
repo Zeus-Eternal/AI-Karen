@@ -151,9 +151,7 @@ class ServiceContainer:
         
         for name in startup_order:
             try:
-                # Add explicit print for Docker logs visibility
-                print(f"🚀 [INIT] Starting service: {name}")
-                logger.info(f"🚀 Starting service: {name}")
+                logger.info(f"🚀 [INIT] Starting service: {name}")
                 
                 service = self.get_service(name)
                 
@@ -161,11 +159,9 @@ class ServiceContainer:
                 await service.startup()
                 
                 self._started_services.append(name)
-                print(f"✅ [INIT] Service started successfully: {name}")
-                logger.info(f"✅ Service started successfully: {name}")
+                logger.info(f"✅ [INIT] Service started successfully: {name}")
             except Exception as e:
-                print(f"❌ [INIT] Failed to start service {name}: {e}")
-                logger.error(f"❌ Failed to start service {name}: {e}", exc_info=True)
+                logger.error(f"❌ [INIT] Failed to start service {name}: {e}", exc_info=True)
                 raise
     
     async def stop_all_services(self) -> None:

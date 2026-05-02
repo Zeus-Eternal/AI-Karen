@@ -2,11 +2,12 @@
 Contradiction Resolver for AI Karen Profile Synthesis.
 """
 
-import logging
 from typing import List
+
+from ai_karen_engine.core.logging import get_logger
 from ..ledger_models import ContradictionEvent
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class ContradictionResolver:
     """Resolves conflicting facts during profile synthesis."""

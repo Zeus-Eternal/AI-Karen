@@ -13,7 +13,8 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import numpy as np  # type: ignore
 
-logger = logging.getLogger(__name__)
+from ai_karen_engine.core.logging import get_logger
+logger = get_logger(__name__)
 
 from ai_karen_engine.core.model_runtime.embedding_manager import record_metric  # type: ignore
 from ai_karen_engine.monitoring.metrics_service import get_metrics_service

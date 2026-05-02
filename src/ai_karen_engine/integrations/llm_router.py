@@ -321,14 +321,11 @@ class IntelligentLLMRouter:
         
         self.llm_config = config.get("llm", {})
         
-        # Initialize fallback manager
-        try:
-            from ai_karen_engine.integrations.fallback_manager import get_fallback_manager
-            self.fallback_manager = get_fallback_manager(registry=self.registry, router=self)
-            self.fallback_manager.start_recovery_monitoring()
-        except ImportError:
-            self.logger.warning("Fallback manager not available")
-            self.fallback_manager = None
+        # Legacy fallback manager REMOVED - fallback is now handled by:
+        # 1. ExpressionGateway for expression generation
+        # 2. LLMRouter internal fallback logic (see ALLOWED_LIVE_FALLBACK_PROVIDERS)
+        # 3. Runtime resilience fallback_manager for runtime-level fallbacks
+        self.fallback_manager = None
         
         # Initialize failure pattern analyzer
         try:

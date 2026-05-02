@@ -7,7 +7,8 @@ Detects contradictions between new signals and existing memory assertions.
 import logging
 from typing import List, Dict, Any
 
-logger = logging.getLogger(__name__)
+from ai_karen_engine.core.logging import get_logger
+logger = get_logger(__name__)
 
 class ContradictionScorer:
     """Scores potential contradictions."""

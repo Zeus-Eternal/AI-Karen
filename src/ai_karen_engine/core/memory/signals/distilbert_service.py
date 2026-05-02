@@ -66,7 +66,8 @@ try:
 except ImportError:
     from ai_karen_engine.core.memory.signals.nlp_config import DistilBertConfig
 
-logger = logging.getLogger(__name__)
+from ai_karen_engine.core.logging import get_logger
+logger = get_logger(__name__)
 
 torch = None  # type: ignore[assignment]
 AutoTokenizer = None  # type: ignore[assignment]

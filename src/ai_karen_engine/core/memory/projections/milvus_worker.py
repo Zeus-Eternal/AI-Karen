@@ -4,9 +4,9 @@ Milvus Projection Worker for AI Karen Memory System.
 Projects memory assertions into the Milvus vector database for semantic retrieval.
 """
 
-import logging
 import asyncio
 from typing import Any, Dict, Optional
+from ai_karen_engine.core.logging import get_logger
 
 from .base import ProjectionWorker
 from ai_karen_engine.clients.database.milvus_client import MilvusClient

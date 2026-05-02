@@ -11,7 +11,7 @@ from typing import Any, Dict, Optional
 
 from ai_karen_engine.routing.types import RouteDecision
 from ai_karen_engine.event_bus import EventBus
-from ai_karen_engine.core.logging.logger import get_logger
+from ai_karen_engine.core.logging import get_logger
 
 
 @dataclass
@@ -29,8 +29,8 @@ class RoutingEvent:
 
 class DecisionLogger:
     def __init__(self) -> None:
-        # Use CopilotKit logging pattern
-        self._log = get_logger("kari.kire").logger
+        # Use centralized runtime logger
+        self._log = get_logger("kari.kire")
         try:
             self._bus = EventBus()
         except Exception:

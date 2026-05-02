@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-import logging
 import os
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, AsyncIterator, Dict, Iterable, Iterator, List, Mapping, Optional
 
+from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.core.model_runtime.embedding_manager import EmbeddingManager
 from ai_karen_engine.core.model_runtime.provider_endpoint import (
     ProviderEndpoint,
@@ -38,7 +38,7 @@ from ai_karen_engine.integrations.providers.openai_compatible_provider import (
     OpenAICompatibleProvider,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @dataclass(frozen=True)

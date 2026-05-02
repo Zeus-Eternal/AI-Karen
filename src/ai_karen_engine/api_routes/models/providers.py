@@ -39,8 +39,10 @@ FRIENDLY_PROVIDER_NAMES = {
     "deepseek": "DeepSeek",
     "huggingface": "Hugging Face",
     "anthropic": "Anthropic Claude",
-    "local_gguf": "Local GGUF",
-    "local": "Local Fallback",
+    # NOTE: "local_gguf" and "local" are removed providers - kept only for backward compatibility with old configs
+    "local_gguf": "[DEPRECATED] Third-Party GGUF Endpoint",
+    "third_party_gguf": "Third-Party GGUF Endpoint",
+    "local": "[DEPRECATED] Local Fallback",
 }
 
 DOC_URLS = {
@@ -182,6 +184,17 @@ def _has_transformers_weights(model_dir: Path) -> bool:
 
 
 def _list_gguf(dir_path: Path) -> List[ContractModelInfo]:
+    """List GGUF model files for third-party endpoint usage.
+
+    IMPORTANT: GGUF files are NOT an internal provider. They are model files
+    that must be served through a third-party OpenAI-compatible endpoint like:
+    - llama.cpp server
+    - LM Studio
+    - vLLM with GGUF support
+
+    This function lists available GGUF files but assigns them to a special
+    provider ID to indicate they require external endpoint configuration.
+    """
     models: List[ContractModelInfo] = []
     for p in dir_path.glob("**/*.gguf"):
         name = p.stem
@@ -199,8 +212,8 @@ def _list_gguf(dir_path: Path) -> List[ContractModelInfo]:
                 break
         models.append(
             ContractModelInfo(
-                id=f"local_gguf:/{p.name}",
-                provider="local_gguf",
+                id=f"third_party_gguf:/{p.name}",
+                provider="third_party_gguf",
                 displayName=display,
                 family="llama",
                 installed=True,
@@ -208,7 +221,7 @@ def _list_gguf(dir_path: Path) -> List[ContractModelInfo]:
                 size=size,
                 quant=quant,
                 contextWindow=8192,
-                tags=["gguf"],
+                tags=["gguf", "third-party-endpoint"],
             )
         )
     return models
@@ -792,12 +805,13 @@ async def provider_discovery() -> List[ContractProviderItem]:
     items.extend(
         [
             ContractProviderItem(
-                id="local_gguf",
-                title="Local GGUF",
-                group="local",
+                id="third_party_gguf",
+                title="[DEPRECATED] Third-Party GGUF Endpoint",
+                group="third-party",
                 canListModels=True,
                 canInfer=False,
                 available=gguf_available,
+                description="GGUF models are served through third-party OpenAI-compatible endpoints (llama.cpp, LM Studio, etc.), not as an internal provider",
             ),
             ContractProviderItem(
                 id="transformers-local",
@@ -851,6 +865,14 @@ async def public_provider_discovery() -> List[ContractProviderItem]:
 
 @router.get("/local/gguf/models", response_model=List[ContractModelInfo])
 async def contract_gguf_models() -> List[ContractModelInfo]:
+    """List GGUF model files for third-party endpoint usage.
+
+    DEPRECATED: This endpoint lists GGUF files that must be served through
+    third-party OpenAI-compatible endpoints (llama.cpp, LM Studio, etc.).
+    These are NOT internal providers - they require external endpoint configuration.
+
+    Use /api/providers/third-party/gguf/models instead.
+    """
     base = Path(
         os.getenv("KARI_LOCAL_GGUF_MODELS_DIR")
         or os.getenv("KARI_MODEL_DIR")
@@ -862,6 +884,7 @@ async def contract_gguf_models() -> List[ContractModelInfo]:
 
 @public_router.get("/local/gguf/models", response_model=List[ContractModelInfo])
 async def public_gguf_models() -> List[ContractModelInfo]:
+    """Public endpoint for GGUF model listing. See contract_gguf_models() for details."""
     return await contract_gguf_models()
 
 

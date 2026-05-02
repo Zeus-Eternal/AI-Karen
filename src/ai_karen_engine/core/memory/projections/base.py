@@ -4,12 +4,12 @@ Base Projection Worker for AI Karen Memory System.
 Defines the interface and common logic for projecting memory events to various stores.
 """
 
-import logging
 import abc
 import time
 from typing import Any, Dict, Optional
+from ai_karen_engine.core.logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class ProjectionWorker(abc.ABC):
     """Abstract base class for all projection workers."""

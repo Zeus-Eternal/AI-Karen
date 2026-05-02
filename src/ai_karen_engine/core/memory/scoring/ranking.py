@@ -7,7 +7,8 @@ Ranks retrieved memory candidates based on relevance, confidence, and recency.
 import logging
 from typing import List, Dict, Any
 
-logger = logging.getLogger(__name__)
+from ai_karen_engine.core.logging import get_logger
+logger = get_logger(__name__)
 
 class MemoryRanker:
     """Ranks memory items for context assembly."""

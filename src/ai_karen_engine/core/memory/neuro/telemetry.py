@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import logging
 from typing import Any, Dict
 
-logger = logging.getLogger("kari.memory.neuro")
+from ai_karen_engine.core.logging import get_logger
+
+logger = get_logger("kari.memory.neuro")
 
 DEFAULT_EVENT_FIELDS: Dict[str, Any] = {
     "correlation_id": None,

@@ -238,6 +238,7 @@ class AIKarenConfig:
     monitoring: MonitoringConfig = field(default_factory=MonitoringConfig)
     web_ui: WebUIConfig = field(default_factory=WebUIConfig)
     agent_runtime: AgentRuntimeConfig = field(default_factory=AgentRuntimeConfig)
+    expression: Dict[str, Any] = field(default_factory=dict)
     default_embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     spacy_model: str = "en_core_web_sm"
     event_bus: str = "memory"
@@ -314,6 +315,15 @@ DEFAULT_CONFIG = {
     "event_bus": "memory",
     "ui": {
         "show_debug_info": False,
+    },
+    "expression": {
+        "active_engine": "builtin",
+        "enabled_engines": ["builtin", "openai_compatible_local"],
+        "fallback_order": ["builtin", "openai_compatible_local", "llama_cpp_server", "glm"],
+        "policies": {
+            "allow_third_party": True,
+            "allow_external": False
+        }
     },
 }
 

@@ -5,9 +5,9 @@ Provides structured fallbacks when a stage fails or trips the circuit breaker.
 """
 
 from typing import Dict, Any, Callable
-import logging
+from ai_karen_engine.core.logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class FallbackManager:
     """Manages fallback strategies for optional stages."""

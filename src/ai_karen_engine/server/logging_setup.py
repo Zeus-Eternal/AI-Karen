@@ -12,6 +12,8 @@ from typing import Any, Dict
 
 from ai_karen_engine.server.config import Settings
 
+_LOGGING_CONFIGURED = False
+
 
 class _DedupFilter(logging.Filter):
     """Filter that drops immediate duplicate log records within a short window."""
@@ -73,6 +75,11 @@ def configure_logging() -> None:
 
     # Load settings for logging configuration
     settings = Settings()
+
+    # Clear existing handlers to avoid duplication if re-configured
+    root_logger = logging.getLogger()
+    for handler in list(root_logger.handlers):
+        root_logger.removeHandler(handler)
 
     logging.config.dictConfig(
         {
@@ -229,4 +236,3 @@ def apply_uvicorn_filters() -> None:
 # Initialize logging and create logger instance
 configure_logging()
 logger = logging.getLogger("kari")
-_LOGGING_CONFIGURED = False

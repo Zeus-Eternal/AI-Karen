@@ -24,7 +24,7 @@ from enum import Enum
 # Dependency injection
 from ai_karen_engine.core.services.dependencies import bypass_user_context_func
 from ai_karen_engine.monitoring.correlation_service import get_request_id as get_correlation_id
-from ai_karen_engine.core.logging.logger import get_structured_logger
+from ai_karen_engine.core.logging import get_logger
 
 # Reasoning modules
 from ai_karen_engine.core.reasoning.soft_reasoning import (

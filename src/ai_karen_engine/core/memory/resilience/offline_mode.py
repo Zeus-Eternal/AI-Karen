@@ -26,13 +26,15 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from ai_karen_engine.core.logging import get_logger
+
 try:
     import aiohttp
     AIOHTTP_AVAILABLE = True
 except ImportError:
     AIOHTTP_AVAILABLE = False
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class OfflineMode:

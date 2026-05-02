@@ -4,6 +4,8 @@ from typing import Any, List, Tuple
 
 from tqdm import tqdm
 
+from ai_karen_engine.core.logging import get_logger
+
 try:
     import torch
     import torch.nn.functional as F
@@ -16,7 +18,7 @@ except ImportError:
     F = None  # type: ignore[assignment]
     AutoTokenizer = AutoModel = Any  # type: ignore[assignment]
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 def _ensure_torch_available() -> None:
     if not TORCH_AVAILABLE or torch is None:

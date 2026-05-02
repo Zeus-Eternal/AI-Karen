@@ -26,10 +26,10 @@ from fastapi import Request
 from fastapi.security import HTTPBearer
 
 from ai_karen_engine.config.config_manager import get_config_manager
-from ai_karen_engine.core.logging.logger import get_structured_logger
+from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.core.operations.metrics_manager import get_metrics_manager
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 security = HTTPBearer()
 
 
@@ -394,9 +394,12 @@ class SecureAuthMiddleware:
         """
         public_patterns = [
             "/health",
+            "/api/health",
+            "/metrics",
             "/docs",
             "/redoc",
             "/openapi.json",
+            "/api/auth/validate-session",
             "/api/auth/login",
             "/api/auth/register",
             "/api/auth/refresh",
@@ -420,7 +423,12 @@ class SecureAuthMiddleware:
                 "/api/auth/me",
             ])
 
-        return any(path.startswith(pattern) for pattern in public_patterns)
+        # Debug log for public endpoint check
+        is_public = any(path.startswith(pattern) for pattern in public_patterns)
+        if not is_public and (path.endswith("health") or "metrics" in path):
+            logger.debug(f"🔍 Path {path} checked against public patterns: {public_patterns}. Match: {is_public}")
+        
+        return is_public
 
     async def validate_token(self, token: str) -> Dict[str, Any]:
         """Validate a JWT token and return its status and payload."""

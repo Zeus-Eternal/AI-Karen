@@ -16,7 +16,8 @@ from ai_karen_engine.core.runtime.lazy_loading import (
     cleanup_lazy_services,
 )
 
-logger = logging.getLogger(__name__)
+from ai_karen_engine.core.logging import get_logger
+logger = get_logger(__name__)
 
 
 @dataclass

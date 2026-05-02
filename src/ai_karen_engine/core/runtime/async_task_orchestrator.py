@@ -20,7 +20,8 @@ from typing import Any, Callable, Dict, List, Optional, Union, Awaitable
 from queue import Queue, Empty
 import traceback
 
-logger = logging.getLogger(__name__)
+from ai_karen_engine.core.logging import get_logger
+logger = get_logger(__name__)
 
 
 class TaskType(Enum):

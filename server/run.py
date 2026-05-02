@@ -17,59 +17,13 @@ logger = logging.getLogger("kari")
 
 
 def configure_logging(log_level: str) -> None:
-    """Configure application logging before the server starts."""
-
-    level = getattr(logging, log_level.upper(), logging.INFO)
-    level_name = logging.getLevelName(level)
-
-    # Reset existing handlers so repeated invocations (e.g. tests) reconfigure cleanly
-    root_logger = logging.getLogger()
-    for handler in list(root_logger.handlers):
-        root_logger.removeHandler(handler)
-
-    logging_config = {
-        "version": 1,
-        "disable_existing_loggers": False,
-        "formatters": {
-            "json": {
-                "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
-                "fmt": "%(asctime)s %(levelname)s %(name)s %(message)s %(module)s %(lineno)d",
-                "rename_fields": {"levelname": "severity", "asctime": "timestamp"},
-            },
-            "uvicorn_access": {
-                "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
-                "fmt": "%(asctime)s %(levelname)s %(name)s %(client_addr)s %(request_line)s %(status_code)s",
-                "rename_fields": {"levelname": "severity", "asctime": "timestamp"},
-            },
-        },
-        "handlers": {
-            "default": {
-                "class": "logging.StreamHandler",
-                "stream": "ext://sys.stdout",
-                "formatter": "json",
-            },
-            "uvicorn_access": {
-                "class": "logging.StreamHandler",
-                "stream": "ext://sys.stdout",
-                "formatter": "uvicorn_access",
-            },
-        },
-        "loggers": {
-            "kari": {"handlers": ["default"], "level": level_name, "propagate": False},
-            "uvicorn": {"handlers": ["default"], "level": level_name, "propagate": False},
-            "uvicorn.error": {"handlers": ["default"], "level": level_name, "propagate": False},
-            "uvicorn.access": {"handlers": ["uvicorn_access"], "level": level_name, "propagate": False},
-        },
-        "root": {"handlers": ["default"], "level": level_name},
-    }
-
-    logging.config.dictConfig(logging_config)
-
-    # Ensure key loggers inherit the configured level (dictConfig mutates them but be explicit)
-    logger.setLevel(level)
-    logging.getLogger("uvicorn").setLevel(level)
-    logging.getLogger("uvicorn.error").setLevel(level)
-    logging.getLogger("uvicorn.access").setLevel(level)
+    """Configure application logging using the centralized system."""
+    # Note: the central system already reads from environment variables
+    # We can override if needed, but for now we'll just trigger initialization
+    from ai_karen_engine.core.logging import configure_runtime_logging
+    configure_runtime_logging()
+    
+    logger.info(f"Logging initialized at level: {log_level}")
 
 
 def _coerce_int(value: Optional[str], default: int) -> int:
@@ -281,6 +235,35 @@ def run_server(args: Optional[argparse.Namespace] = None, settings: Optional[Set
         args.log_level,
     )
 
+    # Create uvicorn-compatible log config from our central system
+    from ai_karen_engine.core.logging.sinks import get_logging_settings
+    log_settings = get_logging_settings()
+    
+    # We'll use a simplified config for uvicorn to ensure it uses our handlers
+    uvicorn_log_config = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "json": {
+                "()": "ai_karen_engine.core.logging.formatters.RuntimeJSONFormatter",
+                "redact_secrets": log_settings.redact_secrets,
+                "include_stack": log_settings.include_stack,
+            }
+        },
+        "handlers": {
+            "console": {
+                "class": "logging.StreamHandler",
+                "stream": "ext://sys.stdout",
+                "formatter": "json" if log_settings.format == "json" else "default",
+            }
+        },
+        "loggers": {
+            "uvicorn": {"handlers": ["console"], "level": args.log_level, "propagate": False},
+            "uvicorn.error": {"handlers": ["console"], "level": args.log_level, "propagate": False},
+            "uvicorn.access": {"handlers": ["console"], "level": args.log_level, "propagate": False},
+        },
+    }
+
     import uvicorn
     uvicorn.run(
         "server.app:create_app",
@@ -288,7 +271,8 @@ def run_server(args: Optional[argparse.Namespace] = None, settings: Optional[Set
         port=args.port,
         reload=args.reload,
         log_level=args.log_level.lower(),
-        access_log=False,
+        log_config=uvicorn_log_config,
+        access_log=True, # Enable so it uses our handler
     )
 
 

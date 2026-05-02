@@ -15,7 +15,8 @@ from enum import Enum
 
 from ai_karen_engine.services.cache import get_provider_cache
 
-logger = logging.getLogger(__name__)
+from ai_karen_engine.core.logging import get_logger
+logger = get_logger(__name__)
 
 
 class HealthStatus(str, Enum):

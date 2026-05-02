@@ -5,8 +5,8 @@ Projects relationship-heavy memory metadata into LeanGraph.
 Focuses on contradictions, reinforcements, and multi-hop links.
 """
 
-import logging
 from typing import Any, Dict, Optional
+from ai_karen_engine.core.logging import get_logger
 
 from ai_karen_engine.core.memory.graph.service import get_leangraph_service
 from .base import ProjectionWorker

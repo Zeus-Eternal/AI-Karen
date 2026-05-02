@@ -5,15 +5,15 @@ Executes optional stages through a resilient pipeline (flags, timeout, breaker, 
 """
 
 import asyncio
-import logging
 from typing import Callable, Any, Dict, Optional
+from ai_karen_engine.core.logging import get_logger
 
 from .feature_flags import get_feature_flags
 from .circuit_breaker import get_breaker_registry
 from .fallback_manager import get_fallback_manager
 from .pipeline_policy import get_pipeline_policy
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class SafeStageRunner:
     """Executes a stage safely, applying resilience patterns."""

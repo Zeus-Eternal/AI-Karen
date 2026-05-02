@@ -5,17 +5,17 @@ Provides tools for benchmarking memory retrieval, extraction quality,
 and profile stability. Inspired by LoCoMo and LongMemEval research.
 """
 
-import logging
 from typing import List, Dict, Any
 import time
 import json
 import os
 from pathlib import Path
 
+from ai_karen_engine.core.logging import get_logger
 from ..retrieval.retrieval_router import get_retrieval_router
 from ..types import MemoryQuery
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class MemoryEvalHarness:
     """Harness for automated memory system evaluation."""

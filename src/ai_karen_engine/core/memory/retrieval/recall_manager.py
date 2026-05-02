@@ -23,7 +23,8 @@ from ai_karen_engine.core.memory.types import (
     DEFAULT_DECAY_LAMBDA,
 )
 
-log = logging.getLogger("ai_karen.memory.recall_manager")
+from ai_karen_engine.core.logging import get_logger
+log = get_logger("ai_karen.memory.recall_manager")
 
 
 class RecallSortMode(str, Enum):

@@ -13,7 +13,8 @@ from .extraction_service import SpacyExtractionService
 from .signal_rules import RuleBasedExtractor
 from ...runtime.resilience import get_safe_stage_runner
 
-logger = logging.getLogger(__name__)
+from ai_karen_engine.core.logging import get_logger
+logger = get_logger(__name__)
 
 class SignalPipeline:
     """Manages the memory signal extraction process with resilience."""

@@ -5,17 +5,18 @@ The central authority for profile management and synthesis.
 Consumes durable memory facts and publishes a compact ProfileSummary.
 """
 
-import logging
 import uuid
 from datetime import datetime
 from typing import Any, List
 
 from sqlalchemy import select, func
+
+from ai_karen_engine.core.logging import get_logger
 from .profile_models import ProfileSummary, CommunicationStyle, ProfileGrowth
 from ..ledger_models import ProfileFact
 from ...runtime.resilience import get_safe_stage_runner
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class ProfileService:
     """Service for synthesizing and managing user/org profiles."""

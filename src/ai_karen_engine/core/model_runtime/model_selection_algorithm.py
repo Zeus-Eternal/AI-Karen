@@ -17,7 +17,8 @@ from ai_karen_engine.core.model_runtime.provider_registry_service import Provide
 if TYPE_CHECKING:
     from ai_karen_engine.core.operations.health_checker import HealthChecker
 
-logger = logging.getLogger(__name__)
+from ai_karen_engine.core.logging import get_logger
+logger = get_logger(__name__)
 
 
 @dataclass

@@ -1,42 +1,124 @@
 from __future__ import annotations
 
 import time
+import logging
 from typing import Any
 
 from .base import BaseExpressionEngine
 from ..contracts import ExpressionResult, ExpressionTask
+from ...model_runtime.provider_policy import evaluate_provider_policy, normalize_provider_id
+
+logger = logging.getLogger(__name__)
 
 
 class OpenAICompatibleEngine(BaseExpressionEngine):
-    engine_id = "openai_compatible"
+    """
+    Engine that routes to external local servers or remote cloud APIs
+    using the existing provider/model system.
+    """
 
     async def generate(self, task: ExpressionTask) -> ExpressionResult:
         started = time.perf_counter()
-        adapter = task.metadata.get("openai_compatible_adapter") if isinstance(task.metadata, dict) else None
-        request = {
-            "messages": task.messages,
-            "model": task.preferred_model,
-            "temperature": task.temperature,
-            "max_tokens": task.max_tokens,
-        }
+        
+        # Determine engine category from ID
+        # self.engine_id is set during registry instantiation (local or cloud)
+        is_cloud = self.engine_id == "cloud"
+        
+        # Get all configured providers and filter by category
+        from ai_karen_engine.core.model_runtime import get_provider_registry_service
+        registry = get_provider_registry_service()
+        
+        # Find best provider for this engine category
+        provider_id = self._resolve_provider(task, is_cloud, registry)
+        if not provider_id:
+             return self._failure_result(task, started, "no_suitable_provider_found")
 
-        response: dict[str, Any] = adapter(request) if callable(adapter) else {}
-        text = str(response.get("text") or "")
-        provider = str(response.get("provider") or "openai_compatible")
-        model = response.get("model") or task.preferred_model
+        model = task.preferred_model or "auto"
+        
+        try:
+            # Check if we have an OpenAI compatible provider class for this
+            # Most external/local providers in Kari are wrapped in OpenAICompatibleProvider
+            from ai_karen_engine.integrations.providers.openai_compatible_provider import OpenAICompatibleProvider
+            
+            # Resolve endpoint settings from registry
+            endpoint = registry.get_provider_endpoint(provider_id)
+            if not endpoint:
+                return self._failure_result(task, started, f"endpoint_not_found:{provider_id}")
+
+            provider = OpenAICompatibleProvider(
+                model=model,
+                base_url=endpoint.base_url,
+                api_key=endpoint.api_key, # This would ideally come from secret manager
+                provider_name=provider_id
+            )
+            
+            prompt = self._extract_prompt(task.messages)
+            text = await provider.generate_text_async(prompt, max_tokens=task.max_tokens, temperature=task.temperature)
+            
+            actual_provider = provider_id
+            actual_model = model
+            attempts = []
+            skipped = []
+        except Exception as exc:
+            logger.error(f"OpenAICompatibleEngine ({self.engine_id}) failed for {provider_id}: {exc}")
+            return self._failure_result(task, started, str(exc), provider=provider_id)
 
         return ExpressionResult(
             task_id=task.task_id,
             text=text,
-            provider=provider,
-            model=str(model) if model else None,
+            provider=actual_provider,
+            model=str(actual_model) if actual_model else None,
             engine_id=self.engine_id,
             engine_mode="openai_compatible",
             runtime_engine="openai_compatible",
-            response_source="openai_compatible_engine",
-            attempts=response.get("attempts") or [],
-            skipped=response.get("skipped") or [],
+            response_source=f"{self.engine_id}_engine",
+            attempts=attempts,
+            skipped=skipped,
             latency_ms=(time.perf_counter() - started) * 1000,
             degraded=not bool(text.strip()),
             degradation_reason=None if text.strip() else "empty_response",
         )
+
+    def _resolve_provider(self, task: ExpressionTask, is_cloud: bool, registry: Any) -> str | None:
+        """Finds the best healthy provider matching the engine category."""
+        target_class = "external_provider_option" if is_cloud else "local_provider_option"
+        
+        # 1. Try preferred provider if it matches category
+        if task.preferred_provider:
+            decision = evaluate_provider_policy(task.preferred_provider)
+            if decision.classification == target_class:
+                return decision.provider
+        
+        # 2. Find any healthy provider in this category
+        for p_id in registry.get_all_provider_names():
+            decision = evaluate_provider_policy(p_id)
+            if decision.classification == target_class:
+                # Check health
+                status = registry.get_provider_status(p_id)
+                if status and status.is_available:
+                    return p_id
+                    
+        return None
+
+    def _failure_result(self, task: ExpressionTask, started: float, reason: str, provider: str = "unknown") -> ExpressionResult:
+        return ExpressionResult(
+            task_id=task.task_id,
+            text="",
+            provider=provider,
+            model=task.preferred_model,
+            engine_id=self.engine_id,
+            engine_mode="openai_compatible",
+            runtime_engine="openai_compatible",
+            response_source=f"{self.engine_id}_engine",
+            attempts=[],
+            skipped=[],
+            latency_ms=(time.perf_counter() - started) * 1000,
+            degraded=True,
+            degradation_reason=reason,
+        )
+
+    def _extract_prompt(self, messages: list[dict[str, str]]) -> str:
+        """Helper to extract a simple prompt from messages."""
+        if not messages:
+            return ""
+        return messages[-1].get("content", "")

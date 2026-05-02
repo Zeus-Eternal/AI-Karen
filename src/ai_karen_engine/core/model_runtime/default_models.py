@@ -10,7 +10,8 @@ embedding_manager: EmbeddingManager | None = None
 spacy_client: SpaCyClient | None = None
 classifier: BasicClassifier | None = None
 
-logger = logging.getLogger(__name__)
+from ai_karen_engine.core.logging import get_logger
+logger = get_logger(__name__)
 
 async def load_default_models() -> None:
     """Initialize default models if they haven't been loaded."""

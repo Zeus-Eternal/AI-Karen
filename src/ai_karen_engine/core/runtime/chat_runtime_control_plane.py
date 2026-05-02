@@ -413,23 +413,32 @@ class ProviderRouterProbe:
     async def check(self) -> DependencyHealth:
         start = time.time()
         try:
-            from ai_karen_engine.services.models.routing.llm_router_service import LLMRouter
+            from ai_karen_engine.core.expression.gateway import ExpressionGateway
+            from ai_karen_engine.core.expression.contracts import ExpressionTask
 
-            router = LLMRouter()
-            # Check if router can select a provider for a basic request
-            from ai_karen_engine.services.models.routing.llm_router_service import ChatRequest
-
-            test_request = ChatRequest(message="test", stream=False)
-            provider_selection = await router.select_provider(test_request)
-
+            gateway = ExpressionGateway()
+            # Perform a lightweight health task to verify at least one engine is available
+            test_task = ExpressionTask(
+                task_id="health_probe",
+                kind="probe",
+                messages=[{"role": "user", "content": "ping"}],
+                max_tokens=1,
+                timeout_ms=5000,
+                required_capabilities=[],
+                forbidden_capabilities=[],
+                response_mode="text"
+            )
+            
+            # Use generate as a health check - disabled_engine will return text if no other engine works
+            result = await gateway.generate(test_task)
+            
             elapsed = (time.time() - start) * 1000
-            has_providers = provider_selection is not None
+            is_healthy = result.engine_id != "disabled"
+            
             return DependencyHealth(
                 name=self.name,
-                status=DependencyStatus.HEALTHY
-                if has_providers
-                else DependencyStatus.UNHEALTHY,
-                reason=None if has_providers else "No healthy providers available",
+                status=DependencyStatus.HEALTHY if is_healthy else DependencyStatus.UNHEALTHY,
+                reason=None if is_healthy else "No expression engines available",
                 response_time_ms=elapsed,
             )
         except Exception as e:

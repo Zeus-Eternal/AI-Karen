@@ -14,7 +14,8 @@ from .runtime_compatibility import (
     probe_runtime_compatibility,
 )
 
-logger = logging.getLogger(__name__)
+from ai_karen_engine.core.logging import get_logger
+logger = get_logger(__name__)
 
 
 def _normalize_policy_id(value: str) -> str:

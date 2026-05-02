@@ -7,12 +7,12 @@ underlying Zvec orchestration, sync, monitoring, and conflict resolution systems
 """
 
 import asyncio
-import logging
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 from dataclasses import dataclass, field
+from ai_karen_engine.core.logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # =============================================================================
 # GRACEFUL IMPORTS WITH FALLBACK

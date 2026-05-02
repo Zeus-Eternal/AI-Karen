@@ -6,7 +6,8 @@ from typing import Any, Dict, Optional, List
 
 from ai_karen_engine.core.runtime.chat_runtime_control_plane import get_chat_runtime_control_plane
 
-logger = logging.getLogger(__name__)
+from ai_karen_engine.core.logging import get_logger
+logger = get_logger(__name__)
 
 
 class ChatRuntimeService:
@@ -36,56 +37,63 @@ class ChatRuntimeService:
         streaming_enabled: bool = False,
         metadata_normalizer: Any,
     ) -> Optional[Dict[str, Any]]:
-        """Use provider router fallback when orchestration fails before answering."""
-        from ai_karen_engine.services.models.routing.llm_router_service import ChatRequest, LLMRouter
+        """Use ExpressionGateway fallback when orchestration fails before answering.
 
-        router = LLMRouter()
-        user_preferences = {
-            "preferred_llm_provider": request.preferred_llm_provider,
-            "preferred_model": request.preferred_model,
-        }
+        Runtime must only use ExpressionGateway for expression generation, not provider-specific routers.
+        This ensures runtime remains decoupled from provider implementation details.
+        """
+        from ai_karen_engine.core.expression.gateway import ExpressionGateway
+        from ai_karen_engine.core.expression.contracts import ExpressionTask
+
+        gateway = ExpressionGateway()
         text = ""
         metadata: Dict[str, Any] = {}
 
         try:
-            async for chunk in router.process_chat_request(
-                ChatRequest(
-                    message=request.message,
-                    stream=False,
-                    preferred_model=request.preferred_model,
-                    conversation_id=conversation_id,
-                    max_tokens=120,
-                ),
-                user_preferences=user_preferences,
-            ):
-                if isinstance(chunk, str):
-                    text += chunk
-                elif isinstance(chunk, dict):
-                    chunk_metadata = chunk.get("metadata")
-                    if isinstance(chunk_metadata, dict):
-                        metadata.update(chunk_metadata)
-        except Exception as router_error:
-            logger.warning("Direct provider router fallback failed after orchestrator error: %s", router_error, extra={"correlation_id": correlation_id})
-            requested_provider = request.preferred_llm_provider or "orchestrator"
-            requested_model = request.preferred_model or "auto"
-            try:
-                fallback = await router.generate_with_degraded_runtime_fallback(
-                    request=ChatRequest(
-                        message=request.message,
-                        stream=False,
-                        preferred_model=request.preferred_model,
-                        conversation_id=conversation_id,
-                        max_tokens=120,
-                    ),
-                    requested_provider=requested_provider,
-                    requested_model=requested_model,
-                    failure_reason=str(failure),
-                )
-                text = str(fallback.get("content") or "")
-                metadata.update(fallback.get("metadata") or {})
-            except Exception as fallback_error:
-                logger.error("Router degraded fallback failed after orchestrator error: %s", fallback_error, extra={"correlation_id": correlation_id})
-                return None
+            # Build ExpressionTask from request
+            task = ExpressionTask(
+                task_id=f"fallback_{correlation_id}",
+                kind="fallback",
+                correlation_id=correlation_id,
+                request_id=correlation_id,
+                messages=[{"role": "user", "content": request.message}],
+                preferred_provider=request.preferred_llm_provider or None,
+                preferred_model=request.preferred_model or None,
+                max_tokens=120,
+                temperature=0.7,
+                timeout_ms=30000,
+                required_capabilities=[],
+                forbidden_capabilities=[],
+                response_mode="text",
+                metadata={
+                    "fallback_reason": "orchestrator_error",
+                    "orchestrator_error": str(failure)[:300],
+                    "conversation_id": conversation_id,
+                },
+            )
+
+            # Use ExpressionGateway for expression generation
+            result = await gateway.generate(task)
+            text = result.text or ""
+
+            # Build metadata from ExpressionResult
+            metadata.update({
+                "requested_provider": request.preferred_llm_provider or "unknown",
+                "requested_model": request.preferred_model or "auto",
+                "actual_provider": result.provider,
+                "actual_model": result.model,
+                "engine_id": result.engine_id,
+                "response_source": result.response_source,
+                "latency_ms": result.latency_ms,
+                "degraded": result.degraded,
+                "degradation_reason": result.degradation_reason,
+                "attempts": result.attempts,
+                "skipped": result.skipped,
+                "fallback_level": 1 if result.degraded else 0,
+            })
+        except Exception as gateway_error:
+            logger.error("ExpressionGateway fallback failed after orchestrator error: %s", gateway_error, extra={"correlation_id": correlation_id})
+            return None
 
         if not text.strip():
             return None

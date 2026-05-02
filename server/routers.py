@@ -265,10 +265,6 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
             skip_auth_header = request.headers.get("X-Skip-Auth")
             dev_mode_header = request.headers.get("X-Development-Mode")
 
-            logger.info(
-                f"🔓 MIDDLEWARE CALLED: path={request.url.path}, auth_bypass={auth_bypass}, X-Mock-User-ID={request.headers.get('X-Mock-User-ID')}"
-            )
-
             if auth_bypass or (skip_auth_header == "dev" and dev_mode_header == "true"):
                 # Development mode - set mock user context directly
                 mock_user_id = request.headers.get("X-Mock-User-ID", "dev-user")
@@ -294,8 +290,15 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
                     f"🔓 Middleware bypass: auth_bypass={auth_bypass}, mock_user_id={mock_user_id}, path={request.url.path}"
                 )
             else:
-                # Skip auth for public endpoints
-                if auth_middleware.is_public_endpoint(request.url.path):
+                # Primary skip auth for public endpoints
+                path = str(request.url.path)
+                if (
+                    auth_middleware.is_public_endpoint(path)
+                    or path.startswith("/metrics")
+                    or path.startswith("/health")
+                    or path.startswith("/api/health")
+                    or path == "/api/auth/validate-session"
+                ):
                     response = await call_next(request)
                     return _ensure_asgi_response(response)
 

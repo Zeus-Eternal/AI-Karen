@@ -4,9 +4,9 @@ Elasticsearch Projection Worker for AI Karen Memory System.
 Projects memory assertions into Elasticsearch for lexical and hybrid retrieval.
 """
 
-import logging
 import asyncio
 from typing import Any, Dict, Optional
+from ai_karen_engine.core.logging import get_logger
 
 from .base import ProjectionWorker
 from ai_karen_engine.clients.database.elastic_client import ElasticClient

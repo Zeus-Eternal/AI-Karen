@@ -39,7 +39,8 @@ from ai_karen_engine.core.cortex.routing_intents import (
     resolve_routing_intent as resolve_intent,
 )
 
-logger = logging.getLogger(__name__)
+from ai_karen_engine.core.logging import get_logger
+logger = get_logger(__name__)
 
 try:
     from ai_karen_engine.core.cortex.rbac_validator import (

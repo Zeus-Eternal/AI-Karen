@@ -1,152 +1,76 @@
-"""
-Custom log formatters for AI Karen engine.
-"""
+from __future__ import annotations
 
-import logging
 import json
-from typing import Any, Dict
-from datetime import datetime
+import logging
+import traceback
+from datetime import datetime, timezone
+from typing import Any
 
+from .context import get_log_context
+from .redaction import redact_data
 
-class StructuredFormatter(logging.Formatter):
-    """
-    Structured log formatter that includes context and metadata.
-    """
-    
+class RuntimeJSONFormatter(logging.Formatter):
+    """JSON formatter for Kari runtime logs including context and redaction."""
+
+    def __init__(self, redact_secrets: bool = True, include_stack: bool = False):
+        super().__init__()
+        self.redact_secrets = redact_secrets
+        self.include_stack = include_stack
+
     def format(self, record: logging.LogRecord) -> str:
-        """
-        Format log record with structured information.
+        ctx = get_log_context()
         
-        Args:
-            record: Log record
-            
-        Returns:
-            Formatted log message
-        """
-        # Get basic information
-        timestamp = datetime.fromtimestamp(record.created).isoformat()
-        level = record.levelname
-        logger_name = record.name
-        message = record.getMessage()
-        
-        # Get context if available
-        context = getattr(record, 'context', {})
-        
-        # Build structured message
-        parts = [
-            f"[{timestamp}]",
-            f"[{level}]",
-            f"[{logger_name}]",
-            message
-        ]
-        
-        # Add context if present
-        if context:
-            context_str = " ".join([f"{k}={v}" for k, v in context.items()])
-            parts.append(f"[{context_str}]")
-        
-        # Add exception info if present
-        if record.exc_info:
-            parts.append(f"[exception={self.formatException(record.exc_info)}]")
-        
-        return " ".join(parts)
-
-
-class JSONFormatter(logging.Formatter):
-    """
-    JSON log formatter for structured logging.
-    """
-    
-    def format(self, record: logging.LogRecord) -> str:
-        """
-        Format log record as JSON.
-        
-        Args:
-            record: Log record
-            
-        Returns:
-            JSON formatted log message
-        """
-        # Build log entry
-        log_entry = {
-            "timestamp": datetime.fromtimestamp(record.created).isoformat(),
+        # Base log data
+        log_data: dict[str, Any] = {
+            "timestamp": datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
-            "module": record.module,
-            "function": record.funcName,
-            "line": record.lineno
         }
-        
-        # Add context if available
-        context = getattr(record, 'context', {})
-        if context:
-            log_entry["context"] = context
-        
-        # Add exception info if present
-        if record.exc_info:
-            log_entry["exception"] = self.formatException(record.exc_info)
-        
-        # Add any extra fields
+
+        # Add context fields
+        log_data.update(ctx.to_dict())
+
+        # Standard LogRecord attributes to ignore when looking for extra fields
+        standard_attrs = {
+            "name", "msg", "args", "levelname", "levelno", "pathname", "filename",
+            "module", "exc_info", "exc_text", "stack_info", "lineno", "funcName",
+            "created", "msecs", "relativeCreated", "thread", "threadName",
+            "processName", "process", "message", "extra"
+        }
+
+        # Add extra fields from record (standard logging puts extra keys on the record object)
         for key, value in record.__dict__.items():
-            if key not in {
-                'name', 'msg', 'args', 'levelname', 'levelno', 'pathname',
-                'filename', 'module', 'lineno', 'funcName', 'created',
-                'msecs', 'relativeCreated', 'thread', 'threadName',
-                'processName', 'process', 'getMessage', 'exc_info',
-                'exc_text', 'stack_info', 'context'
-            }:
-                log_entry[key] = value
+            if key not in standard_attrs and not key.startswith("_"):
+                log_data[key] = value
         
-        return json.dumps(log_entry, default=str)
+        # Include specific fields if they are in record but not in context
+        for key in ["correlation_id", "request_id", "user_id", "tenant_id", "provider", "model"]:
+            if hasattr(record, key) and key not in log_data:
+                log_data[key] = getattr(record, key)
 
+        # Handle exceptions
+        if record.exc_info:
+            log_data["error_type"] = record.exc_info[0].__name__ if record.exc_info[0] else "UnknownError"
+            if self.include_stack:
+                log_data["stack_trace"] = "".join(traceback.format_exception(*record.exc_info))
+            else:
+                log_data["error_message"] = str(record.exc_info[1])
 
-class ColoredFormatter(logging.Formatter):
-    """
-    Colored console formatter for better readability.
-    """
-    
-    # Color codes
-    COLORS = {
-        'DEBUG': '\033[36m',      # Cyan
-        'INFO': '\033[32m',       # Green
-        'WARNING': '\033[33m',    # Yellow
-        'ERROR': '\033[31m',      # Red
-        'CRITICAL': '\033[35m',   # Magenta
-        'RESET': '\033[0m'        # Reset
-    }
+        # Redaction
+        if self.redact_secrets:
+            log_data = redact_data(log_data)
+
+        return json.dumps(log_data, default=str)
+
+class RuntimeTextFormatter(logging.Formatter):
+    """Minimal text formatter for development console logs."""
     
     def format(self, record: logging.LogRecord) -> str:
-        """
-        Format log record with colors.
-        
-        Args:
-            record: Log record
-            
-        Returns:
-            Colored formatted log message
-        """
-        # Get color for level
-        color = self.COLORS.get(record.levelname, '')
-        reset = self.COLORS['RESET']
-        
-        # Format timestamp
-        timestamp = datetime.fromtimestamp(record.created).strftime('%H:%M:%S')
-        
-        # Build message
-        message = record.getMessage()
-        
-        # Get context if available
-        context = getattr(record, 'context', {})
-        context_str = ""
-        if context:
-            context_str = f" [{' '.join([f'{k}={v}' for k, v in context.items()])}]"
-        
-        # Format final message
-        formatted = f"{color}[{timestamp}] [{record.levelname:8}] [{record.name}]{reset} {message}{context_str}"
-        
-        # Add exception info if present
-        if record.exc_info:
-            formatted += f"\n{self.formatException(record.exc_info)}"
-        
-        return formatted
+        ctx = get_log_context()
+        cid = ctx.correlation_id or "-"
+        return f"[{record.levelname}] [{cid}] {record.name}: {record.getMessage()}"
+
+# Compatibility aliases
+StructuredFormatter = RuntimeJSONFormatter
+JSONFormatter = RuntimeJSONFormatter

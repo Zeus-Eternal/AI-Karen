@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import hashlib
 import importlib
-import logging
 import os
 import time
 from collections import deque
 from typing import List, Optional, Dict, Any, TYPE_CHECKING
 import numpy as np
 from functools import lru_cache
+
+from ai_karen_engine.core.logging import get_logger
 
 if TYPE_CHECKING:
     from sentence_transformers import SentenceTransformer
@@ -19,7 +20,7 @@ SentenceTransformer: Optional[type] = None
 _SENTENCE_TRANSFORMERS_STATUS: Optional[bool] = None
 SENTENCE_TRANSFORMERS_AVAILABLE: bool = False
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 _METRICS: Dict[str, deque] = {}
 _METRIC_HISTORY = 100

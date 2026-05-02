@@ -14,7 +14,8 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from enum import Enum
 
-logger = logging.getLogger(__name__)
+from ai_karen_engine.core.logging import get_logger
+logger = get_logger(__name__)
 
 ServiceType = TypeVar("ServiceType")
 

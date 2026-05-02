@@ -27,7 +27,7 @@ import os
 # Dependency injection
 from ai_karen_engine.core.services.dependencies import bypass_user_context_func
 from ai_karen_engine.monitoring.correlation_service import get_request_id
-from ai_karen_engine.core.logging.logger import get_structured_logger
+from ai_karen_engine.core.logging import get_logger
 
 # Cognitive modules (now backed by the CORTEX contract layer)
 from ai_karen_engine.core.cortex import dispatch as cortex_dispatch

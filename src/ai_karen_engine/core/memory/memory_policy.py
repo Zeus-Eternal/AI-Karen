@@ -3,7 +3,6 @@ Memory Policy Engine - Phase 4.1.b
 Implements configurable decay tiers and importance-based retention policies.
 """
 
-import logging
 import os
 import yaml
 from dataclasses import dataclass, field
@@ -11,8 +10,9 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any, Union
 from enum import Enum
 from ai_karen_engine.config import load_memory_policy_config
+from ai_karen_engine.core.logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class DecayTier(str, Enum):

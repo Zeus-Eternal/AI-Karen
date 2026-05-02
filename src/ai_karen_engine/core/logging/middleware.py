@@ -1,177 +1,75 @@
-"""
-Logging middleware for FastAPI applications.
-"""
+from __future__ import annotations
 
-from typing import Callable
 import time
 import uuid
+from typing import Callable
 
-try:
-    from fastapi import Request, Response
-    from starlette.middleware.base import BaseHTTPMiddleware
-except ImportError:
-    # Fallback for when FastAPI is not available
-    Request = object
-    Response = object
-    BaseHTTPMiddleware = object
+from fastapi import Request, Response
+from starlette.middleware.base import BaseHTTPMiddleware
 
-from ai_karen_engine.core.logging.logger import get_structured_logger
-import logging
+from .context import set_log_context, clear_log_context, RuntimeLogContext
+from .logger import get_logger
+from .events import RuntimeEvents
 
-# Get the underlying Python logger
-logger = get_structured_logger(__name__).logger
+logger = get_logger("kari.middleware")
 
-# Context storage for request tracking
-_context = {}
+class RuntimeLoggingMiddleware(BaseHTTPMiddleware):
+    """Middleware to bind request context and log request lifecycle."""
 
-
-class LoggingMiddleware(BaseHTTPMiddleware):
-    """
-    Middleware to log HTTP requests and responses.
-    """
-    
-    def __init__(self, app, include_request_body: bool = False, include_response_body: bool = False):
-        super().__init__(app)
-        self.include_request_body = include_request_body
-        self.include_response_body = include_response_body
-    
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        """
-        Process request and log details.
+        # 1. Create context
+        correlation_id = request.headers.get("X-Correlation-ID") or str(uuid.uuid4())
+        request_id = str(uuid.uuid4())
         
-        Args:
-            request: HTTP request
-            call_next: Next middleware/handler in chain
-            
-        Returns:
-            HTTP response
-        """
-        # Generate request ID if not present
-        request_id = getattr(request.state, 'request_id', None)
-        if not request_id:
-            request_id = str(uuid.uuid4())
-            request.state.request_id = request_id
+        # Determine client IP hash for privacy
+        client_ip = request.client.host if request.client else "0.0.0.0"
+        # In real prod we'd hash it properly, here just a placeholder
+        client_ip_hash = f"hash_{client_ip[-4:]}"
+
+        ctx = RuntimeLogContext(
+            correlation_id=correlation_id,
+            request_id=request_id,
+            route=request.url.path,
+            method=request.method,
+            client_ip_hash=client_ip_hash,
+            runtime_stage="ingress"
+        )
         
-        # Generate trace ID if not present
-        trace_id = getattr(request.state, 'trace_id', None)
-        if not trace_id:
-            trace_id = str(uuid.uuid4())
-            request.state.trace_id = trace_id
+        # 2. Bind to async context
+        token = set_log_context(ctx)
         
-        # Store context for this request
-        global _context
-        _context.update({
-            'request_id': request_id,
-            'trace_id': trace_id,
-            'method': request.method,
-            'path': request.url.path,
-            'client_ip': request.client.host if request.client else "unknown"
-        })
+        # Also attach to request state for downstream convenience
+        request.state.correlation_id = correlation_id
+        request.state.request_id = request_id
         
-        # Create logger adapter with context
-        logger_adapter = logging.LoggerAdapter(logger, _context)
-        
-        # Log request
-        start_time = time.time()
-        
-        request_info = {
-            "method": request.method,
-            "url": str(request.url),
-            "headers": dict(request.headers),
-            "query_params": dict(request.query_params)
-        }
-        
-        # Include request body if configured
-        if self.include_request_body and request.method in ["POST", "PUT", "PATCH"]:
-            try:
-                # body = await request.body()
-                # if body:
-                #     request_info["body"] = body.decode('utf-8')[:1000]  # Limit body size
-                request_info["body"] = "<body logging disabled to prevent request hang>"
-            except Exception as e:
-                request_info["body_error"] = str(e)
-        
-        logger_adapter.info("Request started", extra={'context': {**_context, **request_info}})
-        
+        start_time = time.perf_counter()
+        logger.event(RuntimeEvents.REQUEST_STARTED)
+
         try:
-            # Process request
+            # 3. Process request
             response = await call_next(request)
             
-            # Calculate processing time
-            process_time = time.time() - start_time
+            # Update context with response info
+            duration_ms = (time.perf_counter() - start_time) * 1000
+            ctx.status = str(response.status_code)
+            ctx.latency_ms = duration_ms
             
-            # Log response
-            response_info = {
-                "status_code": response.status_code,
-                "process_time": round(process_time, 4),
-                "headers": dict(response.headers)
-            }
+            logger.event(RuntimeEvents.REQUEST_COMPLETED)
             
-            # Include response body if configured and status is error
-            if self.include_response_body and response.status_code >= 400:
-                try:
-                    # Note: This is tricky with streaming responses
-                    # For now, we'll skip body logging for responses
-                    pass
-                except Exception as e:
-                    response_info["body_error"] = str(e)
-            
-            # Log based on status code
-            if response.status_code >= 500:
-                logger_adapter.error("Request completed with server error", extra={'context': {**_context, **response_info}})
-            elif response.status_code >= 400:
-                logger_adapter.warning("Request completed with client error", extra={'context': {**_context, **response_info}})
-            else:
-                logger_adapter.info("Request completed successfully", extra={'context': {**_context, **response_info}})
-            
-            # Add headers to response
-            response.headers["X-Request-ID"] = request_id
-            response.headers["X-Trace-ID"] = trace_id
-            response.headers["X-Process-Time"] = str(process_time)
-            
+            # Add correlation header to response
+            response.headers["X-Correlation-ID"] = correlation_id
             return response
+
+        except Exception as exc:
+            # Handle failure
+            duration_ms = (time.perf_counter() - start_time) * 1000
+            ctx.status = "500"
+            ctx.latency_ms = duration_ms
+            ctx.error_type = exc.__class__.__name__
             
-        except Exception as error:
-            # Calculate processing time
-            process_time = time.time() - start_time
-            
-            # Log exception
-            logger_adapter.exception(
-                "Request failed with exception",
-                extra={'context': {
-                    **_context,
-                    'error_type': type(error).__name__,
-                    'error_message': str(error),
-                    'process_time': round(process_time, 4)
-                }}
-            )
-            
-            # Re-raise the exception to be handled by error middleware
+            logger.exception(RuntimeEvents.REQUEST_FAILED)
             raise
-        
+
         finally:
-            # Clear context for this request
-            _context.clear()
-
-
-def logging_middleware(
-    app, 
-    include_request_body: bool = False, 
-    include_response_body: bool = False
-) -> LoggingMiddleware:
-    """
-    Create logging middleware for FastAPI app.
-    
-    Args:
-        app: FastAPI application
-        include_request_body: Whether to log request bodies
-        include_response_body: Whether to log response bodies
-        
-    Returns:
-        Logging middleware instance
-    """
-    return LoggingMiddleware(
-        app, 
-        include_request_body=include_request_body,
-        include_response_body=include_response_body
-    )
+            # 4. Cleanup
+            clear_log_context()

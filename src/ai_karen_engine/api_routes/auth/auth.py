@@ -623,12 +623,13 @@ async def validate_session(
         user_payload = _ensure_authenticated_user_payload(current_user)
     permissions = _serialize_permissions(user_payload)
     user_payload["permissions"] = permissions
+    is_authenticated = current_user.get("authenticated", False)
     return {
         "valid": True,
         "user": user_payload,
         "permissions": permissions,
-        "authenticated": True,
-        "session_valid": True,
+        "authenticated": is_authenticated,
+        "session_valid": is_authenticated,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 

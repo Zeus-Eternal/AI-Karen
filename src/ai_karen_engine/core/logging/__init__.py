@@ -1,32 +1,45 @@
-"""
-Unified logging system for AI Karen engine.
-"""
+from __future__ import annotations
 
-from enum import Enum
+from .logger import get_logger, configure_runtime_logging
 
-from ai_karen_engine.core.logging.logger import (
-    StructuredLogger as KarenLogger,
-    get_structured_logger as get_logger,
-    configure_logging,
-    LogLevel
+# Compatibility aliases
+KarenLogger = get_logger
+get_structured_logger = get_logger
+configure_logging = configure_runtime_logging
+
+from .formatters import StructuredFormatter, JSONFormatter
+from .structured_logging import PIIRedactor, get_structured_logging_service
+from .telemetry import RuntimeTelemetry as Telemetry
+from .context import (
+    get_log_context,
+    set_log_context,
+    clear_log_context,
+    bind_log_context,
+    RuntimeLogContext,
+)
+from .events import (
+    RuntimeEvents,
+    ExpressionEvents,
+    ProviderEvents,
+    MemoryEvents,
+    ToolEvents,
+    SecurityEvents,
+    ConfigEvents,
 )
 
-# Add LogFormat enum for compatibility
-class LogFormat(Enum):
-    """Log format options"""
-    TEXT = "text"
-    JSON = "json"
-    STRUCTURED = "structured"
-from ai_karen_engine.core.logging.middleware import logging_middleware
-from ai_karen_engine.core.logging.formatters import StructuredFormatter, JSONFormatter
-
 __all__ = [
-    "KarenLogger",
-    "get_logger", 
-    "configure_logging",
-    "LogLevel",
-    "LogFormat",
-    "logging_middleware",
-    "StructuredFormatter",
-    "JSONFormatter"
+    "get_logger",
+    "configure_runtime_logging",
+    "get_log_context",
+    "set_log_context",
+    "clear_log_context",
+    "bind_log_context",
+    "RuntimeLogContext",
+    "RuntimeEvents",
+    "ExpressionEvents",
+    "ProviderEvents",
+    "MemoryEvents",
+    "ToolEvents",
+    "SecurityEvents",
+    "ConfigEvents",
 ]

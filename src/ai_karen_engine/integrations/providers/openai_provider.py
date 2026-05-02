@@ -548,7 +548,7 @@ class OpenAIProvider(LLMProviderBase):
             served_model = (
                 os.getenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME")
                 or self.model
-                or "karen-vllm-local"
+                or "auto"
             )
             result: Dict[str, Any] = {
                 "provider": self.provider_name,

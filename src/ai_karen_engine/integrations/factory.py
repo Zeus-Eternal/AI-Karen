@@ -259,27 +259,15 @@ class IntegrationServiceFactory:
             return None
 
     def create_fallback_manager(self):
-        """Create and configure fallback manager."""
-        if not self.config.enable_fallback_manager:
-            logger.info("Fallback manager disabled by configuration")
-            return None
+        """Legacy fallback manager - REMOVED.
 
-        try:
-            from ai_karen_engine.integrations.fallback_manager import FallbackManager
-
-            # Get or create dependencies
-            registry = self.get_service("provider_registry")
-            if not registry:
-                registry = self.create_provider_registry()
-
-            manager = FallbackManager(registry=registry)
-            self._services["fallback_manager"] = manager
-            logger.info("Fallback manager created successfully")
-            return manager
-
-        except Exception as e:
-            logger.error(f"Failed to create fallback manager: {e}")
-            return None
+        Fallback is now handled by:
+        1. ExpressionGateway for expression generation
+        2. LLMRouter internal fallback logic
+        3. Runtime resilience fallback_manager
+        """
+        logger.info("Legacy fallback manager removed - use ExpressionGateway for expression generation")
+        return None
 
     def create_error_recovery(self):
         """Create and configure error recovery service."""

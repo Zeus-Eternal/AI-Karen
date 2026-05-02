@@ -1,6 +1,71 @@
 {
-  "provider": "builtin_vllm",
-  "model": "gpt2",
+  "expression": {
+    "active_engine": "builtin",
+    "engines": {
+      "builtin": {
+        "enabled": true,
+        "type": "builtin_provider_engine",
+        "fallback_eligible": false,
+        "metadata": {
+          "preferred_provider": "vllm",
+          "preferred_model": "auto",
+          "providers": {
+            "vllm": {
+              "enabled": true,
+              "base_url": "http://vllm:8000/v1",
+              "health_url": "http://vllm:8000/health"
+            },
+            "transformers": {
+              "enabled": true,
+              "model_path": "/app/models/transformers"
+            }
+          }
+        }
+      },
+      "openai_compatible_local": {
+        "enabled": false,
+        "type": "openai_compatible",
+        "fallback_eligible": false,
+        "base_url": null
+      },
+      "llama_cpp_server": {
+        "enabled": false,
+        "type": "openai_compatible",
+        "fallback_eligible": false,
+        "base_url": null,
+        "note": "Third-party endpoint: Configure llama.cpp server as OpenAI-compatible endpoint"
+      },
+      "glm": {
+        "enabled": false,
+        "type": "openai_compatible",
+        "fallback_eligible": true,
+        "base_url": "https://api.z.ai/api/coding/paas/v4",
+        "note": "External provider: Requires Z.ai API key and admin approval"
+      },
+      "openai": {
+        "enabled": false,
+        "type": "openai_compatible",
+        "fallback_eligible": true,
+        "base_url": "https://api.openai.com/v1",
+        "note": "External provider: Requires OpenAI API key"
+      },
+      "gemini": {
+        "enabled": false,
+        "type": "gemini",
+        "fallback_eligible": true,
+        "base_url": "https://generativelanguage.googleapis.com/v1beta",
+        "note": "External provider: Requires Google AI API key"
+      }
+    },
+    "policies": {
+      "allow_third_party_engines": true,
+      "allow_external_engines": false,
+      "require_admin_for_external": true,
+      "default_timeout_ms": 30000
+    },
+    "local_first_mode": true
+  },
+  "last_selected_model": "gpt2",
   "use_memory": true,
   "context_length": 512,
   "decay": 0.1,
@@ -75,42 +140,12 @@
       }
     }
   },
-  "last_selected_model": "gpt2",
+  "provider": "builtin_vllm",
+  "model": "gpt2",
   "model_providers": {
-    "zai": {
-      "last_model": "glm-4.7-flash",
-      "base_url": "https://api.z.ai/api/coding/paas/v4"
-    },
     "builtin_vllm": {
       "last_model": "gpt2",
-      "base_url": "http://vllm:8000/v1",
-      "health_url": "http://vllm:8000/health",
-      "note": "builtin_vllm is the OpenAI-compatible vLLM server. Enable with --profile vllm."
-    },
-    "builtin_transformers": {
-      "last_model": "/app/models/transformers/gpt2",
-      "base_url": "/app/models/transformers"
-    },
-    "openai": {
-      "last_model": "gpt-4o",
-      "base_url": "https://api.openai.com/v1"
-    },
-    "mistral": {
-      "last_model": "mistral-large-latest",
-      "base_url": "https://api.mistral.ai/v1"
-    },
-    "anthropic": {
-      "last_model": "claude-sonnet-4-20250514",
-      "base_url": "https://api.anthropic.com/v1"
-    },
-    "gemini": {
-      "last_model": "gemini-2.5-flash",
-      "base_url": "https://generativelanguage.googleapis.com/v1beta"
-    },
-    "ollama": {
-      "last_model": "qwen3:4b",
-      "base_url": "http://host.docker.internal:11434",
-      "runtime_source": "host"
+      "base_url": "http://vllm:8000/v1"
     }
   }
 }

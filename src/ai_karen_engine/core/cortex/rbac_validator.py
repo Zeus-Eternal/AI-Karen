@@ -15,7 +15,8 @@ import json
 from typing import Dict, Any, Optional, List
 import asyncio
 
-logger = logging.getLogger(__name__)
+from ai_karen_engine.core.logging import get_logger
+logger = get_logger(__name__)
 
 # Try to import Redis manager
 try:

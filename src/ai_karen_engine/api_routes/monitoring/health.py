@@ -18,12 +18,12 @@ from ai_karen_engine.core.runtime.resilience.connection_health_manager import (
     get_connection_health_manager,
 )
 from ai_karen_engine.monitoring.correlation_service import get_request_id
-from ai_karen_engine.core.logging.structured_logging import (
+from ai_karen_engine.core.logging import (
+    get_logger,
     get_structured_logging_service,
 )
-import logging
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 APIRouter, Request = import_fastapi("APIRouter", "Request")
 

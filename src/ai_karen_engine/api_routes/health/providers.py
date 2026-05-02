@@ -64,7 +64,7 @@ async def get_vllm_health() -> Dict[str, Any]:
         os.getenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME")
         or metadata.get("default_model")
         or metadata.get("model")
-        or "karen-vllm-local"
+        or "auto"
     )
     
     result = {

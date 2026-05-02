@@ -5,12 +5,13 @@ Extends the existing MemoryManager with web UI specific features and query metho
 This service is being refactored to use the new unified memory service.
 """
 
-import logging
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, Union
+
+from ai_karen_engine.core.logging import get_logger
 
 try:
     from pydantic import BaseModel, ConfigDict, Field
@@ -35,7 +36,7 @@ from ai_karen_engine.database.memory_manager import (
 from ai_karen_engine.database.models import TenantConversation, TenantMemoryEntry
 from ai_karen_engine.core.memory.unified_memory_service import UnifiedMemoryService
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class MemoryType(str, Enum):

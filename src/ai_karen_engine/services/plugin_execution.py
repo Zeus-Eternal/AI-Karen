@@ -589,27 +589,22 @@ class PluginExecutionEngine:
         # If the entrypoint is a method of an ExtensionBase instance,
         # we need to ensure the instance is initialized.
         instance = getattr(entrypoint_obj, "__self__", None)
-        print(f"DEBUG: _load_plugin_entrypoint for {plugin_metadata.manifest.name}, instance found: {instance is not None}")
+        logger.debug(f"_load_plugin_entrypoint for {plugin_metadata.manifest.name}, instance found: {instance is not None}")
         
         if instance:
             # Robust check for ExtensionBase-like objects
             is_ext = hasattr(instance, "initialize") and hasattr(instance, "is_initialized")
-            print(f"DEBUG: instance is ExtensionBase-like: {is_ext}")
             if is_ext:
                 try:
                     if not instance.is_initialized():
-                        print(f"DEBUG: Initializing extension instance for {plugin_metadata.manifest.name}")
                         logger.info(f"Initializing extension instance for {plugin_metadata.manifest.name}")
                         await instance.initialize()
                         # Some base classes might not set the flag correctly in the public method
                         if hasattr(instance, "_is_initialized"):
                             instance._is_initialized = True
-                        print(f"DEBUG: Initialization complete for {plugin_metadata.manifest.name}")
                     else:
-                        print(f"DEBUG: Extension instance for {plugin_metadata.manifest.name} already initialized")
                         logger.debug(f"Extension instance for {plugin_metadata.manifest.name} already initialized")
                 except Exception as e:
-                    print(f"DEBUG: Failed to initialize extension {plugin_metadata.manifest.name}: {e}")
                     logger.error(f"Failed to initialize extension {plugin_metadata.manifest.name}: {e}")
         
         return entrypoint_obj

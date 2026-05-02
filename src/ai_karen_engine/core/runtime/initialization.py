@@ -15,7 +15,8 @@ import json
 import urllib.request
 import urllib.error
 
-logger = logging.getLogger(__name__)
+from ai_karen_engine.core.logging import get_logger
+logger = get_logger(__name__)
 
 
 class SystemInitializer:
@@ -87,15 +88,19 @@ class SystemInitializer:
         results["packages"] = await self._install_required_packages()
 
         # 4. Download and setup models
+        self.logger.info("Stage 4: Setting up models...")
         results["models"] = await self._setup_models(force_reinstall)
 
         # 5. Initialize databases
-        results["databases"] = await self._initialize_databases()
+        self.logger.info("Stage 5: Initializing databases...")
+        results["database"] = await self._initialize_databases()
 
         # 6. Setup CopilotKit if configured
+        self.logger.info("Stage 6: Checking CopilotKit...")
         results["copilotkit"] = await self._setup_copilotkit()
 
         # 7. Discover and register plugins/extensions
+        self.logger.info("Stage 7: Discovering plugins...")
         results["plugins"] = await self._discover_plugins()
 
         # 8. Validate system health
@@ -220,21 +225,23 @@ class SystemInitializer:
             return False
 
     async def _setup_models(self, force_reinstall: bool = False) -> bool:
-        """Download and setup required models."""
+        """Download and setup required models asynchronously."""
         try:
-            # Setup transformers models
-            await self._setup_transformers_models(force_reinstall)
+            loop = asyncio.get_running_loop()
+            
+            # Setup transformers models in executor (using sync helper)
+            await loop.run_in_executor(None, self._setup_transformers_models_sync, force_reinstall)
 
-            # Download spaCy model
-            await self._setup_spacy_models()
+            # Download spaCy model in executor (using sync helper)
+            await loop.run_in_executor(None, self._setup_spacy_models_sync)
 
             return True
         except Exception as e:
             self.logger.error(f"❌ Failed to setup models: {e}")
             return False
 
-    async def _setup_transformers_models(self, force_reinstall: bool = False) -> None:
-        """Setup transformers models."""
+    def _setup_transformers_models_sync(self, force_reinstall: bool = False) -> None:
+        """Synchronous helper for Transformers setup."""
         try:
             from transformers import AutoTokenizer, AutoModel
 
@@ -279,9 +286,11 @@ class SystemInitializer:
                 "⚠️ Transformers library not available - skipping transformers models"
             )
 
-    async def _setup_spacy_models(self) -> None:
-        """Download spaCy models."""
+    def _setup_spacy_models_sync(self) -> None:
+        """Synchronous helper for spaCy download."""
         try:
+            import subprocess
+            import sys
             # Download English model
             result = subprocess.run(
                 [sys.executable, "-m", "spacy", "download", "en_core_web_sm"],
@@ -299,6 +308,14 @@ class SystemInitializer:
 
         except Exception as e:
             self.logger.warning(f"⚠️ Failed to setup spaCy models: {e}")
+
+    async def _setup_transformers_models(self, force_reinstall: bool = False) -> None:
+        # Compatibility shim
+        self._setup_transformers_models_sync(force_reinstall)
+
+    async def _setup_spacy_models(self) -> None:
+        # Compatibility shim
+        self._setup_spacy_models_sync()
 
     async def _download_file_with_progress(self, url: str, destination: Path) -> None:
         """Download a file with progress logging."""
@@ -445,6 +462,15 @@ class SystemInitializer:
                 "default_provider": "builtin_vllm",
                 "model_dir": str(self.models_dir),
                 "cache_enabled": True,
+            },
+            "expression": {
+                "active_engine": "builtin",
+                "enabled_engines": ["builtin", "openai_compatible_local"],
+                "fallback_order": ["builtin", "openai_compatible_local", "llama_cpp_server", "glm"],
+                "policies": {
+                    "allow_third_party": True,
+                    "allow_external": False
+                }
             },
             "features": {
                 "extensions_enabled": True,

@@ -25,6 +25,8 @@ import {
   Speaker,
   UserCog,
   Zap,
+  Server,
+  Sparkles,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -37,6 +39,7 @@ import CommsCenterPage from '@/components/comms/CommsCenterPage';
 import BehaviorSettings from './BehaviorSettings';
 import ModelDownloads from './ModelDownloads';
 import ModelSettings from './ModelSettings';
+import ExpressionSettings from './ExpressionSettings';
 import NotificationSettings from './NotificationSettings';
 import OptimizationSettings from './OptimizationSettings';
 import PersonaSettings from './PersonaSettings';
@@ -57,6 +60,7 @@ type SettingsSectionId =
   | 'notifications'
   | 'privacy'
   | 'model'
+  | 'expression'
   | 'model-downloads'
   | 'optimization'
   | 'training'
@@ -112,9 +116,15 @@ export default function SettingsDialog({
     const runtimeSections: SettingsSection[] = [
       {
         id: 'model',
-        label: 'Model',
-        icon: Bot,
+        label: 'Providers',
+        icon: Server,
         render: () => <ModelSettings />,
+      },
+      {
+        id: 'expression',
+        label: 'Expression',
+        icon: Sparkles,
+        render: () => <ExpressionSettings />,
       },
       {
         id: 'model-downloads',

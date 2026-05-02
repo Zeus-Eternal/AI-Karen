@@ -4,14 +4,14 @@ DuckDB Projection Worker for AI Karen Memory System.
 Projects memory events into DuckDB for offline analytics and evaluation.
 """
 
-import logging
 import asyncio
 import os
 from typing import Any, Dict, Optional
+from ai_karen_engine.core.logging import get_logger
 
 from .base import ProjectionWorker
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class DuckDBWorker(ProjectionWorker):
     """Worker responsible for DuckDB analytics projections."""

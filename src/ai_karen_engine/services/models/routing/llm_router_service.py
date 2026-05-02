@@ -191,8 +191,6 @@ from ai_karen_engine.core.model_runtime.provider_policy import (
 )
 
 ALLOWED_LIVE_FALLBACK_PROVIDERS = (set(BUILTIN_EXPRESSION_ENGINES) | set(LOCAL_PROVIDER_OPTIONS) | {
-    "builtin_vllm",
-    "builtin_transformers",
     "openai_compatible",
 } | set(EXTERNAL_PROVIDER_OPTIONS)) - {p.replace('-', '_').replace(' ', '_') for p in REMOVED_INTERNAL_PROVIDERS}
 
@@ -200,8 +198,8 @@ ALLOWED_LIVE_FALLBACK_PROVIDERS = (set(BUILTIN_EXPRESSION_ENGINES) | set(LOCAL_P
 class ProviderPriority(Enum):
     """Provider priority levels honoring Kari's local-first doctrine."""
 
-    LOCAL = 1  # local GGUF runtimes
-    TRANSFORMER = 2  # Transformers running locally (HF pipelines, GGML wrappers)
+    TRANSFORMER = 1  # Standard local runtimes (vLLM, Transformers)
+    LOCAL_SERVICE = 2  # Local provider options (Ollama, LM Studio)
     NLP = 3  # spaCy-powered deterministic responders
     LIGHTWEIGHT = 4  # Small distilled models (e.g., DistilBERT, classifiers)
     REMOTE = 5  # Managed APIs (OpenAI, Anthropic, Gemini, etc.)
@@ -294,8 +292,8 @@ class LLMRouter:
         # Routing policy configuration
         self.routing_policy: RoutingPolicy = RoutingPolicy.PRIORITY
         self.priority_order: List[ProviderPriority] = [
-            ProviderPriority.LOCAL,
-            ProviderPriority.TRANSFORMER,
+            ProviderPriority.TRANSFORMER,  # Built-in engines first
+            ProviderPriority.LOCAL_SERVICE,  # Local provider options
             ProviderPriority.NLP,
             ProviderPriority.LIGHTWEIGHT,
             ProviderPriority.REMOTE,
@@ -337,13 +335,16 @@ class LLMRouter:
 
         # Provider priority mapping - canonical built-ins with proper priorities
         self.provider_priorities = {
-            # Local runtimes - highest priority
-            "builtin_vllm": ProviderPriority.LOCAL,
-            "vllm": ProviderPriority.LOCAL,
-            "nano_vllm": ProviderPriority.LOCAL,
-            "nano-vllm": ProviderPriority.LOCAL,
-            "local_gguf": ProviderPriority.LOCAL,
-            "ollama": ProviderPriority.LOCAL,
+            # Built-in runtimes - highest priority
+            "builtin_vllm": ProviderPriority.TRANSFORMER,
+            "vllm": ProviderPriority.TRANSFORMER,
+            "nano_vllm": ProviderPriority.TRANSFORMER,
+            "nano-vllm": ProviderPriority.TRANSFORMER,
+
+            # Local provider options
+            "ollama": ProviderPriority.LOCAL_SERVICE,
+            # local_gguf is removed - mapped to LOCAL_SERVICE for backward compatibility
+            "local_gguf": ProviderPriority.LOCAL_SERVICE,
 
             # Transformer runtimes
             "builtin_transformers": ProviderPriority.TRANSFORMER,

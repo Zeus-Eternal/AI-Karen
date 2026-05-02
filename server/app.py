@@ -60,7 +60,7 @@ except ImportError:
     logger.warning("Extension system not available")
 
 # Initialize logging EARLY to ensure all subsequent imports use configured loggers
-configure_logging()
+# configure_logging() is called automatically on import of logging_setup
 
 # Global variables from original main.py
 ENABLED_PLUGINS = []
@@ -446,7 +446,11 @@ def create_app() -> FastAPI:
                 status_code=501,
                 detail="Metrics are not enabled",
             )
-        if api_key != settings.secret_key:
+        
+        # Check if we should allow public metrics (useful for internal scraping)
+        _allow_public_metrics = os.getenv("KARI_PUBLIC_METRICS", "false").lower() in ("true", "yes")
+        
+        if not _allow_public_metrics and api_key != settings.secret_key:
             raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
         # Ensure extension metrics are up-to-date before serving

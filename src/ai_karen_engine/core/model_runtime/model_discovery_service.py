@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 import threading
 import time
 from collections import Counter, defaultdict
@@ -10,13 +9,14 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Optional
 
+from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.config.config_asset_loaders import load_model_runtime_discovery_config
 
 from .local_model_discovery import discover_local_model_candidates
 from .model_registry_writer import write_model_registry_cache
 from .model_validation import validate_model_record
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class DiscoveryStatus(str, Enum):
@@ -258,6 +258,7 @@ class ModelDiscoveryService:
         self._progress = DiscoveryProgress(status=DiscoveryStatus.IDLE)
         self._last_updated = 0.0
         self._lock = threading.RLock()
+        self._async_lock = asyncio.Lock()
 
     def _primary_root(self) -> Path:
         model_root = self._config.get("model_root")
@@ -420,11 +421,23 @@ class ModelDiscoveryService:
         return scored[:max_models]
 
     async def refresh_model_discovery(self) -> DiscoveryProgress:
-        with self._lock:
+        async with self._async_lock:
+            if self._status == DiscoveryStatus.SCANNING:
+                return self._progress
+                
             self._status = DiscoveryStatus.SCANNING
-            self._progress = DiscoveryProgress(status=DiscoveryStatus.SCANNING)
+            self._progress = DiscoveryProgress(status=DiscoveryStatus.SCANNING, start_time=time.time())
             self._models = []
-        self._scan()
+            
+        # Run scan in thread pool
+        loop = asyncio.get_running_loop()
+        try:
+            await loop.run_in_executor(None, self._scan)
+        except Exception as e:
+            logger.error(f"Async model scan failed: {e}")
+            self._status = DiscoveryStatus.ERROR
+            self._progress = DiscoveryProgress(status=DiscoveryStatus.ERROR, message=str(e))
+            
         return self._progress
 
     def get_discovery_progress(self) -> DiscoveryProgress:

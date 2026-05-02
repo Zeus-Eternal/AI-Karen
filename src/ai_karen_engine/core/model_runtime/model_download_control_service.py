@@ -25,7 +25,8 @@ from ai_karen_engine.services.models.management.model_orchestrator_service impor
     ModelOrchestratorService,
 )
 
-logger = logging.getLogger(__name__)
+from ai_karen_engine.core.logging import get_logger
+logger = get_logger(__name__)
 
 
 def _utc_now() -> str:

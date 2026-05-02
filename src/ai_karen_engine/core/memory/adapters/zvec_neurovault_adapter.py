@@ -40,6 +40,8 @@ from ai_karen_engine.core.neuro_vault import (
     PIIScrubber,
 )
 
+from ai_karen_engine.core.logging import get_logger
+
 # Import Zvec client
 try:
     from ai_karen_engine.clients.database.zvec_client import ZvecClient
@@ -54,7 +56,7 @@ try:
 except ImportError:
     MILVUS_AVAILABLE = False
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class ZvecNeuroVaultAdapter:

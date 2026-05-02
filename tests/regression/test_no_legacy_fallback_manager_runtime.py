@@ -1,12 +1,14 @@
 import pytest
 
-from ai_karen_engine.integrations.fallback_manager import FallbackManager, FallbackManagerDeprecatedError
+from ai_karen_engine.integrations.fallback_manager import FallbackManagerRemovedError, get_fallback_manager
 
 
-def test_legacy_fallback_manager_runtime_is_disabled():
-    manager = FallbackManager()
-    with pytest.raises(FallbackManagerDeprecatedError):
-        manager.construct_fallback_chain(request={}, failed_providers=[])
+def test_legacy_fallback_manager_is_removed():
+    """Verify legacy fallback manager cannot be instantiated or used.
 
-    with pytest.raises(FallbackManagerDeprecatedError):
-        manager.execute_fallback(request={}, fallback_chain=[])
+    The legacy integrations fallback manager has been removed and replaced with
+    ExpressionGateway for expression generation.
+    """
+    # Factory function raises error
+    with pytest.raises(FallbackManagerRemovedError, match="Legacy FallbackManager has been removed"):
+        get_fallback_manager()

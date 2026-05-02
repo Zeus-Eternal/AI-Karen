@@ -121,7 +121,7 @@ export default function ModelSettings() {
   const [isLoadingModels, setIsLoadingModels] = useState(false);
   const [isClearingKey, setIsClearingKey] = useState(false);
   const [chatResponseMode, setChatResponseMode] = useState<ChatResponseMode>('streaming_first');
-  
+
   // Custom Provider State
   const [isCustomDialogOpen, setIsCustomDialogOpen] = useState(false);
   const [isAddingCustom, setIsAddingCustom] = useState(false);

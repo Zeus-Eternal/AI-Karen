@@ -5,11 +5,11 @@ Per-stage circuit breakers to prevent cascading failures.
 """
 
 import time
-import logging
 from enum import Enum
 from typing import Dict
+from ai_karen_engine.core.logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class BreakerState(Enum):
     CLOSED = "CLOSED"     # Normal operation

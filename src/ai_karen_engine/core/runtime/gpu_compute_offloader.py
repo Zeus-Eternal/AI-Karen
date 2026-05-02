@@ -19,7 +19,8 @@ from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import weakref
 
-logger = logging.getLogger(__name__)
+from ai_karen_engine.core.logging import get_logger
+logger = get_logger(__name__)
 
 
 class GPUBackend(Enum):

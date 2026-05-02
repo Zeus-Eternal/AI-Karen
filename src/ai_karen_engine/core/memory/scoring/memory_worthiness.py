@@ -10,7 +10,8 @@ from typing import Dict, Any
 from .semantic_signal_scorer import get_semantic_scorer
 from ...runtime.resilience import get_safe_stage_runner
 
-logger = logging.getLogger(__name__)
+from ai_karen_engine.core.logging import get_logger
+logger = get_logger(__name__)
 
 class MemoryWorthinessScorer:
     """Evaluates if a signal meets the threshold for durable storage."""

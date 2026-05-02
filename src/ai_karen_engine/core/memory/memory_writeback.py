@@ -5,13 +5,14 @@ with proper categorization and feedback loop measurement.
 """
 
 import asyncio
-import logging
 import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
+
+from ai_karen_engine.core.logging import get_logger
 
 try:
     from pydantic import BaseModel, ConfigDict, Field
@@ -36,7 +37,7 @@ from ai_karen_engine.core.memory.neuro.lesson_memory import LessonMemoryStore
 from ai_karen_engine.core.memory.neuro.procedural_memory import ProceduralMemoryStore
 from ai_karen_engine.core.runtime.resilience import get_safe_stage_runner
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class InteractionType(str, Enum):

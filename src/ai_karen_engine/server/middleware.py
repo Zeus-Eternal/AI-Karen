@@ -1,7 +1,4 @@
-import logging
 import os
-import uuid
-from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
@@ -16,11 +13,13 @@ from ai_karen_engine.middleware.rate_limit import rate_limit_middleware
 from ai_karen_engine.middleware.intelligent_error_handler import (
     IntelligentErrorHandlerMiddleware,
 )
+from ai_karen_engine.core.logging.middleware import RuntimeLoggingMiddleware
+from ai_karen_engine.core.logging import get_logger, bind_log_context
 
 # REMOVED: RBAC and session persistence middleware - replaced with simple auth
 from ai_karen_engine.server.http_validator import HTTPRequestValidator, ValidationConfig
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def configure_middleware(
@@ -31,6 +30,7 @@ def configure_middleware(
     error_count,
 ) -> None:
     """Configure all FastAPI middleware."""
+    
     if settings.https_redirect:
         app.add_middleware(HTTPSRedirectMiddleware)
 
@@ -396,152 +396,10 @@ def configure_middleware(
 
     http_validator = HTTPRequestValidator(validation_config)
 
-    @app.middleware("http")
-    async def request_monitoring_middleware(request: Request, call_next):
-        request_id = str(uuid.uuid4())
-        request.state.request_id = request_id
-
-        # Skip validation in dev/bypass mode
-        from ai_karen_engine.core.security.auth_config import auth_config
-
-        if auth_config.should_bypass_auth():
-            start_time = datetime.now(timezone.utc)
-            response = await call_next(request)
-            if request.url.path.startswith("/api/copilot/assist"):
-                logger.warning(
-                    "request_monitoring_middleware(auth_bypass) received response: %s",
-                    type(response).__name__ if response is not None else "None",
-                )
-            process_time = (datetime.now(timezone.utc) - start_time).total_seconds()
-            response.headers["X-Process-Time"] = str(process_time)
-            response.headers["X-Request-ID"] = request_id
-            return response
-
-        # Perform comprehensive request validation using the new validator
-        validation_result = await http_validator.validate_request(request)
-
-        if not validation_result.is_valid:
-            # Get sanitized request data for logging
-            sanitized_data = http_validator.sanitize_request_data(request)
-
-            # Log invalid request with sanitized data (INFO level as per requirements)
-            if enhanced_logger:
-                # Use enhanced logger if available
-                enhanced_logger.log_invalid_request(
-                    {
-                        "request_id": request_id,
-                        "error_type": validation_result.error_type,
-                        "error_message": validation_result.error_message,
-                        "security_threat_level": validation_result.security_threat_level,
-                        "sanitized_request": sanitized_data,
-                        "validation_details": validation_result.validation_details,
-                    },
-                    error_type=validation_result.error_type or "validation_error",
-                )
-            else:
-                # Fallback to standard logger
-                logger.info(
-                    "Invalid request blocked",
-                    extra={
-                        "request_id": request_id,
-                        "error_type": validation_result.error_type,
-                        "error_message": validation_result.error_message,
-                        "security_threat_level": validation_result.security_threat_level,
-                        "sanitized_request": sanitized_data,
-                        "validation_details": validation_result.validation_details,
-                    },
-                )
-
-            # Update error metrics
-            error_count.labels(
-                method=sanitized_data.get("method", "unknown"),
-                path=sanitized_data.get("path", "/unknown"),
-                error_type=validation_result.error_type or "validation_error",
-            ).inc()
-
-            # Return appropriate error response based on validation result
-            from fastapi.responses import Response
-
-            error_responses = {
-                "malformed_request": (400, "Bad Request"),
-                "invalid_method": (405, "Method Not Allowed"),
-                "invalid_headers": (400, "Bad Request"),
-                "content_too_large": (413, "Payload Too Large"),
-                "security_threat": (403, "Forbidden"),
-                "validation_error": (400, "Bad Request"),
-            }
-
-            status_code, status_text = error_responses.get(
-                validation_result.error_type, (400, "Bad Request")
-            )
-
-            return Response(
-                content=status_text,
-                status_code=status_code,
-                headers={
-                    "Content-Type": "text/plain",
-                    "X-Request-ID": request_id,
-                    "X-Validation-Error": validation_result.error_type or "unknown",
-                },
-            )
-
-        # Log valid request start
-        logger.info(
-            "Request started",
-            extra={
-                "request_id": request_id,
-                "method": request.method,
-                "path": request.url.path,
-                "client": request.client.host if request.client else None,
-                "security_threat_level": validation_result.security_threat_level,
-            },
-        )
-
-        start_time = datetime.now(timezone.utc)
-        try:
-            response = await call_next(request)
-        except HTTPException:
-            error_count.labels(
-                method=request.method,
-                path=request.url.path,
-                error_type="http_exception",
-            ).inc()
-            raise
-        except Exception as e:
-            error_count.labels(
-                method=request.method,
-                path=request.url.path,
-                error_type="unhandled_exception",
-            ).inc()
-            logger.error(
-                "Unhandled exception", exc_info=True, extra={"request_id": request_id}
-            )
-            raise HTTPException(status_code=500, detail="Internal server error")
-
-        process_time = (datetime.now(timezone.utc) - start_time).total_seconds()
-        response.headers["X-Process-Time"] = str(process_time)
-        response.headers["X-Request-ID"] = request_id
-
-        request_count.labels(
-            method=request.method,
-            path=request.url.path,
-            status=response.status_code,
-        ).inc()
-
-        request_latency.labels(method=request.method, path=request.url.path).observe(
-            process_time
-        )
-
-        logger.info(
-            "Request completed",
-            extra={
-                "request_id": request_id,
-                "duration": process_time,
-                "status": response.status_code,
-            },
-        )
-
-        return response
+    # Add canonical runtime logging middleware to bind async context and log lifecycle
+    # We add it late in the configuration so it becomes one of the outermost middlewares,
+    # ensuring it captures full request duration and all internal errors.
+    app.add_middleware(RuntimeLoggingMiddleware)
 
     # Add intelligent error handler as the FINAL middleware (making it the outermost)
     # This ensures it catches errors from all other middlewares.

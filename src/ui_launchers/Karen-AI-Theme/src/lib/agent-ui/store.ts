@@ -140,7 +140,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
          const errorMessage: ExtendedMessage = {
            id: `msg_err_${Date.now()}`,
            role: 'system',
-           content: \`Error: ${errorMsg}\`,
+           content: `Error: ${errorMsg}`,
            timestamp: Date.now(),
            isLoading: false
          };

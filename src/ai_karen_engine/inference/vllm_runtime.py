@@ -51,7 +51,7 @@ class VLLMRuntime(LLMProviderBase):
             model if model != "auto"
             else os.getenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME")
             or os.getenv("KAREN_VLLM_MODEL")
-            or "karen-vllm-local"
+            or "auto"
         )
         
         # Resolve base URL with intelligent defaults

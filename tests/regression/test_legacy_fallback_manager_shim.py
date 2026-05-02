@@ -14,6 +14,15 @@ def test_legacy_fallback_manager_has_no_provider_guesses():
         assert token not in text
 
 
-def test_legacy_fallback_manager_is_shim():
+def test_legacy_fallback_manager_is_removed():
+    """Verify legacy fallback manager has been removed completely."""
     text = Path('src/ai_karen_engine/integrations/fallback_manager.py').read_text().lower()
-    assert 'compatibility shim' in text
+    # Check for clear indication it's removed
+    assert 'legacy fallback manager - removed' in text or 'removed' in text
+    # Verify it raises an error
+    try:
+        from ai_karen_engine.integrations.fallback_manager import get_fallback_manager
+        get_fallback_manager()
+        assert False, "get_fallback_manager should raise FallbackManagerRemovedError"
+    except Exception:
+        pass  # Expected to raise an error

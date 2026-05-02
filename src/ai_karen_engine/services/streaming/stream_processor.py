@@ -21,7 +21,7 @@ import json
 import weakref
 
 from ai_karen_engine.config.config_manager import get_config_manager
-from ai_karen_engine.core.logging.logger import get_structured_logger
+from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.core.operations.metrics_manager import get_metrics_manager
 from ai_karen_engine.services.formatting.pretty_output_layer import (
     PrettyOutputLayer,
@@ -36,7 +36,7 @@ from ai_karen_engine.services.formatting.ResponseFormattingClass.Specialized.Int
 )
 from ai_karen_engine.services.formatting.response_policy_enforcer import ResponsePolicyEnforcer
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class StreamStatus(Enum):

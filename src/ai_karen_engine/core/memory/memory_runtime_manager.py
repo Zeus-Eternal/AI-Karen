@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
-import logging
 import uuid
 from contextlib import suppress
 from datetime import datetime
@@ -28,6 +27,7 @@ from typing import Any, Dict, List, Optional, Sequence
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
+from ai_karen_engine.core.logging import get_logger
 from ..runtime.resilience import get_feature_flags
 from .ledger_models import (
     ContradictionEvent,
@@ -44,7 +44,7 @@ from .neuro.activation_gate import decide_activation_mode
 from .scoring import MemoryWorthinessScorer
 from .signals import MemorySignal, get_signal_pipeline
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 _METRICS: Dict[str, int] = {

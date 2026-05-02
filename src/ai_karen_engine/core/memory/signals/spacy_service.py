@@ -68,7 +68,8 @@ except ImportError:
     ErrorFormatter = None
     log_dependency_error = None
 
-logger = logging.getLogger(__name__)
+from ai_karen_engine.core.logging import get_logger
+logger = get_logger(__name__)
 
 # Optional dependencies with graceful fallback
 try:

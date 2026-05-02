@@ -8,16 +8,16 @@ Replaces mock examples with real working profile logic.
 from __future__ import annotations
 
 import json
-import logging
 import os
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
+from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.integrations.registry import get_registry
 
-logger = logging.getLogger("kari.profile_manager")
+logger = get_logger("kari.profile_manager")
 
 
 @dataclass

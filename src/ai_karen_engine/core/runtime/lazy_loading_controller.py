@@ -22,7 +22,8 @@ from ..services.classified_service_registry import (
     ServiceLifecycleState,
 )
 
-logger = logging.getLogger(__name__)
+from ai_karen_engine.core.logging import get_logger
+logger = get_logger(__name__)
 
 T = TypeVar('T')
 

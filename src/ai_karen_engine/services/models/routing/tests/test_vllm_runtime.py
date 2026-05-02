@@ -77,9 +77,9 @@ class TestVLLMRuntimeHealthCheck:
     """Test suite for VLLMRuntime health check functionality."""
 
     def test_builtin_vllm_health_requires_models_endpoint(self, monkeypatch):
-        monkeypatch.setenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME", "karen-vllm-local")
+        monkeypatch.setenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME", "test-model")
         provider = OpenAIProvider(
-            model="karen-vllm-local",
+            model="test-model",
             base_url="http://localhost:8001/v1",
             health_url="http://localhost:8001/health",
             provider_name="builtin_vllm",
@@ -103,9 +103,9 @@ class TestVLLMRuntimeHealthCheck:
         assert status["models_endpoint_ok"] is False
 
     def test_builtin_vllm_health_requires_served_model(self, monkeypatch):
-        monkeypatch.setenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME", "karen-vllm-local")
+        monkeypatch.setenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME", "test-model")
         provider = OpenAIProvider(
-            model="karen-vllm-local",
+            model="test-model",
             base_url="http://localhost:8001/v1",
             health_url="http://localhost:8001/health",
             provider_name="builtin_vllm",
@@ -127,9 +127,9 @@ class TestVLLMRuntimeHealthCheck:
         assert status["served_model_available"] is False
 
     def test_builtin_vllm_health_passes_when_endpoint_serves_model(self, monkeypatch):
-        monkeypatch.setenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME", "karen-vllm-local")
+        monkeypatch.setenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME", "test-model")
         provider = OpenAIProvider(
-            model="karen-vllm-local",
+            model="test-model",
             base_url="http://localhost:8001/v1",
             health_url="http://localhost:8001/health",
             provider_name="builtin_vllm",
@@ -140,7 +140,7 @@ class TestVLLMRuntimeHealthCheck:
             response = MagicMock()
             response.status_code = 200
             if url.endswith("/models"):
-                response.json.return_value = {"data": [{"id": "karen-vllm-local"}]}
+                response.json.return_value = {"data": [{"id": "test-model"}]}
             return response
 
         with patch("httpx.get", side_effect=fake_get):
@@ -517,7 +517,7 @@ class TestVLLMRuntimeIntegration:
         """Smoke test that requires a real vLLM server to be running."""
         # This test only runs when KAREN_RUN_VLLM_SMOKE=1 is set
         base_url = os.getenv("KAREN_VLLM_BASE_URL", "http://localhost:8001/v1")
-        model = os.getenv("KAREN_VLLM_MODEL", "karen-vllm-local")
+        model = os.getenv("KAREN_VLLM_MODEL", "test-model")
 
         vllm = VLLMRuntime(base_url=base_url, model=model)
 

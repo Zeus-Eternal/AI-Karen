@@ -40,10 +40,11 @@ Why Per-User Isolation?
 from __future__ import annotations
 
 import asyncio
-import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Dict, Optional
+
+from ai_karen_engine.core.logging import get_logger
 
 try:
     from ai_karen_engine.clients.database.zvec_client import ZvecClient
@@ -51,7 +52,7 @@ try:
 except ImportError:
     ZVEC_AVAILABLE = False
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class UserLock:

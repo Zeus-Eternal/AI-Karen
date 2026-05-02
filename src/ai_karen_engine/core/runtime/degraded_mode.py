@@ -18,12 +18,14 @@ from __future__ import annotations
 import asyncio
 import logging
 import textwrap
+import time
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
-logger = logging.getLogger(__name__)
+from ai_karen_engine.core.logging import get_logger
+logger = get_logger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -158,48 +160,68 @@ async def generate_degraded_mode_response(user_input: str, **kwargs: Any) -> Dic
     from ai_karen_engine.core.langgraph_orchestrator.formatting.response_formatter_pipeline import (
         ResponseFormatterPipeline,
     )
-    from ai_karen_engine.services.models.routing.llm_router_service import (
-        LLMRouter,
-        ChatRequest,
-    )
+    from ai_karen_engine.core.expression.gateway import ExpressionGateway
+    from ai_karen_engine.core.expression.contracts import ExpressionTask
 
     # Get the requested provider from kwargs if available
     requested_provider = kwargs.get("requested_provider", "gemini")
     requested_model = kwargs.get("requested_model", "unknown")
     failure_reason = kwargs.get("failure_reason", "Requested provider unavailable")
 
-    # Try runtime fallback first through LLMRouter
+    # Try runtime fallback first through ExpressionGateway
     try:
-        router = LLMRouter()
-        chat_request = ChatRequest(message=user_input, stream=False)
-
-        # Call the runtime fallback executor
-        fallback_result = await router.generate_with_degraded_runtime_fallback(
-            request=chat_request,
-            requested_provider=requested_provider,
-            requested_model=requested_model,
-            failure_reason=failure_reason,
+        gateway = ExpressionGateway()
+        task = ExpressionTask(
+            task_id=f"degraded_{int(time.time())}",
+            kind="chat",
+            correlation_id=kwargs.get("correlation_id", "degraded"),
+            request_id=kwargs.get("request_id", "degraded"),
+            messages=[{"role": "user", "content": user_input}],
+            preferred_provider=requested_provider,
+            preferred_model=requested_model,
+            max_tokens=256,
+            temperature=0.7,
+            timeout_ms=10000,
+            required_capabilities=["text"],
+            forbidden_capabilities=[],
+            response_mode="text",
+            metadata={
+                "degraded_mode": True,
+                "failure_reason": failure_reason,
+            }
         )
 
-        # Extract content and metadata from fallback result
-        content = fallback_result.get("content", "")
-        metadata = fallback_result.get("metadata", {})
-        llm_metadata = metadata.get("llm", {})
+        # Call the ExpressionGateway
+        result = await gateway.generate(task)
+
+        # Extract content and metadata from result
+        content = result.text or ""
+        
+        if not content.strip():
+            raise RuntimeError("ExpressionGateway returned empty response")
 
         # Build response envelope with proper metadata
         return ResponseFormatterPipeline().build_response_envelope(
             content,
-            llm_metadata.get("provider", requested_provider),
-            llm_metadata.get("model_id", requested_model),
+            result.provider,
+            result.model or requested_model,
             metadata={
                 "degraded_mode": True,
                 "degraded_mode_active": True,
-                "llm": llm_metadata,
-                "source": llm_metadata.get("source", "runtime_fallback"),
-                "model_id": llm_metadata.get("model_id"),
-                "provider": llm_metadata.get("provider"),
-                "model": llm_metadata.get("model_name", llm_metadata.get("model_id")),
-                "note": "Response generated via degraded runtime fallback",
+                "llm": {
+                    "provider": result.provider,
+                    "model_id": result.model,
+                    "source": result.response_source,
+                    "engine_id": result.engine_id,
+                    "latency_ms": result.latency_ms,
+                    "attempts": result.attempts,
+                    "skipped": result.skipped,
+                },
+                "source": result.response_source,
+                "model_id": result.model,
+                "provider": result.provider,
+                "model": result.model or requested_model,
+                "note": "Response generated via ExpressionGateway (degraded runtime fallback)",
             },
             status="ok",
         )

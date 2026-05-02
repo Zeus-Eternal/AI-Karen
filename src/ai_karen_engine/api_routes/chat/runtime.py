@@ -25,7 +25,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, System
 
 from ai_karen_engine.core.services.dependencies import bypass_user_context_func
 
-from ai_karen_engine.core.logging.logger import get_structured_logger
+from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.core.runtime.chat_runtime_control_plane import (
     MaintenanceResponse,
     EmergencyFallbackResponse,
