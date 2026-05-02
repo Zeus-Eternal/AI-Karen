@@ -31,6 +31,9 @@ from ai_karen_engine.core.memory.neuro import (
     emit_memory_event,
     evaluate_guardrails,
 )
+from ai_karen_engine.core.memory.neuro.contracts import LessonArtifact, ProcedureArtifact
+from ai_karen_engine.core.memory.neuro.lesson_memory import LessonMemoryStore
+from ai_karen_engine.core.memory.neuro.procedural_memory import ProceduralMemoryStore
 from ai_karen_engine.core.runtime.resilience import get_safe_stage_runner
 
 logger = logging.getLogger(__name__)
@@ -122,6 +125,9 @@ class MemoryWritebackSystem:
         self.memory_service = unified_memory_service
         self.redis_client = redis_client
         self.safe_runner = get_safe_stage_runner()
+        self.procedural_store = ProceduralMemoryStore()
+        self.lesson_store = LessonMemoryStore()
+        self.quarantine_log: Dict[str, List[Dict[str, Any]]] = {}
 
         # Shard link tracking
         self._shard_links: Dict[str, List[ShardLink]] = {}
@@ -421,6 +427,9 @@ class MemoryWritebackSystem:
             "curated": True,
             "candidate_types": [c.candidate_type for c in approved_candidates],
             "memory_classes": [c.memory_class.value for c in approved_candidates],
+            "writeback_status": "saved",
+            "writeback_decision": "curated_candidate_approved",
+            "writeback_honest": True,
         }
 
         if entry.source_shards:
@@ -463,6 +472,10 @@ class MemoryWritebackSystem:
         base_candidate.memory_class = classify_memory_candidate(base_candidate)
         guard = evaluate_guardrails(base_candidate)
         if guard.outcome.value in {"reject", "quarantine"}:
+            tenant_key = str(entry.org_id or "")
+            self.quarantine_log.setdefault(tenant_key, []).append(
+                {"id": entry.id, "text": text[:200], "reasons": guard.reasons, "risk_score": guard.risk_score}
+            )
             emit_memory_event(
                 "memory.quarantine.created",
                 {
@@ -472,7 +485,7 @@ class MemoryWritebackSystem:
                     "memory_classes": [MemoryClass.QUARANTINE.value],
                 },
             )
-            return [WritebackCandidate("quarantine", text, MemoryClass.QUARANTINE, 0.0, True, {"guard_reasons": guard.reasons})]
+            return [WritebackCandidate("quarantine", text, MemoryClass.QUARANTINE, 0.0, True, {"guard_reasons": guard.reasons, "writeback_status": "quarantined"})]
 
         sensitivity_markers = {"health", "court", "legal", "financial", "religion", "political", "intimate"}
         lower = text.lower()
@@ -483,16 +496,37 @@ class MemoryWritebackSystem:
 
         ctype = "profile_fact" if base_candidate.memory_class == MemoryClass.SEMANTIC else "deadline" if "deadline" in lower or "by friday" in lower else "procedure" if base_candidate.memory_class == MemoryClass.PROCEDURAL else "lesson" if base_candidate.memory_class == MemoryClass.LESSON else "project_fact"
         if ctype == "lesson":
+            self.lesson_store.put(
+                str(entry.org_id or ""),
+                LessonArtifact(
+                    id=entry.id,
+                    lesson_type="user_correction" if "correction" in lower else "operational",
+                    failure_signature=text[:200],
+                    correction=text[:200],
+                    applies_to=[entry.interaction_type.value],
+                    confidence=score,
+                ),
+            )
             emit_memory_event(
                 "memory.lesson.created",
                 {"correlation_id": entry.correlation_id, "user_id": entry.user_id, "tenant_id": entry.org_id},
             )
         if ctype == "procedure" and not requires_review:
+            self.procedural_store.put(
+                str(entry.org_id or ""),
+                ProcedureArtifact(
+                    id=entry.id,
+                    name="learned_procedure",
+                    trigger_patterns=[text[:80].lower()],
+                    tool_sequence=list(entry.metadata.get("tool_sequence", [])),
+                    confidence=score,
+                ),
+            )
             emit_memory_event(
                 "memory.procedure.promoted",
                 {"correlation_id": entry.correlation_id, "user_id": entry.user_id, "tenant_id": entry.org_id},
             )
-        return [WritebackCandidate(ctype, text, base_candidate.memory_class, score, requires_review, {"consolidation_reason": consolidation.reason})]
+        return [WritebackCandidate(ctype, text, base_candidate.memory_class, score, requires_review, {"consolidation_reason": consolidation.reason, "writeback_status": "review_required" if requires_review else "approved"})]
 
     async def calculate_feedback_metrics(
         self,

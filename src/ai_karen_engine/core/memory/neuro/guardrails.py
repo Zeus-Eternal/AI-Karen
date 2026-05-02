@@ -15,4 +15,6 @@ def evaluate_guardrails(candidate: MemoryCandidate) -> MemoryGuardDecision:
         return MemoryGuardDecision(GuardOutcome.REJECT, ["prompt_in_memory_attack"], 1.0, True)
     if risk >= 0.8:
         return MemoryGuardDecision(GuardOutcome.REQUIRES_REVIEW, ["high_risk_memory"], risk, True)
+    if candidate.metadata.get("contains_secret") or candidate.metadata.get("pii_detected"):
+        return MemoryGuardDecision(GuardOutcome.REQUIRES_REVIEW, ["sensitive_memory_requires_review"], max(risk, 0.85), True)
     return MemoryGuardDecision(GuardOutcome.ALLOW, reasons, risk, False)

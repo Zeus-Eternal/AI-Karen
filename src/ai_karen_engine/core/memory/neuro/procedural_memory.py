@@ -11,6 +11,9 @@ class ProceduralMemoryStore:
     def put(self, tenant_id: str, artifact: ProcedureArtifact) -> None:
         self._store.setdefault(tenant_id, []).append(artifact)
 
+    def count(self, tenant_id: str) -> int:
+        return len(self._store.get(tenant_id, []))
+
     def recall(self, tenant_id: str, trigger_text: str, limit: int = 3) -> List[ProcedureArtifact]:
         triggers = trigger_text.lower()
         items = self._store.get(tenant_id, [])
