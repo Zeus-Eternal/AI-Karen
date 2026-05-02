@@ -77,6 +77,8 @@ interface BackendPluginEntry {
     zone: string;
     label?: string;
     order?: number;
+    subzone?: string;
+    icon_path?: string;
   }>;
   /** UI section from plugin_manifest.json */
   ui?: {
@@ -88,6 +90,7 @@ interface BackendPluginEntry {
       label?: string;
       icon?: string;
       order?: number;
+      subzone?: string;
     }>;
   };
   /** RBAC config */
@@ -107,7 +110,9 @@ export interface MenuContribution {
   entryId: string;
   label: string;
   zone: string;
-  order: number;
+  order: number | null;
+  iconPath?: string;
+  subzone?: string;
 }
 
 /** Definition of a plugin's UI capabilities */
@@ -222,7 +227,9 @@ function normaliseEntry(raw: BackendPluginEntry): PluginCatalogEntry {
         entryId: `${id}-menu-${idx}`,
         label: m.label || raw.display_name || id,
         zone: PLACEMENT_TO_ZONE[m.placement || 'sidebar'] || 'sidebar.plugins',
-        order: m.order || 0,
+        order: m.order ?? null,
+        iconPath: m.icon,
+        subzone: m.subzone,
       });
     });
   }
@@ -235,7 +242,9 @@ function normaliseEntry(raw: BackendPluginEntry): PluginCatalogEntry {
             entryId: ep.entry_id,
             label: ep.label || raw.display_name || id,
             zone: ep.zone || 'sidebar.plugins',
-            order: ep.order || 0
+            order: ep.order ?? null,
+            subzone: ep.subzone,
+            iconPath: ep.icon_path
         });
     });
   }
@@ -331,7 +340,14 @@ export function PluginRegistryProvider({ children }: { children: ReactNode }) {
         }
       });
 
-      return contributions.sort((a, b) => a.order - b.order);
+      return contributions.sort((a, b) => {
+        const aHasOrder = a.order !== null;
+        const bHasOrder = b.order !== null;
+        if (aHasOrder && bHasOrder) return (a.order as number) - (b.order as number);
+        if (aHasOrder) return -1;
+        if (bHasOrder) return 1;
+        return a.label.localeCompare(b.label);
+      });
     },
     [state.plugins, user?.permissions]
   );

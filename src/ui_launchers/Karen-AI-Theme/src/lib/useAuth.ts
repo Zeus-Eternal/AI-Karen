@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { authService, AuthUser, LoginCredentials } from './auth';
 
 interface AuthState {
@@ -24,7 +24,7 @@ export function useAuth() {
       setState((prev: AuthState) => ({ ...prev, isLoading: true, error: null }));
 
       // Skip full validation if we have a fresh login session to prevent flash
-      const hasFreshLogin = (authService as { hasFreshLoginMarker?: () => boolean }).hasFreshLoginMarker?.() || false;
+      const hasFreshLogin = authService.hasFreshLoginMarker();
       const currentUser = authService.getCurrentUser();
       const hasAccessToken = !!authService.getAccessToken();
 

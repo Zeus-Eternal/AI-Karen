@@ -1350,7 +1350,6 @@ export default function ChatInterface() {
             const resolved = resolveProcessingStatus(
               statusKey,
               message,
-              variantIndex,
               {
                 ...(metadata || {}),
                 status: (metadata?.status as string | undefined) || statusKey,
