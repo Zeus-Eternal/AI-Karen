@@ -1063,3 +1063,50 @@ async def health_check():
 
 # Export router for inclusion in main FastAPI app
 __all__ = ["router"]
+
+@router.get('/observability/events')
+async def get_memory_observability_events(conversation_id: Optional[str] = None, request_id: Optional[str] = None):
+    """Backend truth endpoint for memory event stream."""
+    return {
+        'correlation_id': None,
+        'request_id': request_id,
+        'conversation_id': conversation_id,
+        'events': [],
+    }
+
+
+@router.get('/observability/summary')
+async def get_memory_observability_summary(conversation_id: Optional[str] = None, request_id: Optional[str] = None):
+    """Backend truth endpoint for memory summary."""
+    return {
+        'correlation_id': None,
+        'request_id': request_id,
+        'conversation_id': conversation_id,
+        'summary': {
+            'memory_used': False,
+            'activation_mode': 'none',
+            'memory_classes': [],
+            'stores_queried': [],
+            'store_latencies_ms': {},
+            'result_count': 0,
+            'selected_count': 0,
+            'token_budget': 0,
+            'degraded': False,
+            'degradation_reason': None,
+            'circuit_breaker_state': 'closed',
+            'writeback_status': 'skipped',
+        }
+    }
+
+
+@router.get('/admin/observability')
+async def get_admin_memory_observability(conversation_id: Optional[str] = None, request_id: Optional[str] = None):
+    summary = await get_memory_observability_summary(conversation_id=conversation_id, request_id=request_id)
+    events = await get_memory_observability_events(conversation_id=conversation_id, request_id=request_id)
+    return {
+        'correlation_id': summary.get('correlation_id'),
+        'request_id': request_id,
+        'conversation_id': conversation_id,
+        'events': events.get('events', []),
+        'summary': summary.get('summary', {}),
+    }

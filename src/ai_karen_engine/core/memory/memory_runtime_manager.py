@@ -22,6 +22,7 @@ import logging
 import uuid
 from contextlib import suppress
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
 from sqlalchemy import func, select
@@ -39,6 +40,7 @@ from .ledger_models import (
     ReinforcementEvent,
     RetentionPolicy,
 )
+from .neuro.activation_gate import decide_activation_mode
 from .scoring import MemoryWorthinessScorer
 from .signals import MemorySignal, get_signal_pipeline
 
@@ -149,6 +151,12 @@ class MemoryRuntimeManager:
 
         user_uuid = _coerce_uuid(user_id) if not isinstance(user_id, dict) else _coerce_uuid(user_id.get("user_id") or user_id.get("id"))
         tenant_uuid = _coerce_uuid(tenant_id) if tenant_id else None
+        activation = decide_activation_mode(
+            query=query or "",
+            latency_budget_ms=int(kwargs.get("latency_budget_ms", 250) or 250),
+            has_profile=bool(kwargs.get("has_profile", False)),
+        )
+        effective_top_k = min(max(int(top_k or 10), 1), max(int(activation.top_k), 1))
         
         async with self._db_session_factory() as session:
             # Simple lexical-ish fallback query on the ledger for now
@@ -161,7 +169,15 @@ class MemoryRuntimeManager:
             if query and len(query) > 2:
                 stmt = stmt.where(MemoryAssertion.content.ilike(f"%{query}%"))
                 
-            stmt = stmt.order_by(MemoryAssertion.created_at.desc()).limit(top_k)
+            if activation.mode.value == "none":
+                return {"results": [], "status": "success", "count": 0, "activation_mode": activation.mode.value}
+
+            if activation.mode.value == "profile":
+                stmt = stmt.where(MemoryAssertion.memory_class.in_(["profile", "semantic", "fact"]))
+            elif activation.mode.value == "procedural":
+                stmt = stmt.where(MemoryAssertion.memory_class.in_(["procedure", "tool_use", "workflow"]))
+
+            stmt = stmt.order_by(MemoryAssertion.created_at.desc()).limit(effective_top_k)
             result = await session.execute(stmt)
             items = result.scalars().all()
             
@@ -179,7 +195,8 @@ class MemoryRuntimeManager:
             return {
                 "results": formatted, 
                 "status": "success", 
-                "count": len(formatted)
+                "count": len(formatted),
+                "activation_mode": activation.mode.value,
             }
 
     def _schedule_background(self, coro: Any) -> None:
@@ -1159,6 +1176,25 @@ def get_memory_manager() -> MemoryRuntimeManager:
 def init_memory() -> MemoryRuntimeManager:
     """Compatibility initializer used by startup code."""
     logger.info("Initializing memory runtime manager")
+    repo_src = Path(__file__).resolve().parents[3] / "ai_karen_engine"
+    for py_file in repo_src.rglob("*.py"):
+        if "core/neuro_vault" in str(py_file):
+            continue
+        try:
+            text = py_file.read_text(encoding="utf-8")
+        except Exception:
+            continue
+        if "core.neuro_vault" in text or "from ai_karen_engine.core.neuro_vault" in text:
+            logger.warning(
+                "memory.neuro_vault_runtime_import_detected",
+                extra={
+                    "module": str(py_file.relative_to(repo_src)),
+                    "import_path": "ai_karen_engine.core.neuro_vault",
+                    "severity": "warning",
+                    "replacement": "ai_karen_engine.core.memory",
+                    "correlation_id": "startup-memory-audit",
+                },
+            )
     memory_manager._ensure_db_session_factory()
     return memory_manager
 
@@ -1169,11 +1205,16 @@ async def close() -> None:
 
 
 async def recall_context(
+    *,
     user_id: Any,
+    tenant_id: str,
     query: str,
+    conversation_id: Optional[str] = None,
+    session_id: Optional[str] = None,
     top_k: int = 10,
+    correlation_id: Optional[str] = None,
+    activation: Optional[Any] = None,
     tiers: Optional[Sequence[str]] = None,
-    tenant_id: Optional[str] = None,
     include_embeddings: bool = False,
     **kwargs,
 ) -> Dict[str, Any]:
@@ -1188,8 +1229,10 @@ async def recall_context(
         effective_top_k = int(kwargs.get("limit", top_k) or top_k)
         user_ctx = user_id if isinstance(user_id, dict) else kwargs.get("user_ctx")
         if isinstance(user_ctx, dict):
-            tenant_id = tenant_id or user_ctx.get("tenant_id")
             user_id = user_ctx.get("user_id") or user_ctx.get("id") or user_id
+
+        if not tenant_id:
+            raise ValueError("tenant_id is required for memory recall; refusing default tenant fallback")
 
         from .types import MemoryQuery
         from .retrieval.retrieval_router import get_retrieval_router
@@ -1198,7 +1241,7 @@ async def recall_context(
         query_model = MemoryQuery(
             text=str(query or ""),
             user_id=str(user_id) if user_id is not None else None,
-            tenant_id=str(tenant_id or "default"),
+            tenant_id=str(tenant_id),
             top_k=effective_top_k
         )
         
@@ -1241,11 +1284,14 @@ async def update_memory(
     if not content:
         return {"status": "noop", "memory_id": memory_id, "updated": False}
 
-    tenant_id = str(
-        (user_ctx or {}).get("tenant_id")
-        or kwargs.get("tenant_id")
-        or "default"
-    )
+    tenant_id = str((user_ctx or {}).get("tenant_id") or kwargs.get("tenant_id") or "")
+    if not tenant_id:
+        return {
+            "status": "rejected",
+            "memory_id": memory_id,
+            "updated": False,
+            "reason": "missing_tenant_id",
+        }
     user_id = str(
         (user_ctx or {}).get("user_id")
         or kwargs.get("user_id")
