@@ -92,6 +92,13 @@ export type ResponseDetailsPresentation = {
   reasonLabel: string;
   showTokensRow: boolean;
   tokensLabel: string;
+  memoryUsedLabel: string;
+  memoryClassesLabel: string;
+  recallModeLabel: string;
+  memorySourcesLabel: string;
+  memoryLatencyLabel: string;
+  memoryDegradedLabel: string;
+  writebackStatusLabel: string;
 };
 
 export type CompactBadgePresentation = {
@@ -736,6 +743,14 @@ export const deriveResponseDetailsPresentation = (
       ? `${totalTokens} total`
       : 'N/A';
 
+  const memoryUsedLabel = safeMetadata.memory_used ? 'yes' : 'no';
+  const memoryClassesLabel = toCleanString(safeMetadata.memory_classes || 'N/A');
+  const recallModeLabel = toCleanString(safeMetadata.memory_activation_mode || safeMetadata.recall_mode || 'N/A');
+  const memorySourcesLabel = toCleanString(safeMetadata.memory_sources || safeMetadata.stores_queried || 'N/A');
+  const memoryLatencyLabel = typeof safeMetadata.memory_latency_ms === 'number' ? `${safeMetadata.memory_latency_ms} ms` : 'N/A';
+  const memoryDegradedLabel = safeMetadata.memory_degraded ? 'yes' : 'no';
+  const writebackStatusLabel = toCleanString(safeMetadata.memory_writeback_status || 'N/A');
+
   return {
     hasMetadataDetails,
     requestedProviderLabel,
@@ -757,6 +772,13 @@ export const deriveResponseDetailsPresentation = (
     reasonLabel,
     showTokensRow,
     tokensLabel,
+    memoryUsedLabel,
+    memoryClassesLabel,
+    recallModeLabel,
+    memorySourcesLabel,
+    memoryLatencyLabel,
+    memoryDegradedLabel,
+    writebackStatusLabel,
   };
 };
 

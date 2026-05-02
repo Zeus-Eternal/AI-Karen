@@ -221,6 +221,7 @@ async def process_cognitive_request(
             mem_start = datetime.now()
             memory_context = await recall_context(
                 user_id=user_ctx.user_id,
+                tenant_id=user_ctx.tenant_id,
                 query=request.query,
                 top_k=10,
                 tiers=request.memory_tiers or ["short_term", "long_term"],
@@ -512,7 +513,11 @@ async def _check_memory_health() -> tuple[str, float, dict]:
     try:
         # Test memory recall with empty query (should not fail)
         test_recall = await recall_context(
-            user_id="health_check", query="test", top_k=1, tiers=["short_term"]
+            user_id="health_check",
+            tenant_id="health_check",
+            query="test",
+            top_k=1,
+            tiers=["short_term"],
         )
         latency = (datetime.now() - check_start).total_seconds() * 1000
         status = "healthy" if latency < 500 else "degraded"
