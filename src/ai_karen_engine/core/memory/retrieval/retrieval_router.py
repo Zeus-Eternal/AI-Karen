@@ -19,6 +19,7 @@ from ..neuro import (
     classify_memory_candidate,
     decide_activation_mode,
     evaluate_guardrails,
+    emit_memory_event,
 )
 from ..neuro.scoring import blended_score
 from ..types import MemoryEntry, MemoryMetadata, MemoryNamespace, MemoryQuery, MemoryType
@@ -37,12 +38,18 @@ class HybridRetrievalRouter:
 
     async def recall(self, query: MemoryQuery) -> List[MemoryEntry]:
         start = time.time()
+        correlation_id = str(uuid.uuid4())
+        emit_memory_event("memory.recall.started", {"correlation_id": correlation_id, "tenant_id": query.tenant_id, "user_id": query.user_id, "stores_queried": ["redis", "milvus", "elasticsearch"]})
         if not query.tenant_id or not query.user_id:
             logger.warning("memory.recall.degraded", extra={"reason": "missing_tenant_or_user"})
+            emit_memory_event("memory.recall.degraded", {"correlation_id": correlation_id, "tenant_id": query.tenant_id, "user_id": query.user_id, "degraded": True, "degradation_reason": "missing_tenant_or_user"})
             return []
 
+        emit_memory_event("memory.activation.started", {"correlation_id": correlation_id, "tenant_id": query.tenant_id, "user_id": query.user_id})
         activation = decide_activation_mode(query=query.text or "", latency_budget_ms=300)
+        emit_memory_event("memory.activation.completed", {"correlation_id": correlation_id, "tenant_id": query.tenant_id, "user_id": query.user_id, "memory_activation_mode": activation.mode.value, "token_budget": activation.top_k})
 
+        emit_memory_event("memory.recall.store.started", {"correlation_id": correlation_id, "tenant_id": query.tenant_id, "user_id": query.user_id, "stores_queried": ["redis"]})
         hot = await self.safe_runner.run_stage(
             "memory_fast_recall",
             "memory_learning_enabled",
@@ -51,6 +58,8 @@ class HybridRetrievalRouter:
             tenant_id=str(query.tenant_id),
             user_id=str(query.user_id),
         ) or []
+        emit_memory_event("memory.recall.store.completed", {"correlation_id": correlation_id, "tenant_id": query.tenant_id, "user_id": query.user_id, "stores_queried": ["redis"], "result_count": len(hot)})
+        emit_memory_event("memory.recall.store.started", {"correlation_id": correlation_id, "tenant_id": query.tenant_id, "user_id": query.user_id, "stores_queried": ["milvus", "elasticsearch"]})
         dense_task = asyncio.create_task(self.safe_runner.run_stage(
             "memory_dense_recall",
             "memory_learning_enabled",
@@ -70,9 +79,11 @@ class HybridRetrievalRouter:
         dense, lexical = await asyncio.gather(dense_task, lexical_task)
         dense = dense or []
         lexical = lexical or []
+        emit_memory_event("memory.recall.store.completed", {"correlation_id": correlation_id, "tenant_id": query.tenant_id, "user_id": query.user_id, "stores_queried": ["milvus", "elasticsearch"], "result_count": len(dense) + len(lexical)})
 
         graph: List[MemoryEntry] = []
         if activation.include_graph:
+            emit_memory_event("memory.recall.store.started", {"correlation_id": correlation_id, "tenant_id": query.tenant_id, "user_id": query.user_id, "stores_queried": ["graph"]})
             graph = await self.safe_runner.run_stage(
                 "memory_graph_expansion",
                 "memory_learning_enabled",
@@ -81,9 +92,14 @@ class HybridRetrievalRouter:
                 tenant_id=str(query.tenant_id),
                 user_id=str(query.user_id),
             ) or []
+            emit_memory_event("memory.recall.store.completed", {"correlation_id": correlation_id, "tenant_id": query.tenant_id, "user_id": query.user_id, "stores_queried": ["graph"], "result_count": len(graph)})
 
+        emit_memory_event("memory.profile.started", {"correlation_id": correlation_id, "tenant_id": query.tenant_id, "user_id": query.user_id})
         profile = await self._query_profile(query) if activation.include_profile else []
+        emit_memory_event("memory.profile.completed", {"correlation_id": correlation_id, "tenant_id": query.tenant_id, "user_id": query.user_id, "result_count": len(profile)})
+        emit_memory_event("memory.procedural.started", {"correlation_id": correlation_id, "tenant_id": query.tenant_id, "user_id": query.user_id})
         procedural = await self._query_procedural(query) if activation.include_procedural else []
+        emit_memory_event("memory.procedural.completed", {"correlation_id": correlation_id, "tenant_id": query.tenant_id, "user_id": query.user_id, "result_count": len(procedural)})
 
         fused = reciprocal_rank_fusion({
             "hot": hot,
@@ -93,11 +109,14 @@ class HybridRetrievalRouter:
             "profile": profile,
             "procedural": procedural,
         })
+        emit_memory_event("memory.recall.fusion.completed", {"correlation_id": correlation_id, "tenant_id": query.tenant_id, "user_id": query.user_id, "result_count": len(fused)})
 
         guarded: List[MemoryEntry] = []
         for e in dedupe_by_id(fused):
             candidate = self._to_candidate(e, query)
+            emit_memory_event("memory.guard.started", {"correlation_id": correlation_id, "tenant_id": query.tenant_id, "user_id": query.user_id, "memory_classes": [candidate.memory_class.value]})
             guard = evaluate_guardrails(candidate)
+            emit_memory_event("memory.guard.completed", {"correlation_id": correlation_id, "tenant_id": query.tenant_id, "user_id": query.user_id, "memory_classes": [candidate.memory_class.value], "degraded": guard.outcome.value in {"reject", "quarantine"}, "degradation_reason": ",".join(guard.reasons) if guard.reasons else None})
             if guard.outcome.value in {"reject", "quarantine"}:
                 continue
             e.relevance = blended_score(candidate)
@@ -117,6 +136,7 @@ class HybridRetrievalRouter:
                 "activation_mode": activation.mode.value,
             },
         )
+        emit_memory_event("memory.recall.completed", {"correlation_id": correlation_id, "tenant_id": query.tenant_id, "user_id": query.user_id, "memory_activation_mode": activation.mode.value, "stores_queried": ["redis", "milvus", "elasticsearch"] + (["graph"] if activation.include_graph else []), "result_count": len(fused), "selected_count": len(ranked)})
         return ranked
 
     async def _query_redis(self, query: MemoryQuery) -> List[MemoryEntry]:

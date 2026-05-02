@@ -350,6 +350,17 @@ class MemoryWritebackSystem:
 
                 except Exception as e:
                     logger.error(f"Failed to process writeback entry {entry.id}: {e}")
+                    emit_memory_event(
+                        "memory.writeback.failed",
+                        {
+                            "correlation_id": entry.correlation_id,
+                            "user_id": entry.user_id,
+                            "tenant_id": entry.org_id,
+                            "writeback_status": "failed",
+                            "degraded": True,
+                            "degradation_reason": str(e),
+                        },
+                    )
                     continue
 
             # Update metrics
@@ -452,6 +463,15 @@ class MemoryWritebackSystem:
         base_candidate.memory_class = classify_memory_candidate(base_candidate)
         guard = evaluate_guardrails(base_candidate)
         if guard.outcome.value in {"reject", "quarantine"}:
+            emit_memory_event(
+                "memory.quarantine.created",
+                {
+                    "correlation_id": entry.correlation_id,
+                    "user_id": entry.user_id,
+                    "tenant_id": entry.org_id,
+                    "memory_classes": [MemoryClass.QUARANTINE.value],
+                },
+            )
             return [WritebackCandidate("quarantine", text, MemoryClass.QUARANTINE, 0.0, True, {"guard_reasons": guard.reasons})]
 
         sensitivity_markers = {"health", "court", "legal", "financial", "religion", "political", "intimate"}
@@ -462,6 +482,16 @@ class MemoryWritebackSystem:
         requires_review = is_sensitive or consolidation.requires_review or score < 0.55
 
         ctype = "profile_fact" if base_candidate.memory_class == MemoryClass.SEMANTIC else "deadline" if "deadline" in lower or "by friday" in lower else "procedure" if base_candidate.memory_class == MemoryClass.PROCEDURAL else "lesson" if base_candidate.memory_class == MemoryClass.LESSON else "project_fact"
+        if ctype == "lesson":
+            emit_memory_event(
+                "memory.lesson.created",
+                {"correlation_id": entry.correlation_id, "user_id": entry.user_id, "tenant_id": entry.org_id},
+            )
+        if ctype == "procedure" and not requires_review:
+            emit_memory_event(
+                "memory.procedure.promoted",
+                {"correlation_id": entry.correlation_id, "user_id": entry.user_id, "tenant_id": entry.org_id},
+            )
         return [WritebackCandidate(ctype, text, base_candidate.memory_class, score, requires_review, {"consolidation_reason": consolidation.reason})]
 
     async def calculate_feedback_metrics(
