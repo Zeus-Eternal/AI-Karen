@@ -16,6 +16,8 @@ def reciprocal_rank_fusion(scored_lists: Dict[str, List[MemoryEntry]], k: int = 
     ranked = sorted(best.values(), key=lambda e: fused.get(e.id, 0.0), reverse=True)
     for entry in ranked:
         entry.relevance = max(entry.relevance, fused.get(entry.id, 0.0))
+        if entry.metadata:
+            entry.metadata.custom["fusion_score"] = fused.get(entry.id, 0.0)
     return ranked
 
 

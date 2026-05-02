@@ -24,6 +24,7 @@ from ..neuro import (
 from ..neuro.scoring import blended_score
 from ..types import MemoryEntry, MemoryMetadata, MemoryNamespace, MemoryQuery, MemoryType
 from .fusion import dedupe_by_id, reciprocal_rank_fusion
+from .rerank import rerank_entries
 
 logger = logging.getLogger(__name__)
 
@@ -49,37 +50,33 @@ class HybridRetrievalRouter:
         activation = decide_activation_mode(query=query.text or "", latency_budget_ms=300)
         emit_memory_event("memory.activation.completed", {"correlation_id": correlation_id, "tenant_id": query.tenant_id, "user_id": query.user_id, "memory_activation_mode": activation.mode.value, "token_budget": activation.top_k})
 
-        emit_memory_event("memory.recall.store.started", {"correlation_id": correlation_id, "tenant_id": query.tenant_id, "user_id": query.user_id, "stores_queried": ["redis"]})
-        hot = await self.safe_runner.run_stage(
-            "memory_fast_recall",
-            "memory_learning_enabled",
-            self._query_redis,
-            query,
-            tenant_id=str(query.tenant_id),
-            user_id=str(query.user_id),
-        ) or []
-        emit_memory_event("memory.recall.store.completed", {"correlation_id": correlation_id, "tenant_id": query.tenant_id, "user_id": query.user_id, "stores_queried": ["redis"], "result_count": len(hot)})
-        emit_memory_event("memory.recall.store.started", {"correlation_id": correlation_id, "tenant_id": query.tenant_id, "user_id": query.user_id, "stores_queried": ["milvus", "elasticsearch"]})
-        dense_task = asyncio.create_task(self.safe_runner.run_stage(
-            "memory_dense_recall",
-            "memory_learning_enabled",
-            self._query_milvus,
-            query,
-            tenant_id=str(query.tenant_id),
-            user_id=str(query.user_id),
-        ))
-        lexical_task = asyncio.create_task(self.safe_runner.run_stage(
-            "memory_lexical_recall",
-            "memory_learning_enabled",
-            self._query_elastic,
-            query,
-            tenant_id=str(query.tenant_id),
-            user_id=str(query.user_id),
-        ))
-        dense, lexical = await asyncio.gather(dense_task, lexical_task)
-        dense = dense or []
-        lexical = lexical or []
-        emit_memory_event("memory.recall.store.completed", {"correlation_id": correlation_id, "tenant_id": query.tenant_id, "user_id": query.user_id, "stores_queried": ["milvus", "elasticsearch"], "result_count": len(dense) + len(lexical)})
+        should_query_semantic = activation.mode.value in {"fast", "deep", "graph", "profile"}
+        should_query_lexical = activation.mode.value in {"fast", "deep", "procedural", "profile"}
+        hot: List[MemoryEntry] = []
+        dense: List[MemoryEntry] = []
+        lexical: List[MemoryEntry] = []
+        if activation.mode.value != "none":
+            emit_memory_event("memory.recall.store.started", {"correlation_id": correlation_id, "tenant_id": query.tenant_id, "user_id": query.user_id, "stores_queried": ["redis"]})
+            hot = await self.safe_runner.run_stage(
+                "memory_fast_recall", "memory_learning_enabled", self._query_redis, query, tenant_id=str(query.tenant_id), user_id=str(query.user_id)
+            ) or []
+            emit_memory_event("memory.recall.store.completed", {"correlation_id": correlation_id, "tenant_id": query.tenant_id, "user_id": query.user_id, "stores_queried": ["redis"], "result_count": len(hot)})
+        store_tasks = []
+        stores = []
+        if should_query_semantic:
+            stores.append("milvus")
+            store_tasks.append(asyncio.create_task(self.safe_runner.run_stage("memory_dense_recall", "memory_learning_enabled", self._query_milvus, query, tenant_id=str(query.tenant_id), user_id=str(query.user_id))))
+        if should_query_lexical:
+            stores.append("elasticsearch")
+            store_tasks.append(asyncio.create_task(self.safe_runner.run_stage("memory_lexical_recall", "memory_learning_enabled", self._query_elastic, query, tenant_id=str(query.tenant_id), user_id=str(query.user_id))))
+        if stores:
+            emit_memory_event("memory.recall.store.started", {"correlation_id": correlation_id, "tenant_id": query.tenant_id, "user_id": query.user_id, "stores_queried": stores})
+            store_results = await asyncio.gather(*store_tasks)
+            if should_query_semantic:
+                dense = (store_results[0] if store_results else []) or []
+            if should_query_lexical:
+                lexical = (store_results[-1] if store_results else []) or []
+            emit_memory_event("memory.recall.store.completed", {"correlation_id": correlation_id, "tenant_id": query.tenant_id, "user_id": query.user_id, "stores_queried": stores, "result_count": len(dense) + len(lexical)})
 
         graph: List[MemoryEntry] = []
         if activation.include_graph:
@@ -125,7 +122,9 @@ class HybridRetrievalRouter:
                 e.metadata.custom["used_in_prompt"] = False
             guarded.append(e)
 
-        ranked = sorted(guarded, key=lambda x: x.relevance, reverse=True)[: query.top_k]
+        ranked = rerank_entries(guarded, query.top_k)
+        if not ranked:
+            emit_memory_event("memory.recall.degraded", {"correlation_id": correlation_id, "tenant_id": query.tenant_id, "user_id": query.user_id, "degraded": True, "degradation_reason": "no_results_after_guardrails"})
         logger.info(
             "memory.recall.completed",
             extra={
@@ -191,7 +190,7 @@ class HybridRetrievalRouter:
             source=source,
             custom={
                 "source_store": source,
-                "provenance": {"store": source, "retrieved_at": datetime.utcnow().isoformat()},
+                "provenance": {"store": source, "retrieved_at": datetime.utcnow().isoformat(), "query": query.text or ""},
                 "semantic_similarity": semantic,
                 "lexical_match": lexical,
                 "freshness": 1.0,
@@ -236,6 +235,7 @@ class HybridRetrievalRouter:
             metadata=custom,
         )
         candidate.memory_class = classify_memory_candidate(candidate)
+        candidate.metadata["memory_class"] = candidate.memory_class.value
         candidate.metadata["memory_class_weight"] = {
             "stm": 1.0,
             "episodic": 0.95,

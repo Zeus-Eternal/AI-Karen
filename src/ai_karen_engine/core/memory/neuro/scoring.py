@@ -16,6 +16,7 @@ def blended_score(candidate: MemoryCandidate) -> float:
     trust = float(m.get("source_trust", 1.0))
     tenant_match = float(m.get("tenant_match", 1.0))
     procedure_success = float(m.get("procedure_success_rate", 0.0))
+    fusion_score = float(m.get("fusion_score", 0.0))
     penalty = float(m.get("correction_penalty", 0.0)) + float(m.get("quarantine_penalty", 0.0))
     return max(
         0.0,
@@ -32,6 +33,7 @@ def blended_score(candidate: MemoryCandidate) -> float:
             + (trust * 0.06)
             + (tenant_match * 0.05)
             + (procedure_success * 0.05)
+            + (min(1.0, fusion_score * 10.0) * 0.06)
             - penalty,
         ),
     )
