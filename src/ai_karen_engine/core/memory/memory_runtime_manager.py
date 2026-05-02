@@ -40,6 +40,7 @@ from .ledger_models import (
     ReinforcementEvent,
     RetentionPolicy,
 )
+from .neuro.activation_gate import decide_activation_mode
 from .scoring import MemoryWorthinessScorer
 from .signals import MemorySignal, get_signal_pipeline
 
@@ -150,6 +151,12 @@ class MemoryRuntimeManager:
 
         user_uuid = _coerce_uuid(user_id) if not isinstance(user_id, dict) else _coerce_uuid(user_id.get("user_id") or user_id.get("id"))
         tenant_uuid = _coerce_uuid(tenant_id) if tenant_id else None
+        activation = decide_activation_mode(
+            query=query or "",
+            latency_budget_ms=int(kwargs.get("latency_budget_ms", 250) or 250),
+            has_profile=bool(kwargs.get("has_profile", False)),
+        )
+        effective_top_k = min(max(int(top_k or 10), 1), max(int(activation.top_k), 1))
         
         async with self._db_session_factory() as session:
             # Simple lexical-ish fallback query on the ledger for now
@@ -162,7 +169,15 @@ class MemoryRuntimeManager:
             if query and len(query) > 2:
                 stmt = stmt.where(MemoryAssertion.content.ilike(f"%{query}%"))
                 
-            stmt = stmt.order_by(MemoryAssertion.created_at.desc()).limit(top_k)
+            if activation.mode.value == "none":
+                return {"results": [], "status": "success", "count": 0, "activation_mode": activation.mode.value}
+
+            if activation.mode.value == "profile":
+                stmt = stmt.where(MemoryAssertion.memory_class.in_(["profile", "semantic", "fact"]))
+            elif activation.mode.value == "procedural":
+                stmt = stmt.where(MemoryAssertion.memory_class.in_(["procedure", "tool_use", "workflow"]))
+
+            stmt = stmt.order_by(MemoryAssertion.created_at.desc()).limit(effective_top_k)
             result = await session.execute(stmt)
             items = result.scalars().all()
             
@@ -180,7 +195,8 @@ class MemoryRuntimeManager:
             return {
                 "results": formatted, 
                 "status": "success", 
-                "count": len(formatted)
+                "count": len(formatted),
+                "activation_mode": activation.mode.value,
             }
 
     def _schedule_background(self, coro: Any) -> None:
