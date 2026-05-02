@@ -8,7 +8,7 @@
     "requires_api_key": false,
     "default_model": "auto",
     "health_status": "unhealthy",
-    "last_health_check": 1777681924.3050942,
+    "last_health_check": 1777701165.0405123,
     "error_message": "builtin_vllm unreachable at http://vllm:8000/health: [Errno 111] Connection refused"
   },
   {
@@ -19,9 +19,9 @@
     "supports_embeddings": true,
     "requires_api_key": false,
     "default_model": "auto",
-    "health_status": "healthy",
-    "last_health_check": 1777681924.305804,
-    "error_message": null
+    "health_status": "unhealthy",
+    "last_health_check": 1777701165.0616798,
+    "error_message": "'TransformersRuntime' object has no attribute '_resolve_model_name'"
   },
   {
     "name": "ollama",
@@ -32,7 +32,7 @@
     "requires_api_key": false,
     "default_model": "starcoder:128k",
     "health_status": "healthy",
-    "last_health_check": 1777681924.3087058,
+    "last_health_check": 1777701165.0648391,
     "error_message": null
   },
   {
@@ -56,7 +56,7 @@
     "requires_api_key": true,
     "default_model": "glm-4.5",
     "health_status": "unhealthy",
-    "last_health_check": 1777681924.719616,
+    "last_health_check": 1777701165.8683262,
     "error_message": "Error code: 401 - {'error': {'code': '401', 'message': 'token expired or incorrect'}}"
   },
   {
@@ -68,7 +68,7 @@
     "requires_api_key": true,
     "default_model": "gemini-2.5-flash",
     "health_status": "unhealthy",
-    "last_health_check": 1777681925.0587902,
+    "last_health_check": 1777701166.3440921,
     "error_message": "Quota exceeded or rate limited"
   },
   {
@@ -116,7 +116,7 @@
     "requires_api_key": false,
     "default_model": "kari-fallback-v1",
     "health_status": "degraded",
-    "last_health_check": 1777681925.0597749,
+    "last_health_check": 1777701166.3448343,
     "error_message": null
   },
   {
@@ -128,7 +128,7 @@
     "requires_api_key": false,
     "default_model": "Phi-3-mini-4k-instruct-q4.gguf",
     "health_status": "unhealthy",
-    "last_health_check": 1777681925.0603597,
+    "last_health_check": 1777701166.3456893,
     "error_message": "No OpenAI API key provided. Set OPENAI_API_KEY environment variable."
   },
   {
@@ -140,7 +140,7 @@
     "requires_api_key": false,
     "default_model": "Phi-3-mini-4k-instruct-q4.gguf",
     "health_status": "unhealthy",
-    "last_health_check": 1777681925.0609155,
+    "last_health_check": 1777701166.346133,
     "error_message": "No OpenAI API key provided. Set OPENAI_API_KEY environment variable."
   }
 ]

@@ -252,6 +252,7 @@ export {
   getStreamingDisplay,
   getStreamingIcon,
   getStreamingToneClassName,
+  getProcessingStatusMessageVariant,
   isActiveStreamingPhase,
   isBusyProcessingState,
   normalizeProcessingState,
