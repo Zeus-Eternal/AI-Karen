@@ -5,6 +5,7 @@
  * when a provider fails and the system recovers through runtime fallback.
  */
 
+import { describe, it, expect } from 'vitest';
 import {
   deriveDegradedPresentation,
   deriveResponseDetailsPresentation,

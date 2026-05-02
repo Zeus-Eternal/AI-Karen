@@ -192,21 +192,19 @@ export function PluginDetailsModal({
   onOpenChange,
   onInstall,
 }: PluginDetailsModalProps) {
-  // Early return for invalid props
-  if (!details?.plugin) {
-    return null;
-  }
-
-  const plugin = details.plugin;
-
   // All React hooks must be called unconditionally at the top level
   const dependencies = useMemo(
-    () => getUniqueStrings(plugin?.dependencies),
-    [plugin?.dependencies],
+    () => getUniqueStrings(details?.plugin?.dependencies),
+    [details?.plugin?.dependencies],
   );
-  const tags = useMemo(() => getUniqueStrings(plugin?.tags), [plugin?.tags]);
+  const tags = useMemo(() => getUniqueStrings(details?.plugin?.tags), [details?.plugin?.tags]);
   const externalLinks = useMemo<ExternalLinkConfig[]>(() => {
     const links: ExternalLinkConfig[] = [];
+    const plugin = details?.plugin;
+
+    if (!plugin) {
+      return links;
+    }
 
     const homepageUrl = getSafeUrl(plugin.homepage_url);
     const repositoryUrl = getSafeUrl(plugin.repository_url);
@@ -237,7 +235,14 @@ export function PluginDetailsModal({
     }
 
     return links;
-  }, [plugin]);
+  }, [details?.plugin]);
+
+  // Early return for invalid props
+  if (!details?.plugin) {
+    return null;
+  }
+
+  const plugin = details.plugin;
 
   // Computed values (not hooks)
   const title = getPluginTitle(plugin);

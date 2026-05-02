@@ -24,6 +24,8 @@ interface CronJob {
   enabled: boolean;
   created_at: string;
   updated_at: string;
+  taskName?: string;
+  nextRun?: string;
 }
 
 interface Task {
@@ -220,17 +222,17 @@ export default function CronJobsPage() {
           {jobs.map((job, index) => (
             <Card key={job.id || index}>
               <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-base flex items-center">
-                        <Badge variant="outline" className="mr-3 text-sm font-mono">{job.schedule}</Badge>
-                        {job.taskName}
-                        <Badge variant={job.type === 'Sequence' ? "default" : "secondary"} className="ml-3 text-xs">{job.type}</Badge>
-                    </CardTitle>
-                    <CardDescription className="text-xs mt-1">
-                        Next scheduled run: {job.nextRun}
-                    </CardDescription>
-                  </div>
+                 <div className="flex justify-between items-start">
+                   <div>
+                     <CardTitle className="text-base flex items-center">
+                         <Badge variant="outline" className="mr-3 text-sm font-mono">{job.schedule}</Badge>
+                         {job.taskName || 'Unnamed Task'}
+                         <Badge variant={job.type === 'Sequence' ? "default" : "secondary"} className="ml-3 text-xs">{job.type}</Badge>
+                     </CardTitle>
+                     <CardDescription className="text-xs mt-1">
+                         Next scheduled run: {job.nextRun || 'Not scheduled'}
+                     </CardDescription>
+                   </div>
                   <div className="flex items-center space-x-1">
                       <Switch 
                         checked={job.enabled} 

@@ -1,6 +1,6 @@
 {
-  "provider": "ollama",
-  "model": "qwen3:4b",
+  "provider": "builtin_vllm",
+  "model": "gpt2",
   "use_memory": true,
   "context_length": 512,
   "decay": 0.1,
@@ -75,7 +75,7 @@
       }
     }
   },
-  "last_selected_model": "qwen3:4b",
+  "last_selected_model": "gpt2",
   "model_providers": {
     "zai": {
       "last_model": "glm-4.7-flash",
@@ -109,7 +109,7 @@
     },
     "ollama": {
       "last_model": "qwen3:4b",
-      "base_url": "http://host.docker.internal:11434/api",
+      "base_url": "http://host.docker.internal:11434",
       "runtime_source": "host"
     }
   }

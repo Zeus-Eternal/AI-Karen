@@ -11,9 +11,9 @@ type ViewMode = 'snippet' | 'markdown' | 'json';
 /**
  * Enhanced function to send rich content to the main Karen chat
  */
-const sendToChat = (item: SearchResultItem | SearchSourceItem): void => {
+const sendToChat = (item: any) => {
   let content = `I found this information for you:\n\n**${item.title || 'Search Result'}**\n\n`;
-
+  
   if (item.extracted_data || item.extractedData) {
     const data = item.extracted_data || item.extractedData;
     content += `### Structured Data\n\`\`\`json\n${JSON.stringify(data, null, 2)}\n\`\`\`\n\n`;
@@ -60,8 +60,8 @@ function ViewToggle({ active, onClick, label, icon }: { active: boolean; onClick
 }
 
 export function ResultsPanel({ response }: PanelProps) {
-  const results = useMemo(() => response.results || [], [response.results]);
-  const sources = useMemo(() => response.sources || [], [response.sources]);
+  const results = response.results || [];
+  const sources = response.sources || [];
   const initialActiveSourceIndex = useMemo(() => getMostRelevantSourceIndex(sources), [sources]);
   const [activeSourceIndex, setActiveSourceIndex] = useState(initialActiveSourceIndex);
   const [sourceViewMode, setSourceViewMode] = useState<ViewMode>('snippet');
@@ -256,7 +256,7 @@ export function ResultsPanel({ response }: PanelProps) {
 }
 
 export function SourcesPanel({ response }: PanelProps) {
-  const sources = useMemo(() => response.sources || [], [response.sources]);
+  const sources = response.sources || [];
   const initialActiveSourceIndex = useMemo(() => getMostRelevantSourceIndex(sources), [sources]);
   const [activeSourceIndex, setActiveSourceIndex] = useState(initialActiveSourceIndex);
   const [sourceViewMode, setSourceViewMode] = useState<ViewMode>('snippet');
@@ -374,7 +374,7 @@ export function SourcesPanel({ response }: PanelProps) {
   );
 }
 
-function ResultCard({ result, index, onSend }: { result: SearchResultItem; index: number; onSend: (item: SearchResultItem) => void }) {
+function ResultCard({ result, index, onSend }: { result: SearchResultItem; index: number; onSend: (item: any) => void }) {
   const [viewMode, setViewMode] = useState<ViewMode>('snippet');
 
   return (

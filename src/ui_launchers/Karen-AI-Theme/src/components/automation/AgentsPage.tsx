@@ -122,74 +122,84 @@ export default function AgentsPage() {
     setNewAgentTools([]);
   };
 
-  const loadToolInventory = useCallback(async () => {
-    try {
-      const { apiClient } = await import("@/lib/api");
+    const loadToolInventory = useCallback(async () => {
+        try {
+            const { apiClient } = await import("@/lib/api");
 
-      const [toolsResponse, pluginsResponse, publicPluginsResponse] = await Promise.allSettled([
-        apiClient.get<{ tools?: ToolRecord[] }>("/api/tools"),
-        apiClient.get<{ plugins?: PluginRecord[] }>("/api/plugins"),
-        apiClient.get<{ plugins?: PluginRecord[] }>("/api/public/plugins"),
-      ]);
+            const [toolsResponse, pluginsResponse, publicPluginsResponse] = await Promise.allSettled([
+                apiClient.get<{ tools?: ToolRecord[] }>("/api/tools"),
+                apiClient.get<{ plugins?: PluginRecord[] }>("/api/plugins"),
+                apiClient.get<{ plugins?: PluginRecord[] }>("/api/public/plugins"),
+            ]);
 
-      const nextGroups = new Map<string, ToolOption[]>();
+            const nextGroups = new Map<string, ToolOption[]>();
 
-      if (toolsResponse.status === "fulfilled") {
-        for (const tool of toolsResponse.value?.tools || []) {
-          const category = tool.category?.trim() || "General Tools";
-          const next = nextGroups.get(category) || [];
-          next.push({
-            id: tool.name,
-            label: tool.name,
-            description: tool.description,
-            source: "system",
-            group: category,
-          });
-          nextGroups.set(category, next);
+            if (toolsResponse.status === "fulfilled") {
+                for (const tool of toolsResponse.value?.tools || []) {
+                    const category = tool.category?.trim() || "General Tools";
+                    const next = nextGroups.get(category) || [];
+                    next.push({
+                        id: tool.name,
+                        label: tool.name,
+                        description: tool.description,
+                        source: "system",
+                        group: category,
+                    });
+                    nextGroups.set(category, next);
+                }
+            }
+
+            let pluginSource: PluginRecord[] = [];
+            if (pluginsResponse.status === "fulfilled") {
+                pluginSource = pluginsResponse.value?.plugins || [];
+            } else if (publicPluginsResponse.status === "fulfilled") {
+                pluginSource = publicPluginsResponse.value?.plugins || [];
+            }
+
+            const installed = pluginSource
+                .filter((plugin) => plugin.status === "installed")
+                .sort((left, right) =>
+                    (left.display_name || left.name).localeCompare(right.display_name || right.name)
+                );
+
+            setInstalledPlugins(installed);
+
+            for (const plugin of installed) {
+                const category = plugin.category?.trim() || "Plugins";
+                const next = nextGroups.get(category) || [];
+                next.push({
+                    id: plugin.name,
+                    label: plugin.display_name || plugin.name,
+                    description: plugin.description,
+                    source: "plugin",
+                    group: category,
+                });
+                nextGroups.set(category, next);
+            }
+
+            const grouped: [string, ToolOption[]][] = [];
+            for (const [groupName, tools] of nextGroups.entries()) {
+                grouped.push([
+                    groupName,
+                    tools.sort((left, right) => left.label.localeCompare(right.label)),
+                ]);
+            }
+
+            grouped.sort((left, right) => {
+                const leftGroup = left[0];
+                const rightGroup = right[0];
+                if (typeof leftGroup === 'string' && typeof rightGroup === 'string') {
+                    return leftGroup.localeCompare(rightGroup);
+                }
+                return 0;
+            });
+            setAvailableToolGroups(grouped);
+        } catch (err) {
+            console.error("Failed to load tools/plugins:", err);
+            setAvailableToolGroups([]);
+            setInstalledPlugins([]);
         }
-      }
-
-      let pluginSource: PluginRecord[] = [];
-      if (pluginsResponse.status === "fulfilled") {
-        pluginSource = pluginsResponse.value?.plugins || [];
-      } else if (publicPluginsResponse.status === "fulfilled") {
-        pluginSource = publicPluginsResponse.value?.plugins || [];
-      }
-
-      const installed = pluginSource
-        .filter((plugin) => plugin.status === "installed")
-        .sort((left, right) =>
-          (left.display_name || left.name).localeCompare(right.display_name || right.name)
-        );
-
-      setInstalledPlugins(installed);
-
-      for (const plugin of installed) {
-        const category = plugin.category?.trim() || "Plugins";
-        const next = nextGroups.get(category) || [];
-        next.push({
-          id: plugin.name,
-          label: plugin.display_name || plugin.name,
-          description: plugin.description,
-          source: "plugin",
-          group: category,
-        });
-        nextGroups.set(category, next);
-      }
-
-      const grouped = Array.from(nextGroups.entries()).map(([groupName, tools]) => [
-        groupName,
-        tools.sort((left, right) => left.label.localeCompare(right.label)),
-      ]);
-
-      grouped.sort((left, right) => left[0].localeCompare(right[0]));
-      setAvailableToolGroups(grouped);
-    } catch (err) {
-      console.error("Failed to load tools/plugins:", err);
-      setAvailableToolGroups([]);
-      setInstalledPlugins([]);
-    }
-  }, []);
+    }, []);
 
    const fetchAgents = useCallback(async () => {
      if (!isAuthenticated) {

@@ -131,25 +131,26 @@ export const useAgentStore = create<AgentState>((set, get) => ({
           loading: { ...state.loading, [agentId]: false }
         };
       });
-    } catch (err: unknown) {
-      set((state) => {
-        const existing = state.messages[agentId] || [];
-        const filtered = existing.filter(m => m.id !== loadingMessageId);
-        
-        const errorMessage: ExtendedMessage = {
-          id: `msg_err_${Date.now()}`,
-          role: 'system',
-          content: `Error: ${err.message || 'Failed to connect to agent.'}`,
-          timestamp: Date.now(),
-          isLoading: false
-        };
+     } catch (err: unknown) {
+       const errorMsg = err instanceof Error ? err.message : 'Failed to connect to agent.';
+       set((state) => {
+         const existing = state.messages[agentId] || [];
+         const filtered = existing.filter(m => m.id !== loadingMessageId);
+         
+         const errorMessage: ExtendedMessage = {
+           id: `msg_err_${Date.now()}`,
+           role: 'system',
+           content: \`Error: ${errorMsg}\`,
+           timestamp: Date.now(),
+           isLoading: false
+         };
 
-        return {
-          messages: { ...state.messages, [agentId]: [...filtered, errorMessage] },
-          loading: { ...state.loading, [agentId]: false },
-          error: { ...state.error, [agentId]: err.message }
-        };
-      });
-    }
+         return {
+           messages: { ...state.messages, [agentId]: [...filtered, errorMessage] },
+           loading: { ...state.loading, [agentId]: false },
+           error: { ...state.error, [agentId]: errorMsg }
+         };
+       });
+     }
   }
 }));

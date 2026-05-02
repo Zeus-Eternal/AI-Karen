@@ -31,14 +31,14 @@ export default function DateTimePluginPage() {
        <Alert>
         <Info className="h-4 w-4" />
         <AlertTitle>How to Use Date & Time Features</AlertTitle>
-        <AlertDescription>
-          <p>You can ask Karen AI for the current date or time directly in the chat interface. For example:</p>
-          <ul className="list-disc list-inside pl-4 mt-1 text-xs">
-              <li>"What's the date today?"</li>
-              <li>"What time is it?"</li>
-              <li>"What's the time in London?" or "Time in Detroit, MI"</li>
-          </ul>
-        </AlertDescription>
+           <AlertDescription>
+           <p>You can ask Karen AI for the current date or time directly in the chat interface. For example:</p>
+           <ul className="list-disc list-inside pl-4 mt-1 text-xs">
+               <li>&quot;What&apos;s the date today?&quot;</li>
+               <li>&quot;What time is it?&quot;</li>
+               <li>&quot;What&apos;s the time in London?&quot; or &quot;Time in Detroit, MI&quot;</li>
+           </ul>
+         </AlertDescription>
       </Alert>
 
       <Card>
@@ -53,20 +53,20 @@ export default function DateTimePluginPage() {
             <CalendarDays className="mr-3 h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
             <div>
               <h4 className="font-medium">Current Date</h4>
-              <p className="text-xs text-muted-foreground">
-                Provided based on the server's current system settings.
-              </p>
+               <p className="text-xs text-muted-foreground">
+                 Provided based on the server&apos;s current system settings.
+               </p>
             </div>
           </div>
           <div className="flex items-start">
             <Clock className="mr-3 h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
             <div>
               <h4 className="font-medium">Current Time</h4>
-              <p className="text-xs text-muted-foreground">
-                - For general queries ("What time is it?"): Provided based on the server's current system time.
-                <br />
-                - For specific locations ("Time in Paris?"): Karen attempts to fetch this using a combination of free, public time services:
-              </p>
+                 <p className="text-xs text-muted-foreground">
+                 - For general queries (&quot;What time is it?&quot;): Provided based on the server&apos;s current system time.
+                 <br />
+                 - For specific locations (&quot;Time in Paris?&quot;): Karen attempts to fetch this using a combination of free, public time services:
+               </p>
               <ul className="list-disc list-inside pl-5 mt-1 text-xs text-muted-foreground">
                   <li>Primary: <a href="https://timeapi.io/" target="_blank" rel="noopener noreferrer" className="underline">timeapi.io</a></li>
                   <li>Secondary: <a href="https://worldtimeapi.org/" target="_blank" rel="noopener noreferrer" className="underline">worldtimeapi.org</a></li>
@@ -123,7 +123,7 @@ export default function DateTimePluginPage() {
                 <Info className="h-4 w-4 !text-accent-foreground" />
                 <AlertTitle className="font-semibold text-accent-foreground text-sm">Developer Note</AlertTitle>
                 <AlertDescription className="text-muted-foreground text-xs">
-                This section is conceptual. Integrating a new time service would require updating Karen's core tools (`src/ai/tools/core-tools.ts`) to make calls to the new API, handle its specific response format, and manage the API key securely.
+                This section is conceptual. Integrating a new time service would require updating Karen&apos;s core tools (`src/ai/tools/core-tools.ts`) to make calls to the new API, handle its specific response format, and manage the API key securely.
                 </AlertDescription>
             </Alert>
         </CardContent>

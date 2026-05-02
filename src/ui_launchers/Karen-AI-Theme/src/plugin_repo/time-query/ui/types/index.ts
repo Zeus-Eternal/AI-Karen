@@ -124,3 +124,19 @@ export interface AlarmUpdateParams {
   enabled?: boolean;
   recurrence?: string | null;
 }
+
+// API Response types
+export interface BaseResponse {
+  status: string;
+  mode: string;
+  error?: string;
+}
+
+export interface CurrentTimeResponse extends BaseResponse, TimePayload {}
+export interface WorldTimeResponse extends BaseResponse, TimePayload {}
+export interface MultiClockListResponse extends BaseResponse { clocks: ClockItem[] }
+export interface MultiClockResolveResponse extends BaseResponse { clocks: ClockItem[] }
+export interface StopwatchResponse extends BaseResponse { stopwatch: StopwatchState }
+export interface AlarmListResponse extends BaseResponse { alarms: AlarmItem[] }
+export interface AlarmResponse extends BaseResponse { alarm: AlarmItem }
+export interface ConversionResponse extends BaseResponse, TimezoneConversionResult {}

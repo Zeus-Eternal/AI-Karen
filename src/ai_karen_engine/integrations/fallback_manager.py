@@ -68,27 +68,46 @@ class FallbackManager:
         self._resilience = get_resilience_fallback_manager()
 
     def construct_fallback_chain(self, request: Any, failed_providers: List[str]) -> List[str]:
-        raise FallbackManagerDeprecatedError(
-            "Legacy integrations fallback manager is disabled. Use core.expression.ExpressionGateway + builtin provider engine."
-        )
+        logger.info("Legacy integrations fallback chain disabled; using router-owned fallback chain")
+        return []
 
     def execute_fallback(self, request: Any, fallback_chain: List[str]) -> FallbackResult:
-        raise FallbackManagerDeprecatedError(
-            "Legacy integrations fallback execution is disabled. Use core.expression.ExpressionGateway."
+        logger.warning("Legacy integrations fallback execution is disabled; rely on router/runtime fallback")
+        return FallbackResult(
+            success=False,
+            used_provider=None,
+            used_runtime=None,
+            used_model=None,
+            attempts=[],
+            final_error="legacy_fallback_manager_disabled",
+            degraded_mode_activated=False,
+            total_time=0.0,
+            strategy_used=FallbackStrategy.EMERGENCY_DEGRADED,
+            recovery_suggestions=["Use canonical router/runtime fallback path"],
         )
 
     def start_recovery_monitoring(self) -> None:
-        raise FallbackManagerDeprecatedError("Legacy recovery monitoring is disabled.")
+        logger.info("Legacy recovery monitoring disabled; canonical monitoring is runtime-owned")
 
     def stop_recovery_monitoring(self) -> None:
-        raise FallbackManagerDeprecatedError("Legacy recovery monitoring is disabled.")
+        logger.info("Legacy recovery monitoring disabled; canonical monitoring is runtime-owned")
 
     def activate_degraded_mode(self, request: Any) -> Optional[Dict[str, Any]]:
-        raise FallbackManagerDeprecatedError("Legacy degraded-mode activation is disabled.")
-
-
-class FallbackManagerDeprecatedError(RuntimeError):
-    """Raised whenever deprecated integrations fallback manager is invoked."""
+        manager = get_degraded_mode_manager()
+        if not manager:
+            return None
+        status = manager.activate_degraded_mode(
+            reason=DegradedModeReason.ALL_PROVIDERS_FAILED,
+            context={"source": "legacy_fallback_manager_shim"},
+        )
+        if not getattr(status, "is_active", False):
+            return None
+        return {
+            "provider": "degraded_mode",
+            "runtime": "degraded_mode",
+            "model_id": "degraded_mode",
+            "confidence": 0.1,
+        }
 
 
 def get_fallback_manager(registry=None, router=None) -> FallbackManager:

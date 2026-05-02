@@ -264,7 +264,10 @@ class AuthService {
     }
   }
 
-  private hasFreshLoginMarker(): boolean {
+  /**
+   * Returns true if a login recently succeeded (within grace period).
+   */
+  hasFreshLoginMarker(): boolean {
     try {
       const raw = localStorage.getItem(this.LOGIN_SUCCESS_AT_KEY);
       if (!raw) {

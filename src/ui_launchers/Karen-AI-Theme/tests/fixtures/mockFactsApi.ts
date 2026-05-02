@@ -1,5 +1,5 @@
 
-import { KAREN_SETTINGS_LS_KEY } from './constants';
+import { KAREN_SETTINGS_LS_KEY } from '@/lib/constants';
 
 export type FactVisibility = 'private' | 'personal' | 'global';
 export type FactDomain = 'lifestyle' | 'professional' | 'business';
@@ -18,7 +18,7 @@ export interface Fact {
   updated_at?: string;
   last_used?: string;
   usage_count: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface FactSuggestion {

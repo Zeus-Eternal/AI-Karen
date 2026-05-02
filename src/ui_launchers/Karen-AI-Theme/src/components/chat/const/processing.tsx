@@ -1161,7 +1161,7 @@ export const getProcessingStatusVariantMessages = (
     return [];
   }
 
-  return [resolveProcessingStatusMessage(normalized, undefined, 0, context)];
+  return [resolveProcessingStatusMessage(normalized, undefined, context)];
 };
 
 export const getProcessingStatusMessageVariant = (
@@ -1393,7 +1393,6 @@ export const resolveProcessingStatusMessage = (
 export const resolveProcessingStatus = (
   status: unknown,
   fallbackMessage?: string,
-  variantIndex = 0,
   context?: ProcessingRuntimeMetadata,
   nowMs: number = Date.now(),
 ): ProcessingResolvedStatus => {
@@ -1425,7 +1424,7 @@ export const resolveProcessingStatus = (
   return {
     status: normalized,
     state,
-    message: stalledMessage || resolveProcessingStatusMessage(status, fallbackMessage, variantIndex, runtime),
+    message: stalledMessage || resolveProcessingStatusMessage(status, fallbackMessage, runtime),
     display,
     progress: getProcessingStageProgress(normalized || status),
     elapsedLabel,

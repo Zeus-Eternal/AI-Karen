@@ -139,6 +139,80 @@ const BUILTIN_PROVIDER_ALIASES: Record<string, string> = {
   nano_vllm: BUILTIN_VLLM_PROVIDER,
 };
 
+interface LlmMetadata {
+  actual_provider?: string;
+  provider?: string;
+  actual_model?: string;
+  model_id?: string;
+  model_name?: string;
+  requested_provider?: string;
+  requested_model?: string;
+  used_fallback?: boolean;
+  is_fallback?: boolean;
+  is_degraded?: boolean;
+  failure_category?: string;
+  failure_reason?: string;
+  preferred_failure_reason?: string;
+  response_source?: string;
+  source?: string;
+  runtime_engine?: string;
+  fallback_level?: string;
+  tokens_per_second?: number | string;
+  duration?: number;
+  routing_rationale?: string;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
+  [key: string]: unknown;
+}
+
+interface OrchestratorMetadata {
+  used_fallback?: boolean;
+}
+
+interface RuntimeMetadata {
+  retry_after_seconds?: number;
+  estimated_completion_time?: string;
+  notification_supported?: boolean;
+  notification_request_allowed?: boolean;
+  system_status_code?: number;
+  support_hint?: string;
+}
+
+interface PersistenceMetadata {
+  canonical_store?: string;
+  assistant_persisted?: boolean;
+}
+
+interface ChatMetadata {
+  llm?: LlmMetadata;
+  orchestrator?: OrchestratorMetadata;
+  runtime?: RuntimeMetadata;
+  persistence?: PersistenceMetadata;
+  degraded_mode?: boolean;
+  mode?: string;
+  failure_category?: string;
+  failure_reason?: string;
+  error?: string;
+  requested_provider?: string;
+  requested_model?: string;
+  actual_provider?: string;
+  actual_model?: string;
+  runtime_engine?: string;
+  fallback_level?: string;
+  correlation_id?: string;
+  response_id?: string;
+  request_id?: string;
+  conversation_id?: string;
+  ui_source?: string;
+  total_ms?: number;
+  context_used?: boolean;
+  status?: string;
+  [key: string]: unknown;
+}
+
 const EXTERNAL_ENDPOINT_PROVIDER_ALIASES: Record<string, string> = {
   'openai-compatible': OPENAI_COMPATIBLE_PROVIDER,
   openai_compatible: OPENAI_COMPATIBLE_PROVIDER,
@@ -211,7 +285,7 @@ const firstNonEmpty = (...values: unknown[]): string => {
   return '';
 };
 
-export const normalizeProviderName = (provider?: string | null): string => {
+export const normalizeProviderName = (provider?: unknown): string => {
   const raw = toCleanString(provider);
   const key = toProviderKey(raw);
 
@@ -244,39 +318,39 @@ export const normalizeProviderName = (provider?: string | null): string => {
   return canonical;
 };
 
-export const isBuiltInRuntimeProvider = (provider?: string | null): boolean => {
+export const isBuiltInRuntimeProvider = (provider?: unknown): boolean => {
   const normalized = normalizeProviderName(provider);
   return normalized === BUILTIN_TRANSFORMERS_PROVIDER || normalized === BUILTIN_VLLM_PROVIDER;
 };
 
-export const isTransformersRuntimeProvider = (provider?: string | null): boolean => {
+export const isTransformersRuntimeProvider = (provider?: unknown): boolean => {
   return normalizeProviderName(provider) === BUILTIN_TRANSFORMERS_PROVIDER;
 };
 
-export const isVllmRuntimeProvider = (provider?: string | null): boolean => {
+export const isVllmRuntimeProvider = (provider?: unknown): boolean => {
   return normalizeProviderName(provider) === BUILTIN_VLLM_PROVIDER;
 };
 
-export const isLocalRuntimeProvider = (provider?: string | null): boolean => {
+export const isLocalRuntimeProvider = (provider?: unknown): boolean => {
   return isBuiltInRuntimeProvider(provider);
 };
 
-export const isExternalGgufProvider = (provider?: string | null): boolean => {
+export const isExternalGgufProvider = (provider?: unknown): boolean => {
   return normalizeProviderName(provider) === LOCAL_GGUF_PROVIDER;
 };
 
-export const isOpenAiCompatibleProvider = (provider?: string | null): boolean => {
+export const isOpenAiCompatibleProvider = (provider?: unknown): boolean => {
   return normalizeProviderName(provider) === OPENAI_COMPATIBLE_PROVIDER;
 };
 
-export const isExternalEndpointProvider = (provider?: string | null): boolean => {
+export const isExternalEndpointProvider = (provider?: unknown): boolean => {
   const normalized = normalizeProviderName(provider);
   return normalized === OPENAI_COMPATIBLE_PROVIDER || normalized === 'openai';
 };
 
 export const getRuntimeDisplayName = (
-  provider?: string | null,
-  displayName?: string | null,
+  provider?: unknown,
+  displayName?: unknown,
 ): string => {
   const normalized = normalizeProviderName(provider);
   const explicit = toCleanString(displayName);
@@ -308,7 +382,7 @@ export const getRuntimeDisplayName = (
   return explicit || toCleanString(provider) || normalized;
 };
 
-export const getRuntimeGroupLabel = (provider?: string | null): string => {
+export const getRuntimeGroupLabel = (provider?: unknown): string => {
   const normalized = normalizeProviderName(provider);
 
   if (normalized === BUILTIN_TRANSFORMERS_PROVIDER || normalized === BUILTIN_VLLM_PROVIDER) {
@@ -334,7 +408,7 @@ export const getRuntimeGroupLabel = (provider?: string | null): string => {
   return 'Custom';
 };
 
-export const normalizeModelName = (model?: string | null): string => {
+export const normalizeModelName = (model?: unknown): string => {
   const value = toCleanString(model).toLowerCase();
 
   if (!value) {
@@ -350,8 +424,8 @@ export const normalizeModelName = (model?: string | null): string => {
 };
 
 export const getDisplayModelName = (
-  modelId?: string | null,
-  modelName?: string | null,
+  modelId?: unknown,
+  modelName?: unknown,
 ): string => {
   const explicitName = toCleanString(modelName);
 
@@ -376,14 +450,14 @@ export const getDisplayModelName = (
 };
 
 const getFriendlyProviderLabel = (
-  provider?: string | null,
+  provider?: unknown,
 ): string => {
   return getRuntimeDisplayName(provider, provider);
 };
 
 const getFriendlyModelLabel = (
-  modelId?: string | null,
-  modelName?: string | null,
+  modelId?: unknown,
+  modelName?: unknown,
 ): string => {
   const normalizedModel = normalizeModelName(modelId || modelName);
 
@@ -479,8 +553,8 @@ export const sanitizeStructuredContent = (
 export const deriveDegradedPresentation = (
   metadata?: Record<string, unknown>,
 ): DegradedPresentation => {
-  const safeMetadata = isRecord(metadata) ? metadata : {};
-  const llm = isRecord(safeMetadata?.llm) ? safeMetadata.llm : {};
+  const safeMetadata = (isRecord(metadata) ? metadata : {}) as ChatMetadata;
+  const llm = (isRecord(safeMetadata?.llm) ? safeMetadata.llm : {}) as LlmMetadata;
 
   const failureCategory = toCleanString(safeMetadata?.failure_category || llm?.failure_category);
   const isSafetyBlocked = failureCategory === 'safety_blocked';
@@ -490,7 +564,7 @@ export const deriveDegradedPresentation = (
     llm?.used_fallback === true ||
     llm?.is_fallback === true;
 
-  const localFallbackSource = isLocalFallbackSource(llm);
+  const localFallbackSource = isLocalFallbackSource(llm as Record<string, unknown>);
 
   const requestedProvider = toCleanString(llm?.requested_provider || safeMetadata?.requested_provider);
   const requestedModel = toCleanString(llm?.requested_model || safeMetadata?.requested_model);
@@ -618,10 +692,14 @@ export const deriveDegradedPresentation = (
 export const deriveResponseDetailsPresentation = (
   metadata?: Record<string, unknown>,
 ): ResponseDetailsPresentation => {
-  const safeMetadata = isRecord(metadata) ? metadata : {};
-  const llm = isRecord(safeMetadata?.llm) ? safeMetadata.llm : {};
+  const safeMetadata = (isRecord(metadata) ? metadata : {}) as ChatMetadata;
+  const llm = (isRecord(safeMetadata?.llm) ? safeMetadata.llm : {}) as LlmMetadata;
   const degraded = deriveDegradedPresentation(safeMetadata);
-  const usage = isRecord(llm?.usage) ? llm.usage : {};
+  const usage = (isRecord(llm?.usage) ? llm.usage : {}) as {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
 
   const promptTokens = Number(usage.prompt_tokens || 0);
   const completionTokens = Number(usage.completion_tokens || 0);
@@ -711,8 +789,8 @@ export const deriveResponseDetailsPresentation = (
 export const deriveCompactBadgePresentation = (
   metadata?: Record<string, unknown>,
 ): CompactBadgePresentation => {
-  const safeMetadata = isRecord(metadata) ? metadata : {};
-  const llm = isRecord(safeMetadata?.llm) ? safeMetadata.llm : {};
+  const safeMetadata = (isRecord(metadata) ? metadata : {}) as ChatMetadata;
+  const llm = (isRecord(safeMetadata?.llm) ? safeMetadata.llm : {}) as LlmMetadata;
   const degraded = deriveDegradedPresentation(safeMetadata);
 
   const hasMetadataDetails = Boolean(safeMetadata && Object.keys(safeMetadata).length > 0);
@@ -774,14 +852,15 @@ const ensureLlmMetadata = (
   metadata: Record<string, unknown>,
   raw: BackendChatEnvelope,
 ): Record<string, unknown> => {
-  const llm = isRecord(metadata.llm) ? { ...metadata.llm } : {};
+  const m = metadata as ChatMetadata;
+  const llm = (isRecord(m.llm) ? { ...m.llm } : {}) as LlmMetadata;
 
   if (raw.model && !llm.model_name && !llm.model_id) {
     llm.model_name = raw.model;
   }
 
   if (raw.usage && !llm.usage) {
-    llm.usage = raw.usage;
+    llm.usage = raw.usage as LlmMetadata['usage'];
   }
 
   if (typeof raw.processing_time === 'number' && llm.duration == null) {
@@ -789,40 +868,41 @@ const ensureLlmMetadata = (
   }
 
   if (Object.keys(llm).length > 0) {
-    metadata.llm = llm;
+    m.llm = llm;
   }
 
-  return metadata;
+  return m;
 };
 
 const ensureRuntimeModeMetadata = (
   metadata: Record<string, unknown>,
   raw: BackendChatEnvelope,
 ): Record<string, unknown> => {
-  const runtimeMode = toCleanString(raw.mode || metadata.mode);
+  const m = metadata as ChatMetadata;
+  const runtimeMode = toCleanString(raw.mode || m.mode);
 
   if (!runtimeMode) {
-    return metadata;
+    return m;
   }
 
-  metadata.mode = runtimeMode;
-  metadata.runtime = {
-    ...(isRecord(metadata.runtime) ? metadata.runtime : {}),
+  m.mode = runtimeMode;
+  m.runtime = {
+    ...(isRecord(m.runtime) ? m.runtime : {}),
     mode: runtimeMode,
     retry_after_seconds:
-      raw.retry_after_seconds ?? metadata.runtime?.retry_after_seconds,
+      raw.retry_after_seconds ?? m.runtime?.retry_after_seconds,
     estimated_completion_time:
-      raw.estimated_completion_time ?? metadata.runtime?.estimated_completion_time,
+      raw.estimated_completion_time ?? m.runtime?.estimated_completion_time,
     notification_supported:
-      raw.notification_supported ?? metadata.runtime?.notification_supported,
+      raw.notification_supported ?? m.runtime?.notification_supported,
     notification_request_allowed:
-      raw.notification_request_allowed ?? metadata.runtime?.notification_request_allowed,
+      raw.notification_request_allowed ?? m.runtime?.notification_request_allowed,
     system_status_code:
-      raw.system_status_code ?? metadata.runtime?.system_status_code,
-    support_hint: raw.support_hint ?? metadata.runtime?.support_hint,
-  };
+      raw.system_status_code ?? m.runtime?.system_status_code,
+    support_hint: raw.support_hint ?? m.runtime?.support_hint,
+  } as RuntimeMetadata;
 
-  const llm = isRecord(metadata.llm) ? { ...metadata.llm } : {};
+  const llm = (isRecord(m.llm) ? { ...m.llm } : {}) as LlmMetadata;
 
   llm.provider = llm.provider || SYSTEM_PROVIDER;
   llm.source = llm.source || 'runtime_control_plane';
@@ -837,7 +917,7 @@ const ensureRuntimeModeMetadata = (
           : 'Runtime Control');
 
   if (runtimeMode === 'maintenance' || runtimeMode === 'emergency_fallback') {
-    metadata.degraded_mode = true;
+    m.degraded_mode = true;
     llm.is_degraded = true;
     llm.used_fallback = true;
     llm.fallback_level = runtimeMode === 'maintenance' ? 'maintenance' : 'emergency';
@@ -847,15 +927,15 @@ const ensureRuntimeModeMetadata = (
         ? 'Karen is in planned maintenance mode.'
         : 'Karen is serving the emergency fallback response.';
   } else if (runtimeMode === 'degraded') {
-    metadata.degraded_mode = true;
+    m.degraded_mode = true;
     llm.is_degraded = true;
     llm.used_fallback = true;
     llm.fallback_level = llm.fallback_level || 'degraded';
     llm.failure_reason = llm.failure_reason || toCleanString(raw.reason);
   }
 
-  metadata.llm = llm;
-  return metadata;
+  m.llm = llm;
+  return m;
 };
 
 const mergeRequestedRuntimeMetadata = (
@@ -865,14 +945,15 @@ const mergeRequestedRuntimeMetadata = (
     requestedModel?: string;
   },
 ): Record<string, unknown> => {
+  const m = metadata as ChatMetadata;
   const requestedProvider = toCleanString(options?.requestedProvider);
   const requestedModel = toCleanString(options?.requestedModel);
 
   if (!requestedProvider && !requestedModel) {
-    return metadata;
+    return m;
   }
 
-  const llm = isRecord(metadata.llm) ? { ...metadata.llm } : {};
+  const llm = (isRecord(m.llm) ? { ...m.llm } : {}) as LlmMetadata;
 
   if (requestedProvider && !llm.requested_provider) {
     llm.requested_provider = requestedProvider;
@@ -882,23 +963,24 @@ const mergeRequestedRuntimeMetadata = (
     llm.requested_model = requestedModel;
   }
 
-  metadata.llm = llm;
-  return metadata;
+  m.llm = llm;
+  return m;
 };
 
 const ensureProviderMismatchMetadata = (
   metadata: Record<string, unknown>,
   raw: BackendChatEnvelope,
 ): Record<string, unknown> => {
-  const llm = isRecord(metadata.llm) ? { ...metadata.llm } : {};
+  const m = metadata as ChatMetadata;
+  const llm = (isRecord(m.llm) ? { ...m.llm } : {}) as LlmMetadata;
 
-  const requestedProvider = normalizeProviderName(llm.requested_provider || metadata.requested_provider);
-  const requestedModel = normalizeModelName(llm.requested_model || metadata.requested_model);
+  const requestedProvider = normalizeProviderName(llm.requested_provider || m.requested_provider);
+  const requestedModel = normalizeModelName(llm.requested_model || m.requested_model);
   const actualProvider = normalizeProviderName(
-    llm.actual_provider || metadata.actual_provider || llm.provider,
+    llm.actual_provider || m.actual_provider || llm.provider,
   );
   const actualModel = normalizeModelName(
-    llm.actual_model || metadata.actual_model || llm.model_id || llm.model_name,
+    llm.actual_model || m.actual_model || llm.model_id || llm.model_name,
   );
 
   const providerChanged = Boolean(
@@ -915,14 +997,14 @@ const ensureProviderMismatchMetadata = (
 
   const fallbackUsed =
     raw.used_fallback === true ||
-    metadata.orchestrator?.used_fallback === true ||
+    m.orchestrator?.used_fallback === true ||
     llm.is_degraded === true ||
     llm.used_fallback === true ||
     llm.is_fallback === true ||
-    isLocalFallbackSource(llm);
+    isLocalFallbackSource(llm as Record<string, unknown>);
 
-  const unavailableFailure = reasonLooksUnavailable(llm.failure_reason || metadata.failure_reason);
-  const rateLimitFailure = reasonLooksRateLimited(llm.failure_reason || metadata.failure_reason);
+  const unavailableFailure = reasonLooksUnavailable(llm.failure_reason || m.failure_reason);
+  const rateLimitFailure = reasonLooksRateLimited(llm.failure_reason || m.failure_reason);
 
   const isActuallyDegraded =
     fallbackUsed ||
@@ -930,21 +1012,21 @@ const ensureProviderMismatchMetadata = (
     modelChanged ||
     unavailableFailure ||
     rateLimitFailure ||
-    isKnownRuntimeControlMode(metadata.mode);
+    isKnownRuntimeControlMode(m.mode);
 
   if (!isActuallyDegraded) {
     if (Object.keys(llm).length > 0) {
-      metadata.llm = llm;
+      m.llm = llm;
     }
 
-    return metadata;
+    return m;
   }
 
-  metadata.degraded_mode = true;
-  metadata.orchestrator = {
-    ...(isRecord(metadata.orchestrator) ? metadata.orchestrator : {}),
+  m.degraded_mode = true;
+  m.orchestrator = {
+    ...(isRecord(m.orchestrator) ? m.orchestrator : {}),
     used_fallback: true,
-  };
+  } as OrchestratorMetadata;
 
   llm.is_degraded = true;
   llm.used_fallback = true;
@@ -985,24 +1067,25 @@ const ensureProviderMismatchMetadata = (
     llm.failure_reason = 'Selected provider was rate limited or quota blocked; Karen continued with a fallback runtime.';
   }
 
-  metadata.llm = llm;
-  return metadata;
+  m.llm = llm;
+  return m;
 };
 
 const ensurePersistenceMetadata = (
   metadata: Record<string, unknown>,
 ): Record<string, unknown> => {
-  const existingPersistence = isRecord(metadata.persistence) ? metadata.persistence : {};
+  const m = metadata as ChatMetadata;
+  const existingPersistence = (isRecord(m.persistence) ? m.persistence : {}) as PersistenceMetadata;
 
-  metadata.persistence = {
+  m.persistence = {
     canonical_store: existingPersistence.canonical_store || 'postgres',
     assistant_persisted:
       existingPersistence.assistant_persisted ??
-      Boolean(metadata.assistant_message_id),
+      Boolean(m.assistant_message_id),
     ...existingPersistence,
   };
 
-  return metadata;
+  return m;
 };
 
 export function normalizeBackendChatResponse(
@@ -1021,7 +1104,7 @@ export function normalizeBackendChatResponse(
     `assistant-${Date.now()}`,
   );
 
-  const metadata: Record<string, unknown> = isRecord(raw.metadata) ? { ...raw.metadata } : {};
+  const metadata = (isRecord(raw.metadata) ? { ...raw.metadata } : {}) as ChatMetadata;
 
   metadata.correlation_id = metadata.correlation_id || correlationId;
   metadata.response_id = metadata.response_id || raw.response_id;
@@ -1045,7 +1128,7 @@ export function normalizeBackendChatResponse(
     metadata.orchestrator = {
       ...(isRecord(metadata.orchestrator) ? metadata.orchestrator : {}),
       used_fallback: raw.used_fallback,
-    };
+    } as OrchestratorMetadata;
   }
 
   ensurePersistenceMetadata(metadata);
@@ -1076,7 +1159,7 @@ export function normalizeBackendChatResponse(
 export function normalizeConversationMessage(
   message: MessageResponse,
 ): ChatMessage {
-  const metadata: Record<string, unknown> = isRecord(message.metadata) ? { ...message.metadata } : {};
+  const metadata = (isRecord(message.metadata) ? { ...message.metadata } : {}) as ChatMetadata;
 
   if (message.ui_source && !metadata.ui_source) {
     metadata.ui_source = message.ui_source;
@@ -1095,7 +1178,7 @@ export function normalizeConversationMessage(
         (typeof message.tokens_used === 'number'
           ? { total_tokens: message.tokens_used }
           : undefined),
-    };
+    } as LlmMetadata;
   }
 
   metadata.status = metadata.status || 'completed';
