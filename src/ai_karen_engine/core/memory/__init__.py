@@ -1,5 +1,9 @@
 """
 Core Memory Domain for AI Karen Engine.
+
+Runtime authority note:
+- `ai_karen_engine.core.memory` is the single live runtime memory authority.
+- Legacy `core.neuro_vault` remains migration/compatibility scope only.
 """
 
 from .memory_runtime_manager import (
