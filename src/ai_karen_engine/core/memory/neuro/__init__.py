@@ -15,7 +15,7 @@ from .contracts import (
 from .decay_policy import decay_score
 from .guardrails import evaluate_guardrails
 from .lesson_memory import LessonMemoryStore
-from .procedural_memory import ProceduralMemoryStore
+from .procedural_memory import ProceduralMemoryStore, default_routing_procedures
 from .scoring import blended_score
 from .settings import NeuroMemorySettings, get_neuro_settings
 from .telemetry import emit_memory_event
@@ -39,6 +39,7 @@ __all__ = [
     "evaluate_guardrails",
     "blended_score",
     "ProceduralMemoryStore",
+    "default_routing_procedures",
     "LessonMemoryStore",
     "emit_memory_event",
 ]
