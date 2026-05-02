@@ -1284,11 +1284,14 @@ async def update_memory(
     if not content:
         return {"status": "noop", "memory_id": memory_id, "updated": False}
 
-    tenant_id = str(
-        (user_ctx or {}).get("tenant_id")
-        or kwargs.get("tenant_id")
-        or "default"
-    )
+    tenant_id = str((user_ctx or {}).get("tenant_id") or kwargs.get("tenant_id") or "")
+    if not tenant_id:
+        return {
+            "status": "rejected",
+            "memory_id": memory_id,
+            "updated": False,
+            "reason": "missing_tenant_id",
+        }
     user_id = str(
         (user_ctx or {}).get("user_id")
         or kwargs.get("user_id")
