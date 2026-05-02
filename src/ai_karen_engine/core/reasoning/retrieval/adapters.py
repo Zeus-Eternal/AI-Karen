@@ -106,11 +106,14 @@ class ReasoningEvidenceAdapter:
         bundle = EvidenceBundle(retrieval_mode="hybrid")
 
         try:
+            if not tenant_id:
+                bundle.fusion_summary = {"status": "memory_disabled", "reason": "missing_tenant_id"}
+                return bundle
             merged = await recall_context(
                 user_id=user_id,
+                tenant_id=tenant_id,
                 query=text,
                 top_k=self.top_k,
-                tenant_id=tenant_id,
                 include_embeddings=False,
             )
             results = merged.get("results", []) if isinstance(merged, dict) else []

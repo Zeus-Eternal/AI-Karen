@@ -8,6 +8,9 @@ and profile stability. Inspired by LoCoMo and LongMemEval research.
 import logging
 from typing import List, Dict, Any
 import time
+import json
+import os
+from pathlib import Path
 
 from ..retrieval.retrieval_router import get_retrieval_router
 from ..types import MemoryQuery
@@ -61,3 +64,16 @@ eval_harness = MemoryEvalHarness()
 
 def get_eval_harness() -> MemoryEvalHarness:
     return eval_harness
+
+
+async def run_neuro_recall_benchmark(dataset_path: str) -> Dict[str, Any]:
+    """Labs-only benchmark runner for JSONL datasets (read/eval only)."""
+    if os.getenv("KARI_NEURO_RECALL_LABS_ENABLED", "false").lower() not in {"1", "true", "yes"}:
+        raise RuntimeError("NeuroRecall benchmark runner is labs-only.")
+    rows: List[Dict[str, Any]] = []
+    for line in Path(dataset_path).read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        rows.append(json.loads(line))
+    normalized = [{"query": r.get("query", ""), "expected_id": str(r.get("expected_id", ""))} for r in rows]
+    return await eval_harness.evaluate_retrieval(normalized)

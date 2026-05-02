@@ -33,7 +33,9 @@ class MemoryFetchNode:
             warnings = state.setdefault("warnings", [])
             messages = state.get("messages", [])
             user_id = state.get("user_id")
-            tenant_id = state.get("tenant_id", "default")
+            tenant_id = state.get("tenant_id")
+            if not tenant_id:
+                warnings.append("Memory disabled for this turn: missing tenant_id")
             
             conversation_history = [
                 message_to_history_entry(message) for message in messages

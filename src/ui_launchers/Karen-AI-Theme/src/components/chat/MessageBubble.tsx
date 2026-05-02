@@ -191,6 +191,13 @@ export function MessageBubble({ message, onActionClick }: MessageBubbleProps) {
     reasonLabel,
     showTokensRow,
     tokensLabel,
+    memoryUsedLabel,
+    memoryClassesLabel,
+    recallModeLabel,
+    memorySourcesLabel,
+    memoryLatencyLabel,
+    memoryDegradedLabel,
+    writebackStatusLabel,
   } = deriveResponseDetailsPresentation(message.metadata);
 
   const normalizedDegradedNotice = useMemo(
@@ -493,6 +500,17 @@ export function MessageBubble({ message, onActionClick }: MessageBubbleProps) {
                           </span>
                         </div>
                       )}
+
+                      <div className="col-span-2 mt-1 mb-1 flex justify-between border-t border-border/20 pt-1">
+                        <span className="text-[8px] font-bold uppercase tracking-wider text-muted-foreground">Memory Metadata</span>
+                      </div>
+                      {renderMetadataPair({ label: 'Memory Used', value: memoryUsedLabel })}
+                      {renderMetadataPair({ label: 'Memory Classes', value: memoryClassesLabel })}
+                      {renderMetadataPair({ label: 'Recall Mode', value: recallModeLabel })}
+                      {renderMetadataPair({ label: 'Memory Sources', value: memorySourcesLabel })}
+                      {renderMetadataPair({ label: 'Memory Latency', value: memoryLatencyLabel })}
+                      {renderMetadataPair({ label: 'Memory Degraded', value: memoryDegradedLabel })}
+                      {renderMetadataPair({ label: 'Writeback Status', value: writebackStatusLabel })}
                     </div>
                   )}
                 </div>

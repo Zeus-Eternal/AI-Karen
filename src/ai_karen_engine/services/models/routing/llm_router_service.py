@@ -1389,6 +1389,23 @@ class LLMRouter:
                 previous_error = error.last_error or error
 
         degraded_reason = self._infer_degraded_reason(failure_records)
+        runtime_fallback = await self.generate_with_degraded_runtime_fallback(
+            request=request,
+            requested_provider=requested_provider or provider_name,
+            requested_model=requested_model or model_name,
+            failure_reason=str(degraded_reason),
+        )
+        runtime_fallback_llm = (
+            runtime_fallback.get("metadata", {}).get("llm", {})
+            if isinstance(runtime_fallback, dict)
+            else {}
+        )
+        if runtime_fallback and runtime_fallback_llm.get("actual_provider") != "emergency_static":
+            self._record_selection_metric(str(runtime_fallback_llm.get("actual_provider")), "runtime_fallback_success")
+            yield str(runtime_fallback.get("content", "")).strip()
+            yield {"type": "metadata", "metadata": {"llm": runtime_fallback_llm}}
+            return
+
         degraded_message = await self._generate_degraded_fallback(
             request,
             failure_records,
@@ -1722,6 +1739,15 @@ class LLMRouter:
     ) -> List[str]:
         """Get fallback providers excluding the failed one"""
         all_providers = await self._get_available_providers_by_priority()
+        ordered_live_chain = [
+            provider
+            for provider in self.RUNTIME_DEGRADED_FALLBACK_ORDER
+            if provider not in {"fallback", "local_gguf", failed_provider}
+        ]
+        if ordered_live_chain:
+            all_providers = [p for p in ordered_live_chain if p in all_providers] + [
+                p for p in all_providers if p not in ordered_live_chain
+            ]
         fallback_providers = []
 
         for provider_name in all_providers:
@@ -1733,6 +1759,15 @@ class LLMRouter:
                 fallback_providers.append(provider_name)
 
         return fallback_providers[:4]
+
+    def _get_config_value(self, key: str, default: Any) -> Any:
+        """Return runtime config value safely with fallback."""
+        config = getattr(self, "config", None)
+        if isinstance(config, dict):
+            return config.get(key, default)
+        if config and hasattr(config, key):
+            return getattr(config, key, default)
+        return default
 
     async def _mark_provider_unhealthy(self, provider_name: str, error_message: str):
         """Mark provider as unhealthy"""
@@ -1895,9 +1930,7 @@ class LLMRouter:
                 yield chunk
         except Exception as exc:
             if not isinstance(exc, ProviderProcessingError):
-                raise ProviderProcessingError(
-                    f"Error processing with {provider_name}: {exc}", last_error=exc
-                ) from exc
+                raise ProviderProcessingError(provider_name, [exc]) from exc
             raise
 
         # Yield metadata for successful generation
