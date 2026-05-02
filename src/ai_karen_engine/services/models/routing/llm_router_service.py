@@ -182,6 +182,19 @@ PROVIDER_FAILURE_COUNTER = _get_or_create_metric(
 )
 
 logger = logging.getLogger(__name__)
+from ai_karen_engine.core.model_runtime.provider_policy import (
+    BUILTIN_EXPRESSION_ENGINES,
+    EXTERNAL_PROVIDER_OPTIONS,
+    LOCAL_PROVIDER_OPTIONS,
+    REMOVED_INTERNAL_PROVIDERS,
+    evaluate_provider_policy,
+)
+
+ALLOWED_LIVE_FALLBACK_PROVIDERS = (set(BUILTIN_EXPRESSION_ENGINES) | set(LOCAL_PROVIDER_OPTIONS) | {
+    "builtin_vllm",
+    "builtin_transformers",
+    "openai_compatible",
+} | set(EXTERNAL_PROVIDER_OPTIONS)) - {p.replace('-', '_').replace(' ', '_') for p in REMOVED_INTERNAL_PROVIDERS}
 
 
 class ProviderPriority(Enum):
@@ -1389,6 +1402,23 @@ class LLMRouter:
                 previous_error = error.last_error or error
 
         degraded_reason = self._infer_degraded_reason(failure_records)
+        runtime_fallback = await self.generate_with_degraded_runtime_fallback(
+            request=request,
+            requested_provider=requested_provider or provider_name,
+            requested_model=requested_model or model_name,
+            failure_reason=str(degraded_reason),
+        )
+        runtime_fallback_llm = (
+            runtime_fallback.get("metadata", {}).get("llm", {})
+            if isinstance(runtime_fallback, dict)
+            else {}
+        )
+        if runtime_fallback and runtime_fallback_llm.get("actual_provider") != "emergency_static":
+            self._record_selection_metric(str(runtime_fallback_llm.get("actual_provider")), "runtime_fallback_success")
+            yield str(runtime_fallback.get("content", "")).strip()
+            yield {"type": "metadata", "metadata": {"llm": runtime_fallback_llm}}
+            return
+
         degraded_message = await self._generate_degraded_fallback(
             request,
             failure_records,
@@ -1722,9 +1752,23 @@ class LLMRouter:
     ) -> List[str]:
         """Get fallback providers excluding the failed one"""
         all_providers = await self._get_available_providers_by_priority()
+        ordered_live_chain = [
+            provider
+            for provider in self.RUNTIME_DEGRADED_FALLBACK_ORDER
+            if provider not in {"fallback", "local_gguf", failed_provider}
+        ]
+        if ordered_live_chain:
+            all_providers = [p for p in ordered_live_chain if p in all_providers] + [
+                p for p in all_providers if p not in ordered_live_chain
+            ]
         fallback_providers = []
 
         for provider_name in all_providers:
+            normalized = str(provider_name).strip().lower().replace("-", "_").replace(" ", "_")
+            if not evaluate_provider_policy(normalized, local_enabled=True, external_enabled=True).allowed:
+                continue
+            if normalized not in ALLOWED_LIVE_FALLBACK_PROVIDERS:
+                continue
             if (
                 provider_name != failed_provider
                 and await self._is_provider_healthy(provider_name)
@@ -1733,6 +1777,15 @@ class LLMRouter:
                 fallback_providers.append(provider_name)
 
         return fallback_providers[:4]
+
+    def _get_config_value(self, key: str, default: Any) -> Any:
+        """Return runtime config value safely with fallback."""
+        config = getattr(self, "config", None)
+        if isinstance(config, dict):
+            return config.get(key, default)
+        if config and hasattr(config, key):
+            return getattr(config, key, default)
+        return default
 
     async def _mark_provider_unhealthy(self, provider_name: str, error_message: str):
         """Mark provider as unhealthy"""
@@ -1895,9 +1948,7 @@ class LLMRouter:
                 yield chunk
         except Exception as exc:
             if not isinstance(exc, ProviderProcessingError):
-                raise ProviderProcessingError(
-                    f"Error processing with {provider_name}: {exc}", last_error=exc
-                ) from exc
+                raise ProviderProcessingError(provider_name, [exc]) from exc
             raise
 
         # Yield metadata for successful generation
@@ -2416,13 +2467,12 @@ class LLMRouter:
 
             manager.activate_degraded_mode(degraded_reason, failed_providers)
 
-            provider_name = "provider"
+            provider_name = str(getattr(request, "preferred_provider", "") or "provider")
             provider_cause = "The provider failed while handling the request."
             suggestion = "Try again shortly or switch to a different model in Settings."
 
             if failure_records:
                 primary_failure = failure_records[0]
-                provider_name = primary_failure.get("provider", "provider")
                 provider_cause = self._classify_failure_detail(
                     primary_failure.get("error", "")
                 )
