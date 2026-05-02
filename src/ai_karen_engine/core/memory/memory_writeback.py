@@ -31,6 +31,7 @@ from ai_karen_engine.core.memory.neuro import (
     emit_memory_event,
     evaluate_guardrails,
 )
+from ai_karen_engine.core.runtime.resilience import get_safe_stage_runner
 
 logger = logging.getLogger(__name__)
 
@@ -120,6 +121,7 @@ class MemoryWritebackSystem:
         """Initialize write-back system"""
         self.memory_service = unified_memory_service
         self.redis_client = redis_client
+        self.safe_runner = get_safe_stage_runner()
 
         # Shard link tracking
         self._shard_links: Dict[str, List[ShardLink]] = {}
@@ -322,7 +324,10 @@ class MemoryWritebackSystem:
                         )
                         continue
 
-                    response = await self.memory_service.commit(
+                    response = await self.safe_runner.run_stage(
+                        "memory_writeback_commit",
+                        "memory_learning_enabled",
+                        self.memory_service.commit,
                         tenant_id=tenant_id,
                         request=commit_request,
                         correlation_id=entry.correlation_id,

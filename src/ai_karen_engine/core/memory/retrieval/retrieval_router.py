@@ -11,6 +11,7 @@ from ai_karen_engine.clients.database.elastic_client import ElasticClient
 from ai_karen_engine.clients.database.milvus_client import MilvusClient
 from ai_karen_engine.clients.database.redis_client import RedisClient
 from ai_karen_engine.core.memory.graph.service import get_leangraph_service
+from ai_karen_engine.core.runtime.resilience import get_safe_stage_runner
 
 from ..neuro import (
     MemoryCandidate,
@@ -28,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 class HybridRetrievalRouter:
     def __init__(self) -> None:
+        self.safe_runner = get_safe_stage_runner()
         self.milvus = MilvusClient(collection="memory_ledger_semantic")
         self.elastic = ElasticClient(index="memory_ledger_lexical")
         self.redis = RedisClient()
@@ -41,14 +43,44 @@ class HybridRetrievalRouter:
 
         activation = decide_activation_mode(query=query.text or "", latency_budget_ms=300)
 
-        hot = await self._query_redis(query)
-        dense_task = asyncio.create_task(self._query_milvus(query))
-        lexical_task = asyncio.create_task(self._query_elastic(query))
+        hot = await self.safe_runner.run_stage(
+            "memory_fast_recall",
+            "memory_learning_enabled",
+            self._query_redis,
+            query,
+            tenant_id=str(query.tenant_id),
+            user_id=str(query.user_id),
+        ) or []
+        dense_task = asyncio.create_task(self.safe_runner.run_stage(
+            "memory_dense_recall",
+            "memory_learning_enabled",
+            self._query_milvus,
+            query,
+            tenant_id=str(query.tenant_id),
+            user_id=str(query.user_id),
+        ))
+        lexical_task = asyncio.create_task(self.safe_runner.run_stage(
+            "memory_lexical_recall",
+            "memory_learning_enabled",
+            self._query_elastic,
+            query,
+            tenant_id=str(query.tenant_id),
+            user_id=str(query.user_id),
+        ))
         dense, lexical = await asyncio.gather(dense_task, lexical_task)
+        dense = dense or []
+        lexical = lexical or []
 
         graph: List[MemoryEntry] = []
         if activation.include_graph:
-            graph = await self._query_graph(query)
+            graph = await self.safe_runner.run_stage(
+                "memory_graph_expansion",
+                "memory_learning_enabled",
+                self._query_graph,
+                query,
+                tenant_id=str(query.tenant_id),
+                user_id=str(query.user_id),
+            ) or []
 
         profile = await self._query_profile(query) if activation.include_profile else []
         procedural = await self._query_procedural(query) if activation.include_procedural else []
