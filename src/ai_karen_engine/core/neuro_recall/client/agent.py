@@ -13,6 +13,11 @@ from typing import Dict, Any, List, Optional
 
 from dotenv import load_dotenv
 
+if os.getenv("KARI_NEURO_RECALL_LABS_ENABLED", "false").lower() not in {"1", "true", "yes"}:
+    raise RuntimeError(
+        "NeuroRecall agent is labs-only. Set KARI_NEURO_RECALL_LABS_ENABLED=true to run."
+    )
+
 # ---- Logging (colored if available) ----
 try:
     import colorlog

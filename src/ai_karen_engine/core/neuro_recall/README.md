@@ -29,9 +29,14 @@ NeuroRecall may produce:
 - recall failure reports
 - tool-sequence evaluation traces
 - judge scores
+- review-only candidate bundles for memory writeback (`procedure`, `lesson`, `quarantine`)
 
 NeuroRecall **must not** directly write durable production memory.
 All durable persistence must flow through the unified memory writeback review path.
+
+## Benchmark runner integration
+Use the memory evaluation harness to run JSONL benchmark sets in labs mode only.
+This runner is read/eval-only and does not perform direct memory writes.
 
 ## Notes
 After migration/audit completion, this package can be moved to:
