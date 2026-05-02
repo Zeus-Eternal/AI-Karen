@@ -1739,6 +1739,15 @@ class LLMRouter:
     ) -> List[str]:
         """Get fallback providers excluding the failed one"""
         all_providers = await self._get_available_providers_by_priority()
+        ordered_live_chain = [
+            provider
+            for provider in self.RUNTIME_DEGRADED_FALLBACK_ORDER
+            if provider not in {"fallback", "local_gguf", failed_provider}
+        ]
+        if ordered_live_chain:
+            all_providers = [p for p in ordered_live_chain if p in all_providers] + [
+                p for p in all_providers if p not in ordered_live_chain
+            ]
         fallback_providers = []
 
         for provider_name in all_providers:
@@ -1750,6 +1759,15 @@ class LLMRouter:
                 fallback_providers.append(provider_name)
 
         return fallback_providers[:4]
+
+    def _get_config_value(self, key: str, default: Any) -> Any:
+        """Return runtime config value safely with fallback."""
+        config = getattr(self, "config", None)
+        if isinstance(config, dict):
+            return config.get(key, default)
+        if config and hasattr(config, key):
+            return getattr(config, key, default)
+        return default
 
     async def _mark_provider_unhealthy(self, provider_name: str, error_message: str):
         """Mark provider as unhealthy"""
