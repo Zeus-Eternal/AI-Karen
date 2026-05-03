@@ -7,6 +7,7 @@ provider selection, encrypted API key storage, and local model discovery.
 
 from __future__ import annotations
 
+import re
 import asyncio
 import json
 import logging
@@ -451,7 +452,7 @@ async def _build_response() -> Dict[str, Any]:
     provider_manager = get_provider_config_manager()
     discovery_service = get_model_discovery_service()
 
-    all_providers = provider_manager.get_all_providers()
+    all_providers = provider_manager.list_providers()
     active_provider_id = _normalize_provider_id(settings.get_setting("provider"))
     active_model = settings.get_setting("model")
 
@@ -463,23 +464,20 @@ async def _build_response() -> Dict[str, Any]:
         # 3. Discovered models if base_url is set and discovery is supported
         p_models = []
         
-        # Pull models from library
-        from ai_karen_engine.services.models.model_library_service import get_model_library_service
-        library = get_model_library_service()
-        lib_models = library.get_models_for_provider(provider.name)
-        
-        for m in lib_models:
-             p_models.append(ProviderModelPayload(
-                 id=m.model_id,
-                 name=m.name,
-                 family=m.family.value,
-                 capabilities=list(m.capabilities),
-                 size_gb=getattr(m, 'size_gb', None),
-                 is_installed=getattr(m, 'is_installed', False)
-             ))
-
         # Add models from discovery service if applicable
-        discovery_models = discovery_service.get_models(runtime=provider.name)
+        discovery_error = None
+        discovery_models = []
+
+        try:
+            discovery_models = discovery_service.get_models(runtime=provider.name)
+        except Exception as e:
+            logger.warning(
+                f"Model discovery failed for provider {provider.name}: {e}",
+                exc_info=True
+            )
+            discovery_error = str(e)
+            # Continue with empty models from discovery
+
         for dm in discovery_models:
             if not any(m.id == dm.model_id for m in p_models):
                 p_models.append(ProviderModelPayload(
@@ -503,7 +501,7 @@ async def _build_response() -> Dict[str, Any]:
             id=provider.name,
             display_name=provider.display_name,
             description=provider.description,
-            type=provider.type.value,
+             type=provider.provider_type.value,
             icon_name=provider.name if provider.name in {"openai", "gemini", "anthropic", "meta", "huggingface", "vllm", "ollama"} else "openai",
             doc_url=PROVIDER_DOC_URLS.get(provider.name, ""),
             supports_model_discovery=provider.capabilities is not None and "custom_endpoint" in provider.capabilities, # Simple heuristic
@@ -584,7 +582,7 @@ def _normalize_ollama_base_url(url: str) -> str:
 
 
 def _supports_base_url_override(provider: ProviderConfig) -> bool:
-    return provider.type in {ProviderType.LOCAL, ProviderType.CUSTOM} or provider.name in {"openai", "azure", "vllm"}
+    return provider.provider_type in {ProviderType.LOCAL, ProviderType.HYBRID} or provider.name in {"openai", "azure", "vllm", "builtin_vllm"}
 
 
 def _normalize_selected_model_for_provider(provider_name: str, model_id: Any) -> str:
@@ -663,7 +661,13 @@ async def _probe_ollama_health(base_url: str) -> bool:
 
 
 def normalize_display_base_url(address: str) -> str:
-    return address.strip().replace(/\/api\/?$/, '').replace(/\/$/, '')
+    """Normalize display base URL by removing /api prefix if present."""
+    cleaned = address.strip()
+    # Remove /api prefix if present
+    cleaned = re.sub(r'^(.+?)/api/', r'\1/', cleaned)
+    # Remove trailing slash
+    cleaned = re.sub(r'/$', '', cleaned)
+    return cleaned
 
 
 @router.post("/providers/custom", response_model=ModelSettingsResponse)

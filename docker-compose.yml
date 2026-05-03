@@ -299,7 +299,6 @@ services:
       - "${KAREN_BUILTIN_VLLM_HOST_PORT:-8001}:8000"
     environment:
       HF_HOME: /models/huggingface
-      TRANSFORMERS_CACHE: /models/huggingface
       HUGGING_FACE_HUB_TOKEN: "${HUGGING_FACE_HUB_TOKEN:-}"
       VLLM_ENABLE_CUDA_COMPATIBILITY: "${VLLM_ENABLE_CUDA_COMPATIBILITY:-0}"
       NVIDIA_VISIBLE_DEVICES: "${NVIDIA_VISIBLE_DEVICES:-all}"
@@ -367,7 +366,6 @@ services:
       - "${KAREN_BUILTIN_VLLM_HOST_PORT:-8001}:8000"
     environment:
       HF_HOME: /models/huggingface
-      TRANSFORMERS_CACHE: /models/huggingface
       HUGGING_FACE_HUB_TOKEN: "${HUGGING_FACE_HUB_TOKEN:-}"
       VLLM_TARGET_DEVICE: "${KAREN_BUILTIN_VLLM_CPU_TARGET_DEVICE:-cpu}"
       VLLM_CPU_KVCACHE_SPACE: "${VLLM_CPU_KVCACHE_SPACE:-8}"
