@@ -316,10 +316,11 @@ export interface ProviderDetails {
   runtime_engine?: RuntimeEngine | string;
   compatible_api?: string;
   selectable?: boolean;
+  is_configured?: boolean;
+  user_selectable?: boolean;
   enabled?: boolean;
-  healthy?: boolean;
-  requires_api_key?: boolean;
-  api_key_configured?: boolean;
+  policy_allowed?: boolean;
+  policy_rejection_reason?: string | null;
   base_url?: string | null;
   default_base_url?: string | null;
   health_url?: string | null;

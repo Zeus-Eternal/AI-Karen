@@ -28,6 +28,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import { normalizeModelSettingsResponse } from '@/lib/model-runtime-inventory';
 
 export default function ExpressionSettings() {
   const [exprSettings, setExprSettings] = useState<any>(null);
@@ -124,6 +125,20 @@ export default function ExpressionSettings() {
     });
     return groups;
   }, [exprSettings]);
+
+  // Group providers by their category (use model settings data)
+  const groupedProviders = useMemo(() => {
+    if (!modelSettings) return { builtin: [], local: [], cloud: [] };
+    
+    // Use the library's normalization logic to ensure consistent grouping
+    const normalized = normalizeModelSettingsResponse(modelSettings);
+    
+    return {
+      builtin: normalized.builtInProviders || [],
+      local: normalized.localProviders || [],
+      cloud: [...(normalized.thirdPartyProviders || []), ...(normalized.customProviders || [])]
+    };
+  }, [modelSettings]);
 
   const getProviderIcon = (providerId: string) => {
     if (providerId.startsWith('builtin')) return Settings2;
@@ -399,22 +414,27 @@ export default function ExpressionSettings() {
                 >
                   Add Step
                 </Button>
-                <Button 
+                <Button
                   variant="default"
                   size="sm"
                   className="h-8 text-[10px] font-bold uppercase tracking-widest shadow-md"
                   onClick={() => handleSave(null, fallbackOrder)}
-                  disabled={isSaving || (exprSettings && JSON.stringify(exprSettings.fallback_order) === JSON.stringify(fallbackOrder))}
+                  disabled={isSaving || (
+                    exprSettings && 
+                    JSON.stringify(exprSettings.fallback_order) === JSON.stringify(fallbackOrder) &&
+                    exprSettings.active_engine === activeEngine
+                  )}
                 >
                   {isSaving ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Save className="h-3 w-3 mr-2" />}
-                  Save Sequence
+                  Save Expression
                 </Button>
+
               </div>
             </div>
 
             <div className="space-y-3 max-w-2xl">
               {fallbackOrder.map((id, index) => {
-                const isEnabled = exprSettings.engines[id]?.enabled !== false;
+                const isEnabled = exprSettings?.engines?.[id]?.enabled !== false;
                 const Icon = getProviderIcon(id);
                 
                 return (
@@ -458,9 +478,9 @@ export default function ExpressionSettings() {
                       
                       {/* Show overrides if present */}
                       <div className="flex items-center gap-2 mr-3">
-                         {exprSettings.engines[id]?.metadata?.preferred_model && (
+                         {exprSettings?.engines?.[id]?.metadata?.preferred_model && (
                             <Badge variant="outline" className="h-5 text-[7px] border-primary/20 bg-primary/5 text-primary">
-                               MODEL: {exprSettings.engines[id].metadata.preferred_model}
+                               MODEL: {exprSettings?.engines?.[id]?.metadata?.preferred_model}
                             </Badge>
                          )}
                          <Badge variant="secondary" className="h-5 text-[8px] bg-muted/40 font-mono text-muted-foreground shrink-0">

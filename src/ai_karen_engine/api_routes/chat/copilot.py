@@ -129,7 +129,10 @@ async def _retry_orchestrator_without_preferred_provider(
 
 
 def _build_degraded_sse_events(
-    payload: Dict[str, Any], correlation_id: str
+    payload: Dict[str, Any], 
+    correlation_id: str,
+    requested_provider: Optional[str] = None,
+    requested_model: Optional[str] = None
 ) -> List[Dict[str, Any]]:
     """Build client-compatible SSE events for degraded/fallback payloads."""
     text = _extract_stream_text(payload)
@@ -140,22 +143,35 @@ def _build_degraded_sse_events(
     status_message = _PROCESSING_STATUS_MESSAGES.get(
         status, f"Karen is {status.replace('_', ' ')}..."
     )
+    
+    # Build LLM metadata block for transparency
+    llm_metadata = payload.get("llm") or {}
+    if not isinstance(llm_metadata, dict):
+        llm_metadata = {}
+    
+    llm_metadata.update({
+        "requested_provider": requested_provider or llm_metadata.get("requested_provider"),
+        "requested_model": requested_model or llm_metadata.get("requested_model"),
+        "actual_provider": llm_metadata.get("actual_provider") or "system",
+        "actual_model": llm_metadata.get("actual_model") or "auto",
+        "is_degraded": True,
+        "fallback_level": llm_metadata.get("fallback_level") or 99,
+        "response_source": llm_metadata.get("response_source") or "emergency_static"
+    })
+
     metadata = {
         **payload,
         "status": status,
         "status_message": status_message,
         "degraded_mode": True,
+        "llm": llm_metadata
     }
     events: List[Dict[str, Any]] = [
         {
             "type": "status",
             "content": status_message,
             "correlation_id": correlation_id,
-            "metadata": {
-                "status": status,
-                "status_message": status_message,
-                "degraded_mode": True,
-            },
+            "metadata": metadata,
         }
     ]
     if text:
@@ -299,6 +315,7 @@ class AssistRequest(BaseModel):
     top_k: int = Field(6, ge=1, le=50)
     context: Dict[str, Any] = Field(default_factory=dict)
     preferred_llm_provider: Optional[str] = None
+    preferred_provider: Optional[str] = None
     preferred_model: Optional[str] = None
     session_id: Optional[str] = None
     response_mode: Optional[str] = Field(
@@ -497,18 +514,55 @@ def _normalize_runtime_truth_metadata(
         or llm.get("source")
         or ("emergency_static" if actual_provider == "emergency_static" else "live_model")
     )
+    def _robust_normalize(val: Any, is_model: bool = False) -> str:
+        s = str(val or "").strip().lower().replace("-", "_")
+        if not s:
+            return ""
+        if is_model:
+            # Handle path separators like in the frontend
+            return s.split("/")[-1].split(":")[-1].split(".")[0]
+        # Handle provider aliases (remove builtin_ prefix for comparison)
+        return s.replace("builtin_", "")
+
+    requested_provider_norm = _robust_normalize(requested_provider)
+    actual_provider_norm = _robust_normalize(actual_provider)
+    
     provider_changed = bool(
-        requested_provider
-        and actual_provider
-        and str(requested_provider).strip().lower() != str(actual_provider).strip().lower()
+        requested_provider_norm
+        and actual_provider_norm
+        and requested_provider_norm != actual_provider_norm
     )
+    
+    # Models are only "changed" if requested was not "auto" and they don't match
+    requested_model_norm = _robust_normalize(requested_model, is_model=True)
+    actual_model_norm = _robust_normalize(actual_model, is_model=True)
+    
+    model_changed = bool(
+        requested_model_norm
+        and actual_model_norm
+        and requested_model_norm != "auto"
+        and requested_model_norm != actual_model_norm
+    )
+    
+    # Determine if the response source represents a healthy live execution
+    is_healthy_source = (
+        response_source == "live_model" or 
+        str(response_source).endswith("_engine") or 
+        response_source == "intelligent_router"
+    )
+    
     degraded_mode = bool(
         llm.get("degraded_mode")
         or llm.get("is_degraded")
         or normalized.get("degraded_mode")
         or provider_changed
-        or response_source != "live_model"
+        or model_changed
+        or not is_healthy_source
     )
+    
+    # If it's a successful direct engine response, it's not degraded
+    if is_healthy_source and not provider_changed and not model_changed:
+        degraded_mode = False
     fallback_level = llm.get("fallback_level", normalized.get("fallback_level"))
     if fallback_level is None:
         fallback_level = 1 if provider_changed else (99 if response_source == "emergency_static" else 0)
@@ -1139,13 +1193,27 @@ async def copilot_assist_stream(
     actual_mode, transport, should_stream = _resolve_actual_response_mode(
         request.response_mode, None
     )
+    # Unify preferred provider/model selection
+    requested_provider = request.preferred_provider or request.preferred_llm_provider
+    requested_model = request.preferred_model
+
+    logger.info(
+        "Chat request received",
+        extra={
+            "correlation_id": correlation_id,
+            "requested_provider": requested_provider,
+            "requested_model": requested_model,
+            "user_id": request.user_id,
+        }
+    )
+
     request_config_metadata = _build_request_config_metadata(
         requested_mode=request.response_mode or get_chat_response_mode(),
         actual_mode=actual_mode,
         transport=transport,
         should_stream=True,
-        preferred_provider=request.preferred_llm_provider,
-        preferred_model=request.preferred_model,
+        preferred_provider=requested_provider,
+        preferred_model=requested_model,
     )
 
     try:
@@ -1163,7 +1231,12 @@ async def copilot_assist_stream(
                 payload["correlation_id"] = correlation_id
 
                 async def stream_emergency_fallback():
-                    for event in _build_degraded_sse_events(payload, correlation_id):
+                    for event in _build_degraded_sse_events(
+                        payload, 
+                        correlation_id,
+                        requested_provider=request.preferred_llm_provider,
+                        requested_model=request.preferred_model
+                    ):
                         yield f"data: {json.dumps(event)}\n\n"
                     yield "data: [DONE]\n\n"
 
@@ -1219,7 +1292,10 @@ async def copilot_assist_stream(
                         correlation_id,
                     )
                     events = _build_degraded_sse_events(
-                        degraded_payload, correlation_id
+                        degraded_payload, 
+                        correlation_id,
+                        requested_provider=request.preferred_llm_provider,
+                        requested_model=request.preferred_model
                     )
                 else:
                     emergency_payload = serialize_runtime_response(
@@ -1227,7 +1303,10 @@ async def copilot_assist_stream(
                     ) or {}
                     emergency_payload["correlation_id"] = correlation_id
                     events = _build_degraded_sse_events(
-                        emergency_payload, correlation_id
+                        emergency_payload, 
+                        correlation_id,
+                        requested_provider=request.preferred_llm_provider,
+                        requested_model=request.preferred_model
                     )
                 for event in events:
                     yield f"data: {json.dumps(event)}\n\n"
@@ -1298,13 +1377,23 @@ async def copilot_assist_stream(
                     degraded_continuation_response,
                     correlation_id,
                 )
-                events = _build_degraded_sse_events(degraded_payload, correlation_id)
+                events = _build_degraded_sse_events(
+                    degraded_payload, 
+                    correlation_id,
+                    requested_provider=request.preferred_llm_provider,
+                    requested_model=request.preferred_model
+                )
             else:
                 emergency_payload = serialize_runtime_response(
                     EmergencyFallbackResponse()
                 ) or {}
                 emergency_payload["correlation_id"] = correlation_id
-                events = _build_degraded_sse_events(emergency_payload, correlation_id)
+                events = _build_degraded_sse_events(
+                    emergency_payload, 
+                    correlation_id,
+                    requested_provider=request.preferred_llm_provider,
+                    requested_model=request.preferred_model
+                )
             for event in events:
                 yield f"data: {json.dumps(event)}\n\n"
             yield "data: [DONE]\n\n"
@@ -1516,7 +1605,10 @@ async def copilot_assist_stream(
                     correlation_id,
                 )
                 for event in _build_degraded_sse_events(
-                    fallback_payload, correlation_id
+                    fallback_payload, 
+                    correlation_id,
+                    requested_provider=request.preferred_llm_provider,
+                    requested_model=request.preferred_model
                 ):
                     yield f"data: {json.dumps(event)}\n\n"
                 yield "data: [DONE]\n\n"

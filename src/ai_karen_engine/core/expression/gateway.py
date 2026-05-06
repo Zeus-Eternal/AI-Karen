@@ -24,10 +24,34 @@ class ExpressionGateway:
         emit_expression_event("expression.task.started", self._event_payload(task, engine_id=self.settings.active_engine))
         
         # Build the actual execution sequence (max 5 steps)
-        # Sequence starts with the active engine, then follows the fallback order.
+        # 0. Start with user's preferred provider if explicitly requested and different from active engine
+        # 1. Then add the configured active engine
+        # 2. Then follows the fallback order.
         # Fixed 5th step is always 'disabled' (Emergency Static).
         fallback_order = self.settings.engine_fallback_order
         sequence = []
+        
+        pref_id = str(task.preferred_provider or "").strip().lower()
+        if pref_id and pref_id != "auto":
+             # Use policy to map provider to engine category
+             decision = evaluate_provider_policy(pref_id)
+             target_engine = None
+             if decision.classification == "builtin_engine":
+                  target_engine = "builtin"
+             elif decision.classification == "local_provider_option":
+                  target_engine = "local"
+             elif decision.classification == "external_provider_option":
+                  target_engine = "cloud"
+             
+             if target_engine:
+                  if target_engine not in sequence:
+                       sequence.insert(0, target_engine)
+                  else:
+                       # Move to front if already present
+                       sequence.remove(target_engine)
+                       sequence.insert(0, target_engine)
+        
+        # Then add the configured active engine
         if self.settings.active_engine not in sequence:
              sequence.append(self.settings.active_engine)
              
@@ -36,7 +60,11 @@ class ExpressionGateway:
                 sequence.append(engine_id)
         
         # Step 5: Always Emergency Static
-        sequence.append("disabled")
+        if "disabled" not in sequence:
+            sequence.append("disabled")
+        
+        # Limit to 5 steps total
+        sequence = sequence[:5]
 
         last_error = None
         skipped_engines = []

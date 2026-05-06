@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
-import { Bot, Loader2 } from 'lucide-react';
+import { Bot, ChevronDown, Loader2 } from 'lucide-react';
 import { getRuntimeDisplayName } from '@/lib/chat-response';
 import { getRuntimeProviderBucket } from '@/lib/model-runtime-inventory';
 import type { ProviderDetails } from '../types';
@@ -147,6 +147,12 @@ export const ProviderSettingsModal = ({
   const activeProviderLabel =
     getProviderLabel(activeProviderDetails) || 'Select Runtime';
 
+  const currentProviderDetails = useMemo(() => {
+    return getProviderById(selectableProviders, selectedProvider);
+  }, [selectableProviders, selectedProvider]);
+  
+  const currentProviderLabel = getProviderLabel(currentProviderDetails) || 'Models';
+
   /*
    * The modal keeps local draft state so users can browse providers/models
    * without immediately changing the active runtime. We reset that draft state
@@ -213,11 +219,18 @@ export const ProviderSettingsModal = ({
         <Button
           type="button"
           variant="outline"
-          className="flex h-9 items-center gap-2 border border-input bg-background px-3 font-medium hover:bg-accent hover:text-accent-foreground"
+          className="flex h-9 items-center gap-2 border border-input bg-background px-3 font-medium hover:bg-accent hover:text-accent-foreground shadow-sm transition-all"
           aria-label="Open model and provider settings"
         >
-          <Bot className="h-4 w-4" />
-          MODELS
+          <Bot className="h-4 w-4 text-primary/70" />
+          <span className="max-w-[150px] truncate text-[10px] font-bold uppercase tracking-tight">
+            {currentProviderLabel}
+          </span>
+          <span className="text-[9px] opacity-40">/</span>
+          <span className="max-w-[100px] truncate text-[10px] opacity-60">
+            {selectedModel === 'auto' ? 'AUTO' : selectedModel}
+          </span>
+          <ChevronDown className="h-3 w-3 opacity-30" />
         </Button>
       </DialogTrigger>
 
@@ -299,6 +312,8 @@ export const ProviderSettingsModal = ({
                 <div className="grid grid-cols-2 gap-2">
                   {providerModels.map((model) => {
                     const isActive = localModel === model.id;
+                    const isAuto = model.id === 'auto';
+                    const displayName = isAuto ? 'Automatic Selection' : (model.name || model.id);
 
                     return (
                       <button
@@ -314,11 +329,18 @@ export const ProviderSettingsModal = ({
                         title={model.id}
                       >
                         <div className="truncate text-sm font-medium leading-tight">
-                          {model.name || model.id}
+                          {displayName}
                         </div>
-                        <div className="mt-1 truncate text-[10px] text-muted-foreground">
-                          {model.id}
-                        </div>
+                        {!isAuto && (
+                          <div className="mt-1 truncate text-[10px] text-muted-foreground">
+                            {model.id}
+                          </div>
+                        )}
+                        {isAuto && (
+                          <div className="mt-1 truncate text-[9px] italic text-muted-foreground opacity-70">
+                            Let Karen choose the best model
+                          </div>
+                        )}
                       </button>
                     );
                   })}

@@ -747,27 +747,27 @@ class ServiceRegistry:
                     if memory_service:
                         try:
                             # Build ConversationManager using existing memory service components
+                            # If memory_service is the next-gen MemoryRuntimeManager, use it directly
                             memory_manager = getattr(
-                                memory_service, "base_manager", None
+                                memory_service, "base_manager", memory_service
                             )
-                            if memory_manager:
-                                conversation_manager = ConversationManager(
-                                    db_client=getattr(
-                                        memory_manager, "db_client", None
-                                    ),
-                                    memory_manager=memory_manager,
-                                    embedding_manager=getattr(
-                                        memory_manager, "embedding_manager", None
-                                    ),
-                                )
-                                instance = ConversationService(
-                                    conversation_manager, memory_service
-                                )
-                            else:
-                                logger.warning(
-                                    "ConversationService cannot initialize without proper memory_service"
-                                )
-                                instance = None
+                            
+                            # Ensure we have a db_client for ConversationManager
+                            db_client = getattr(memory_manager, "db_client", None)
+                            if not db_client:
+                                from ai_karen_engine.database.client import MultiTenantPostgresClient
+                                db_client = MultiTenantPostgresClient()
+
+                            conversation_manager = ConversationManager(
+                                db_client=db_client,
+                                memory_manager=memory_manager,
+                                embedding_manager=getattr(
+                                    memory_manager, "embedding_manager", None
+                                ),
+                            )
+                            instance = ConversationService(
+                                conversation_manager, memory_service
+                            )
                         except Exception as e:
                             logger.warning(
                                 f"Failed to initialize ConversationService: {e}"
@@ -1352,9 +1352,9 @@ async def initialize_services() -> None:
         from ai_karen_engine.services.persona.persona_service import get_persona_service
         
         # Register Next-Gen Memory Ledger and Profile Synthesis
-        registry.register_service("memory_service", lambda: get_memory_manager())
-        registry.register_service("profile_service", lambda: get_profile_service())
-        registry.register_service("persona_service", lambda: get_persona_service())
+        registry.register_service("memory_service", lambda *_, **__: get_memory_manager())
+        registry.register_service("profile_service", lambda *_, **__: get_profile_service())
+        registry.register_service("persona_service", lambda *_, **__: get_persona_service())
         logger.info("✅ Registered next-gen memory, profile, and persona services")
     except Exception as e:
         logger.error(f"❌ Could not register next-gen memory/profile/persona services: {e}", exc_info=True)

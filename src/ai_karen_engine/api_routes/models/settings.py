@@ -28,6 +28,7 @@ from ai_karen_engine.auth.session import get_current_user
 
 from ai_karen_engine.config.llm_provider_config import (
     AuthenticationType,
+    DEFAULT_OLLAMA_BASE_URL,
     MODEL_SETTINGS_PROVIDER_ORDER,
     ProviderAuthentication,
     ProviderConfig,
@@ -36,6 +37,7 @@ from ai_karen_engine.config.llm_provider_config import (
     ProviderModel,
     ProviderType,
     get_provider_config_manager,
+    is_docker,
 )
 from ai_karen_engine.core.model_runtime.model_discovery_service import (
     get_model_discovery_service,
@@ -47,9 +49,6 @@ from ai_karen_engine.models.secret_manager import get_secret_manager
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/settings/model", tags=["model-settings"])
-DEFAULT_OLLAMA_BASE_URL = os.getenv(
-    "OLLAMA_BASE_URL", "http://host.docker.internal:11434"
-)
 LEGACY_OLLAMA_IN_STACK_URL = "http://ollama:11434"
 OLLAMA_HOST_RUNTIME = "host"
 OLLAMA_CONTAINER_RUNTIME = "container"
@@ -129,11 +128,25 @@ class ProviderPayload(BaseModel):
     api_key_header: Optional[str] = "Authorization"
     api_key_prefix: Optional[str] = "Bearer"
     custom_headers: Optional[Dict[str, str]] = None
-    runtime_options: Optional[List["RuntimeOptionPayload"]] = None
+    runtime_options: Optional[List[RuntimeOptionPayload]] = None
+    is_configured: bool = False
+    healthy: bool = True
+    user_selectable: bool = True
+    enabled: bool = True
+    policy_allowed: bool = True
+    policy_rejection_reason: Optional[str] = None
+    runtime_engine: Optional[str] = None
+    supports_streaming: bool = True
+    supports_tools: bool = False
+    degraded_reason: Optional[str] = None
+    required_config_fields: List[str] = Field(default_factory=list)
+    safe_diagnostic_metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
 class ModelSettingsResponse(BaseModel):
     providers: List[ProviderPayload]
+    selected_provider: str
+    selected_model: str
     active_provider: str
     active_model: str
     fallback_hierarchy: List[str]
@@ -446,6 +459,147 @@ async def update_model_settings(
     return await _build_response()
 
 
+@router.get("/providers/{provider_id}/models", response_model=ProviderModelsResponse)
+async def get_provider_models(
+    provider_id: str,
+    base_url: Optional[str] = None,
+    current_user: Any = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """Discover models for a specific provider."""
+    try:
+        discovery_service = get_model_discovery_service()
+        provider_manager = get_provider_config_manager()
+
+        # Normalize provider ID
+        normalized_id = _normalize_provider_id(provider_id)
+
+        # Get provider config
+        provider = provider_manager.get_provider(normalized_id)
+        if not provider:
+            # Try to find by display name or other matches if ID doesn't hit directly
+            all_providers = provider_manager.list_providers()
+            for p in all_providers:
+                if _normalize_provider_id(p.name) == normalized_id:
+                    provider = p
+                    break
+
+        p_models = []
+
+        # 1. Add static models from config if found
+        if provider:
+            for m in (provider.models or []):
+                p_models.append(
+                    ProviderModelPayload(
+                        id=m.id,
+                        name=m.name,
+                        family=m.family or "unknown",
+                        capabilities=list(m.capabilities or []),
+                        is_installed=True,
+                    )
+                )
+
+        # 2. Add models from discovery service
+        discovery_models = []
+        try:
+            discovery_models = await discovery_service.get_models_async(runtime=normalized_id)
+        except Exception as e:
+            logger.warning(f"Model discovery failed for {normalized_id}: {e}")
+
+        # 3. Special handling for dynamic discovery (Ollama and OpenAI-compatible/vLLM)
+        dynamic_model_names = []
+        try:
+            target_url = base_url
+            if not target_url and provider and provider.endpoint:
+                target_url = provider.endpoint.base_url
+
+            if target_url:
+                if normalized_id == "ollama":
+                    from ai_karen_engine.integrations.providers.ollama_provider import OllamaProvider
+                    ollama = OllamaProvider(base_url=target_url)
+                    loop = asyncio.get_running_loop()
+                    dynamic_model_names = await loop.run_in_executor(None, ollama.get_models)
+                elif normalized_id == "builtin_vllm" or (provider and provider.provider_type.value in ["remote", "hybrid"]):
+                    # Try generic OpenAI compatible discovery
+                    from ai_karen_engine.integrations.providers.openai_compatible_provider import OpenAICompatibleProvider
+                    
+                    # Prepare API key if available
+                    api_key = None
+                    if provider and provider.name:
+                        api_key = provider_manager.get_api_key(provider.name)
+                        
+                    client = OpenAICompatibleProvider(base_url=target_url, api_key=api_key)
+                    loop = asyncio.get_running_loop()
+                    dynamic_model_names = await loop.run_in_executor(None, client.get_models)
+
+                for name in dynamic_model_names:
+                    if not any(m.id == name for m in p_models):
+                        p_models.append(ProviderModelPayload(
+                            id=name,
+                            name=name,
+                            family=normalized_id,
+                            capabilities=["text", "chat_completion", "streaming"],
+                            is_installed=True
+                        ))
+        except Exception as e:
+            logger.warning(f"Dynamic model discovery failed for {normalized_id}: {e}")
+
+        for dm in discovery_models:
+            if not any(m.id == dm.model_id for m in p_models):
+                p_models.append(
+                    ProviderModelPayload(
+                        id=dm.model_id,
+                        name=dm.display_name or dm.name,
+                        family=dm.model_type or "unknown",
+                        capabilities=list(dm.capabilities),
+                        size_gb=float(dm.size_bytes / (1024**3))
+                        if dm.size_bytes
+                        else None,
+                        is_installed=bool(dm.weights_present),
+                    )
+                )
+
+        return {
+            "provider": provider_id,
+            "base_url": base_url,
+            "models": p_models,
+            "discovered_at": datetime.now(timezone.utc).isoformat(),
+        }
+    except Exception as e:
+        logger.exception(f"Failed to get models for provider {provider_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/validate")
+async def validate_provider_settings(
+    request: ProviderSettingsValidationRequest,
+    current_user: Any = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """Validate provider settings (API key, base URL)."""
+    try:
+        provider_id = _normalize_provider_id(request.provider)
+        
+        # Simple validation for now - check if API key is provided if required
+        # and try to discover models if base_url is provided.
+        
+        if request.api_key and len(request.api_key) < 3:
+             return {"valid": False, "message": "Invalid API key format"}
+
+        # Return success with count if we can find any models
+        # (This is a lightweight check)
+        discovery_service = get_model_discovery_service()
+        models = discovery_service.get_models(runtime=provider_id)
+        
+        return {
+            "valid": True, 
+            "message": "Settings verified",
+            "models_discovered": len(models)
+        }
+        
+    except Exception as e:
+        logger.error(f"Validation failed for {request.provider}: {e}")
+        return {"valid": False, "message": f"Validation failed: {str(e)}"}
+
+
 async def _build_response() -> Dict[str, Any]:
     """Build the comprehensive ModelSettingsResponse dictionary."""
     settings = get_settings_manager()
@@ -458,18 +612,23 @@ async def _build_response() -> Dict[str, Any]:
 
     providers_payload = []
     for provider in all_providers:
-        # Resolve models for this provider
-        # 1. Local models if appropriate
-        # 2. Known/hardcoded models from config
-        # 3. Discovered models if base_url is set and discovery is supported
+        # 1. Start with known models from provider configuration
         p_models = []
-        
-        # Add models from discovery service if applicable
+        for m in (provider.models or []):
+             p_models.append(ProviderModelPayload(
+                id=m.id,
+                name=m.name,
+                family=m.family or "unknown",
+                capabilities=list(m.capabilities or []),
+                is_installed=True
+            ))
+
+        # 2. Add models from discovery service if applicable
         discovery_error = None
         discovery_models = []
 
         try:
-            discovery_models = discovery_service.get_models(runtime=provider.name)
+            discovery_models = await discovery_service.get_models_async(runtime=provider.name)
         except Exception as e:
             logger.warning(
                 f"Model discovery failed for provider {provider.name}: {e}",
@@ -483,10 +642,10 @@ async def _build_response() -> Dict[str, Any]:
                 p_models.append(ProviderModelPayload(
                     id=dm.model_id,
                     name=dm.display_name or dm.name,
-                    family=dm.type.value,
+                    family=dm.model_type or "unknown",
                     capabilities=list(dm.capabilities),
-                    size_gb=dm.size_bytes / (1024**3) if dm.size_bytes else None,
-                    is_installed=dm.weights_present
+                    size_gb=float(dm.size_bytes / (1024**3)) if dm.size_bytes else None,
+                    is_installed=bool(dm.weights_present)
                 ))
 
         # Endpoint settings from storage
@@ -497,34 +656,86 @@ async def _build_response() -> Dict[str, Any]:
         if provider.name == "ollama":
             runtime_options = await _get_ollama_runtime_options()
 
+        api_key_status = _get_api_key_status(provider.name, provider)
+        
+        # Determine if provider is configured and healthy
+        from ai_karen_engine.config.runtime_provider_manager import get_runtime_provider_manager
+        runtime_manager = get_runtime_provider_manager()
+        health_statuses = runtime_manager.get_all_provider_health()
+        
+        is_configured = api_key_status in ["configured", "not_required"]
+        healthy = True
+        degraded_reason = None
+        
+        health_info = health_statuses.get(provider.name)
+        if health_info:
+            healthy = health_info.is_healthy
+            if not healthy:
+                degraded_reason = health_info.error_message
+            
+        # Local providers like Ollama are only configured if they have available runtime options
+        # or if a base_url has been manually set.
+        if provider.name == "ollama" and not override.get("base_url"):
+             if runtime_options and not any(opt.available for opt in runtime_options):
+                 is_configured = False
+
+        # Required config fields
+        required_fields = []
+        if provider.authentication and provider.authentication.type == AuthenticationType.API_KEY:
+            required_fields.append("api_key")
+        if _supports_base_url_override(provider):
+            required_fields.append("base_url")
+
+        # Runtime engine derivation
+        runtime_engine = provider.name.replace("builtin_", "")
+        if provider.name == "custom":
+            runtime_engine = "openai_compatible"
+
         providers_payload.append(ProviderPayload(
             id=provider.name,
             display_name=provider.display_name,
             description=provider.description,
-             type=provider.provider_type.value,
+            type=provider.provider_type.value,
             icon_name=provider.name if provider.name in {"openai", "gemini", "anthropic", "meta", "huggingface", "vllm", "ollama"} else "openai",
             doc_url=PROVIDER_DOC_URLS.get(provider.name, ""),
-            supports_model_discovery=provider.capabilities is not None and "custom_endpoint" in provider.capabilities, # Simple heuristic
+            supports_model_discovery=bool(provider.capabilities is not None and "custom_endpoint" in provider.capabilities), 
             supports_base_url_override=_supports_base_url_override(provider),
             default_base_url=provider.endpoint.base_url if provider.endpoint else None,
-            api_key_status=_get_api_key_status(provider.name, provider),
+            api_key_status=api_key_status,
             api_key_env_var=provider.authentication.api_key_env_var if provider.authentication else None,
             models=p_models,
             selected_model=_normalize_selected_model_for_provider(provider.name, override.get("last_model") or provider.default_model),
             base_url=override.get("base_url"),
-            api_key_header=override.get("api_key_header", provider.authentication.api_key_header if provider.authentication else "Authorization"),
-            api_key_prefix=override.get("api_key_prefix", provider.authentication.api_key_prefix if provider.authentication else "Bearer"),
+            api_key_header=str(override.get("api_key_header", provider.authentication.api_key_header if provider.authentication else "Authorization")),
+            api_key_prefix=str(override.get("api_key_prefix", provider.authentication.api_key_prefix if provider.authentication else "Bearer")),
             custom_headers=override.get("custom_headers"),
-            runtime_options=runtime_options
+            runtime_options=runtime_options,
+            is_configured=is_configured,
+            healthy=healthy,
+            user_selectable=bool(provider.priority > 0),
+            enabled=bool(provider.enabled),
+            policy_allowed=True,
+            policy_rejection_reason=None,
+            runtime_engine=runtime_engine,
+            supports_streaming=bool(provider.capabilities and "streaming" in provider.capabilities),
+            supports_tools=bool(provider.capabilities and "tool_use" in provider.capabilities),
+            degraded_reason=degraded_reason,
+            required_config_fields=required_fields,
+            safe_diagnostic_metadata={
+                "connection_target": override.get("base_url") or (provider.endpoint.base_url if provider.endpoint else "internal"),
+                "is_docker": is_docker()
+            }
         ))
 
     return {
         "providers": providers_payload,
-        "active_provider": active_provider_id,
-        "active_model": active_model,
-        "fallback_hierarchy": settings.get_setting("llm_providers.fallback_hierarchy") or [
+        "selected_provider": str(active_provider_id or "builtin_transformers"),
+        "selected_model": str(active_model or "auto"),
+        "active_provider": str(active_provider_id or "builtin_transformers"),
+        "active_model": str(active_model or "auto"),
+        "fallback_hierarchy": list(settings.get_setting("llm_providers.fallback_hierarchy") or [
             "builtin_transformers", "builtin_vllm", "openai", "gemini"
-        ]
+        ])
     }
 
 

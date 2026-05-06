@@ -82,14 +82,14 @@ def probe_runtime_compatibility(
             )
             security_flags.append("unsupported_architecture")
         elif adapter_only:
-            compatible_runtimes = ["transformers_direct"]
-            preferred_runtime = "transformers_direct"
+            compatible_runtimes = ["builtin_transformers"]
+            preferred_runtime = "builtin_transformers"
             confidence = "config_inferred"
             security_flags.append("adapter_only_without_base")
             runtime_notes.append("Adapter-only model; requires a configured base model for vLLM.")
         elif embedding_like or (multimodal_like and not text_generation_like) or not text_generation_like:
-            compatible_runtimes = ["transformers_direct"]
-            preferred_runtime = "transformers_direct"
+            compatible_runtimes = ["builtin_transformers"]
+            preferred_runtime = "builtin_transformers"
             confidence = "config_inferred"
             if embedding_like:
                 runtime_notes.append("Embedding or reranking model should use direct transformer runtime.")
@@ -98,8 +98,8 @@ def probe_runtime_compatibility(
             else:
                 runtime_notes.append("Transformer model type not suitable for vLLM selection.")
         else:
-            compatible_runtimes = ["vllm", "transformers_direct"]
-            preferred_runtime = "vllm"
+            compatible_runtimes = ["builtin_vllm", "builtin_transformers"]
+            preferred_runtime = "builtin_vllm"
             confidence = "runtime_verified" if vllm_available else "config_inferred"
             runtime_notes.append(
                 "Transformers model can run in vLLM or direct fallback mode."
@@ -111,8 +111,8 @@ def probe_runtime_compatibility(
         runtime_notes.append("GGUF is exposed through an OpenAI-compatible endpoint only.")
         security_flags.append("external_endpoint_only")
     elif model_format == "onnx":
-        compatible_runtimes = ["transformers_direct"]
-        preferred_runtime = "transformers_direct"
+        compatible_runtimes = ["builtin_transformers"]
+        preferred_runtime = "builtin_transformers"
         confidence = "config_inferred"
         runtime_notes.append("ONNX is handled via direct runtime helpers.")
     else:

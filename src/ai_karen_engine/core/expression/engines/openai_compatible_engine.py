@@ -36,27 +36,43 @@ class OpenAICompatibleEngine(BaseExpressionEngine):
         model = task.preferred_model or "auto"
         
         try:
-            # Check if we have an OpenAI compatible provider class for this
-            # Most external/local providers in Kari are wrapped in OpenAICompatibleProvider
-            from ai_karen_engine.integrations.providers.openai_compatible_provider import OpenAICompatibleProvider
+            # Use central registry to get the provider instance
+            from ai_karen_engine.integrations.llm_registry import get_provider
             
             # Resolve endpoint settings from registry
-            endpoint = registry.get_provider_endpoint(provider_id)
-            if not endpoint:
-                return self._failure_result(task, started, f"endpoint_not_found:{provider_id}")
-
-            provider = OpenAICompatibleProvider(
+            from ai_karen_engine.core.model_runtime import get_provider_registry_service
+            registry_service = get_provider_registry_service()
+            endpoint = registry_service.get_provider_endpoint(provider_id)
+            
+            # Get provider instance with necessary initialization args
+            provider = get_provider(
+                provider_id, 
                 model=model,
-                base_url=endpoint.base_url,
-                api_key=endpoint.api_key, # This would ideally come from secret manager
-                provider_name=provider_id
+                base_url=endpoint.base_url if endpoint else None,
+                api_key=endpoint.api_key if endpoint else None
             )
             
+            if not provider:
+                return self._failure_result(task, started, f"provider_not_found:{provider_id}")
+
             prompt = self._extract_prompt(task.messages)
-            text = await provider.generate_text_async(prompt, max_tokens=task.max_tokens, temperature=task.temperature)
+            
+            # Check if generate_text_async exists, fallback to generate_text or generate
+            if hasattr(provider, "generate_text_async"):
+                 text = await provider.generate_text_async(prompt, max_tokens=task.max_tokens, temperature=task.temperature)
+            elif hasattr(provider, "generate_text"):
+                 # Offload sync call
+                 import asyncio
+                 loop = asyncio.get_running_loop()
+                 text = await loop.run_in_executor(None, lambda: provider.generate_text(prompt, max_tokens=task.max_tokens, temperature=task.temperature))
+            else:
+                 # Generic generate
+                 import asyncio
+                 loop = asyncio.get_running_loop()
+                 text = await loop.run_in_executor(None, lambda: provider.generate(prompt, **{"max_tokens": task.max_tokens, "temperature": task.temperature}))
             
             actual_provider = provider_id
-            actual_model = model
+            actual_model = getattr(provider, "model", model)
             attempts = []
             skipped = []
         except Exception as exc:

@@ -53,12 +53,35 @@ class TransformersRuntime(LLMProviderBase):
             # Pre-warm if model path is provided
             threading.Thread(target=self.warm, args=(model_path,), daemon=True).start()
 
+    def _resolve_model_name(self, model_path: Optional[str]) -> str:
+        """Resolve a human-readable model name from a path or ID."""
+        if not model_path or model_path == "auto":
+            return "gpt2"
+        
+        # Strip directory path if it's a file path
+        name = Path(model_path).name
+        # Remove common extensions
+        if name.endswith(".gguf"):
+            name = name[:-5]
+        
+        return name
+
     def warm(self, model_path: Optional[str] = None) -> bool:
         """Pre-load the model pipeline to avoid cold-start latency."""
         if not self._transformers_available:
             return False
             
         target_path = model_path or self.model_path
+        
+        # Handle 'auto' or None by resolving to default
+        if not target_path or target_path == "auto":
+            from ai_karen_engine.config.config_manager import config_manager
+            target_path = config_manager.get_config_value("llm.default_model", default="gpt2")
+            # If it's an absolute path that doesn't exist, try local
+            import os
+            if target_path.startswith("/") and not os.path.exists(target_path):
+                target_path = target_path.split("/")[-1]
+
         if not target_path:
             logger.debug("No model path provided for pre-warming")
             return False
@@ -105,7 +128,11 @@ class TransformersRuntime(LLMProviderBase):
         if self._pipeline:
             try:
                 max_new_tokens = kwargs.get("max_new_tokens") or kwargs.get("max_tokens") or 128
-                temperature = kwargs.get("temperature", 0.7)
+                temperature = kwargs.get("temperature")
+                if temperature is None:
+                    temperature = 0.7
+                else:
+                    temperature = float(temperature)
                 
                 result = self._pipeline(
                     prompt, 

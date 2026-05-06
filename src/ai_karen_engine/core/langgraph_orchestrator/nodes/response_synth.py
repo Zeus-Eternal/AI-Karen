@@ -295,23 +295,56 @@ class ResponseSynthesisNode:
             llm.get("requested_provider") or requested_provider or actual_provider
         )
         resolved_requested_model = llm.get("requested_model") or requested_model or actual_model
-        provider_changed = (
-            str(resolved_requested_provider or "").strip()
-            and str(actual_provider or "").strip()
-            and str(resolved_requested_provider).strip().lower()
-            != str(actual_provider).strip().lower()
+        def _robust_normalize(val: Any, is_model: bool = False) -> str:
+            s = str(val or "").strip().lower().replace("-", "_")
+            if not s:
+                return ""
+            if is_model:
+                return s.split("/")[-1].split(":")[-1].split(".")[0]
+            return s.replace("builtin_", "")
+
+        requested_provider_norm = _robust_normalize(resolved_requested_provider)
+        actual_provider_norm = _robust_normalize(actual_provider)
+        
+        provider_changed = bool(
+            requested_provider_norm
+            and actual_provider_norm
+            and requested_provider_norm != actual_provider_norm
         )
+        
+        requested_model_norm = _robust_normalize(resolved_requested_model, is_model=True)
+        actual_model_norm = _robust_normalize(actual_model, is_model=True)
+        
+        model_changed = bool(
+            requested_model_norm
+            and actual_model_norm
+            and requested_model_norm != "auto"
+            and requested_model_norm != actual_model_norm
+        )
+        
         response_source = (
             llm.get("response_source")
             or ("live_model" if actual_provider != "emergency_static" else "emergency_static")
         )
+        
+        # Determine if the response source represents a healthy live execution
+        is_healthy_source = (
+            response_source == "live_model" or 
+            str(response_source).endswith("_engine") or 
+            response_source == "intelligent_router"
+        )
+        
         degraded_mode = bool(
             llm.get("degraded_mode")
             or llm.get("is_degraded")
             or llm.get("used_fallback")
             or provider_changed
-            or response_source != "live_model"
+            or model_changed
+            or not is_healthy_source
         )
+        
+        if is_healthy_source and not provider_changed and not model_changed:
+            degraded_mode = False
         llm.update(
             {
                 "requested_provider": resolved_requested_provider,

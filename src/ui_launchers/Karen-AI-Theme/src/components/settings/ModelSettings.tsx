@@ -977,6 +977,24 @@ export default function ModelSettings() {
                         <span className="uppercase tracking-widest text-primary/80">{normalizedSettings.systemFallbackProvider.runtime_display_name}</span>
                       </div>
                     )}
+                    {selectedProviderDetails.runtime_engine && (
+                      <div className="flex items-center justify-between text-xs font-semibold">
+                        <span className="text-muted-foreground">Runtime Engine</span>
+                        <span className="uppercase tracking-widest text-primary/80">{selectedProviderDetails.runtime_engine}</span>
+                      </div>
+                    )}
+                    {selectedProviderDetails.safe_diagnostic_metadata?.connection_target && (
+                      <div className="flex items-center justify-between text-xs font-semibold">
+                        <span className="text-muted-foreground">Connection Target</span>
+                        <span className="max-w-[120px] truncate font-mono text-[10px] text-primary/70">{selectedProviderDetails.safe_diagnostic_metadata.connection_target}</span>
+                      </div>
+                    )}
+                    {selectedProviderDetails.degraded_reason && (
+                      <div className="flex flex-col gap-1 mt-2 p-2 rounded bg-destructive/10 border border-destructive/20">
+                        <span className="text-[10px] font-bold uppercase text-destructive">Degradation Reason</span>
+                        <span className="text-[10px] text-destructive leading-tight italic">{selectedProviderDetails.degraded_reason}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 

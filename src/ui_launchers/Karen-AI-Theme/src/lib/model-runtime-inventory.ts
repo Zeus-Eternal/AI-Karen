@@ -20,6 +20,13 @@ export interface RuntimeProviderDetails {
   selectable?: boolean;
   requires_api_key?: boolean;
   api_key_configured?: boolean;
+  api_key_status?: string;
+  is_configured?: boolean;
+  healthy?: boolean;
+  user_selectable?: boolean;
+  enabled?: boolean;
+  policy_allowed?: boolean;
+  policy_rejection_reason?: string | null;
   api_key_masked?: string | null;
   api_key_header?: string;
   api_key_prefix?: string;
@@ -35,6 +42,12 @@ export interface RuntimeProviderDetails {
   supports_custom_auth?: boolean;
   supports_manual_model_entry?: boolean;
   runtime_source?: 'host' | 'container' | null;
+  runtime_engine?: string;
+  supports_streaming?: boolean;
+  supports_tools?: boolean;
+  degraded_reason?: string | null;
+  required_config_fields?: string[];
+  safe_diagnostic_metadata?: Record<string, any>;
   runtime_options?: Array<{
     source: 'host' | 'container';
     label: string;
@@ -76,6 +89,7 @@ export interface NormalizedRuntimeInventory {
   systemFallbackProvider: NormalizedRuntimeProvider | null;
   timeout_seconds?: number;
   auto_download?: boolean;
+  fallback_hierarchy?: string[];
 }
 
 export type RuntimeProviderBucket = 'builtIn' | 'local' | 'thirdParty' | 'custom';
@@ -134,30 +148,15 @@ export const sortProviderModels = <T extends RuntimeProviderModel>(
   });
 };
 
-const BUILTIN_RUNTIME_SEEDS: RuntimeProviderDetails[] = [
-  {
-    id: 'builtin_vllm',
-    display_name: 'vLLM',
-    description: 'Primary high-throughput text runtime.',
-    provider_type: 'builtin',
-    selectable: true,
-    default_model: 'auto',
-    selected_model: 'auto',
-    supports_model_discovery: false,
-    supports_model_pull: false,
-    supports_custom_auth: false,
-    supports_manual_model_entry: true,
-    supports_base_url_override: false,
-    models: [{ id: 'auto', name: 'auto', source: 'builtin' }],
-  },
-];
+const SYSTEM_FALLBACK_PROVIDER_ID = 'builtin_transformers';
 
-const SYSTEM_FALLBACK_SEED: RuntimeProviderDetails = {
-  id: 'builtin_transformers',
+// Backend provides all provider truth; no frontend seeding needed.
+// Providers like builtin_vllm, builtin_transformers come from /api/settings/model
+const SYSTEM_FALLBACK_SEED: Pick<RuntimeProviderDetails, 'id' | 'display_name' | 'description' | 'provider_type' | 'default_model' | 'selected_model' | 'supports_model_discovery' | 'supports_model_pull' | 'supports_custom_auth' | 'supports_manual_model_entry' | 'supports_base_url_override'> = {
+  id: SYSTEM_FALLBACK_PROVIDER_ID,
   display_name: 'Transformers',
   description: 'Automatic fallback runtime for embeddings and emergency generation.',
   provider_type: 'builtin',
-  selectable: false,
   default_model: 'auto',
   selected_model: 'auto',
   supports_model_discovery: true,  // Enable dynamic model discovery
@@ -165,7 +164,6 @@ const SYSTEM_FALLBACK_SEED: RuntimeProviderDetails = {
   supports_custom_auth: false,
   supports_manual_model_entry: false,
   supports_base_url_override: false,
-  models: [],  // Models will be loaded dynamically from /api/local/transformers/models
 };
 
 export const getRuntimeProviderBucket = (
@@ -240,39 +238,46 @@ export async function loadDynamicTransformersModels(): Promise<RuntimeProviderMo
   }
 }
 
+/**
+ * Determine if a provider should be selectable in UI.
+ * Previously we blocked Transformers, but now we allow it as a valid local option.
+ */
+const isProviderSelectable = (provider: RuntimeProviderDetails): boolean => {
+  return provider.is_configured !== false;
+};
+
 export function normalizeModelSettingsResponse(response: RuntimeSettingsResponse): NormalizedRuntimeInventory {
   const providerMap = new Map<string, RuntimeProviderDetails>();
-  [...BUILTIN_RUNTIME_SEEDS, ...(response.providers || [])].forEach((provider) => {
-    if (provider.id === SYSTEM_FALLBACK_SEED.id) {
-      return;
-    }
+  (response.providers || []).forEach((provider) => {
     providerMap.set(provider.id, provider);
   });
   const providers = Array.from(providerMap.values())
     .sort((a, b) => sortRank(a) - sortRank(b) || getRuntimeDisplayName(a.id, a.display_name).localeCompare(getRuntimeDisplayName(b.id, b.display_name)))
     .map((provider) => {
-      // For transformers, load models dynamically from backend
-      const normalizedModels = provider.id === SYSTEM_FALLBACK_SEED.id && provider.supports_model_discovery
-        ? []
-        : normalizeModels(provider, response.selected_provider, response.selected_model);
+      // Use standard model normalization for all providers.
+      // The backend provides discovered models in the provider.models array.
+      const normalizedModels = normalizeModels(provider, response.selected_provider, response.selected_model);
       return {
         ...provider,
+        selectable: provider.user_selectable,
         runtime_display_name: getRuntimeDisplayName(provider.id, provider.display_name),
         runtime_group_label: getRuntimeGroupLabel(provider.id),
         models: normalizedModels,
       };
     });
 
-  const selectableProviders = providers.filter((provider) => provider.selectable !== false && provider.id !== SYSTEM_FALLBACK_SEED.id);
+  const selectableProviders = providers.filter((provider) => isProviderSelectable(provider));
   const builtInProviders = providers.filter((provider) => getRuntimeProviderBucket(provider) === 'builtIn');
   const localProviders = providers.filter((provider) => getRuntimeProviderBucket(provider) === 'local');
   const customProviders = providers.filter((provider) => getRuntimeProviderBucket(provider) === 'custom');
   const thirdPartyProviders = providers.filter((provider) => getRuntimeProviderBucket(provider) === 'thirdParty');
+
+  // System fallback provider is constructed from backend's builtin_transformers data
+  const transformersProvider = providers.find((p) => p.id === SYSTEM_FALLBACK_PROVIDER_ID);
   const systemFallbackProvider = {
     ...SYSTEM_FALLBACK_SEED,
-    runtime_display_name: getRuntimeDisplayName(SYSTEM_FALLBACK_SEED.id, SYSTEM_FALLBACK_SEED.display_name),
-    runtime_group_label: getRuntimeGroupLabel(SYSTEM_FALLBACK_SEED.id),
-    models: normalizeModels(SYSTEM_FALLBACK_SEED, response.selected_provider, response.selected_model),
+    ...(transformersProvider || {}),
+    models: transformersProvider?.models || [],
   } satisfies NormalizedRuntimeProvider;
 
   const selectedProvider =
@@ -297,5 +302,6 @@ export function normalizeModelSettingsResponse(response: RuntimeSettingsResponse
     systemFallbackProvider,
     timeout_seconds: response.timeout_seconds,
     auto_download: response.auto_download,
+    fallback_hierarchy: (response as any).fallback_hierarchy,
   };
 }

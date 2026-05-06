@@ -1229,9 +1229,9 @@ export default function ModelDownloads({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {vllmInstalledModels.map((model) => (
+                  {vllmInstalledModels.map((model, idx) => (
                     <div
-                      key={model.id}
+                      key={`${model.id}-${idx}`}
                       className="rounded-xl border border-border/50 bg-muted/20 p-3"
                     >
                       <div className="flex items-start justify-between gap-2">
@@ -1273,11 +1273,12 @@ export default function ModelDownloads({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {otherInstalledModels.map((model) => (
+                  {otherInstalledModels.map((model, idx) => (
                     <div
-                      key={model.id}
+                      key={`${model.id}-${idx}`}
                       className="rounded-xl border border-border/50 bg-muted/20 p-3"
                     >
+
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1 space-y-1">
                           <div className="truncate text-sm font-semibold">

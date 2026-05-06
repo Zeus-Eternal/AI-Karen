@@ -69,6 +69,7 @@ export type DegradedPresentation = {
   fallbackDetailsText: string;
   shouldRenderFallbackDetails: boolean;
   shouldRenderDegradedState: boolean;
+  capabilityWarning?: string;
 };
 
 export type ResponseDetailsPresentation = {
@@ -99,6 +100,7 @@ export type ResponseDetailsPresentation = {
   memoryLatencyLabel: string;
   memoryDegradedLabel: string;
   writebackStatusLabel: string;
+  capabilityWarning?: string;
 };
 
 export type CompactBadgePresentation = {
@@ -128,9 +130,6 @@ const BUILTIN_PROVIDER_ALIASES: Record<string, string> = {
   builtin_transformers: BUILTIN_TRANSFORMERS_PROVIDER,
   'hf-transformers': BUILTIN_TRANSFORMERS_PROVIDER,
   hf_transformers: BUILTIN_TRANSFORMERS_PROVIDER,
-  huggingface: BUILTIN_TRANSFORMERS_PROVIDER,
-  'hugging-face': BUILTIN_TRANSFORMERS_PROVIDER,
-  hugging_face: BUILTIN_TRANSFORMERS_PROVIDER,
 
   vllm: BUILTIN_VLLM_PROVIDER,
   'builtin-vllm': BUILTIN_VLLM_PROVIDER,
@@ -415,11 +414,25 @@ export const normalizeModelName = (model?: unknown): string => {
     return '';
   }
 
-  const withoutProvider = value.includes(':') ? value.split(':').pop() || value : value;
+  // Remove common prefixes and handle path separators
+  let processed = value;
+  
+  // If it's a full path, just get the file name
+  if (value.includes('/') || value.includes('\\')) {
+    const segments = value.split(/[/\\]/);
+    processed = segments[segments.length - 1] || value;
+  }
+  
+  // Remove provider prefix if still present (e.g. "openai:gpt-4")
+  if (processed.includes(':')) {
+    processed = processed.split(':').pop() || processed;
+  }
 
-  return withoutProvider
-    .replace(/\.(gguf|bin|safetensors)$/i, '')
-    .replace(/_/g, '-')
+  // Clean up extensions and common version/type suffixes
+  return processed
+    .replace(/\.(gguf|bin|safetensors|onnx|h5|pt|ckpt)$/i, '')
+    .replace(/-(instruct|chat|v[0-9.]+|fp16|q[0-9].*)$/i, '')
+    .replace(/[_-]/g, '-')
     .trim();
 };
 
@@ -589,13 +602,15 @@ export const deriveDegradedPresentation = (
   const providerChanged = Boolean(
     normalizedRequestedProvider &&
       normalizedActualProvider &&
-      normalizedRequestedProvider !== normalizedActualProvider,
+      normalizedRequestedProvider !== normalizedActualProvider &&
+      normalizedRequestedProvider !== 'auto',
   );
 
   const modelChanged = Boolean(
     normalizedRequestedModel &&
       normalizedActualModel &&
-      normalizedRequestedModel !== normalizedActualModel,
+      normalizedRequestedModel !== normalizedActualModel &&
+      normalizedRequestedModel !== 'auto',
   );
 
   const preferredFailureReason = toCleanString(llm?.preferred_failure_reason);
@@ -652,15 +667,21 @@ export const deriveDegradedPresentation = (
 
   const shouldRenderDegradedState = isDegraded || isSafetyBlocked || Boolean(visibleDegradedNotice);
 
+  const actualModelLower = actualModelId.toLowerCase();
+  let capabilityWarning = toCleanString(llm?.capability_warning);
+  if (!capabilityWarning && (actualModelLower.includes('gpt2') || actualModelLower.includes('gpt-2'))) {
+    capabilityWarning = 'Selected model is a base completion model and may produce continuation-style responses.';
+  }
+
   const providerDisplayName = actualProviderLabel || actualProvider || 'system';
 
   const modelDisplayName = isSafetyBlocked
     ? 'Safety Blocked'
     : actualModel || 'auto';
 
-  const detailsStatusLabel = isSafetyBlocked
+  const finalStatusLabel = isSafetyBlocked
     ? 'Safety Blocked'
-    : degradedStatusLabel || 'Degraded Mode';
+    : degradedStatusLabel || (isDegraded ? 'Degraded Mode' : (capabilityWarning ? 'limited capability' : 'ok'));
 
   const fallbackDetailsText = degradedBannerText;
   const shouldRenderFallbackDetails = Boolean(fallbackDetailsText && !failureReason);
@@ -682,10 +703,11 @@ export const deriveDegradedPresentation = (
     degradedStatusLabel,
     degradedBannerText,
     visibleDegradedNotice,
-    detailsStatusLabel,
+    detailsStatusLabel: finalStatusLabel,
     fallbackDetailsText,
     shouldRenderFallbackDetails,
     shouldRenderDegradedState,
+    capabilityWarning,
   };
 };
 
@@ -754,6 +776,7 @@ export const deriveResponseDetailsPresentation = (
   const memoryLatencyLabel = typeof safeMetadata.memory_latency_ms === 'number' ? `${safeMetadata.memory_latency_ms} ms` : 'N/A';
   const memoryDegradedLabel = safeMetadata.memory_degraded ? 'yes' : 'no';
   const writebackStatusLabel = toCleanString(safeMetadata.memory_writeback_status || 'N/A');
+  const capabilityWarning = degraded.capabilityWarning;
 
   return {
     hasMetadataDetails,
@@ -783,6 +806,7 @@ export const deriveResponseDetailsPresentation = (
     memoryLatencyLabel,
     memoryDegradedLabel,
     writebackStatusLabel,
+    capabilityWarning,
   };
 };
 
@@ -797,7 +821,7 @@ export const deriveCompactBadgePresentation = (
   const hasLlmInfo = degraded.hasLlmInfo;
 
   const shouldRenderBadge =
-    hasLlmInfo || hasMetadataDetails || safeMetadata?.degraded_mode === true;
+    hasLlmInfo || hasMetadataDetails || safeMetadata?.degraded_mode === true || Boolean(degraded.capabilityWarning);
 
   const providerLabel = degraded.providerDisplayName;
   const modelLabel = degraded.modelDisplayName;
@@ -815,7 +839,7 @@ export const deriveCompactBadgePresentation = (
 
   const statusLabel = degraded.shouldRenderDegradedState
     ? degraded.degradedStatusLabel || 'degraded mode'
-    : '';
+    : (degraded.capabilityWarning ? 'limited capability' : '');
 
   return {
     shouldRenderBadge,

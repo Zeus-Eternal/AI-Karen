@@ -147,7 +147,7 @@ export function ChatInput({
     !isAuthLoading &&
     !isRecording &&
     !isBackendOffline &&
-    (isLoading || Boolean(trimmedInput));
+    (isLoading || (Boolean(trimmedInput) && Boolean(selectedProvider) && Boolean(selectedModel)));
 
   const submitButtonLabel = showStopButton
     ? 'Stop current response generation'

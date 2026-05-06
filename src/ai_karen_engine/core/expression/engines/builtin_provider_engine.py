@@ -24,9 +24,12 @@ class BuiltinProviderEngine(BaseExpressionEngine):
         payload = self._build_payload(task)
         
         # Canonical builtin providers
-        providers_to_try = ["vllm", "transformers"]
-        if task.preferred_provider == "transformers":
-             providers_to_try = ["transformers", "vllm"]
+        providers_to_try = ["builtin_vllm", "builtin_transformers"]
+        pref = str(task.preferred_provider or "").lower()
+        if "transformers" in pref:
+             providers_to_try = ["builtin_transformers", "builtin_vllm"]
+        elif "vllm" in pref:
+             providers_to_try = ["builtin_vllm", "builtin_transformers"]
 
         text = ""
         actual_provider = providers_to_try[0]
@@ -45,17 +48,39 @@ class BuiltinProviderEngine(BaseExpressionEngine):
                     continue
 
                 logger.info(f"BuiltinProviderEngine: Attempting generation with {provider_id}")
-                adapter = self._get_adapter(provider_id)
                 
-                # Run sync generate in thread pool
-                response = await loop.run_in_executor(None, lambda: asyncio.run(adapter(payload)))
+                # Use central registry to get the provider instance
+                from ai_karen_engine.integrations.llm_registry import get_provider
                 
-                resp_text = str(response.get("text") or "").strip()
+                # Resolve model from task or payload
+                model_id = payload.get("model") or "auto"
+                
+                # Get provider instance
+                provider = get_provider(provider_id, model=model_id)
+                if not provider:
+                    skipped.append({"provider": provider_id, "reason": "provider_not_found"})
+                    continue
+                
+                prompt = self._extract_prompt(payload["messages"])
+                
+                # Check if generate_text_async exists, fallback to generate_text or generate
+                if hasattr(provider, "generate_text_async"):
+                     text = await provider.generate_text_async(prompt, **payload)
+                elif hasattr(provider, "generate_text"):
+                     # Offload sync call
+                     loop = asyncio.get_running_loop()
+                     text = await loop.run_in_executor(None, lambda: provider.generate_text(prompt, **payload))
+                else:
+                     # Generic generate
+                     loop = asyncio.get_running_loop()
+                     text = await loop.run_in_executor(None, lambda: provider.generate(prompt, **payload))
+                
+                resp_text = str(text or "").strip()
                 if resp_text:
                     logger.info(f"BuiltinProviderEngine: Success with {provider_id}")
                     text = resp_text
-                    actual_provider = str(response.get("provider") or provider_id)
-                    model = response.get("model")
+                    actual_provider = provider_id
+                    model = getattr(provider, "model", model_id)
                     break
                 else:
                     logger.warning(f"BuiltinProviderEngine: {provider_id} returned empty response")
@@ -80,56 +105,6 @@ class BuiltinProviderEngine(BaseExpressionEngine):
             degraded=not bool(text.strip()),
             degradation_reason=None if text.strip() else "all_internal_providers_failed",
         )
-
-    def _get_adapter(self, provider_id: str):
-        """Resolves the internal runtime adapter for the given provider."""
-        import asyncio
-        loop = asyncio.get_event_loop()
-
-        if provider_id == "vllm":
-            from ai_karen_engine.inference.vllm_runtime import VLLMRuntime
-            
-            async def vllm_adapter(payload):
-                # Ensure runtime is initialized with the requested model
-                model_id = payload.get("model") or "auto"
-                runtime = VLLMRuntime.get_instance(model=model_id)
-                
-                prompt = self._extract_prompt(payload["messages"])
-                # Run sync generate in thread pool
-                text = await loop.run_in_executor(None, lambda: runtime.generate(prompt, **payload))
-                return {"text": text, "provider": "vllm", "model": runtime.model}
-            
-            return vllm_adapter
-            
-        elif provider_id == "transformers":
-            from ai_karen_engine.inference.transformers_runtime import TransformersRuntime
-            
-            async def transformers_adapter(payload):
-                # Ensure runtime is initialized with the requested model
-                model_id = payload.get("model")
-                if model_id and not model_id.startswith("/") and not model_id.startswith("."):
-                    # Try to resolve local path if it's a simple ID
-                    from ai_karen_engine.config.config_manager import config_manager
-                    tf_dir = config_manager.get_config_value("llm.transformers_dir", default="models/transformers")
-                    potential_path = f"{tf_dir}/{model_id}"
-                    import os
-                    if os.path.exists(potential_path):
-                        model_id = potential_path
-
-                runtime = TransformersRuntime.get_instance(model_path=model_id)
-                
-                # If pipeline isn't warmed yet, try to warm it (sync call in executor)
-                if not runtime._pipeline and model_id:
-                     await loop.run_in_executor(None, lambda: runtime.warm(model_id))
-
-                prompt = self._extract_prompt(payload["messages"])
-                # Run sync generate in thread pool
-                text = await loop.run_in_executor(None, lambda: runtime.generate(prompt, **payload))
-                return {"text": text, "provider": "transformers", "model": runtime.model_path}
-                
-            return transformers_adapter
-            
-        raise ValueError(f"Unknown builtin provider: {provider_id}")
 
     def _extract_prompt(self, messages: list[dict[str, str]]) -> str:
         """Helper to extract a simple prompt from messages."""

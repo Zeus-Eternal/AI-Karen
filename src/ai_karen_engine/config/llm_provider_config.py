@@ -30,7 +30,22 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-DEFAULT_OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+def is_docker() -> bool:
+    """Return True if running inside a Docker container."""
+    return (
+        os.path.exists("/.dockerenv")
+        or os.path.exists("/run/.containerenv")
+        or (
+            os.path.exists("/proc/self/cgroup")
+            and "docker" in open("/proc/self/cgroup").read()
+        )
+    )
+
+
+DEFAULT_OLLAMA_BASE_URL = os.getenv(
+    "OLLAMA_BASE_URL",
+    "http://host.docker.internal:11434" if is_docker() else "http://localhost:11434",
+)
 
 # Canonical provider identifier aliases (UI/API/runtime should all use these).
 PROVIDER_NAME_ALIASES: Dict[str, str] = {
@@ -1083,7 +1098,16 @@ class LLMProviderConfigManager:
                 health_endpoint=os.getenv("KAREN_BUILTIN_VLLM_HEALTH_URL", "http://vllm:8000/health"),
                 timeout=int(os.getenv("KAREN_BUILTIN_VLLM_TIMEOUT_SECONDS", "120")),
             ),
-            models=[],
+            models=[
+                ProviderModel(
+                    id="auto",
+                    name="Auto",
+                    family="vllm",
+                    capabilities={"chat_completion", "text_generation", "streaming"},
+                    context_length=int(os.getenv("KAREN_BUILTIN_VLLM_MAX_MODEL_LEN", "4096")),
+                    max_tokens=4096,
+                )
+            ],
             default_model=os.getenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME", "auto"),
             capabilities={"streaming", "chat_completion", "text_generation"},
             limits=ProviderLimits(
@@ -1139,7 +1163,16 @@ class LLMProviderConfigManager:
                     health_endpoint=os.getenv("KAREN_BUILTIN_VLLM_HEALTH_URL", "http://vllm:8000/health"),
                     timeout=int(os.getenv("KAREN_BUILTIN_VLLM_TIMEOUT_SECONDS", "120")),
                 ),
-                models=[],
+                models=[
+                    ProviderModel(
+                        id="auto",
+                        name="Auto",
+                        family="vllm",
+                        capabilities={"chat_completion", "text_generation", "streaming"},
+                        context_length=int(os.getenv("KAREN_BUILTIN_VLLM_MAX_MODEL_LEN", "4096")),
+                        max_tokens=4096,
+                    )
+                ],
                 default_model=os.getenv("KAREN_BUILTIN_VLLM_SERVED_MODEL_NAME", "auto"),
                 capabilities={"streaming", "chat_completion", "text_generation"},
                 limits=ProviderLimits(
@@ -2106,15 +2139,24 @@ class LLMProviderConfigManager:
         ]
 
         created = 0
+        updated = 0
         for config in additional_configs:
             if config.name in self._providers:
+                # Ensure built-in providers have at least one model (e.g., "auto")
+                # even if they were previously persisted with an empty list.
+                existing = self._providers[config.name]
+                if not existing.models and config.models:
+                    logger.info("Restoring default models for existing provider: %s", config.name)
+                    existing.models = config.models
+                    self.add_provider(existing)
+                    updated += 1
                 continue
             self.add_provider(config)
             created += 1
 
-        if created:
+        if created or updated:
             logger.info(
-                "Created %s additional default LLM provider configurations", created
+                "LLM provider configurations: %s created, %s updated", created, updated
             )
 
     # ---------- Utility Methods ----------

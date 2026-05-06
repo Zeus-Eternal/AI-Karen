@@ -147,6 +147,11 @@ class ChatRequest(BaseModel):
     messages: List[ChatMessage] = Field(
         ..., min_length=1, max_length=50, description="List of chat messages"
     )
+    provider: Optional[str] = Field(
+        default=None,
+        max_length=100,
+        description="Selected provider ID (e.g., 'ollama', 'builtin_vllm', 'builtin_transformers', 'openai')",
+    )
     model: Optional[str] = Field(
         default=None,
         pattern=r"^[a-zA-Z0-9_-]+$",
@@ -286,6 +291,26 @@ class ChatRuntimeHelper:
             )
 
     @staticmethod
+    async def get_user_provider_preferences() -> Dict[str, str]:
+        """Get user's preferred provider and model from settings."""
+        try:
+            from ai_karen_engine.services.formatting.settings_manager import get_settings_manager
+
+            settings = get_settings_manager()
+            provider = settings.get_setting("provider")
+            model = settings.get_setting("model")
+
+            if provider and model:
+                logger.debug(f"User provider preferences loaded: provider={provider}, model={model}")
+                return {"provider": provider, "model": model}
+
+            logger.debug("No user provider preferences found in settings")
+            return {}
+        except Exception as e:
+            logger.debug(f"Failed to load user preferences: {e}")
+            return {}
+
+    @staticmethod
     def normalize_messages(messages: List[ChatMessage]) -> List[Dict[str, Any]]:
         """Normalize and sanitize messages for the orchestrator."""
         validated = []
@@ -360,6 +385,7 @@ class ChatRuntimeHelper:
         response_id: str,
         correlation_id: str,
         session_id: str,
+        user_preferences: Optional[Dict[str, str]] = None,
     ) -> CanonicalChatRequest:
         """Build the canonical orchestrator request object."""
         conversation_id = normalize_chat_session_id(session_id)
@@ -368,6 +394,12 @@ class ChatRuntimeHelper:
             for msg in validated_messages
             if msg.get("message_type") == "user"
         ).strip()
+
+        # Determine which provider/model to use
+        selected_provider = request.provider or user_preferences.get("provider") if user_preferences else None
+        selected_model = request.model or user_preferences.get("model") if user_preferences else None
+
+        logger.info(f"Building chat request - provider: {selected_provider}, model: {selected_model}")
 
         return CanonicalChatRequest(
             request_id=response_id,
@@ -384,7 +416,8 @@ class ChatRuntimeHelper:
             include_context=True,
             attachments=[],
             metadata={
-                "model": request.model,
+                "provider": selected_provider,
+                "model": selected_model,
                 "temperature": request.temperature,
                 "max_tokens": request.max_tokens,
                 "messages": validated_messages,
@@ -433,6 +466,9 @@ async def create_chat_response(
         ChatRuntimeHelper.validate_model(request.model)
         validated_messages = ChatRuntimeHelper.normalize_messages(request.messages)
 
+        # Get user's preferred provider/model from settings
+        user_preferences = await ChatRuntimeHelper.get_user_provider_preferences()
+
         # 3. Log request start
         structured_logger.log_event(
             event="chat_request_started",
@@ -442,7 +478,8 @@ async def create_chat_response(
                 "endpoint": "/api/chat/chat",
                 "correlation_id": correlation_id,
                 "message_count": len(validated_messages),
-                "model": request.model,
+                "provider": request.provider or user_preferences.get("provider"),
+                "model": request.model or user_preferences.get("model"),
                 "stream": request.stream,
                 "session_id": session_id,
             },
@@ -451,11 +488,14 @@ async def create_chat_response(
         # 4. Build Orchestrator Request
         orchestrator = await get_chat_orchestrator()
         chat_request = ChatRuntimeHelper.build_orchestrator_request(
-            request, user, validated_messages, response_id, correlation_id, session_id
+            request, user, validated_messages, response_id, correlation_id, session_id, user_preferences
         )
         langchain_messages = ChatRuntimeHelper.to_langchain_messages(validated_messages)
 
         # 5. Process Request
+        selected_model = request.model or user_preferences.get("model") if user_preferences else None
+        selected_provider = request.provider or user_preferences.get("provider") if user_preferences else None
+
         if request.stream:
             async def generate_stream():
                 try:
@@ -464,7 +504,8 @@ async def create_chat_response(
                         user_id=user["user_id"],
                         session_id=session_id,
                         config={
-                            "model": request.model,
+                            "model": selected_model,
+                            "provider": selected_provider,
                             "temperature": request.temperature,
                             "max_tokens": request.max_tokens,
                             "correlation_id": correlation_id,
@@ -527,7 +568,8 @@ async def create_chat_response(
                 user_id=user["user_id"],
                 session_id=session_id,
                 config={
-                    "model": request.model,
+                    "model": selected_model,
+                    "provider": selected_provider,
                     "temperature": request.temperature,
                     "max_tokens": request.max_tokens,
                     "correlation_id": correlation_id,

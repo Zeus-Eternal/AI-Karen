@@ -322,7 +322,45 @@ class ModelDiscoveryService:
             asyncio.get_running_loop()
         except RuntimeError:
             return asyncio.run(self.discover_all_models(force_refresh=force_refresh))
+        
+        # If in an event loop but models are empty, do a synchronous blocking scan
+        # (This avoids returning empty if the background scan hasn't run yet)
+        if not self._models:
+             return self._scan()
         return list(self._models)
+
+    async def get_all_models_async(self, force_refresh: bool = False) -> list[ModelSummary]:
+        if self._models and not force_refresh:
+            return list(self._models)
+        return await self.discover_all_models(force_refresh=force_refresh)
+
+    async def get_models_async(
+        self,
+        *,
+        model_format: str | None = None,
+        runtime: str | None = None,
+        capability: str | None = None,
+    ) -> list[ModelSummary]:
+        models = await self.get_all_models_async()
+        if model_format:
+            model_format = model_format.lower()
+            models = [item for item in models if item.model_format.lower() == model_format]
+        if runtime:
+            runtime = runtime.lower()
+            # Handle aliases for filtering
+            target_runtimes = {runtime}
+            if runtime == "builtin_vllm":
+                target_runtimes.add("vllm")
+            elif runtime == "builtin_transformers":
+                target_runtimes.add("transformers_direct")
+            
+            models = [item for item in models if any(rt.lower() in target_runtimes for rt in item.compatible_runtimes)]
+        if runtime in {"vllm", "builtin_vllm", "transformers_direct", "builtin_transformers"}:
+            models = [item for item in models if item.runtime_visible and item.weights_present]
+        if capability:
+            capability = capability.lower()
+            models = [item for item in models if capability in {entry.lower() for entry in item.capabilities}]
+        return models
 
     def get_models(
         self,
@@ -337,7 +375,14 @@ class ModelDiscoveryService:
             models = [item for item in models if item.model_format.lower() == model_format]
         if runtime:
             runtime = runtime.lower()
-            models = [item for item in models if runtime in {entry.lower() for entry in item.compatible_runtimes}]
+            # Handle aliases for filtering
+            target_runtimes = {runtime}
+            if runtime == "builtin_vllm":
+                target_runtimes.add("vllm")
+            elif runtime == "builtin_transformers":
+                target_runtimes.add("transformers_direct")
+            
+            models = [item for item in models if any(rt.lower() in target_runtimes for rt in item.compatible_runtimes)]
         if runtime in {"vllm", "builtin_vllm", "transformers_direct", "builtin_transformers"}:
             models = [item for item in models if item.runtime_visible and item.weights_present]
         if capability:

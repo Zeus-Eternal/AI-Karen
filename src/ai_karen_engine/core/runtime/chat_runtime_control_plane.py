@@ -421,8 +421,8 @@ class ProviderRouterProbe:
             test_task = ExpressionTask(
                 task_id="health_probe",
                 kind="probe",
-                messages=[{"role": "user", "content": "ping"}],
-                max_tokens=1,
+                messages=[{"role": "user", "content": "Hello"}],
+                max_tokens=10,
                 timeout_ms=5000,
                 required_capabilities=[],
                 forbidden_capabilities=[],
@@ -584,8 +584,8 @@ class ChatRuntimeControlPlane:
         {
             "database",
             "redis",
-            "chat_orchestrator",
             "provider_router",
+            "memory_subsystem",
         }
     )
 
@@ -634,14 +634,9 @@ class ChatRuntimeControlPlane:
             RedisProbe(),
             ProviderRouterProbe(),
             MemorySubsystemProbe(),
+            ChatOrchestratorProbe(),
+            LocalModelProbe(),
         ]
-        if os.getenv("KAREN_ENABLE_LEGACY_ORCHESTRATOR_PROBES", "").lower() in {
-            "1",
-            "true",
-            "yes",
-            "on",
-        }:
-            self._probes.extend([ChatOrchestratorProbe(), LocalModelProbe()])
 
         # Enhanced hardening features
         self._runtime_state_persistence: bool = True
@@ -1977,15 +1972,15 @@ class ChatRuntimeControlPlane:
                     "dependencies": [
                         "database",
                         "redis",
-                        "orchestrator",
                         "provider_router",
+                        "memory_subsystem",
                     ],
                 },
                 "degraded_execution": {
                     "guaranteed": True,
                     "timeout": 60,
                     "fallback": "emergency",
-                    "dependencies": ["orchestrator"],
+                    "dependencies": ["provider_router"],
                 },
                 "emergency_execution": {
                     "guaranteed": True,

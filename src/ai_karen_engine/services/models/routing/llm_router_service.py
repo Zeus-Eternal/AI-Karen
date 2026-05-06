@@ -515,24 +515,20 @@ class LLMRouter:
                     preferred_model = None
                 else:
                     info = self.registry.get_provider_info(preferred_provider)
+                    
+                    # Check for health and capability
+                    is_healthy = await self._is_provider_healthy(preferred_provider)
+                    has_readiness = self._health_allows_attempt(preferred_provider) and self._provider_has_runtime_readiness(preferred_provider, info)
+                    meets_reqs = await self._meets_requirements(preferred_provider, request)
+                    supports_model = self._provider_supports_model(preferred_provider, preferred_model, info)
+                    is_auth = self.is_provider_healthy_and_authenticated(preferred_provider)
+
                     if (
                         info
-                        and (
-                            await self._is_provider_healthy(preferred_provider)
-                            or (
-                                self._health_allows_attempt(preferred_provider)
-                                and self._provider_has_runtime_readiness(
-                                    preferred_provider, info
-                                )
-                            )
-                        )
-                        and await self._meets_requirements(preferred_provider, request)
-                        and self._provider_supports_model(
-                            preferred_provider, preferred_model, info
-                        )
-                        and self.is_provider_healthy_and_authenticated(
-                            preferred_provider
-                        )
+                        and (is_healthy or has_readiness)
+                        and meets_reqs
+                        and supports_model
+                        and is_auth
                     ):
                         self._structured_log(
                             logging.INFO,
@@ -555,14 +551,23 @@ class LLMRouter:
 
                         return preferred_provider, preferred_model
                     else:
+                        reasons = []
+                        if not info: reasons.append("info_missing")
+                        elif not (is_healthy or has_readiness): reasons.append("unhealthy")
+                        if not meets_reqs: reasons.append("requirements_not_met")
+                        if not supports_model: reasons.append("model_not_supported")
+                        if not is_auth: reasons.append("auth_failed")
+
                         self._structured_log(
                             logging.WARNING,
-                            "Preferred provider/model unavailable",
-                            provider=preferred_provider,
-                            model=preferred_model,
+                            f"Preferred provider {preferred_provider} unavailable: {', '.join(reasons)}",
+                            requested_provider=preferred_provider,
+                            requested_model=preferred_model,
+                            reasons=reasons,
                             policy=self.routing_policy.value,
                             conversation_id=request.conversation_id,
                             platform=request.platform,
+                            status="preferred_rejected"
                         )
                         preferred_provider = None
                         preferred_model = None

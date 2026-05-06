@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-BUILTIN_EXPRESSION_ENGINES: set[str] = {"vllm", "transformers"}
+BUILTIN_EXPRESSION_ENGINES: set[str] = {
+    "vllm",
+    "transformers",
+    "builtin_vllm",
+    "builtin_transformers",
+}
 
 LOCAL_PROVIDER_OPTIONS: set[str] = {
     "ollama",

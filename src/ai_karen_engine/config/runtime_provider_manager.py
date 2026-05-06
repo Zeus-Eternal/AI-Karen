@@ -345,8 +345,8 @@ class RuntimeProviderManager:
         """Check health of local provider"""
         try:
             canonical_name = self.canonicalize_provider_id(config.name)
-            if canonical_name in ("builtin_vllm", "builtin_transformers", "local_gguf"):
-                # Check if local model files exist
+            if canonical_name in ("builtin_vllm", "local_gguf"):
+                # Check if local model files exist for these specific runtimes
                 try:
                     from ai_karen_engine.inference.model_store import ModelStore
                     model_store = ModelStore()
@@ -372,6 +372,25 @@ class RuntimeProviderManager:
                         status=ProviderStatus.UNAVAILABLE,
                         last_check=datetime.now(),
                         error_message="Model store not available"
+                    )
+            
+            elif canonical_name == "builtin_transformers":
+                # Transformers is assumed healthy if library is available
+                # It can auto-download models if needed
+                try:
+                    import transformers
+                    return ProviderHealthStatus(
+                        provider_name=config.name,
+                        status=ProviderStatus.HEALTHY,
+                        last_check=datetime.now(),
+                        capabilities_verified=config.capabilities
+                    )
+                except ImportError:
+                    return ProviderHealthStatus(
+                        provider_name=config.name,
+                        status=ProviderStatus.UNAVAILABLE,
+                        last_check=datetime.now(),
+                        error_message="Transformers library not installed"
                     )
             
             else:

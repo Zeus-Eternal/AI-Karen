@@ -302,9 +302,12 @@ class OpenAIProvider(LLMProviderBase):
             }
 
             # Add any additional parameters
-            completion_kwargs.update(
-                {k: v for k, v in kwargs.items() if k not in ["stream"]}
-            )
+            # Strip parameters that are not supported by the OpenAI completions API
+            sanitized_kwargs = {
+                k: v for k, v in kwargs.items() 
+                if k not in ["stream", "provider", "timeout_ms"]
+            }
+            completion_kwargs.update(sanitized_kwargs)
 
             def _generate():
                 return self.client.chat.completions.create(**completion_kwargs)

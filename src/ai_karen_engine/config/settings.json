@@ -12,11 +12,13 @@
           "providers": {
             "vllm": {
               "enabled": true,
+              "provider_type": "builtin",
               "base_url": "http://vllm:8000/v1",
               "health_url": "http://vllm:8000/health"
             },
             "transformers": {
               "enabled": true,
+              "provider_type": "builtin",
               "model_path": "/app/models/transformers"
             }
           }
@@ -65,7 +67,7 @@
     },
     "local_first_mode": true
   },
-  "last_selected_model": "gpt2",
+  "last_selected_model": "gemini-2.5-flash",
   "use_memory": true,
   "context_length": 512,
   "decay": 0.1,
@@ -140,12 +142,21 @@
       }
     }
   },
-  "provider": "builtin_vllm",
-  "model": "gpt2",
+  "provider": "gemini",
+  "model": "gemini-2.5-flash",
   "model_providers": {
+    "builtin_transformers": {
+      "last_model": "gpt2"
+    },
     "builtin_vllm": {
       "last_model": "gpt2",
       "base_url": "http://vllm:8000/v1"
+    },
+    "gemini": {
+      "last_model": "gemini-2.5-flash"
+    },
+    "ollama": {
+      "last_model": "qwen3:4b"
     }
   }
 }

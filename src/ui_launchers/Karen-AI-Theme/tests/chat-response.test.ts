@@ -388,4 +388,85 @@ describe('Degraded Runtime Fallback Presentation', () => {
       expect(result.modelDisplayName).toBe('Karen Local Fallback');
     });
   });
+
+  /**
+   * Integration test for UI-QA-004: Verify preferred provider flows through to actual provider.
+   *
+   * This test verifies that when a user selects a provider/model in settings,
+   * the chat request includes these preferences and the backend metadata
+   * correctly reflects them.
+   */
+  describe('Preferred Provider Flow (UI-QA-004)', () => {
+    it('should include requested_provider and requested_model in metadata when provider is healthy', () => {
+      const metadata = {
+        llm: {
+          requested_provider: 'builtin_vllm',
+          requested_model: 'gpt2',
+          provider: 'builtin_vllm',
+          model_id: 'gpt2',
+          model_name: 'GPT-2',
+          source: 'runtime',
+          is_degraded: false,
+          used_fallback: false,
+        },
+      };
+
+      const result = deriveResponseDetailsPresentation(metadata);
+
+      expect(result.requestedProvider).toBe('builtin_vllm');
+      expect(result.requestedModel).toBe('gpt2');
+      expect(result.actualProvider).toBe('builtin_vllm');
+      expect(result.actualModel).toBe('GPT-2');
+      expect(result.usedFallback).toBe(false);
+      expect(result.isDegraded).toBe(false);
+    });
+
+    it('should handle fallback when requested provider is unavailable', () => {
+      const metadata = {
+        llm: {
+          requested_provider: 'gemini',
+          requested_model: 'gemini-2.5-flash',
+          provider: 'builtin_vllm',
+          model_id: 'qwen-local',
+          model_name: 'Qwen Local',
+          source: 'runtime_fallback',
+          is_degraded: true,
+          used_fallback: true,
+          fallback_from: 'gemini',
+        },
+      };
+
+      const result = deriveResponseDetailsPresentation(metadata);
+
+      expect(result.requestedProvider).toBe('gemini');
+      expect(result.requestedModel).toBe('gemini-2.5-flash');
+      expect(result.actualProvider).toBe('builtin_vllm');
+      expect(result.actualModel).toBe('Qwen Local');
+      expect(result.usedFallback).toBe(true);
+      expect(result.isDegraded).toBe(true);
+    });
+
+    it('should indicate when requested provider field is missing', () => {
+      // Edge case: backend doesn't provide requested_provider (routing bypass or error)
+      const metadata = {
+        llm: {
+          provider: 'builtin_vllm',
+          model_id: 'gpt2',
+          model_name: 'GPT-2',
+          source: 'runtime',
+          is_degraded: false,
+          used_fallback: false,
+          // requested_provider and requested_model missing
+        },
+      };
+
+      const result = deriveResponseDetailsPresentation(metadata);
+
+      expect(result.requestedProvider).toBe('');  // Empty/missing
+      expect(result.actualProvider).toBe('builtin_vllm');
+      expect(result.actualModel).toBe('GPT-2');
+      // When requested fields are missing, UI shows fallback/degraded behavior
+      expect(result.usedFallback).toBe(false);  // Not technically fallback, but user preference wasn't honored
+    });
+  });
 });

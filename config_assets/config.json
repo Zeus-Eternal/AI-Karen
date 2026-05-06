@@ -89,7 +89,7 @@
     "max_retries": 3
   },
   "expression": {
-    "active_engine": "cloud",
+    "active_engine": "builtin",
     "fallback_order": [
       "builtin",
       "local",
@@ -105,7 +105,8 @@
         "enabled": true,
         "fallback_eligible": true,
         "metadata": {
-          "preferred_model": "auto"
+          "preferred_model": "gpt2",
+          "preferred_provider": "transformers"
         }
       },
       "local": {

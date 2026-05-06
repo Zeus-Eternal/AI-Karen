@@ -10,7 +10,6 @@ import { authService } from '@/lib/auth';
 import {
   normalizeBackendChatResponse,
   normalizeConversationMessage,
-  normalizeProviderName,
 } from '@/lib/chat-response';
 import { normalizeModelSettingsResponse, type RuntimeSettingsResponse } from '@/lib/model-runtime-inventory';
 import { useMessageInjection } from '@/providers/MessageInjectionProvider';
@@ -838,9 +837,37 @@ export default function ChatInterface() {
     try {
       const response = await apiClient.get<ModelSettingsResponse>('/api/settings/model');
       const normalized = normalizeModelSettingsResponse(response);
-      setModelSettings(response);
-      setSelectedProvider(normalized.selected_provider);
-      setSelectedModel(normalized.selected_model);
+      setModelSettings(normalized as any);
+
+      // Check if selected provider is still available and configured
+      const selectableProviders = normalized.selectableProviders;
+      const selectedProviderId = normalized.selected_provider;
+      const selectedProvider = selectableProviders.find(p => p.id === selectedProviderId);
+
+      if (selectedProviderId && !selectedProvider) {
+        const fallbackProvider = selectableProviders[0];
+        
+        toast({
+          title: 'Selected provider unavailable',
+          description: `The provider "${selectedProviderId}" is not configured or no longer available. Karen switched to ${fallbackProvider?.display_name || 'the default runtime'}.`,
+          variant: 'destructive',
+        });
+        
+        setSelectedProvider(fallbackProvider?.id || '');
+        setSelectedModel(fallbackProvider?.selected_model || fallbackProvider?.default_model || fallbackProvider?.models?.[0]?.id || '');
+      } else {
+        setSelectedProvider(normalized.selected_provider);
+        
+        // Ensure selected model is valid for this provider
+        const modelId = normalized.selected_model;
+        const modelExists = selectedProvider?.models.some(m => m.id === modelId);
+        
+        if (selectedProvider && !modelExists) {
+           setSelectedModel(selectedProvider.selected_model || selectedProvider.default_model || selectedProvider.models?.[0]?.id || '');
+        } else {
+           setSelectedModel(normalized.selected_model);
+        }
+      }
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         return;
@@ -1276,12 +1303,9 @@ export default function ChatInterface() {
         }
       }
 
-      if (!llm.requested_provider && preferredProvider) {
-        llm.requested_provider = normalizeProviderName(preferredProvider);
-      }
-      if (!llm.requested_model && preferredModel) {
-        llm.requested_model = preferredModel;
-      }
+      // Backend metadata is the source of truth. No frontend enrichment for requested_provider/model.
+      // If backend doesn't provide these fields, it means the provider wasn't honored or routing bypassed them.
+      // This preserves transparency about what actually happened.
 
       metadata.llm = llm;
       metadata.status = metadata.status || 'completed';
@@ -1331,7 +1355,7 @@ export default function ChatInterface() {
                 },
                 recent_messages: recentMessages,
               },
-          preferred_llm_provider: preferredProvider,
+          preferred_provider: preferredProvider,
           preferred_model: preferredModel,
           session_id: sessionIdRef.current,
         };
@@ -1426,11 +1450,25 @@ export default function ChatInterface() {
           throw new Error('Empty response from streaming endpoint');
         }
 
+        // Validate backend metadata completeness
+        const finalMetadata = completedMetadata || enrichStreamMetadata();
+        const llmMetadata = typeof finalMetadata.llm === 'object' && finalMetadata.llm !== null && !Array.isArray(finalMetadata.llm)
+          ? finalMetadata.llm as Record<string, unknown>
+          : {};
+
+        if (preferredProvider && !llmMetadata?.requested_provider) {
+          console.warn(
+            `[ChatInterface] Backend did not provide requested_provider. ` +
+            `Sent: ${preferredProvider}, Expected in metadata.llm.requested_provider. ` +
+            `This may indicate provider routing bypassed or unavailable.`
+          );
+        }
+
         const streamResponse = {
           answer: fullContent,
           correlationId: completedMetadata?.correlation_id as string || undefined,
           actions: (completedMetadata?.actions as SuggestedAction[]) || [],
-          metadata: completedMetadata || enrichStreamMetadata(),
+          metadata: finalMetadata,
         };
 
         const streamAssistantMessage: ChatMessage = {

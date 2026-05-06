@@ -36,7 +36,14 @@ const cleanString = (value: unknown): string => {
 };
 
 const isSelectableProvider = (provider: ProviderDetails): boolean => {
-  return provider.selectable !== false;
+  return (
+    provider.selectable !== false &&
+    provider.is_configured === true &&
+    provider.enabled !== false &&
+    provider.user_selectable !== false &&
+    provider.policy_allowed !== false &&
+    !provider.policy_rejection_reason
+  );
 };
 
 const getProviderDisplayName = (provider: ProviderDetails | null | undefined): string => {
