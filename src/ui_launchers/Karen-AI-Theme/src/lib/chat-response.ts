@@ -116,13 +116,14 @@ export type CompactBadgePresentation = {
 const BUILTIN_TRANSFORMERS_PROVIDER = 'builtin_transformers';
 const BUILTIN_VLLM_PROVIDER = 'builtin_vllm';
 const OPENAI_COMPATIBLE_PROVIDER = 'openai_compatible';
-const LOCAL_GGUF_PROVIDER = 'local_gguf';
+const OLLAMA_PROVIDER = 'ollama';
+const DEPRECATED_PROVIDER = 'deprecated_provider';
 const FALLBACK_PROVIDER = 'fallback';
 const SYSTEM_PROVIDER = 'system';
 
 
 export const REMOVED_PROVIDER_WARNING =
-  'This provider is no longer available as a built-in runtime. Configure llama.cpp/GGUF as a third-party endpoint if needed.';
+  'This provider is no longer available as a built-in runtime. Configure a custom compatible endpoint if needed.';
 
 const BUILTIN_PROVIDER_ALIASES: Record<string, string> = {
   transformers: BUILTIN_TRANSFORMERS_PROVIDER,
@@ -221,13 +222,7 @@ const EXTERNAL_ENDPOINT_PROVIDER_ALIASES: Record<string, string> = {
 
 };
 
-const REMOVED_LEGACY_PROVIDERS = new Set([
-  'local_gguf',
-  'local_gguf_optimized',
-  'llamacpp',
-  'llama_cpp',
-  'llama.cpp',
-]);
+const REMOVED_LEGACY_PROVIDERS = new Set([DEPRECATED_PROVIDER]);
 
 const LOCAL_FALLBACK_SOURCES = new Set([
   'chat_orchestrator_local_fallback',
@@ -331,11 +326,11 @@ export const isVllmRuntimeProvider = (provider?: unknown): boolean => {
 };
 
 export const isLocalRuntimeProvider = (provider?: unknown): boolean => {
-  return isBuiltInRuntimeProvider(provider);
+  return normalizeProviderName(provider) === OLLAMA_PROVIDER;
 };
 
-export const isExternalGgufProvider = (provider?: unknown): boolean => {
-  return normalizeProviderName(provider) === LOCAL_GGUF_PROVIDER;
+export const isDeprecatedProvider = (provider?: unknown): boolean => {
+  return normalizeProviderName(provider) === DEPRECATED_PROVIDER;
 };
 
 export const isOpenAiCompatibleProvider = (provider?: unknown): boolean => {
@@ -366,7 +361,7 @@ export const getRuntimeDisplayName = (
     return explicit || 'OpenAI-Compatible Endpoint';
   }
 
-  if (normalized === LOCAL_GGUF_PROVIDER || REMOVED_LEGACY_PROVIDERS.has(normalized)) {
+  if (normalized === DEPRECATED_PROVIDER || REMOVED_LEGACY_PROVIDERS.has(normalized)) {
     return REMOVED_PROVIDER_WARNING;
   }
 
@@ -396,8 +391,8 @@ export const getRuntimeGroupLabel = (provider?: unknown): string => {
     return 'External Endpoint';
   }
 
-  if (normalized === LOCAL_GGUF_PROVIDER) {
-    return 'External GGUF';
+  if (normalized === DEPRECATED_PROVIDER) {
+    return 'Deprecated Provider';
   }
 
   if (normalized === FALLBACK_PROVIDER) {
@@ -640,7 +635,7 @@ export const deriveDegradedPresentation = (
 
   const isExternalGgufBackedFallback =
     normalizedActualProvider === FALLBACK_PROVIDER &&
-    actualModelId.toLowerCase().startsWith(`${LOCAL_GGUF_PROVIDER}:`);
+    actualModelId.toLowerCase().startsWith(`${DEPRECATED_PROVIDER}:`);
 
   const actualProviderLabel = isExternalGgufBackedFallback
     ? 'GGUF External Endpoint'
