@@ -132,7 +132,7 @@ class RuntimeProviderManager:
             normalized = [p for p in canonical if p]
             if normalized:
                 return normalized
-        return ["builtin_vllm", "ollama", "builtin_transformers", "local_gguf", "fallback"]
+        return ["builtin_vllm", "ollama", "builtin_transformers", "fallback"]
     
     # ---------- Provider Switching ----------
     
@@ -345,7 +345,7 @@ class RuntimeProviderManager:
         """Check health of local provider"""
         try:
             canonical_name = self.canonicalize_provider_id(config.name)
-            if canonical_name in ("builtin_vllm", "local_gguf"):
+            if canonical_name in ("builtin_vllm",):
                 # Check if local model files exist for these specific runtimes
                 try:
                     from ai_karen_engine.inference.model_store import ModelStore
