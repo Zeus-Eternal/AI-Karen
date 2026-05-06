@@ -705,6 +705,14 @@ class ApiClient {
     return (text ? JSON.parse(text) : undefined) as T;
   }
 
+  /**
+   * Get the unified provider catalog from the backend.
+   * This is the single source of truth for all provider/model selection UI.
+   */
+  async getRuntimeProviderCatalog(): Promise<any> {
+    return this.get('/api/runtime/providers');
+  }
+
   async get<T>(endpoint: string): Promise<T> {
     return this.request<T>(endpoint);
   }

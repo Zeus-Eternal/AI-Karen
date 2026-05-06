@@ -49,21 +49,24 @@ class RouterSelectNode:
             )
             request_config = state.get("request_config") or {}
             if isinstance(request_config, dict):
-                preferred_provider = request_config.get("preferred_llm_provider")
-                preferred_model = request_config.get("preferred_model")
+                # Check both common variants from different API ingress paths
+                preferred_provider = request_config.get("provider") or request_config.get("preferred_llm_provider")
+                preferred_model = request_config.get("model") or request_config.get("preferred_model")
+                
                 if preferred_provider and not provider_preferences.get(
                     "preferred_llm_provider"
                 ):
                     provider_preferences["preferred_llm_provider"] = preferred_provider
                 if preferred_model and not provider_preferences.get("preferred_model"):
                     provider_preferences["preferred_model"] = preferred_model
+            
             explicit_preferred_provider = (
-                request_config.get("preferred_llm_provider")
+                request_config.get("provider") or request_config.get("preferred_llm_provider")
                 if isinstance(request_config, dict)
                 else None
             )
             explicit_preferred_model = (
-                request_config.get("preferred_model")
+                request_config.get("model") or request_config.get("preferred_model")
                 if isinstance(request_config, dict)
                 else None
             )
@@ -110,23 +113,25 @@ class RouterSelectNode:
             )
 
             if self._llm_router:
-                provider_selection = await self._llm_router.select_provider(
+                route_decision = await self._llm_router.select_provider(
                     request,
                     user_preferences=provider_preferences,
                 )
 
-                if provider_selection:
-                    provider_name, model_name = provider_selection
-                    state["selected_provider"] = provider_name
-                    state["selected_model"] = model_name
-                    state["routing_reason"] = "Selected via LLM router policy"
+                if route_decision:
+                    state["route_decision"] = route_decision
+                    state["selected_provider"] = route_decision.selected_provider
+                    state["selected_model"] = route_decision.selected_model
+                    state["routing_reason"] = route_decision.routing_reason or "Selected via LLM router policy"
                 else:
+                    state["route_decision"] = None
                     state["selected_provider"] = "fallback"
                     state["selected_model"] = "kari-fallback-v1"
                     state["routing_reason"] = (
                         "Router returned no provider; using fallback"
                     )
             else:
+                state["route_decision"] = None
                 state["selected_provider"] = "fallback"
                 state["selected_model"] = "kari-fallback-v1"
                 state["routing_reason"] = "LLM router not available; using fallback"

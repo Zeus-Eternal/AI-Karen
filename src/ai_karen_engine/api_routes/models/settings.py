@@ -149,6 +149,8 @@ class ModelSettingsResponse(BaseModel):
     selected_model: str
     active_provider: str
     active_model: str
+    default_provider: str = "builtin_transformers"
+    default_model: str = "auto"
     fallback_hierarchy: List[str]
 
 
@@ -733,6 +735,8 @@ async def _build_response() -> Dict[str, Any]:
         "selected_model": str(active_model or "auto"),
         "active_provider": str(active_provider_id or "builtin_transformers"),
         "active_model": str(active_model or "auto"),
+        "default_provider": "builtin_transformers",
+        "default_model": "auto",
         "fallback_hierarchy": list(settings.get_setting("llm_providers.fallback_hierarchy") or [
             "builtin_transformers", "builtin_vllm", "openai", "gemini"
         ])

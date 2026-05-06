@@ -7,6 +7,10 @@ from typing import (
     cast,
 )
 from langchain_core.messages import BaseMessage
+from ai_karen_engine.core.model_runtime.runtime_contracts import (
+    ProviderRouteDecision,
+    ProviderExecutionResult,
+)
 
 
 class LangGraphOrchestrationState(TypedDict):
@@ -48,6 +52,8 @@ class LangGraphOrchestrationState(TypedDict):
     selected_provider: Optional[str]
     selected_model: Optional[str]
     routing_reason: Optional[str]
+    route_decision: Optional[ProviderRouteDecision]
+    execution_result: Optional[ProviderExecutionResult]
     tool_calls: Optional[List[Dict[str, Any]]]
     tool_results: Optional[List[Dict[str, Any]]]
     tool_execution_metadata: Optional[Dict[str, Any]]
@@ -127,6 +133,8 @@ def create_initial_state(
         "selected_provider": None,
         "selected_model": None,
         "routing_reason": None,
+        "route_decision": None,
+        "execution_result": None,
         "tool_calls": None,
         "tool_results": None,
         "tool_execution_metadata": None,

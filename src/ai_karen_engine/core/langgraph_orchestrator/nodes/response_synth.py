@@ -1,11 +1,12 @@
 """Response synthesis node for LangGraph orchestration."""
 
 import logging
-import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from ai_karen_engine.services.response import ResponseContract, ResponseSanitizer, ResponseSynthesizer
+from ai_karen_engine.services.response import ResponseSanitizer
+from ai_karen_engine.services.provider_runtime import ProviderRuntime
+from ai_karen_engine.core.model_runtime.runtime_contracts import ProviderExecutionResult
 from ..contracts.orchestration_state import LangGraphOrchestrationState
 
 logger = logging.getLogger(__name__)
@@ -14,7 +15,6 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SynthesisConfig:
     """Configuration for response synthesis."""
-
     max_response_length: int = 100000
     include_tool_results: bool = True
     include_execution_summary: bool = True
@@ -24,9 +24,15 @@ class SynthesisConfig:
 class ResponseSynthesisNode:
     """Deterministic response synthesis over orchestration state."""
 
-    def __init__(self, config: Optional[SynthesisConfig] = None, llm_router: Optional[Any] = None):
+    def __init__(
+        self, 
+        config: Optional[SynthesisConfig] = None, 
+        llm_router: Optional[Any] = None,
+        provider_runtime: Optional[ProviderRuntime] = None
+    ):
         self.config = config or SynthesisConfig()
         self._llm_router = llm_router
+        self._provider_runtime = provider_runtime or ProviderRuntime(llm_router)
         self._response_sanitizer = ResponseSanitizer()
 
     async def __call__(
@@ -36,13 +42,21 @@ class ResponseSynthesisNode:
         try:
             response = await self._compose_response(state)
             state["llm_response"] = response
-            state["synthesis_metadata"] = {
-                "response_length": len(response),
-                "tool_results_count": len(state.get("tool_results") or []),
-                "selected_provider": state.get("selected_provider"),
-                "selected_model": state.get("selected_model"),
-                "has_reasoning_result": bool(state.get("reasoning_result")),
-            }
+            state["response"] = response  # Ensure both are set for compatibility
+            
+            exec_result = state.get("execution_result")
+            if exec_result:
+                state["synthesis_metadata"] = {
+                    "response_length": len(response),
+                    "tool_results_count": len(state.get("tool_results") or []),
+                    "selected_provider": exec_result.selected_provider,
+                    "selected_model": exec_result.selected_model,
+                    "actual_provider": exec_result.actual_provider,
+                    "actual_model": exec_result.actual_model,
+                    "latency_ms": exec_result.latency_ms,
+                    "has_reasoning_result": bool(state.get("reasoning_result")),
+                }
+            
             state["response_summary"] = {
                 "response_length": len(response),
                 "included_tool_results": len(state.get("tool_results") or [])
@@ -65,175 +79,124 @@ class ResponseSynthesisNode:
         messages = state.get("messages") or []
         last_user_message = self._extract_last_user_message(messages)
         tool_results = state.get("tool_results") or []
-        execution_summary = state.get("execution_summary") or {}
         reasoning_result = state.get("reasoning_result") or {}
         request_config = state.get("request_config") or {}
         request_preferences = dict(request_config) if isinstance(request_config, dict) else {}
-        requested_provider = request_preferences.get("preferred_llm_provider")
-        requested_model = request_preferences.get("preferred_model")
+        
+        route_decision = state.get("route_decision")
 
-        if self._llm_router:
+        if route_decision and self._provider_runtime:
             try:
+                # Local import to avoid circular dependency
                 from ai_karen_engine.services.models.routing.llm_router_service import ChatRequest
 
-                selection = await self._llm_router.select_provider(
-                    ChatRequest(
-                        message=last_user_message or "",
-                        preferred_model=requested_model,
-                        stream=bool(state.get("streaming_enabled")),
-                        conversation_id=state.get("session_id"),
-                    ),
-                    user_preferences=request_preferences,
+                cortex = state.get("cortex")
+                intent = "general.chat"
+                subtype = None
+                
+                if cortex and hasattr(cortex, "intent"):
+                    intent = cortex.intent.primary_intent
+                    subtype = getattr(cortex.intent, "subtype", None)
+                elif isinstance(cortex, dict):
+                    intent_data = cortex.get("intent", {})
+                    if isinstance(intent_data, dict):
+                        intent = intent_data.get("primary_intent", "general.chat")
+                        subtype = intent_data.get("subtype")
+
+                request = ChatRequest(
+                    message=last_user_message or "",
+                    intent=intent,
+                    subtype=subtype,
+                    context={
+                        "messages": messages,
+                        "tool_results": tool_results,
+                        "reasoning_result": reasoning_result,
+                        "plan": state.get("execution_plan"),
+                        "memory": state.get("memory_context"),
+                    },
+                    preferred_model=route_decision.selected_model,
+                    stream=False, 
+                    conversation_id=state.get("session_id"),
                 )
 
-                if selection:
-                    provider_name, model_name = selection
-                    
-                    cortex = state.get("cortex")
-                    intent = "general.chat"
-                    subtype = None
-                    requires_chat_capable_model = True
-                    
-                    if cortex and hasattr(cortex, "intent"):
-                        intent = cortex.intent.primary_intent
-                        subtype = getattr(cortex.intent, "subtype", None)
-                        requires_chat_capable_model = getattr(cortex.intent, "requires_chat_capable_model", True)
-                    elif isinstance(cortex, dict):
-                        intent_data = cortex.get("intent", {})
-                        if isinstance(intent_data, dict):
-                            intent = intent_data.get("primary_intent", "general.chat")
-                            subtype = intent_data.get("subtype")
-                            requires_chat_capable_model = intent_data.get("requires_chat_capable_model", True)
-
-                    contract = ResponseContract(
-                        purpose="tool_synthesis" if tool_results else "chat",
-                        intent=intent,
-                        subtype=subtype,
-                        requires_chat_capable_model=requires_chat_capable_model,
-                        latest_user_message=last_user_message or "",
-                        tool_results=tool_results if isinstance(tool_results, list) else [],
-                        reasoning_summary=(reasoning_result.get("summary") if isinstance(reasoning_result, dict) else None),
-                        runtime_metadata={
-                            "requested_provider": requested_provider,
-                            "requested_model": requested_model,
-                            "selected_provider": provider_name,
-                            "selected_model": model_name,
-                        },
+                exec_result = await self._provider_runtime.execute(
+                    route_decision,
+                    request,
+                    user_preferences=request_preferences
+                )
+                
+                state["execution_result"] = exec_result
+                
+                if exec_result.text.strip():
+                    llm_metadata = self._build_metadata_from_result(exec_result, bool(state.get("streaming_enabled")))
+                    self._store_llm_metadata(state, llm_metadata)
+                    logger.info(
+                        "LLM synthesis successful. Actual provider: %s",
+                        exec_result.actual_provider,
                     )
-                    try:
-                        generation_start = time.time()
-                        synthesizer = ResponseSynthesizer(self._llm_router)
-                        final_text, synthesis_metadata = await synthesizer.synthesize(
-                            contract,
-                            user_preferences=request_preferences,
-                            conversation_id=state.get("session_id"),
-                            stream=False,
-                        )
-
-                        if final_text.strip():
-                            metadata_blob = synthesis_metadata.get("llm", synthesis_metadata)
-                            llm_metadata = self._normalize_llm_metadata(
-                                metadata_blob,
-                                requested_provider=requested_provider or provider_name,
-                                requested_model=requested_model or model_name,
-                                selected_provider=provider_name,
-                                selected_model=model_name,
-                                latency_ms=(time.time() - generation_start) * 1000,
-                                streaming_enabled=bool(state.get("streaming_enabled")),
-                            )
-                            self._store_llm_metadata(state, llm_metadata)
-                            logger.info(
-                                "LLM synthesis successful. Actual provider: %s",
-                                llm_metadata.get("actual_provider"),
-                            )
-                            return final_text.strip()
-
-                    except Exception as provider_error:
-                        logger.warning(
-                            "Primary provider %s failed: %s. Attempting degraded runtime fallback.",
-                            provider_name,
-                            provider_error,
-                        )
-
-                        try:
-                            fallback_result = await self._llm_router.generate_with_degraded_runtime_fallback(
-                                request=ChatRequest(
-                                    message=last_user_message or "",
-                                    stream=False,
-                                    preferred_model=requested_model,
-                                    conversation_id=state.get("session_id"),
-                                ),
-                                requested_provider=requested_provider or provider_name,
-                                requested_model=requested_model or model_name or "unknown",
-                                failure_reason=str(provider_error),
-                            )
-
-                            if fallback_result and fallback_result.get("content"):
-                                fallback_metadata = (
-                                    fallback_result.get("metadata", {}).get("llm", {})
-                                )
-                                llm_metadata = self._normalize_llm_metadata(
-                                    fallback_metadata,
-                                    requested_provider=requested_provider or provider_name,
-                                    requested_model=requested_model or model_name,
-                                    selected_provider=provider_name,
-                                    selected_model=model_name,
-                                    latency_ms=None,
-                                    streaming_enabled=bool(state.get("streaming_enabled")),
-                                )
-                                self._store_llm_metadata(state, llm_metadata)
-                                logger.info(
-                                    "Fallback successful: %s (requested: %s)",
-                                    llm_metadata.get("actual_provider"),
-                                    llm_metadata.get("requested_provider"),
-                                )
-                                return str(fallback_result["content"]).strip()
-
-                            logger.error(
-                                "All providers failed including fallback chain. "
-                                "Falling back to deterministic response."
-                            )
-                        except Exception as fallback_error:
-                            logger.error(
-                                "Fallback chain execution failed: %s. "
-                                "Falling back to deterministic response.",
-                                fallback_error,
-                            )
+                    return exec_result.text.strip()
 
             except Exception as e:
-                logger.warning(f"LLM-based synthesis failed, falling back to deterministic: {e}")
+                logger.warning(f"LLM-based synthesis via ProviderRuntime failed: {e}")
 
+        # Deterministic fallback if LLM synthesis fails or was skipped
         fallback = self._compose_deterministic_fallback(
             last_user_message=last_user_message,
             tool_results=tool_results,
-            execution_summary=execution_summary,
+            execution_summary=state.get("execution_summary") or {},
             reasoning_result=reasoning_result,
         )
 
         response = self._response_sanitizer.sanitize(fallback)
         if len(response) > self.config.max_response_length:
             response = response[: self.config.max_response_length].rstrip() + "... (truncated)"
-
-        emergency_metadata = self._normalize_llm_metadata(
-            {
+        
+        # Build emergency metadata if we reached this point
+        if not state.get("execution_result"):
+            emergency_metadata = {
+                "requested_provider": request_preferences.get("provider") or "unknown",
+                "requested_model": request_preferences.get("model") or "unknown",
+                "selected_provider": "emergency_static",
+                "selected_model": "none",
                 "actual_provider": "emergency_static",
                 "actual_model": "none",
                 "runtime_engine": "none",
                 "response_source": "emergency_static",
                 "fallback_level": 99,
                 "degraded_mode": True,
-                "degradation_reason": "all_live_providers_failed",
-            },
-            requested_provider=requested_provider,
-            requested_model=requested_model,
-            selected_provider="emergency_static",
-            selected_model="none",
-            latency_ms=None,
-            streaming_enabled=bool(state.get("streaming_enabled")),
-        )
-        self._store_llm_metadata(state, emergency_metadata)
+                "degradation_reason": "all_live_providers_failed_or_skipped",
+                "latency_ms": 0,
+                "streaming_enabled": bool(state.get("streaming_enabled")),
+            }
+            self._store_llm_metadata(state, emergency_metadata)
+
         return response
 
+    def _build_metadata_from_result(self, result: ProviderExecutionResult, streaming_enabled: bool) -> Dict[str, Any]:
+        """Build legacy-compatible metadata from ProviderExecutionResult."""
+        return {
+            "requested_provider": result.requested_provider,
+            "requested_model": result.requested_model,
+            "selected_provider": result.selected_provider,
+            "selected_model": result.selected_model,
+            "actual_provider": result.actual_provider,
+            "actual_model": result.actual_model,
+            "provider": result.actual_provider,
+            "model_id": result.actual_model,
+            "model_name": result.actual_model,
+            "runtime_engine": result.runtime_engine,
+            "response_source": result.response_source,
+            "source": result.response_source,
+            "fallback_level": result.fallback_level,
+            "degraded_mode": result.degraded_mode,
+            "is_degraded": result.degraded_mode,
+            "used_fallback": result.fallback_level > 0,
+            "degradation_reason": result.degradation_reason,
+            "latency_ms": result.latency_ms,
+            "duration": result.latency_ms / 1000 if result.latency_ms else 0,
+            "streaming_enabled": streaming_enabled,
+            "correlation_id": result.correlation_id,
+        }
 
     def _compose_deterministic_fallback(
         self,
@@ -268,109 +231,6 @@ class ResponseSynthesisNode:
         }
         state["response_metadata"] = response_metadata
         state["degraded_mode"] = bool(llm_metadata.get("degraded_mode"))
-
-    @staticmethod
-    def _normalize_llm_metadata(
-        metadata: Dict[str, Any],
-        *,
-        requested_provider: Optional[Any],
-        requested_model: Optional[Any],
-        selected_provider: Optional[Any],
-        selected_model: Optional[Any],
-        latency_ms: Optional[float],
-        streaming_enabled: bool,
-    ) -> Dict[str, Any]:
-        llm = dict(metadata or {})
-        actual_provider = (
-            llm.get("actual_provider") or llm.get("provider") or selected_provider or "unknown"
-        )
-        actual_model = (
-            llm.get("actual_model")
-            or llm.get("model_id")
-            or llm.get("model_name")
-            or selected_model
-            or "auto"
-        )
-        resolved_requested_provider = (
-            llm.get("requested_provider") or requested_provider or actual_provider
-        )
-        resolved_requested_model = llm.get("requested_model") or requested_model or actual_model
-        def _robust_normalize(val: Any, is_model: bool = False) -> str:
-            s = str(val or "").strip().lower().replace("-", "_")
-            if not s:
-                return ""
-            if is_model:
-                return s.split("/")[-1].split(":")[-1].split(".")[0]
-            return s.replace("builtin_", "")
-
-        requested_provider_norm = _robust_normalize(resolved_requested_provider)
-        actual_provider_norm = _robust_normalize(actual_provider)
-        
-        provider_changed = bool(
-            requested_provider_norm
-            and actual_provider_norm
-            and requested_provider_norm != actual_provider_norm
-        )
-        
-        requested_model_norm = _robust_normalize(resolved_requested_model, is_model=True)
-        actual_model_norm = _robust_normalize(actual_model, is_model=True)
-        
-        model_changed = bool(
-            requested_model_norm
-            and actual_model_norm
-            and requested_model_norm != "auto"
-            and requested_model_norm != actual_model_norm
-        )
-        
-        response_source = (
-            llm.get("response_source")
-            or ("live_model" if actual_provider != "emergency_static" else "emergency_static")
-        )
-        
-        # Determine if the response source represents a healthy live execution
-        is_healthy_source = (
-            response_source == "live_model" or 
-            str(response_source).endswith("_engine") or 
-            response_source == "intelligent_router"
-        )
-        
-        degraded_mode = bool(
-            llm.get("degraded_mode")
-            or llm.get("is_degraded")
-            or llm.get("used_fallback")
-            or provider_changed
-            or model_changed
-            or not is_healthy_source
-        )
-        
-        if is_healthy_source and not provider_changed and not model_changed:
-            degraded_mode = False
-        llm.update(
-            {
-                "requested_provider": resolved_requested_provider,
-                "requested_model": resolved_requested_model,
-                "actual_provider": actual_provider,
-                "actual_model": actual_model,
-                "provider": actual_provider,
-                "model_id": actual_model,
-                "model_name": llm.get("model_name") or actual_model,
-                "runtime_engine": llm.get("runtime_engine")
-                or str(actual_provider).replace("builtin_", ""),
-                "response_source": response_source,
-                "source": llm.get("source") or response_source,
-                "fallback_level": int(llm.get("fallback_level") or (1 if provider_changed else 0)),
-                "degraded_mode": degraded_mode,
-                "is_degraded": degraded_mode,
-                "used_fallback": bool(llm.get("used_fallback") or degraded_mode),
-                "streaming_enabled": streaming_enabled,
-            }
-        )
-        if latency_ms is not None:
-            llm["latency_ms"] = latency_ms
-            llm["duration"] = latency_ms / 1000
-        if degraded_mode and not llm.get("degradation_reason"):
-            llm["degradation_reason"] = "requested_provider_unavailable" if provider_changed else "provider_fallback"
-        return llm
 
     def _extract_last_user_message(self, messages: List[Any]) -> Optional[str]:
         for message in reversed(messages):

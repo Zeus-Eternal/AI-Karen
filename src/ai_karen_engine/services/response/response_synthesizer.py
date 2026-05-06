@@ -1,11 +1,22 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+import time
+from typing import Any, Dict, Optional, Tuple
+
+from ai_karen_engine.services.provider_runtime import ProviderRuntime
+from ai_karen_engine.core.model_runtime.runtime_contracts import ProviderExecutionResult
+from .response_contracts import ResponseContract
+from .response_prompt_builder import ResponsePromptBuilder
+from .response_sanitizer import ResponseSanitizer
+from .response_validator import ResponseValidator
+
+logger = logging.getLogger(__name__)
 
 class ResponseSynthesizer:
     def __init__(self, llm_router: Any):
         self.llm_router = llm_router
+        self.provider_runtime = ProviderRuntime(llm_router)
         self.prompt_builder = ResponsePromptBuilder()
         self.sanitizer = ResponseSanitizer()
         self.validator = ResponseValidator()
@@ -17,10 +28,13 @@ class ResponseSynthesizer:
         
         # Determine intent and subtype if not already set
         if contract.intent == "general.chat" and not contract.subtype:
-            from ai_karen_engine.core.cortex.routing_intents import resolve_capability_decision
-            decision = resolve_capability_decision(contract.latest_user_message)
-            contract.intent = decision.intent
-            contract.subtype = decision.subtype
+            try:
+                from ai_karen_engine.core.cortex.routing_intents import resolve_capability_decision
+                decision = resolve_capability_decision(contract.latest_user_message)
+                contract.intent = decision.intent
+                contract.subtype = decision.subtype
+            except ImportError:
+                pass
 
         request = ChatRequest(
             message=contract.latest_user_message,
@@ -36,15 +50,27 @@ class ResponseSynthesizer:
                 "runtime_metadata": contract.runtime_metadata,
             },
             stream=stream,
-            preferred_model=prefs.get("preferred_model"),
+            preferred_model=prefs.get("preferred_model") or prefs.get("model"),
             conversation_id=conversation_id,
         )
 
-        text, metadata = await self._invoke_router(request, prefs)
+        # 1. Route
+        route_decision = await self.llm_router.select_provider(request, user_preferences=prefs)
+        
+        # 2. Execute
+        if route_decision:
+            exec_result = await self.provider_runtime.execute(route_decision, request, user_preferences=prefs)
+            text = exec_result.text
+            metadata = self._build_metadata_from_result(exec_result)
+        else:
+            # Fallback if no route could be determined
+            logger.warning("No route decision available for synthesis; using emergency fallback.")
+            text = "I'm having trouble connecting to my brain right now. Please try again."
+            metadata = {"response_source": "static_fallback", "degraded_mode": True}
         
         # Validation and potential retry
         validation = self.validator.validate(text, contract)
-        if not validation.valid:
+        if not validation.valid and text:
             logger.warning(f"Response validation failed: {validation.reason}. Attempting retry with stricter contract.")
             
             # Stricter contract for retry
@@ -65,24 +91,37 @@ class ResponseSynthesizer:
                 conversation_id=conversation_id,
             )
             
-            text, metadata = await self._invoke_router(retry_request, prefs)
+            # Re-route for retry might choose a different model if needed, but we'll stick to same for now or let router decide
+            retry_decision = await self.llm_router.select_provider(retry_request, user_preferences=prefs)
+            if retry_decision:
+                retry_result = await self.provider_runtime.execute(retry_decision, retry_request, user_preferences=prefs)
+                text = retry_result.text
+                metadata = self._build_metadata_from_result(retry_result)
             
             # Final validation check
             final_validation = self.validator.validate(text, contract)
             if not final_validation.valid:
                 logger.error(f"Response validation failed again after retry: {final_validation.reason}")
-                # We could potentially try another model here, but for now let's just return what we have or a fallback message
                 if contract.purpose == "chat" and not text:
                      text = "I'm sorry, I'm having trouble generating a valid response right now. Please try again or switch models."
 
         return self.sanitizer.sanitize(text), metadata
 
-    async def _invoke_router(self, request: ChatRequest, prefs: dict[str, Any]) -> tuple[str, dict[str, Any]]:
-        text = ""
-        metadata: dict[str, Any] = {}
-        async for chunk in self.llm_router.process_chat_request(request, user_preferences=prefs):
-            if isinstance(chunk, str):
-                text += chunk
-            elif isinstance(chunk, dict) and isinstance(chunk.get("metadata"), dict):
-                metadata.update(chunk["metadata"])
-        return text, metadata
+    def _build_metadata_from_result(self, result: ProviderExecutionResult) -> Dict[str, Any]:
+        """Build legacy-compatible metadata from ProviderExecutionResult."""
+        return {
+            "requested_provider": result.requested_provider,
+            "requested_model": result.requested_model,
+            "selected_provider": result.selected_provider,
+            "selected_model": result.selected_model,
+            "actual_provider": result.actual_provider,
+            "actual_model": result.actual_model,
+            "provider": result.actual_provider,
+            "model_id": result.actual_model,
+            "runtime_engine": result.runtime_engine,
+            "response_source": result.response_source,
+            "fallback_level": result.fallback_level,
+            "degraded_mode": result.degraded_mode,
+            "latency_ms": result.latency_ms,
+            "correlation_id": result.correlation_id,
+        }

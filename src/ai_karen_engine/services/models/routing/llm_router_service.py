@@ -32,6 +32,7 @@ from ai_karen_engine.config.llm_provider_config import (
 from ai_karen_engine.config.runtime_provider_manager import RuntimeProviderManager
 from ai_karen_engine.core.model_runtime.provider_registry_service import ProviderRegistryService
 
+from ai_karen_engine.core.model_runtime.runtime_contracts import ProviderRouteDecision
 from ai_karen_engine.core.operations.routing_decision_persistence import (
     RoutingDecisionPersistence,
     get_routing_persistence,
@@ -477,7 +478,7 @@ class LLMRouter:
 
     async def select_provider(
         self, request: ChatRequest, user_preferences: Optional[Dict[str, Any]] = None
-    ) -> Optional[tuple[str, Optional[str]]]:
+    ) -> Optional[ProviderRouteDecision]:
         """Select the best available provider based on local-first priority with enhanced validation."""
 
         start_time = time.time()
@@ -507,6 +508,10 @@ class LLMRouter:
             if parsed_model:
                 preferred_provider = parsed_provider or preferred_provider
                 preferred_model = parsed_model
+
+            # Canonical requested values
+            requested_provider = preferred_provider
+            requested_model = preferred_model
 
             # Validate preferred provider/model combination
             if preferred_provider and preferred_model:
@@ -549,7 +554,21 @@ class LLMRouter:
                             success=True,
                         )
 
-                        return preferred_provider, preferred_model
+                        return ProviderRouteDecision(
+                            requested_provider=requested_provider,
+                            requested_model=requested_model,
+                            selected_provider=preferred_provider,
+                            selected_model=preferred_model,
+                            runtime_engine=preferred_provider.replace("builtin_", ""),
+                            selection_source="preferred",
+                            fallback_level=0,
+                            degraded_mode=False,
+                            degradation_reason=None,
+                            provider_healthy=is_healthy or has_readiness,
+                            model_available=True,
+                            routing_reason="preferred_provider_model_selection",
+                            metadata={"selection_latency": time.time() - selection_start}
+                        )
                     else:
                         reasons = []
                         if not info: reasons.append("info_missing")
@@ -578,15 +597,11 @@ class LLMRouter:
                     if name in NON_CHAT_PROVIDERS:
                         continue
                     info = self.registry.get_provider_info(name)
+                    is_healthy = await self._is_provider_healthy(name)
+                    has_readiness = self._health_allows_attempt(name) and self._provider_has_runtime_readiness(name, info)
                     if (
                         info
-                        and (
-                            await self._is_provider_healthy(name)
-                            or (
-                                self._health_allows_attempt(name)
-                                and self._provider_has_runtime_readiness(name, info)
-                            )
-                        )
+                        and (is_healthy or has_readiness)
                         and await self._meets_requirements(name, request)
                         and self._provider_supports_model(name, preferred_model, info)
                         and self.is_provider_healthy_and_authenticated(name)
@@ -610,7 +625,21 @@ class LLMRouter:
                             success=True,
                         )
 
-                        return name, preferred_model
+                        return ProviderRouteDecision(
+                            requested_provider=requested_provider,
+                            requested_model=requested_model,
+                            selected_provider=name,
+                            selected_model=preferred_model,
+                            runtime_engine=name.replace("builtin_", ""),
+                            selection_source="preferred_model_resolution",
+                            fallback_level=0,
+                            degraded_mode=False,
+                            degradation_reason=None,
+                            provider_healthy=is_healthy or has_readiness,
+                            model_available=True,
+                            routing_reason="preferred_model_resolution",
+                            metadata={"selection_latency": time.time() - selection_start}
+                        )
                 self._structured_log(
                     logging.WARNING,
                     "Preferred model unavailable across providers",
@@ -639,7 +668,22 @@ class LLMRouter:
                     info = self.registry.get_provider_info(preferred_provider)
                     model_name = info.get("default_model") if info else None
                     self._record_selection_metric(preferred_provider, "selected")
-                    return preferred_provider, model_name
+                    
+                    return ProviderRouteDecision(
+                        requested_provider=requested_provider,
+                        requested_model=requested_model,
+                        selected_provider=preferred_provider,
+                        selected_model=model_name or "auto",
+                        runtime_engine=preferred_provider.replace("builtin_", ""),
+                        selection_source="preferred_provider_selection",
+                        fallback_level=0,
+                        degraded_mode=False,
+                        degradation_reason=None,
+                        provider_healthy=True,
+                        model_available=True,
+                        routing_reason="preferred_provider_selection",
+                        metadata={"selection_latency": time.time() - selection_start}
+                    )
 
             # Get available providers sorted by priority
             available_providers = await self._get_available_providers_by_priority()
@@ -685,42 +729,29 @@ class LLMRouter:
             )
 
             self._record_selection_metric(selected_provider, "selected")
-            return selected_provider, model_name
+            
+            # Determine if this is a fallback selection
+            is_fallback = requested_provider is not None and requested_provider != selected_provider
+            
+            return ProviderRouteDecision(
+                requested_provider=requested_provider,
+                requested_model=requested_model,
+                selected_provider=selected_provider,
+                selected_model=model_name or "auto",
+                runtime_engine=selected_provider.replace("builtin_", ""),
+                selection_source="policy" if not is_fallback else "fallback",
+                fallback_level=1 if is_fallback else 0,
+                degraded_mode=is_fallback,
+                degradation_reason="requested_provider_unavailable" if is_fallback else None,
+                provider_healthy=True,
+                model_available=True,
+                routing_reason="routing_policy_selection",
+                metadata={"selection_latency": time.time() - selection_start}
+            )
 
         except Exception as e:
             logger.error(f"Error selecting provider: {e}")
             return None
-
-        # This should not be reached as the logic is above, but keeping for safety
-        if not suitable_providers:
-            self._structured_log(
-                logging.WARNING,
-                "No suitable providers found for request after fallback",
-                policy=self.routing_policy.value,
-                conversation_id=request.conversation_id,
-                platform=request.platform,
-            )
-            return None
-
-        selected_provider = suitable_providers[0]
-        info = self.registry.get_provider_info(selected_provider)
-        model_name = info.get("default_model") if info else None
-        self._structured_log(
-            logging.INFO,
-            "Selected provider via routing policy",
-            provider=selected_provider,
-            policy=self.routing_policy.value,
-            conversation_id=request.conversation_id,
-            platform=request.platform,
-        )
-
-        # Record routing decision
-        await self.record_routing_decision(
-            request, selected_provider, model_name, "routing_policy", success=True
-        )
-
-        self._record_selection_metric(selected_provider, "selected")
-        return selected_provider, model_name
 
     async def _get_available_providers_by_priority(self) -> List[str]:
         """Return healthy providers ordered according to the active policy."""
@@ -1164,16 +1195,15 @@ class LLMRouter:
 
     async def process_chat_request(
         self, request: ChatRequest, user_preferences: Optional[Dict[str, Any]] = None
-    ) -> AsyncIterator[str]:
+    ) -> AsyncIterator[Union[str, Dict[str, Any]]]:
         """
-        Process chat request with automatic provider selection and fallback
+        Process chat request with automatic provider selection and fallback using ProviderRuntime.
         """
         request_id = f"llm-router-{uuid.uuid4()}"
-        failure_records: List[Dict[str, str]] = []
-        previous_provider: Optional[str] = None
-        previous_error: Optional[BaseException] = None
-
+        
+        # 1. Select provider (Get Route Decision)
         selection = await self.select_provider(request, user_preferences)
+        
         if not selection:
             self._structured_log(
                 logging.ERROR,
@@ -1185,8 +1215,8 @@ class LLMRouter:
             )
             degraded_message = await self._generate_degraded_fallback(
                 request,
-                failure_records,
-                reason=None,
+                [],
+                reason="no_suitable_provider",
             )
             if degraded_message:
                 self._record_selection_metric("degraded_mode", "degraded")
@@ -1208,7 +1238,6 @@ class LLMRouter:
                             actual_model="none",
                             runtime_engine="none",
                             response_source="emergency_static",
-                            source="emergency_static",
                             degraded_mode=True,
                             fallback_level=99,
                             degradation_reason="all_live_providers_unavailable",
@@ -1220,249 +1249,43 @@ class LLMRouter:
                 return
             raise RuntimeError("No suitable provider available")
 
-        provider_name, model_name = selection
-        previous_provider = provider_name
-        requested_provider = self._normalize_provider_name(
-            (user_preferences or {}).get("preferred_llm_provider")
-        )
-        requested_model = self._normalize_model_name(
-            request.preferred_model or (user_preferences or {}).get("preferred_model")
-        )
-        selected_is_fallback = bool(
-            requested_provider and requested_provider != provider_name
-        )
-
-        try:
-            async for chunk in self._attempt_provider_with_retries(
-                provider_name,
-                request,
-                request_id=request_id,
-                model_name=model_name,
-            ):
+        # 2. Execute via ProviderRuntime (Handles retries and fallbacks)
+        from ai_karen_engine.services.provider_runtime import ProviderRuntime
+        runtime = ProviderRuntime(self)
+        
+        async for chunk in runtime.stream_execute(selection, request, user_preferences):
+            if isinstance(chunk, str):
                 yield chunk
-            
-            # Yield metadata for successful primary provider
-            yield {
-                "type": "metadata",
-                "metadata": {
-                    "llm": self._build_llm_metadata(
-                        requested_provider=requested_provider or provider_name,
-                        requested_model=requested_model or model_name,
-                        actual_provider=provider_name,
-                        actual_model=model_name,
-                        response_source="live_model",
-                        source="primary_provider"
-                        if not selected_is_fallback
-                        else "routing_fallback",
-                        degraded_mode=selected_is_fallback,
-                        fallback_level=1 if selected_is_fallback else 0,
-                        degradation_reason=(
-                            "requested_provider_unavailable"
-                            if selected_is_fallback
-                            else None
-                        ),
-                        used_fallback=selected_is_fallback,
-                    )
-                }
-            }
-            if selected_is_fallback:
-                self._log_provider_fallback_succeeded(
-                    requested_provider=requested_provider or "unknown",
-                    requested_model=requested_model,
-                    actual_provider=provider_name,
-                    actual_model=model_name,
-                    response_source="live_model",
-                    correlation_id=request_id,
-                )
-            return
-        except ProviderProcessingError as error:
-            self._structured_log(
-                logging.WARNING,
-                "Provider failed after retries",
-                request_id=request_id,
-                provider=provider_name,
-                policy=self.routing_policy.value,
-                error=str(error),
-                conversation_id=request.conversation_id,
-                platform=request.platform,
-            )
-            self._record_selection_metric(provider_name, "failure")
-            await self._mark_provider_unhealthy(provider_name, str(error))
-            failure_records.append(
-                {
-                    "provider": provider_name,
-                    "error": str(error.last_error) if error.last_error else str(error),
-                }
-            )
-            previous_error = error.last_error or error
-            self._log_provider_invocation_failed(
-                requested_provider=requested_provider or provider_name,
-                requested_model=requested_model or model_name,
-                provider=provider_name,
-                error=previous_error,
-                fallback_next=None,
-                correlation_id=request_id,
-            )
-
-        fallback_providers = await self._get_fallback_providers(provider_name, request)
-        for fallback_provider in fallback_providers:
-            try:
-                fallback_info = self.registry.get_provider_info(fallback_provider)
-                fallback_model = self._effective_provider_model(fallback_info)
-                reason = (
-                    self._derive_error_reason(previous_error)
-                    if previous_error
-                    else "fallback"
-                )
-                self._record_fallback_metric(
-                    previous_provider or "none",
-                    fallback_provider,
-                    reason,
-                )
-                self._log_provider_invocation_failed(
-                    requested_provider=requested_provider or provider_name,
-                    requested_model=requested_model or model_name,
-                    provider=previous_provider or provider_name,
-                    error=previous_error,
-                    fallback_next=fallback_provider,
-                    correlation_id=request_id,
-                )
-                self._structured_log(
-                    logging.INFO,
-                    "Attempting fallback provider",
-                    request_id=request_id,
-                    provider=fallback_provider,
-                    from_provider=previous_provider,
-                    reason=reason,
-                    policy=self.routing_policy.value,
-                    conversation_id=request.conversation_id,
-                    platform=request.platform,
-                )
-                self._record_selection_metric(fallback_provider, "fallback_selected")
-                async for chunk in self._attempt_provider_with_retries(
-                    fallback_provider,
-                    request,
-                    request_id=request_id,
-                    model_name=fallback_model,
-                ):
-                    yield chunk
-                
-                # Yield metadata for successful fallback
+            elif hasattr(chunk, "actual_provider"): # ProviderExecutionResult
+                # Yield metadata for the final execution result
                 yield {
                     "type": "metadata",
                     "metadata": {
                         "llm": self._build_llm_metadata(
-                            requested_provider=requested_provider or provider_name,
-                            requested_model=requested_model or model_name,
-                            actual_provider=fallback_provider,
-                            actual_model=fallback_model,
-                            response_source="live_model",
-                            source="internal_fallback",
-                            degraded_mode=True,
-                            fallback_level=1,
-                            degradation_reason=(
-                                "requested_provider_unavailable"
-                                if requested_provider
-                                else reason
-                            ),
-                            used_fallback=True,
-                            provider_error=(
-                                f"{requested_provider}_unavailable"
-                                if requested_provider
-                                else str(previous_error) if previous_error else None
-                            ),
+                            requested_provider=chunk.requested_provider or selection.requested_provider,
+                            requested_model=chunk.requested_model or selection.requested_model,
+                            actual_provider=chunk.actual_provider,
+                            actual_model=chunk.actual_model,
+                            runtime_engine=chunk.runtime_engine,
+                            response_source=chunk.response_source,
+                            degraded_mode=chunk.degraded_mode,
+                            fallback_level=chunk.fallback_level,
+                            degradation_reason=chunk.degradation_reason,
+                            used_fallback=chunk.fallback_level > 0,
                         )
                     }
                 }
-                self._log_provider_fallback_succeeded(
-                    requested_provider=requested_provider or provider_name,
-                    requested_model=requested_model or model_name,
-                    actual_provider=fallback_provider,
-                    actual_model=fallback_model,
-                    response_source="live_model",
-                    correlation_id=request_id,
-                )
-                return
-            except ProviderProcessingError as error:
-                self._structured_log(
-                    logging.WARNING,
-                    "Fallback provider failed",
-                    request_id=request_id,
-                    provider=fallback_provider,
-                    policy=self.routing_policy.value,
-                    error=str(error),
-                    conversation_id=request.conversation_id,
-                    platform=request.platform,
-                )
-                self._record_selection_metric(fallback_provider, "failure")
-                await self._mark_provider_unhealthy(fallback_provider, str(error))
-                failure_records.append(
-                    {
-                        "provider": fallback_provider,
-                        "error": str(error.last_error)
-                        if error.last_error
-                        else str(error),
-                    }
-                )
-                previous_provider = fallback_provider
-                previous_error = error.last_error or error
-
-        degraded_reason = self._infer_degraded_reason(failure_records)
-        runtime_fallback = await self.generate_with_degraded_runtime_fallback(
-            request=request,
-            requested_provider=requested_provider or provider_name,
-            requested_model=requested_model or model_name,
-            failure_reason=str(degraded_reason),
-        )
-        runtime_fallback_llm = (
-            runtime_fallback.get("metadata", {}).get("llm", {})
-            if isinstance(runtime_fallback, dict)
-            else {}
-        )
-        if runtime_fallback and runtime_fallback_llm.get("actual_provider") != "emergency_static":
-            self._record_selection_metric(str(runtime_fallback_llm.get("actual_provider")), "runtime_fallback_success")
-            yield str(runtime_fallback.get("content", "")).strip()
-            yield {"type": "metadata", "metadata": {"llm": runtime_fallback_llm}}
-            return
-
-        degraded_message = await self._generate_degraded_fallback(
-            request,
-            failure_records,
-            reason=degraded_reason,
-        )
-        if degraded_message:
-            if previous_provider and previous_error:
-                self._record_fallback_metric(
-                    previous_provider,
-                    "degraded_mode",
-                    self._derive_error_reason(previous_error),
-                )
-            self._record_selection_metric("degraded_mode", "degraded")
-            yield degraded_message
-            yield {
-                "type": "metadata",
-                "metadata": {
-                    "llm": self._build_llm_metadata(
-                        requested_provider=requested_provider or provider_name,
-                        requested_model=requested_model or model_name,
-                        actual_provider="emergency_static",
-                        actual_model="none",
-                        runtime_engine="none",
-                        response_source="emergency_static",
-                        source="emergency_static",
-                        degraded_mode=True,
-                        fallback_level=99,
-                        degradation_reason=str(degraded_reason),
-                        used_fallback=True,
-                        provider_error="; ".join(
-                            record.get("error", "") for record in failure_records
-                        ),
+                
+                # Log success/fallback
+                if chunk.fallback_level > 0:
+                    self._log_provider_fallback_succeeded(
+                        requested_provider=selection.requested_provider or "unknown",
+                        requested_model=selection.requested_model,
+                        actual_provider=chunk.actual_provider,
+                        actual_model=chunk.actual_model,
+                        response_source=chunk.response_source,
+                        correlation_id=chunk.correlation_id,
                     )
-                }
-            }
-            return
-
-        raise RuntimeError("All providers failed to process the request")
 
     async def _process_with_provider(
         self,

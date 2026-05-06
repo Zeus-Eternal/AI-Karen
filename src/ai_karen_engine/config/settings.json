@@ -67,7 +67,7 @@
     },
     "local_first_mode": true
   },
-  "last_selected_model": "gemini-2.5-flash",
+  "last_selected_model": "qwen3:4b",
   "use_memory": true,
   "context_length": 512,
   "decay": 0.1,
@@ -142,8 +142,8 @@
       }
     }
   },
-  "provider": "gemini",
-  "model": "gemini-2.5-flash",
+  "provider": "ollama",
+  "model": "qwen3:4b",
   "model_providers": {
     "builtin_transformers": {
       "last_model": "gpt2"
@@ -156,7 +156,8 @@
       "last_model": "gemini-2.5-flash"
     },
     "ollama": {
-      "last_model": "qwen3:4b"
+      "last_model": "qwen3:4b",
+      "base_url": "http://host.docker.internal:11434"
     }
   }
 }

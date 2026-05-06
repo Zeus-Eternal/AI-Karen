@@ -110,6 +110,9 @@ from ai_karen_engine.api_routes.system.settings import router as settings_router
 from ai_karen_engine.api_routes.models.settings import (
     router as model_settings_router,
 )
+from ai_karen_engine.api_routes.models.runtime_api import (
+    router as runtime_api_router,
+)
 from ai_karen_engine.api_routes.shared.error_response import (
     router as error_response_router,
 )
@@ -461,6 +464,7 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
     app.include_router(user_data_router, prefix="/api", tags=["user-data"])
     app.include_router(settings_router)
     app.include_router(model_settings_router, prefix="/api", tags=["model-settings"])
+    app.include_router(runtime_api_router, prefix="/api", tags=["runtime"])
     app.include_router(maintenance_router, prefix="/api", tags=["maintenance"])
 
     # Multi-modal and AI enhancement routes

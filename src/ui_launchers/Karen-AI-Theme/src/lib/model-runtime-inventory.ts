@@ -67,6 +67,10 @@ export interface RuntimeSettingsResponse {
   selected_provider: string;
   selected_model: string;
   providers: RuntimeProviderDetails[];
+  default_provider?: string;
+  default_model?: string;
+  active_provider?: string;
+  active_model?: string;
   timeout_seconds?: number;
   auto_download?: boolean;
 }

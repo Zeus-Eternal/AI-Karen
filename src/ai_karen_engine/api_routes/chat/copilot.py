@@ -481,27 +481,37 @@ def _normalize_runtime_truth_metadata(
     normalized: Dict[str, Any] = _json_safe(metadata or {})
     state = final_state or {}
     state_llm = state.get("llm_metadata") or {}
+    exec_result = state.get("execution_result")
+    route_decision = state.get("route_decision")
+    
+    # Priority: 1. Real execution result object, 2. Existing metadata, 3. State metadata
     llm = dict(normalized.get("llm") or state_llm or {})
 
     requested_provider = (
-        llm.get("requested_provider")
+        (exec_result.requested_provider if exec_result else None)
+        or (route_decision.requested_provider if route_decision else None)
+        or llm.get("requested_provider")
         or normalized.get("requested_provider")
         or request.preferred_llm_provider
     )
     requested_model = (
-        llm.get("requested_model")
+        (exec_result.requested_model if exec_result else None)
+        or (route_decision.requested_model if route_decision else None)
+        or llm.get("requested_model")
         or normalized.get("requested_model")
         or request.preferred_model
     )
     actual_provider = (
-        llm.get("actual_provider")
+        (exec_result.actual_provider if exec_result else None)
+        or llm.get("actual_provider")
         or normalized.get("actual_provider")
         or llm.get("provider")
         or normalized.get("provider")
         or "unknown"
     )
     actual_model = (
-        llm.get("actual_model")
+        (exec_result.actual_model if exec_result else None)
+        or llm.get("actual_model")
         or normalized.get("actual_model")
         or llm.get("model_id")
         or llm.get("model_name")
@@ -509,11 +519,27 @@ def _normalize_runtime_truth_metadata(
         or "unknown"
     )
     response_source = (
-        llm.get("response_source")
+        (exec_result.response_source if exec_result else None)
+        or llm.get("response_source")
         or normalized.get("response_source")
         or llm.get("source")
         or ("emergency_static" if actual_provider == "emergency_static" else "live_model")
     )
+    
+    selected_provider = (
+        (exec_result.selected_provider if exec_result else None)
+        or (route_decision.selected_provider if route_decision else None)
+        or llm.get("selected_provider")
+        or "unknown"
+    )
+    
+    selected_model = (
+        (exec_result.selected_model if exec_result else None)
+        or (route_decision.selected_model if route_decision else None)
+        or llm.get("selected_model")
+        or "unknown"
+    )
+
     def _robust_normalize(val: Any, is_model: bool = False) -> str:
         s = str(val or "").strip().lower().replace("-", "_")
         if not s:
@@ -547,12 +573,14 @@ def _normalize_runtime_truth_metadata(
     # Determine if the response source represents a healthy live execution
     is_healthy_source = (
         response_source == "live_model" or 
+        response_source == "provider_runtime" or
         str(response_source).endswith("_engine") or 
         response_source == "intelligent_router"
     )
     
     degraded_mode = bool(
-        llm.get("degraded_mode")
+        (exec_result.degraded_mode if exec_result else None)
+        or llm.get("degraded_mode")
         or llm.get("is_degraded")
         or normalized.get("degraded_mode")
         or provider_changed
@@ -563,16 +591,26 @@ def _normalize_runtime_truth_metadata(
     # If it's a successful direct engine response, it's not degraded
     if is_healthy_source and not provider_changed and not model_changed:
         degraded_mode = False
-    fallback_level = llm.get("fallback_level", normalized.get("fallback_level"))
+        
+    fallback_level = (
+        (exec_result.fallback_level if exec_result else None)
+        or llm.get("fallback_level")
+        or normalized.get("fallback_level")
+    )
     if fallback_level is None:
         fallback_level = 1 if provider_changed else (99 if response_source == "emergency_static" else 0)
 
     runtime_engine = (
-        llm.get("runtime_engine")
+        (exec_result.runtime_engine if exec_result else None)
+        or llm.get("runtime_engine")
         or normalized.get("runtime_engine")
         or ("none" if actual_provider == "emergency_static" else str(actual_provider).replace("builtin_", ""))
     )
-    latency_ms = normalized.get("latency_ms")
+    
+    latency_ms = (
+        (exec_result.latency_ms if exec_result else None)
+        or normalized.get("latency_ms")
+    )
     if latency_ms is None and start_time is not None:
         latency_ms = (time.time() - start_time) * 1000
 
@@ -580,6 +618,8 @@ def _normalize_runtime_truth_metadata(
         {
             "requested_provider": requested_provider,
             "requested_model": requested_model,
+            "selected_provider": selected_provider,
+            "selected_model": selected_model,
             "actual_provider": actual_provider,
             "actual_model": actual_model,
             "provider": actual_provider,
@@ -589,19 +629,20 @@ def _normalize_runtime_truth_metadata(
             "response_source": response_source,
             "source": llm.get("source") or response_source,
             "provider_health": llm.get("provider_health", normalized.get("provider_health", {})),
-            "provider_error": llm.get("provider_error", normalized.get("provider_error")),
+            "provider_error": (exec_result.degradation_reason if exec_result else None) or llm.get("provider_error", normalized.get("provider_error")),
             "fallback_level": fallback_level,
             "degraded_mode": degraded_mode,
             "is_degraded": degraded_mode,
             "used_fallback": bool(llm.get("used_fallback") or provider_changed or degraded_mode),
-            "degradation_reason": llm.get("degradation_reason")
+            "degradation_reason": (exec_result.degradation_reason if exec_result else None) 
+            or llm.get("degradation_reason")
             or normalized.get("degradation_reason")
             or ("requested_provider_unavailable" if provider_changed else None),
             "streaming_enabled": streaming_enabled,
             "actual_response_mode": actual_response_mode,
             "transport": transport,
             "latency_ms": latency_ms,
-            "correlation_id": correlation_id,
+            "correlation_id": (exec_result.correlation_id if exec_result else None) or correlation_id,
         }
     )
 
@@ -611,6 +652,8 @@ def _normalize_runtime_truth_metadata(
             "llm": llm,
             "requested_provider": requested_provider,
             "requested_model": requested_model,
+            "selected_provider": selected_provider,
+            "selected_model": selected_model,
             "actual_provider": actual_provider,
             "actual_model": actual_model,
             "runtime_engine": runtime_engine,
@@ -624,7 +667,7 @@ def _normalize_runtime_truth_metadata(
             "actual_response_mode": actual_response_mode,
             "transport": transport,
             "latency_ms": latency_ms,
-            "correlation_id": correlation_id,
+            "correlation_id": llm.get("correlation_id") or correlation_id,
             "conversation_id": conversation_id,
             "status": normalized.get("status", "success"),
         }
