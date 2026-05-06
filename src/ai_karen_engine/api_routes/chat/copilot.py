@@ -294,6 +294,7 @@ def _build_request_config_metadata(
         "actual_response_mode": actual_mode,
         "transport": transport,
         "should_stream": should_stream,
+        "preferred_llm_provider": preferred_provider,
         "preferred_provider": preferred_provider,
         "preferred_model": preferred_model,
     }
@@ -518,6 +519,18 @@ def _normalize_runtime_truth_metadata(
         or normalized.get("model")
         or "unknown"
     )
+
+    fallback_level = int(
+        (exec_result.fallback_level if exec_result else None)
+        or llm.get("fallback_level")
+        or normalized.get("fallback_level")
+        or 0
+    )
+    if (not requested_provider or str(requested_provider).lower() == "unknown") and actual_provider not in {"", "unknown", None}:
+        fallback_level = max(1, fallback_level)
+        normalized.setdefault("degraded_mode", True)
+        normalized.setdefault("degradation_type", "provider_unknown")
+        normalized.setdefault("degradation_reason", "Requested provider was missing at ingress; runtime resolved or fell back.")
     response_source = (
         (exec_result.response_source if exec_result else None)
         or llm.get("response_source")
