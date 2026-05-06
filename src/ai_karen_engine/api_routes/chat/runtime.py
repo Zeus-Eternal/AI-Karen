@@ -147,16 +147,25 @@ class ChatRequest(BaseModel):
     messages: List[ChatMessage] = Field(
         ..., min_length=1, max_length=50, description="List of chat messages"
     )
+    preferred_llm_provider: Optional[str] = Field(
+        default=None,
+        max_length=100,
+        description="Canonical preferred provider ID.",
+    )
+    preferred_model: Optional[str] = Field(
+        default=None,
+        max_length=200,
+        description="Canonical preferred model ID.",
+    )
     provider: Optional[str] = Field(
         default=None,
         max_length=100,
-        description="Selected provider ID (e.g., 'ollama', 'builtin_vllm', 'builtin_transformers', 'openai')",
+        description="Deprecated alias for preferred_llm_provider.",
     )
     model: Optional[str] = Field(
         default=None,
-        pattern=r"^[a-zA-Z0-9_-]+$",
-        max_length=50,
-        description="Model to use for generation",
+        max_length=200,
+        description="Deprecated alias for preferred_model.",
     )
     temperature: Optional[float] = Field(
         default=0.7, ge=0.0, le=2.0, description="Sampling temperature"
@@ -310,6 +319,24 @@ class ChatRuntimeHelper:
             logger.debug(f"Failed to load user preferences: {e}")
             return {}
 
+
+    @staticmethod
+    def resolve_preferred_provider_model(
+        request: "ChatRequest",
+        user_preferences: Optional[Dict[str, str]] = None,
+    ) -> tuple[Optional[str], Optional[str]]:
+        """Resolve canonical provider/model with backward-compatible aliases."""
+        preferred_provider = (
+            request.preferred_llm_provider
+            or request.provider
+            or ((user_preferences or {}).get("provider"))
+        )
+        preferred_model = (
+            request.preferred_model
+            or request.model
+            or ((user_preferences or {}).get("model"))
+        )
+        return preferred_provider, preferred_model
     @staticmethod
     def normalize_messages(messages: List[ChatMessage]) -> List[Dict[str, Any]]:
         """Normalize and sanitize messages for the orchestrator."""
@@ -395,11 +422,9 @@ class ChatRuntimeHelper:
             if msg.get("message_type") == "user"
         ).strip()
 
-        # Determine which provider/model to use
-        selected_provider = request.provider or user_preferences.get("provider") if user_preferences else None
-        selected_model = request.model or user_preferences.get("model") if user_preferences else None
+        preferred_provider, preferred_model = ChatRuntimeHelper.resolve_preferred_provider_model(request, user_preferences)
 
-        logger.info(f"Building chat request - provider: {selected_provider}, model: {selected_model}")
+        logger.info(f"Building chat request - preferred_provider: {preferred_provider}, preferred_model: {preferred_model}")
 
         return CanonicalChatRequest(
             request_id=response_id,
@@ -416,8 +441,10 @@ class ChatRuntimeHelper:
             include_context=True,
             attachments=[],
             metadata={
-                "provider": selected_provider,
-                "model": selected_model,
+                "preferred_llm_provider": preferred_provider,
+                "preferred_model": preferred_model,
+                "provider": preferred_provider,
+                "model": preferred_model,
                 "temperature": request.temperature,
                 "max_tokens": request.max_tokens,
                 "messages": validated_messages,
@@ -463,11 +490,12 @@ async def create_chat_response(
 
         # 2. Basic Validation & Normalization
         session_id = SecurityValidator.sanitize_session_id(request.session_id)
-        ChatRuntimeHelper.validate_model(request.model)
+        ChatRuntimeHelper.validate_model(request.preferred_model or request.model)
         validated_messages = ChatRuntimeHelper.normalize_messages(request.messages)
 
         # Get user's preferred provider/model from settings
         user_preferences = await ChatRuntimeHelper.get_user_provider_preferences()
+        preferred_provider, preferred_model = ChatRuntimeHelper.resolve_preferred_provider_model(request, user_preferences)
 
         # 3. Log request start
         structured_logger.log_event(
@@ -478,8 +506,8 @@ async def create_chat_response(
                 "endpoint": "/api/chat/chat",
                 "correlation_id": correlation_id,
                 "message_count": len(validated_messages),
-                "provider": request.provider or user_preferences.get("provider"),
-                "model": request.model or user_preferences.get("model"),
+                "preferred_llm_provider": preferred_provider,
+                "preferred_model": preferred_model,
                 "stream": request.stream,
                 "session_id": session_id,
             },
@@ -493,8 +521,8 @@ async def create_chat_response(
         langchain_messages = ChatRuntimeHelper.to_langchain_messages(validated_messages)
 
         # 5. Process Request
-        selected_model = request.model or user_preferences.get("model") if user_preferences else None
-        selected_provider = request.provider or user_preferences.get("provider") if user_preferences else None
+        selected_model = preferred_model
+        selected_provider = preferred_provider
 
         if request.stream:
             async def generate_stream():
@@ -615,7 +643,7 @@ async def create_chat_response(
                 correlation_id=correlation_id,
                 response_data={
                     "response_id": response_id,
-                    "model": request.model or "orchestrated",
+                    "model": preferred_model or "orchestrated",
                     "processing_time": processing_time,
                 },
             )
@@ -623,7 +651,7 @@ async def create_chat_response(
             return ChatResponse(
                 response_id=response_id,
                 content=response_text,
-                model=request.model or "orchestrated",
+                model=preferred_model or "orchestrated",
                 usage=(response_metadata.get("llm") or {}).get("usage", {}),
                 metadata=response_metadata,
                 timestamp=datetime.utcnow(),
