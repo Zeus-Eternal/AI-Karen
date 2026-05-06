@@ -177,7 +177,7 @@ export const getRuntimeProviderBucket = (
 
   if (isBuiltInRuntimeProvider(provider.id)) return 'builtIn';
   if (provider.id === 'custom' || providerType === 'custom' || provider.supports_custom_auth) return 'custom';
-  if (providerType === 'local') return 'local';
+  if (providerType === 'local' || (provider.id === 'ollama' && providerType === 'hybrid')) return 'local';
   return 'thirdParty';
 };
 

@@ -388,6 +388,10 @@ export const getRuntimeGroupLabel = (provider?: unknown): string => {
     return 'Built-in Runtime';
   }
 
+  if (normalized === 'ollama') {
+    return 'Local (Hybrid)';
+  }
+
   if (normalized === OPENAI_COMPATIBLE_PROVIDER || normalized === 'openai') {
     return 'External Endpoint';
   }

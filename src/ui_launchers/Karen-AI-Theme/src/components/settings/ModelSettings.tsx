@@ -104,6 +104,14 @@ function normalizeDisplayBaseUrl(address?: string | null): string {
   return (address || '').trim().replace(/\/api\/?$/, '').replace(/\/$/, '');
 }
 
+const PROVIDER_TYPE_LABELS: Record<string, string> = {
+  'local': 'Local',
+  'remote': 'Remote',
+  'hybrid': 'Local (Hybrid)',
+  'builtin': 'Built-in',
+  'custom': 'Custom',
+};
+
 export default function ModelSettings() {
   const isMobile = useIsMobile();
   const [settings, setSettings] = useState<ModelSettingsResponse | null>(null);
@@ -951,7 +959,9 @@ export default function ModelSettings() {
                   <div className="grid gap-2">
                     <div className="flex items-center justify-between text-xs font-semibold">
                       <span className="text-muted-foreground">Type</span>
-                      <span className="uppercase tracking-widest text-primary/80">{selectedProviderDetails.provider_type}</span>
+                      <span className="uppercase tracking-widest text-primary/80">
+                        {PROVIDER_TYPE_LABELS[selectedProviderDetails.provider_type?.toLowerCase() || ''] || selectedProviderDetails.provider_type}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between text-xs font-semibold">
                       <span className="text-muted-foreground">Auth</span>

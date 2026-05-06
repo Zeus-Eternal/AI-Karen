@@ -2082,8 +2082,8 @@ class LLMProviderConfigManager:
             ProviderConfig(
                 name="ollama",
                 display_name="Ollama",
-                description="Local Ollama server for running and pulling models",
-                provider_type=ProviderType.LOCAL,
+                description="Local runtime with cloud-connected model registry and pulling capabilities",
+                provider_type=ProviderType.HYBRID,
                 priority=68,
                 endpoint=ProviderEndpoint(
                     base_url=DEFAULT_OLLAMA_BASE_URL,
