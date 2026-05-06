@@ -1355,8 +1355,9 @@ export default function ChatInterface() {
                 },
                 recent_messages: recentMessages,
               },
-          preferred_provider: preferredProvider,
+          preferred_llm_provider: preferredProvider,
           preferred_model: preferredModel,
+          preferred_provider: preferredProvider,
           session_id: sessionIdRef.current,
         };
 
