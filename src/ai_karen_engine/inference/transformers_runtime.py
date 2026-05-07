@@ -7,8 +7,7 @@ import threading
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, Union
 
-from ai_karen_engine.integrations.llm_utils import LLMProviderBase
-from ai_karen_engine.services.response import ResponseSanitizer
+from ai_karen_engine.integrations.llm_utils import LLMProviderBase, ProviderNotAvailable, GenerationFailed
 
 logger = logging.getLogger(__name__)
 
@@ -151,11 +150,12 @@ class TransformersRuntime(LLMProviderBase):
             except Exception as e:
                 logger.warning(f"Transformers generation failed: {e}. Falling back.")
 
-        return self._fallback_generate(prompt, **kwargs)
+        if not self._transformers_available:
+            raise ProviderNotAvailable("Transformers runtime is not available")
+        raise GenerationFailed("Transformers generation failed")
 
     def stream(self, prompt: str, **kwargs: Any) -> Iterator[str]:
-        for token in self._fallback_generate(prompt, **kwargs).split():
-            yield token
+        raise ProviderNotAvailable("Streaming unavailable without active transformers pipeline")
 
     def generate_text(self, prompt: str, **kwargs: Any) -> str:
         """LLMProviderBase interface method - delegates to generate()."""

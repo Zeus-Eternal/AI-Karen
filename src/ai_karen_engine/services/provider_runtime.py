@@ -3,14 +3,14 @@
 import logging
 import time
 import uuid
-from typing import Any, Dict, List, Optional, AsyncIterator
+from typing import Any, Dict, List, Optional, AsyncIterator, TYPE_CHECKING
 
 from ai_karen_engine.core.model_runtime.runtime_contracts import (
     ProviderRouteDecision,
     ProviderExecutionResult,
 )
-from ai_karen_engine.services.models.routing.llm_router_service import ChatRequest, LLMRouter
-from ai_karen_engine.services.response import ResponseSanitizer
+if TYPE_CHECKING:
+    from ai_karen_engine.services.models.routing.llm_router_service import ChatRequest, LLMRouter
 
 logger = logging.getLogger(__name__)
 
@@ -20,9 +20,11 @@ class ProviderRuntime:
     Handles execution, retries, and fallback chains with detailed forensic tracking.
     """
 
-    def __init__(self, router: Optional[LLMRouter] = None):
-        self.router = router or LLMRouter()
-        self._response_sanitizer = ResponseSanitizer()
+    def __init__(self, router: Optional["LLMRouter"] = None):
+        if router is None:
+            from ai_karen_engine.services.models.routing.llm_router_service import LLMRouter
+            router = LLMRouter()
+        self.router = router
 
     @staticmethod
     def _resolve_runtime_engine(provider_name: Optional[str], provider_category: Optional[str] = None) -> Optional[str]:
@@ -74,7 +76,7 @@ class ProviderRuntime:
     def _build_emergency_result(
         *,
         decision: ProviderRouteDecision,
-        request: ChatRequest,
+        request: "ChatRequest",
         correlation_id: str,
         start_time: float,
         provider_attempts: List[Dict[str, Any]],
@@ -106,7 +108,7 @@ class ProviderRuntime:
     async def execute_chat(
         self,
         decision: ProviderRouteDecision,
-        request: ChatRequest,
+        request: "ChatRequest",
         user_preferences: Optional[Dict[str, Any]] = None,
     ) -> ProviderExecutionResult:
         return await self.execute(decision, request, user_preferences=user_preferences)
@@ -114,7 +116,7 @@ class ProviderRuntime:
     async def execute(
         self,
         decision: ProviderRouteDecision,
-        request: ChatRequest,
+        request: "ChatRequest",
         user_preferences: Optional[Dict[str, Any]] = None,
     ) -> ProviderExecutionResult:
         """
@@ -206,7 +208,7 @@ class ProviderRuntime:
     async def stream_execute(
         self,
         decision: ProviderRouteDecision,
-        request: ChatRequest,
+        request: "ChatRequest",
         user_preferences: Optional[Dict[str, Any]] = None,
     ) -> AsyncIterator[Any]:
         """
