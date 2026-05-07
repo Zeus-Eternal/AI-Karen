@@ -22,73 +22,80 @@ class BuiltinProviderEngine(BaseExpressionEngine):
     async def generate(self, task: ExpressionTask) -> ExpressionResult:
         started = time.perf_counter()
         payload = self._build_payload(task)
-        
-        # Canonical builtin providers
+
         providers_to_try = ["builtin_vllm", "builtin_transformers"]
         pref = str(task.preferred_provider or "").lower()
         if "transformers" in pref:
-             providers_to_try = ["builtin_transformers", "builtin_vllm"]
+            providers_to_try = ["builtin_transformers", "builtin_vllm"]
         elif "vllm" in pref:
-             providers_to_try = ["builtin_vllm", "builtin_transformers"]
+            providers_to_try = ["builtin_vllm", "builtin_transformers"]
 
         text = ""
-        actual_provider = providers_to_try[0]
+        actual_provider = None
         model = None
         attempts = []
         skipped = []
 
-        loop = asyncio.get_event_loop()
+        prompt = self._extract_prompt(payload["messages"])
 
-        for provider_id in providers_to_try:
+        for idx, provider_id in enumerate(providers_to_try):
+            attempt_start = time.perf_counter()
+            model_id = payload.get("model")
             try:
-                # Policy check: Must be a builtin engine
                 decision = evaluate_provider_policy(provider_id)
                 if decision.classification != "builtin_engine":
                     skipped.append({"provider": provider_id, "reason": "not_builtin"})
                     continue
 
-                logger.info(f"BuiltinProviderEngine: Attempting generation with {provider_id}")
-                
-                # Use central registry to get the provider instance
                 from ai_karen_engine.integrations.llm_registry import get_provider
-                
-                # Resolve model from task or payload
-                model_id = payload.get("model")
-                
-                # Get provider instance
                 provider = get_provider(provider_id, model=model_id)
                 if not provider:
-                    skipped.append({"provider": provider_id, "reason": "provider_not_found"})
+                    attempts.append({"provider": provider_id, "model": model_id, "status": "failed", "error_type": "provider_not_found", "latency_ms": (time.perf_counter()-attempt_start)*1000})
                     continue
-                
-                prompt = self._extract_prompt(payload["messages"])
-                
-                # Check if generate_text_async exists, fallback to generate_text or generate
+
                 if hasattr(provider, "generate_text_async"):
-                     text = await provider.generate_text_async(prompt, **payload)
+                    out = await provider.generate_text_async(prompt, **payload)
                 elif hasattr(provider, "generate_text"):
-                     # Offload sync call
-                     loop = asyncio.get_running_loop()
-                     text = await loop.run_in_executor(None, lambda: provider.generate_text(prompt, **payload))
+                    loop = asyncio.get_running_loop()
+                    out = await loop.run_in_executor(None, lambda: provider.generate_text(prompt, **payload))
                 else:
-                     # Generic generate
-                     loop = asyncio.get_running_loop()
-                     text = await loop.run_in_executor(None, lambda: provider.generate(prompt, **payload))
-                
-                resp_text = str(text or "").strip()
-                if resp_text:
-                    logger.info(f"BuiltinProviderEngine: Success with {provider_id}")
-                    text = resp_text
-                    actual_provider = provider_id
-                    model = getattr(provider, "model", model_id)
-                    break
-                else:
-                    logger.warning(f"BuiltinProviderEngine: {provider_id} returned empty response")
-                    skipped.append({"provider": provider_id, "reason": "empty_response"})
+                    loop = asyncio.get_running_loop()
+                    out = await loop.run_in_executor(None, lambda: provider.generate(prompt, **payload))
+
+                resp_text = str(out or "").strip()
+                if not resp_text:
+                    attempts.append({"provider": provider_id, "model": model_id, "status": "failed", "error_type": "empty_response", "latency_ms": (time.perf_counter()-attempt_start)*1000})
+                    continue
+
+                text = resp_text
+                actual_provider = provider_id
+                model = getattr(provider, "model", model_id)
+                attempts.append({"provider": provider_id, "model": str(model or model_id or "auto"), "status": "success", "latency_ms": (time.perf_counter()-attempt_start)*1000})
+                break
             except Exception as exc:
-                logger.error(f"BuiltinProviderEngine: {provider_id} attempt failed: {exc}", exc_info=True)
-                attempts.append({"provider": provider_id, "error": str(exc)})
-                continue
+                attempts.append({"provider": provider_id, "model": model_id, "status": "failed", "error_type": type(exc).__name__, "error_message": str(exc), "latency_ms": (time.perf_counter()-attempt_start)*1000})
+
+        runtime_engine = "vllm" if actual_provider == "builtin_vllm" else ("transformers" if actual_provider == "builtin_transformers" else None)
+        degraded = not bool(text.strip())
+        fallback_level = 0
+        if actual_provider and pref and pref != "auto" and actual_provider != pref:
+            fallback_level = 1
+
+        response_source = "provider_runtime" if actual_provider and fallback_level == 0 else ("fallback_provider_runtime" if actual_provider else "emergency_static")
+
+        metadata = {
+            "requested_provider": task.preferred_provider,
+            "requested_model": task.preferred_model,
+            "actual_provider": actual_provider,
+            "actual_model": str(model) if model else None,
+            "runtime_engine": runtime_engine,
+            "response_source": response_source,
+            "fallback_level": fallback_level if actual_provider else 99,
+            "degraded_mode": degraded or fallback_level > 0,
+            "degradation_type": None if actual_provider and fallback_level == 0 else ("provider_unavailable" if actual_provider else "fallback_exhausted"),
+            "degradation_reason": None if actual_provider and fallback_level == 0 else (f"{pref} failed; {actual_provider} generated the response." if actual_provider else "No built-in provider could generate a response."),
+            "provider_attempts": attempts,
+        }
 
         return ExpressionResult(
             task_id=task.task_id,
@@ -97,13 +104,14 @@ class BuiltinProviderEngine(BaseExpressionEngine):
             model=str(model) if model else None,
             engine_id=self.engine_id,
             engine_mode="builtin_provider_engine",
-            runtime_engine="builtin",
-            response_source="builtin_provider_engine",
+            runtime_engine=runtime_engine,
+            response_source=response_source,
             attempts=attempts,
             skipped=skipped,
             latency_ms=(time.perf_counter() - started) * 1000,
-            degraded=not bool(text.strip()),
-            degradation_reason=None if text.strip() else "all_internal_providers_failed",
+            degraded=metadata["degraded_mode"],
+            degradation_reason=metadata["degradation_reason"],
+            metadata=metadata,
         )
 
     def _extract_prompt(self, messages: list[dict[str, str]]) -> str:

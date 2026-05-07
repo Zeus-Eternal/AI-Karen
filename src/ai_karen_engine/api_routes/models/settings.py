@@ -264,7 +264,7 @@ async def update_expression_settings(
     """Update the expression engine settings."""
     logger.info(f"Updating expression settings: {request}")
     # check if user is admin
-    roles = getattr(current_user, "roles", [])
+    roles = (current_user.get("roles", []) if isinstance(current_user, dict) else getattr(current_user, "roles", []))
     if "admin" not in roles and "super_admin" not in roles:
         logger.warning(f"Unauthorized expression settings update attempt by {current_user}")
         raise HTTPException(
@@ -383,7 +383,7 @@ async def update_model_settings(
     """Update primary provider, model, or specific provider settings."""
 
     # check if user is admin
-    roles = getattr(current_user, "roles", [])
+    roles = (current_user.get("roles", []) if isinstance(current_user, dict) else getattr(current_user, "roles", []))
     if "admin" not in roles and "super_admin" not in roles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

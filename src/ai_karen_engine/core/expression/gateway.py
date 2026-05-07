@@ -3,8 +3,9 @@ from .contracts import ExpressionResult, ExpressionTask
 from .circuit_breakers import ExpressionCircuitBreakers
 from .observability import emit_expression_event
 from .registry import get_engine
-from .settings import ExpressionSettings
+from .settings import ExpressionSettings, EngineConfig
 from ..response.response_validator import validate_response_text
+from ..model_runtime.provider_policy import evaluate_provider_policy
 
 class ExpressionGateway:
     def __init__(self, settings: ExpressionSettings | None = None):
@@ -91,7 +92,6 @@ class ExpressionGateway:
             original_provider = task.preferred_provider
             original_model = task.preferred_model
             
-            from ..model_runtime.provider_policy import evaluate_provider_policy
             decision = evaluate_provider_policy(engine_id)
             if decision.classification != "unknown":
                  task.preferred_provider = engine_id
