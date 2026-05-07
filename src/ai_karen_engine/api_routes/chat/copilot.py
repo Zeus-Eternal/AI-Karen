@@ -626,7 +626,7 @@ def _normalize_runtime_truth_metadata(
         (exec_result.runtime_engine if exec_result else None)
         or llm.get("runtime_engine")
         or normalized.get("runtime_engine")
-        or ("none" if actual_provider == "emergency_static" else str(actual_provider).replace("builtin_", ""))
+        or ("none" if not actual_provider else str(actual_provider).replace("builtin_", ""))
     )
     
     latency_ms = (

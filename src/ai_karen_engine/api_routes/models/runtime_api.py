@@ -63,6 +63,7 @@ class RuntimeProvider(BaseModel):
     requires_api_key: bool = False
     requires_base_url: bool = False
     runtime_config_hash: Optional[str] = None
+    errors: List[Dict[str, str]] = Field(default_factory=list)
 
 
 class RuntimeProviderCatalog(BaseModel):
@@ -72,7 +73,57 @@ class RuntimeProviderCatalog(BaseModel):
     fallback_order: List[str]
     catalog_version: str = "1.0.0"
     runtime_config_hash: Optional[str] = None
+    errors: List[Dict[str, str]] = Field(default_factory=list)
 
+
+
+
+def _build_bootstrap_runtime_catalog(error: Optional[Exception] = None) -> RuntimeProviderCatalog:
+    error_message = str(error) if error else "Provider catalog booted from fallback because settings payload failed."
+    providers = [
+        RuntimeProvider(
+            id="builtin_transformers",
+            label="Transformers",
+            provider_label="Transformers",
+            category="builtin",
+            enabled=True,
+            configured=True,
+            healthy=False,
+            runtime_engine="transformers",
+            transport="process",
+            default_model="auto",
+            selected_model="auto",
+            models=[RuntimeModel(id="auto", label="Auto", available=True, default=True, capabilities=["chat"])],
+            health=ProviderHealthInfo(status="degraded", last_checked_at=datetime.now(timezone.utc)),
+            degradation_reason="Provider catalog booted from fallback because settings payload failed.",
+            requires_api_key=False,
+            requires_base_url=False,
+        ),
+        RuntimeProvider(
+            id="builtin_vllm",
+            label="vLLM",
+            provider_label="vLLM",
+            category="builtin",
+            enabled=True,
+            configured=True,
+            healthy=False,
+            runtime_engine="vllm",
+            transport="process_or_http",
+            models=[],
+            health=ProviderHealthInfo(status="degraded", last_checked_at=datetime.now(timezone.utc)),
+            degradation_reason="vLLM health/model discovery unavailable during catalog boot.",
+            requires_api_key=False,
+            requires_base_url=False,
+        ),
+    ]
+    return RuntimeProviderCatalog(
+        providers=providers,
+        default_provider="builtin_transformers",
+        default_model="auto",
+        fallback_order=["builtin_transformers", "builtin_vllm"],
+        catalog_version="bootstrap",
+        errors=[{"error_type": "settings_payload_failed", "message": error_message}],
+    )
 
 @router.get("/providers", response_model=RuntimeProviderCatalog)
 async def get_runtime_provider_catalog(
@@ -163,6 +214,9 @@ async def get_runtime_provider_catalog(
         default_model = settings_response.get("default_model") or settings_response.get("selected_model") or "auto"
         fallback_order = settings_response.get("fallback_hierarchy") or ["builtin_transformers", "builtin_vllm", "openai", "gemini"]
 
+        if not catalog_providers:
+            return _build_bootstrap_runtime_catalog()
+
         return RuntimeProviderCatalog(
             providers=catalog_providers,
             default_provider=default_provider,
@@ -172,9 +226,4 @@ async def get_runtime_provider_catalog(
         )
     except Exception as e:
         logger.error(f"Error building runtime provider catalog: {e}")
-        return RuntimeProviderCatalog(
-            providers=[],
-            default_provider="builtin_transformers",
-            default_model="auto",
-            fallback_order=["builtin_transformers"]
-        )
+        return _build_bootstrap_runtime_catalog(e)
