@@ -99,7 +99,7 @@ class BuiltinProviderEngine(BaseExpressionEngine):
 
         return ExpressionResult(
             task_id=task.task_id,
-            text=text,
+            text=final_text,
             provider=actual_provider,
             model=str(model) if model else None,
             engine_id=self.engine_id,
