@@ -359,13 +359,6 @@ CUSTOM_PROVIDER_TEMPLATES = [
         icon_name="openai",
     ),
     CustomProviderTemplate(
-        id="llama-cpp",
-        display_name="Llama.cpp",
-        description="Llama.cpp server",
-        default_base_url="http://localhost:8080/v1",
-        icon_name="openai",
-    ),
-    CustomProviderTemplate(
         id="vllm-openai",
         display_name="vLLM (OpenAI API)",
         description="Remote or local vLLM OpenAI-compatible server",
