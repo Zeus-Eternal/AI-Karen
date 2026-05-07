@@ -205,24 +205,6 @@ export const sortProviderModels = <T extends RuntimeProviderModel>(
   });
 };
 
-const SYSTEM_FALLBACK_PROVIDER_ID = 'builtin_transformers';
-
-// Backend provides all provider truth; no frontend seeding needed.
-// Providers like builtin_vllm, builtin_transformers come from /api/settings/model
-const SYSTEM_FALLBACK_SEED: Pick<RuntimeProviderDetails, 'id' | 'display_name' | 'description' | 'provider_type' | 'default_model' | 'selected_model' | 'supports_model_discovery' | 'supports_model_pull' | 'supports_custom_auth' | 'supports_manual_model_entry' | 'supports_base_url_override'> = {
-  id: SYSTEM_FALLBACK_PROVIDER_ID,
-  display_name: 'Transformers',
-  description: 'Automatic fallback runtime for embeddings and emergency generation.',
-  provider_type: 'builtin',
-  default_model: 'auto',
-  selected_model: 'auto',
-  supports_model_discovery: true,  // Enable dynamic model discovery
-  supports_model_pull: false,
-  supports_custom_auth: false,
-  supports_manual_model_entry: false,
-  supports_base_url_override: false,
-};
-
 export const getRuntimeProviderBucket = (
   provider: RuntimeProviderDetails,
 ): RuntimeProviderBucket => {
@@ -337,13 +319,7 @@ export function normalizeModelSettingsResponse(response: RuntimeSettingsResponse
   const customProviders = providers.filter((provider) => getRuntimeProviderBucket(provider) === 'custom');
   const thirdPartyProviders = providers.filter((provider) => getRuntimeProviderBucket(provider) === 'thirdParty');
 
-  // System fallback provider is constructed from backend's builtin_transformers data
-  const transformersProvider = providers.find((p) => p.id === SYSTEM_FALLBACK_PROVIDER_ID);
-  const systemFallbackProvider = {
-    ...SYSTEM_FALLBACK_SEED,
-    ...(transformersProvider || {}),
-    models: transformersProvider?.models || [],
-  } satisfies NormalizedRuntimeProvider;
+  const systemFallbackProvider: NormalizedRuntimeProvider | null = null;
 
   const selectedProvider =
     providers.find((provider) => provider.id === response.selected_provider)?.id ||
@@ -473,7 +449,7 @@ export function normalizeRuntimeProviderCatalogResponse(
     localProviders,
     thirdPartyProviders,
     customProviders,
-    systemFallbackProvider: providers.find((provider) => provider.id === SYSTEM_FALLBACK_PROVIDER_ID) || null,
+    systemFallbackProvider: providers.find((provider) => provider.id === "builtin_transformers") || null,
     timeout_seconds: undefined,
     auto_download: undefined,
     fallback_hierarchy: response.fallback_order,
