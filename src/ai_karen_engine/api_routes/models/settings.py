@@ -513,7 +513,7 @@ async def get_provider_models(
             if target_url:
                 if normalized_id == "ollama":
                     from ai_karen_engine.integrations.providers.ollama_provider import OllamaProvider
-                    ollama = OllamaProvider(base_url=target_url)
+                    ollama = OllamaProvider(base_url=target_url, timeout=2, max_retries=0)
                     loop = asyncio.get_running_loop()
                     dynamic_model_names = await loop.run_in_executor(None, ollama.get_models)
                 elif normalized_id == "builtin_vllm" or (provider and provider.provider_type.value in ["remote", "hybrid"]):
@@ -525,7 +525,7 @@ async def get_provider_models(
                     if provider and provider.name:
                         api_key = provider_manager.get_api_key(provider.name)
                         
-                    client = OpenAICompatibleProvider(base_url=target_url, api_key=api_key)
+                    client = OpenAICompatibleProvider(base_url=target_url, api_key=api_key, timeout=2, max_retries=0)
                     loop = asyncio.get_running_loop()
                     dynamic_model_names = await loop.run_in_executor(None, client.get_models)
 

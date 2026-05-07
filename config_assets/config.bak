@@ -89,7 +89,7 @@
     "max_retries": 3
   },
   "expression": {
-    "active_engine": "builtin",
+    "active_engine": "builtin_transformers",
     "fallback_order": [
       "builtin",
       "local",
@@ -106,7 +106,7 @@
         "fallback_eligible": true,
         "metadata": {
           "preferred_model": "gpt2",
-          "preferred_provider": "transformers"
+          "preferred_provider": "vllm"
         }
       },
       "local": {

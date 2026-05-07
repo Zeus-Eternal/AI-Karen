@@ -192,6 +192,14 @@ class TransformersRuntime(LLMProviderBase):
     def get_provider_info(self) -> Dict[str, Any]:
 
         return {
+            "name": getattr(self, "provider_name", "builtin_transformers"),
+            "provider_type": "local",
+            "runtime": "transformers",
+            "requires_api_key": False,
+            "has_api_key": True,
+            "api_key_valid": True,
+            "available_models": [self._model_name],
+            "default_model": self._model_name,
             "model": self._model_name,
             "device": self.device,
             "quantization": self.quantization,

@@ -879,6 +879,9 @@ class LLMRouter:
         normalized_model = self._normalize_model_name(preferred_model)
         if not normalized_model:
             return False
+            
+        if normalized_model == "auto":
+            return True
 
         default_model = self._normalize_model_name(
             provider_info.get("default_model") if provider_info else None
