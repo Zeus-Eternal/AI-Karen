@@ -97,10 +97,6 @@ class BuiltinProviderEngine(BaseExpressionEngine):
             "provider_attempts": attempts,
         }
 
-        final_text = text
-        if not actual_provider:
-            final_text = "No configured built-in provider could generate a response."
-
         return ExpressionResult(
             task_id=task.task_id,
             text=final_text,

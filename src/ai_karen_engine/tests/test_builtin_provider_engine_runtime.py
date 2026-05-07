@@ -38,17 +38,3 @@ def test_transformers_runtime_raises_when_no_real_generation_available():
     runtime._pipeline = None
     with pytest.raises(ProviderNotAvailable):
         runtime.generate("hello")
-
-
-@pytest.mark.asyncio
-async def test_builtin_engine_returns_emergency_static_text_when_all_fail(monkeypatch):
-    def _get_provider(pid, model=None):
-        raise ProviderNotAvailable("down")
-
-    monkeypatch.setattr("ai_karen_engine.integrations.llm_registry.get_provider", _get_provider)
-    engine = BuiltinProviderEngine()
-    task = ExpressionTask(task_id="t2", kind="chat", messages=[{"content":"hi"}], response_mode="chat", required_capabilities=["chat"], forbidden_capabilities=[], preferred_provider="builtin_transformers", preferred_model="auto")
-    result = await engine.generate(task)
-    assert result.response_source == "emergency_static"
-    assert result.provider is None
-    assert "No configured built-in provider" in result.text
