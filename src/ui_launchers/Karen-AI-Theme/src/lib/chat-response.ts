@@ -602,6 +602,9 @@ export const deriveDegradedPresentation = (
   const isEmergency =
     llm?.response_source === 'emergency_static' ||
     safeMetadata?.response_source === 'emergency_static' ||
+    llm?.response_source === 'engine_disabled' ||
+    safeMetadata?.response_source === 'engine_disabled' ||
+    normalizeProviderName(llm?.actual_provider || safeMetadata?.actual_provider || llm?.provider) === 'disabled' ||
     String(llm?.fallback_level) === '99' ||
     String(safeMetadata?.fallback_level) === '99';
 
