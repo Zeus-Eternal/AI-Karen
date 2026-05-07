@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { History, CheckCircle2, AlertCircle, FileSearch, ShieldCheck } from 'lucide-react';
+import { History, FileSearch, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { databaseOperationsApi, MigrationHealth } from '@/lib/database-operations-api';
 import { useToast } from '@/hooks/use-toast';
@@ -23,7 +22,7 @@ export const MigrationStatusCard: React.FC<MigrationStatusCardProps> = ({ migrat
                 title: 'Validation Complete',
                 description: 'Database schema and migration history are consistent.',
             });
-        } catch (err) {
+        } catch {
             toast({
                 title: 'Validation Failed',
                 description: 'Inconsistencies detected in database schema.',

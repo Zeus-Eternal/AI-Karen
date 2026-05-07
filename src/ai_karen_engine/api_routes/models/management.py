@@ -25,7 +25,7 @@ import threading
 import requests
 
 from ai_karen_engine.inference.huggingface_service import get_huggingface_service
-from ai_karen_engine.inference.local_gguf_tools import get_local_gguf_tools
+# from ai_karen_engine.inference.local_gguf_tools import get_local_gguf_tools  <- REMOVED
 from ai_karen_engine.inference.model_store import get_model_store
 from ai_karen_engine.integrations.dynamic_provider_system import get_dynamic_provider_manager
 from ai_karen_engine.integrations.registry import get_registry

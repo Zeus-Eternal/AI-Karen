@@ -23,7 +23,7 @@ export const ProjectionHealthTable: React.FC<ProjectionHealthTableProps> = ({ pr
                 title: 'Retry Initiated',
                 description: 'Projection sync retries have been triggered.',
             });
-        } catch (err) {
+        } catch {
             toast({
                 title: 'Retry Failed',
                 description: 'Failed to trigger projection retries.',

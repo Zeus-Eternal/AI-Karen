@@ -20,6 +20,7 @@ export type { ProviderDetails };
 type ProviderGroupKey = 'builtIn' | 'local' | 'thirdParty' | 'custom';
 
 interface ProviderSettingsModalProps {
+  providers: ProviderDetails[];
   selectableProviders: ProviderDetails[];
   selectedProvider: string;
   selectedModel: string;
@@ -124,6 +125,7 @@ const getProviderGroups = (
 };
 
 export const ProviderSettingsModal = ({
+  providers,
   selectableProviders,
   selectedProvider,
   selectedModel,
@@ -135,21 +137,21 @@ export const ProviderSettingsModal = ({
   const [localModel, setLocalModel] = useState(selectedModel);
 
   const providerGroups = useMemo(
-    () => getProviderGroups(selectableProviders),
-    [selectableProviders],
+    () => getProviderGroups(providers),
+    [providers],
   );
 
   const activeProviderDetails = useMemo(() => {
-    return getProviderById(selectableProviders, localProvider);
-  }, [selectableProviders, localProvider]);
+    return getProviderById(providers, localProvider);
+  }, [providers, localProvider]);
 
   const providerModels = useMemo(() => activeProviderDetails?.models ?? [], [activeProviderDetails]);
   const activeProviderLabel =
     getProviderLabel(activeProviderDetails) || 'Select Runtime';
 
   const currentProviderDetails = useMemo(() => {
-    return getProviderById(selectableProviders, selectedProvider);
-  }, [selectableProviders, selectedProvider]);
+    return getProviderById(providers, selectedProvider);
+  }, [providers, selectedProvider]);
   
   const currentProviderLabel = getProviderLabel(currentProviderDetails) || 'Models';
 
@@ -167,11 +169,11 @@ export const ProviderSettingsModal = ({
       selectableProviders,
       selectedProvider,
     );
-    const resolvedProvider = getProviderById(selectableProviders, resolvedProviderId);
+    const resolvedProvider = getProviderById(providers, resolvedProviderId);
 
     setLocalProvider(resolvedProviderId);
     setLocalModel(cleanString(selectedModel) || getFirstAvailableModelId(resolvedProvider));
-  }, [isOpen, selectableProviders, selectedProvider, selectedModel]);
+  }, [isOpen, providers, selectableProviders, selectedProvider, selectedModel]);
 
   /*
    * When the user switches provider inside the modal, choose that provider's
@@ -193,7 +195,7 @@ export const ProviderSettingsModal = ({
   }, [isOpen, activeProviderDetails, providerModels, localModel]);
 
   const handleProviderSelect = (providerId: string) => {
-    const nextProvider = getProviderById(selectableProviders, providerId);
+    const nextProvider = getProviderById(providers, providerId);
 
     setLocalProvider(providerId);
     setLocalModel(getFirstAvailableModelId(nextProvider));
@@ -251,11 +253,11 @@ export const ProviderSettingsModal = ({
 
             {providerGroups.length === 0 ? (
               <div className="rounded-md border border-dashed px-3 py-4 text-xs text-muted-foreground">
-                No selectable providers are currently configured.
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {providerGroups.map((group) => (
+              No providers were returned by the backend.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {providerGroups.map((group) => (
                   <div key={group.key} className="space-y-1">
                     <div className="px-2 text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
                       {group.label}
@@ -264,16 +266,23 @@ export const ProviderSettingsModal = ({
                     {group.providers.map((provider) => {
                       const isActive = localProvider === provider.id;
                       const label = getProviderLabel(provider);
+                      const isSelectable =
+                        provider.selectable !== false &&
+                        selectableProviders.some((item) => item.id === provider.id);
+                      const isConfigured = provider.enabled !== false;
 
                       return (
                         <button
                           key={provider.id}
                           type="button"
                           onClick={() => handleProviderSelect(provider.id)}
+                          disabled={!isSelectable}
                           className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors ${
                             isActive
                               ? 'bg-primary font-medium text-primary-foreground'
-                              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                              : isSelectable
+                                ? 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                                : 'cursor-not-allowed text-muted-foreground/50'
                           }`}
                           aria-pressed={isActive}
                           title={label}
@@ -284,6 +293,11 @@ export const ProviderSettingsModal = ({
                             }`}
                           />
                           <span className="truncate">{label}</span>
+                          {!isConfigured && (
+                            <span className="ml-auto rounded-full border border-border/50 px-1.5 py-0.5 text-[8px] uppercase tracking-wider">
+                              Setup
+                            </span>
+                          )}
                         </button>
                       );
                     })}

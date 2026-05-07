@@ -180,9 +180,11 @@ class TestDegradedRuntimeFallback:
 
             # Verify the result uses emergency fallback
             assert "Emergency fallback response activated" in result["content"]
-            assert result["metadata"]["llm"]["provider"] == "emergency_static"
+            assert result["metadata"]["llm"]["provider"] is None
+            assert result["metadata"]["llm"]["actual_provider"] is None
             assert result["metadata"]["llm"]["source"] == "emergency_static"
-            assert result["metadata"]["llm"]["model_id"] == "none"
+            assert result["metadata"]["llm"]["model_id"] is None
+            assert result["metadata"]["llm"]["provider_attempts"]
 
     @pytest.mark.asyncio
     async def test_metadata_provider_correct_when_vllm_answers(

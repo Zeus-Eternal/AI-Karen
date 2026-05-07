@@ -36,7 +36,7 @@ export const DatabaseMaintenanceActions: React.FC<DatabaseMaintenanceActionsProp
                 });
             }
             // Add other actions as needed
-        } catch (err) {
+        } catch {
             toast({
                 title: 'Action Failed',
                 description: 'Failed to trigger maintenance task.',

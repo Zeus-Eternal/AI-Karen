@@ -413,12 +413,11 @@ describe('Degraded Runtime Fallback Presentation', () => {
 
       const result = deriveResponseDetailsPresentation(metadata);
 
-      expect(result.requestedProvider).toBe('builtin_vllm');
-      expect(result.requestedModel).toBe('gpt2');
-      expect(result.actualProvider).toBe('builtin_vllm');
-      expect(result.actualModel).toBe('GPT-2');
-      expect(result.usedFallback).toBe(false);
-      expect(result.isDegraded).toBe(false);
+      expect(result.requestedProviderLabel).toBe('vLLM');
+      expect(result.requestedModelLabel).toBe('GPT-2');
+      expect(result.providerLabel).toBe('vLLM');
+      expect(result.modelLabel).toBe('GPT-2');
+      expect(result.degradedMode).toBe(false);
     });
 
     it('should handle fallback when requested provider is unavailable', () => {
@@ -438,12 +437,11 @@ describe('Degraded Runtime Fallback Presentation', () => {
 
       const result = deriveResponseDetailsPresentation(metadata);
 
-      expect(result.requestedProvider).toBe('gemini');
-      expect(result.requestedModel).toBe('gemini-2.5-flash');
-      expect(result.actualProvider).toBe('builtin_vllm');
-      expect(result.actualModel).toBe('Qwen Local');
-      expect(result.usedFallback).toBe(true);
-      expect(result.isDegraded).toBe(true);
+      expect(result.requestedProviderLabel).toBe('Gemini');
+      expect(result.requestedModelLabel).toBe('Gemini-2.5-flash');
+      expect(result.providerLabel).toBe('vLLM');
+      expect(result.modelLabel).toBe('Qwen Local');
+      expect(result.degradedMode).toBe(true);
     });
 
     it('should indicate when requested provider field is missing', () => {
@@ -462,11 +460,10 @@ describe('Degraded Runtime Fallback Presentation', () => {
 
       const result = deriveResponseDetailsPresentation(metadata);
 
-      expect(result.requestedProvider).toBe('');  // Empty/missing
-      expect(result.actualProvider).toBe('builtin_vllm');
-      expect(result.actualModel).toBe('GPT-2');
-      // When requested fields are missing, UI shows fallback/degraded behavior
-      expect(result.usedFallback).toBe(false);  // Not technically fallback, but user preference wasn't honored
+      expect(result.requestedProviderLabel).toBe('N/A');
+      expect(result.providerLabel).toBe('vLLM');
+      expect(result.modelLabel).toBe('GPT-2');
+      expect(result.degradedMode).toBe(false);
     });
   });
 });

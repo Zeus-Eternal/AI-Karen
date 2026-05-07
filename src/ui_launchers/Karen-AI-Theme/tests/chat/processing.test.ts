@@ -49,7 +49,7 @@ describe('processing status resolver', () => {
 
   it('includes LangGraph node', () => {
     const msg = resolveProcessingStatusMessage('langgraph_node', undefined, { node: 'response_synth' });
-    expect(msg).toContain('response synth');
+    expect(msg).toContain('Response Synth');
   });
 
   it('includes Medusa specialist', () => {

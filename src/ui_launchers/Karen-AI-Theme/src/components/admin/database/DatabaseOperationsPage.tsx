@@ -11,6 +11,7 @@ import { DatabaseOperationsErrorState } from './DatabaseOperationsErrorState';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, RefreshCw, Database, ShieldAlert, Activity } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -27,9 +28,9 @@ export const DatabaseOperationsPage: React.FC = () => {
         try {
             const data = await databaseOperationsApi.getOverview();
             setOverview(data);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Failed to fetch database operations overview:', err);
-            setError(err.message || 'Failed to connect to the database operations service');
+            setError(err instanceof Error ? err.message : 'Failed to connect to the database operations service');
             toast({
                 title: 'Operational Error',
                 description: 'Could not reach the database health service.',
@@ -70,7 +71,7 @@ export const DatabaseOperationsPage: React.FC = () => {
                         Database Operations
                     </h1>
                     <p className="text-muted-foreground text-sm max-w-2xl">
-                        Operational view of Karen's storage tiers, memory writeback state, and projection health.
+                        Operational view of Karen&apos;s storage tiers, memory writeback state, and projection health.
                         Status derived from backend service health APIs.
                     </p>
                 </div>

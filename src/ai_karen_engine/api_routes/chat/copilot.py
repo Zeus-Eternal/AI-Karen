@@ -152,11 +152,12 @@ def _build_degraded_sse_events(
     llm_metadata.update({
         "requested_provider": requested_provider or llm_metadata.get("requested_provider"),
         "requested_model": requested_model or llm_metadata.get("requested_model"),
-        "actual_provider": llm_metadata.get("actual_provider") or "system",
-        "actual_model": llm_metadata.get("actual_model") or "auto",
+        "actual_provider": llm_metadata.get("actual_provider"), # User instruction: none for emergency static
+        "actual_model": llm_metadata.get("actual_model"), # User instruction: none for emergency static
         "is_degraded": True,
         "fallback_level": llm_metadata.get("fallback_level") or 99,
-        "response_source": llm_metadata.get("response_source") or "emergency_static"
+        "response_source": llm_metadata.get("response_source") or "emergency_static",
+        "provider_attempts": llm_metadata.get("provider_attempts", [])
     })
 
     metadata = {
@@ -433,8 +434,8 @@ async def _build_degraded_assist_response(
             "system_status_code": getattr(degraded, "system_status_code", 503),
             "support_hint": getattr(degraded, "support_hint", ""),
             "llm": {
-                "provider": "system",
-                "model_name": "Degraded Mode",
+                "provider": None,
+                "model_name": None,
                 "source": "runtime_control_plane",
                 "is_degraded": True,
                 "fallback_level": "degraded",
@@ -508,7 +509,6 @@ def _normalize_runtime_truth_metadata(
         or normalized.get("actual_provider")
         or llm.get("provider")
         or normalized.get("provider")
-        or "unknown"
     )
     actual_model = (
         (exec_result.actual_model if exec_result else None)
@@ -517,26 +517,35 @@ def _normalize_runtime_truth_metadata(
         or llm.get("model_id")
         or llm.get("model_name")
         or normalized.get("model")
-        or "unknown"
     )
 
-    fallback_level = int(
+    fallback_level = (
         (exec_result.fallback_level if exec_result else None)
         or llm.get("fallback_level")
         or normalized.get("fallback_level")
-        or 0
     )
+    if fallback_level is None:
+        fallback_level = 0
+
     if (not requested_provider or str(requested_provider).lower() == "unknown") and actual_provider not in {"", "unknown", None}:
-        fallback_level = max(1, fallback_level)
+        fallback_level = max(1, int(fallback_level))
         normalized.setdefault("degraded_mode", True)
         normalized.setdefault("degradation_type", "provider_unknown")
         normalized.setdefault("degradation_reason", "Requested provider was missing at ingress; runtime resolved or fell back.")
+
     response_source = (
         (exec_result.response_source if exec_result else None)
         or llm.get("response_source")
         or normalized.get("response_source")
         or llm.get("source")
-        or ("emergency_static" if actual_provider == "emergency_static" else "live_model")
+        or ("emergency_static" if actual_provider is None else "live_model")
+    )
+
+    provider_attempts = (
+        (exec_result.provider_attempts if exec_result else None)
+        or llm.get("provider_attempts")
+        or normalized.get("provider_attempts")
+        or []
     )
     
     selected_provider = (
@@ -647,6 +656,7 @@ def _normalize_runtime_truth_metadata(
             "degraded_mode": degraded_mode,
             "is_degraded": degraded_mode,
             "used_fallback": bool(llm.get("used_fallback") or provider_changed or degraded_mode),
+            "degradation_type": (exec_result.degradation_type if exec_result else None) or llm.get("degradation_type") or normalized.get("degradation_type"),
             "degradation_reason": (exec_result.degradation_reason if exec_result else None) 
             or llm.get("degradation_reason")
             or normalized.get("degradation_reason")
@@ -656,6 +666,7 @@ def _normalize_runtime_truth_metadata(
             "transport": transport,
             "latency_ms": latency_ms,
             "correlation_id": (exec_result.correlation_id if exec_result else None) or correlation_id,
+            "provider_attempts": provider_attempts,
         }
     )
 
@@ -675,6 +686,7 @@ def _normalize_runtime_truth_metadata(
             "provider_error": llm.get("provider_error"),
             "fallback_level": fallback_level,
             "degraded_mode": degraded_mode,
+            "degradation_type": llm.get("degradation_type"),
             "degradation_reason": llm.get("degradation_reason"),
             "streaming_enabled": streaming_enabled,
             "actual_response_mode": actual_response_mode,
@@ -683,6 +695,7 @@ def _normalize_runtime_truth_metadata(
             "correlation_id": llm.get("correlation_id") or correlation_id,
             "conversation_id": conversation_id,
             "status": normalized.get("status", "success"),
+            "provider_attempts": provider_attempts,
         }
     )
     return normalized

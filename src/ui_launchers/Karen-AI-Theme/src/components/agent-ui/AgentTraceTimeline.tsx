@@ -51,9 +51,9 @@ export const AgentTraceTimeline: React.FC<AgentTraceTimelineProps> = ({ trace, c
                   </span>
                 )}
               </div>
-              {event.metadata?.message && (
+              {typeof event.metadata?.message === 'string' && event.metadata.message && (
                 <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">
-                  {String(event.metadata.message)}
+                  {event.metadata.message}
                 </p>
               )}
               {event.error && (

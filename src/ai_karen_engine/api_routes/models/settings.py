@@ -115,12 +115,15 @@ class ProviderPayload(BaseModel):
     display_name: str
     description: str
     type: str
+    provider_type: Optional[str] = None
     icon_name: str
     doc_url: str
     supports_model_discovery: bool
     supports_base_url_override: bool
     default_base_url: Optional[str] = None
+    requires_api_key: bool = False
     api_key_status: str  # missing, configured, masked
+    api_key_configured: bool = False
     api_key_env_var: Optional[str] = None
     models: List[ProviderModelPayload]
     selected_model: Optional[str] = None
@@ -376,7 +379,7 @@ async def get_model_settings(
     current_user: Any = Depends(get_current_user),
 ) -> Dict[str, Any]:
     """Get all model settings including provider details."""
-    return await _build_response()
+    return await build_model_settings_payload()
 
 
 @router.put("", response_model=ModelSettingsResponse)
@@ -458,7 +461,7 @@ async def update_model_settings(
         )
 
     settings._save_settings()
-    return await _build_response()
+    return await build_model_settings_payload()
 
 
 @router.get("/providers/{provider_id}/models", response_model=ProviderModelsResponse)
@@ -602,8 +605,8 @@ async def validate_provider_settings(
         return {"valid": False, "message": f"Validation failed: {str(e)}"}
 
 
-async def _build_response() -> Dict[str, Any]:
-    """Build the comprehensive ModelSettingsResponse dictionary."""
+async def build_model_settings_payload() -> Dict[str, Any]:
+    """Build the canonical ModelSettingsResponse dictionary."""
     settings = get_settings_manager()
     provider_manager = get_provider_config_manager()
     discovery_service = get_model_discovery_service()
@@ -698,12 +701,15 @@ async def _build_response() -> Dict[str, Any]:
             display_name=provider.display_name,
             description=provider.description,
             type=provider.provider_type.value,
+            provider_type=provider.provider_type.value,
             icon_name=provider.name if provider.name in {"openai", "gemini", "anthropic", "meta", "huggingface", "vllm", "ollama"} else "openai",
             doc_url=PROVIDER_DOC_URLS.get(provider.name, ""),
             supports_model_discovery=bool(provider.capabilities is not None and "custom_endpoint" in provider.capabilities), 
             supports_base_url_override=_supports_base_url_override(provider),
             default_base_url=provider.endpoint.base_url if provider.endpoint else None,
+            requires_api_key=bool(provider.authentication and provider.authentication.type == AuthenticationType.API_KEY),
             api_key_status=api_key_status,
+            api_key_configured=api_key_status == "configured",
             api_key_env_var=provider.authentication.api_key_env_var if provider.authentication else None,
             models=p_models,
             selected_model=_normalize_selected_model_for_provider(provider.name, override.get("last_model") or provider.default_model),
@@ -937,7 +943,7 @@ async def add_custom_openai_provider(
     settings.set_setting(f"model_providers.{provider.name}.base_url", base_url, save=False)
     settings._save_settings()
     
-    return await _build_response()
+    return await build_model_settings_payload()
 
 
 class ProviderSettingsValidationResponse(BaseModel):

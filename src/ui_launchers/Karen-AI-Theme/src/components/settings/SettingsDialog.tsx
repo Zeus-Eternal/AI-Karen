@@ -16,7 +16,6 @@ import type { ReactNode } from 'react';
 import {
   Bell,
   BookText,
-  Bot,
   Cog,
   GraduationCap,
   HardDrive,

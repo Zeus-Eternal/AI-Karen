@@ -16,7 +16,13 @@ export function ModeSpecificControls({ modeConfig, options, onOptionsChange, dis
   const renderInput = (field: keyof IntelligentSearchOptions, label: string, type: string = 'text', placeholder?: string) => {
     if (!visible.includes(field)) return null;
 
-    const value = options[field] as any;
+    const value = options[field];
+    const inputValue =
+      typeof value === 'string' || typeof value === 'number'
+        ? value
+        : Array.isArray(value)
+          ? value.join(', ')
+          : '';
     
     if (type === 'checkbox') {
       return (
@@ -39,7 +45,7 @@ export function ModeSpecificControls({ modeConfig, options, onOptionsChange, dis
         <label className="text-xs font-medium text-foreground">{label}</label>
         <input
           type={type}
-          value={value || ''}
+          value={inputValue}
           placeholder={placeholder}
           disabled={disabled}
           onChange={(e) => onOptionsChange({ 

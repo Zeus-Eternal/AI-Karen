@@ -53,8 +53,10 @@ class ResponseSynthesisNode:
                     "selected_model": exec_result.selected_model,
                     "actual_provider": exec_result.actual_provider,
                     "actual_model": exec_result.actual_model,
+                    "provider_category": exec_result.provider_category,
                     "latency_ms": exec_result.latency_ms,
                     "has_reasoning_result": bool(state.get("reasoning_result")),
+                    "provider_attempts": exec_result.provider_attempts,
                 }
             
             state["response_summary"] = {
@@ -113,13 +115,14 @@ class ResponseSynthesisNode:
                         "reasoning_result": reasoning_result,
                         "plan": state.get("execution_plan"),
                         "memory": state.get("memory_context"),
+                        "user_preferences": request_preferences
                     },
                     preferred_model=route_decision.selected_model,
                     stream=False, 
                     conversation_id=state.get("session_id"),
                 )
 
-                exec_result = await self._provider_runtime.execute(
+                exec_result = await self._provider_runtime.execute_chat(
                     route_decision,
                     request,
                     user_preferences=request_preferences
@@ -152,20 +155,23 @@ class ResponseSynthesisNode:
             response = response[: self.config.max_response_length].rstrip() + "... (truncated)"
         
         # Build emergency metadata if we reached this point
-        if not state.get("execution_result"):
+        exec_result = state.get("execution_result")
+        if not exec_result or exec_result.response_source == "emergency_static":
             emergency_metadata = {
-                "requested_provider": request_preferences.get("provider") or "unknown",
-                "requested_model": request_preferences.get("model") or "unknown",
-                "selected_provider": "emergency_static",
-                "selected_model": "none",
-                "actual_provider": "emergency_static",
-                "actual_model": "none",
+                "requested_provider": request_preferences.get("preferred_llm_provider") or "unknown",
+                "requested_model": request_preferences.get("preferred_model") or "unknown",
+                "selected_provider": None,
+                "selected_model": None,
+                "actual_provider": None,
+                "actual_model": None,
                 "runtime_engine": "none",
                 "response_source": "emergency_static",
                 "fallback_level": 99,
                 "degraded_mode": True,
-                "degradation_reason": "all_live_providers_failed_or_skipped",
-                "latency_ms": 0,
+                "degradation_type": "fallback_exhausted",
+                "degradation_reason": "No configured provider could generate a response.",
+                "provider_attempts": exec_result.provider_attempts if exec_result else [],
+                "latency_ms": exec_result.latency_ms if exec_result else 0,
                 "streaming_enabled": bool(state.get("streaming_enabled")),
             }
             self._store_llm_metadata(state, emergency_metadata)
@@ -173,7 +179,7 @@ class ResponseSynthesisNode:
         return response
 
     def _build_metadata_from_result(self, result: ProviderExecutionResult, streaming_enabled: bool) -> Dict[str, Any]:
-        """Build legacy-compatible metadata from ProviderExecutionResult."""
+        """Build forensic metadata from ProviderExecutionResult."""
         return {
             "requested_provider": result.requested_provider,
             "requested_model": result.requested_model,
@@ -184,18 +190,24 @@ class ResponseSynthesisNode:
             "provider": result.actual_provider,
             "model_id": result.actual_model,
             "model_name": result.actual_model,
+            "provider_category": result.provider_category,
             "runtime_engine": result.runtime_engine,
+            "transport": result.transport,
             "response_source": result.response_source,
             "source": result.response_source,
             "fallback_level": result.fallback_level,
             "degraded_mode": result.degraded_mode,
             "is_degraded": result.degraded_mode,
             "used_fallback": result.fallback_level > 0,
+            "degradation_type": result.degradation_type,
             "degradation_reason": result.degradation_reason,
             "latency_ms": result.latency_ms,
             "duration": result.latency_ms / 1000 if result.latency_ms else 0,
             "streaming_enabled": streaming_enabled,
             "correlation_id": result.correlation_id,
+            "provider_attempts": result.provider_attempts,
+            "usage": result.usage,
+            "finish_reason": result.finish_reason,
         }
 
     def _compose_deterministic_fallback(

@@ -53,7 +53,7 @@ class BuiltinProviderEngine(BaseExpressionEngine):
                 from ai_karen_engine.integrations.llm_registry import get_provider
                 
                 # Resolve model from task or payload
-                model_id = payload.get("model") or "auto"
+                model_id = payload.get("model")
                 
                 # Get provider instance
                 provider = get_provider(provider_id, model=model_id)

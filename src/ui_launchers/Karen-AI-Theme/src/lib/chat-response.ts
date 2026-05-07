@@ -10,6 +10,15 @@ type SuggestedAction = {
   description?: string;
 };
 
+type ProviderAttempt = {
+  provider: string;
+  model?: string;
+  status: string;
+  error_type?: string;
+  error_message?: string;
+  latency_ms?: number;
+};
+
 type BackendChatEnvelope = {
   answer?: string;
   content?: string;
@@ -101,6 +110,11 @@ export type ResponseDetailsPresentation = {
   memoryDegradedLabel: string;
   writebackStatusLabel: string;
   capabilityWarning?: string;
+  providerAttempts?: ProviderAttempt[];
+  degradationReason?: string;
+  responseSourceValue?: string;
+  degradedMode?: boolean;
+  degradationType?: string;
 };
 
 export type CompactBadgePresentation = {
@@ -140,23 +154,23 @@ const BUILTIN_PROVIDER_ALIASES: Record<string, string> = {
 };
 
 interface LlmMetadata {
-  actual_provider?: string;
-  provider?: string;
-  actual_model?: string;
-  model_id?: string;
-  model_name?: string;
-  requested_provider?: string;
-  requested_model?: string;
+  actual_provider?: string | null;
+  provider?: string | null;
+  actual_model?: string | null;
+  model_id?: string | null;
+  model_name?: string | null;
+  requested_provider?: string | null;
+  requested_model?: string | null;
   used_fallback?: boolean;
   is_fallback?: boolean;
   is_degraded?: boolean;
   failure_category?: string;
   failure_reason?: string;
   preferred_failure_reason?: string;
-  response_source?: string;
-  source?: string;
+  response_source?: string | null;
+  source?: string | null;
   runtime_engine?: string;
-  fallback_level?: string;
+  fallback_level?: string | number | null;
   tokens_per_second?: number | string;
   duration?: number;
   routing_rationale?: string;
@@ -165,6 +179,7 @@ interface LlmMetadata {
     completion_tokens?: number;
     total_tokens?: number;
   };
+  provider_attempts?: ProviderAttempt[];
   [key: string]: unknown;
 }
 
@@ -210,6 +225,8 @@ interface ChatMetadata {
   total_ms?: number;
   context_used?: boolean;
   status?: string;
+  response_source?: string;
+  provider_attempts?: ProviderAttempt[];
   [key: string]: unknown;
 }
 
@@ -248,7 +265,9 @@ const INTERNAL_STRUCTURED_CONTENT_KEYS = new Set([
 
 const KAREN_FALLBACK_MODEL_IDS = new Set([
   'kari-fallback-v1',
+  'kari-fallback',
   'karen-fallback-v1',
+  'karen-fallback',
   'local-fallback',
   'emergency-fallback',
   'lite-assistant-fallback',
@@ -580,16 +599,28 @@ export const deriveDegradedPresentation = (
 
   const requestedProvider = toCleanString(llm?.requested_provider || safeMetadata?.requested_provider);
   const requestedModel = toCleanString(llm?.requested_model || safeMetadata?.requested_model);
-  const actualProvider = toCleanString(
-    llm?.actual_provider || safeMetadata?.actual_provider || llm?.provider,
-  );
-  const actualModelId = toCleanString(
-    llm?.actual_model || safeMetadata?.actual_model || llm?.model_id,
-  );
-  const actualModel = getFriendlyModelLabel(
-    llm?.actual_model || safeMetadata?.actual_model || llm?.model_id,
-    llm?.model_name,
-  );
+  const isEmergency =
+    llm?.response_source === 'emergency_static' ||
+    safeMetadata?.response_source === 'emergency_static' ||
+    String(llm?.fallback_level) === '99' ||
+    String(safeMetadata?.fallback_level) === '99';
+
+  const actualProvider = isEmergency
+    ? ''
+    : toCleanString(
+        llm?.actual_provider || safeMetadata?.actual_provider || llm?.provider,
+      );
+  const actualModelId = isEmergency
+    ? ''
+    : toCleanString(
+        llm?.actual_model || safeMetadata?.actual_model || llm?.model_id,
+      );
+  const actualModel = isEmergency
+    ? ''
+    : getFriendlyModelLabel(
+        llm?.actual_model || safeMetadata?.actual_model || llm?.model_id,
+        llm?.model_name,
+      );
 
   const normalizedActualProvider = normalizeProviderName(actualProvider);
   const normalizedRequestedProvider = normalizeProviderName(requestedProvider);
@@ -645,6 +676,13 @@ export const deriveDegradedPresentation = (
     Boolean(requestedProvider) && reasonLooksUnavailable(failureReason);
 
   const providerOrModelChanged = providerChanged || modelChanged;
+  const fallbackTransitionText =
+    !isEmergency &&
+    providerOrModelChanged &&
+    requestedProvider &&
+    (actualProviderLabel || actualProvider)
+      ? `${requestedProvider} failed, switched to ${actualProviderLabel || actualProvider}${actualModel && actualModel !== 'none' && actualModel !== 'auto' ? ` (${actualModel})` : ''}.`
+      : '';
 
   const degradedStatusLabel = isSafetyBlocked
     ? 'provider policy block'
@@ -658,11 +696,14 @@ export const deriveDegradedPresentation = (
             ? 'degraded mode'
             : '';
 
-  const degradedBannerText = getDegradationReasonLabel(failureReason) || (isDegraded ? 'System is operating in degraded mode.' : '');
+  const degradedBannerText =
+    fallbackTransitionText ||
+    getDegradationReasonLabel(failureReason) ||
+    (isDegraded ? 'System is operating in degraded mode.' : '');
 
   const visibleDegradedNotice = isSafetyBlocked
     ? (failureReason || 'Provider policy blocked this response.')
-    : getDegradationReasonLabel(failureReason) || degradedBannerText;
+    : fallbackTransitionText || getDegradationReasonLabel(failureReason) || degradedBannerText;
 
   const shouldRenderDegradedState = isDegraded || isSafetyBlocked || Boolean(visibleDegradedNotice);
 
@@ -672,17 +713,19 @@ export const deriveDegradedPresentation = (
     capabilityWarning = 'Selected model is a base completion model and may produce continuation-style responses.';
   }
 
-  const providerDisplayName = actualProviderLabel || actualProvider || 'system';
+  const providerDisplayName = actualProviderLabel || (actualProvider && actualProvider !== 'none' ? actualProvider : '');
 
   const modelDisplayName = isSafetyBlocked
     ? 'Safety Blocked'
-    : actualModel || 'auto';
+    : (actualModel && actualModel !== 'none' && actualModel !== 'auto' ? actualModel : '');
 
   const finalStatusLabel = isSafetyBlocked
     ? 'Safety Blocked'
-    : degradedStatusLabel || (isDegraded ? 'Degraded Mode' : (capabilityWarning ? 'limited capability' : 'ok'));
+    : isEmergency
+      ? 'Emergency Unavailable'
+      : degradedStatusLabel || (isDegraded ? 'Degraded Mode' : (capabilityWarning ? 'limited capability' : 'ok'));
 
-  const fallbackDetailsText = degradedBannerText;
+  const fallbackDetailsText = fallbackTransitionText || degradedBannerText;
   const shouldRenderFallbackDetails = Boolean(fallbackDetailsText && !failureReason);
 
   return {
@@ -733,8 +776,8 @@ export const deriveResponseDetailsPresentation = (
   const requestedModelLabel = degraded.requestedModel
     ? getFriendlyModelLabel(degraded.requestedModel, degraded.requestedModel)
     : 'N/A';
-  const providerLabel = degraded.providerDisplayName;
-  const modelLabel = degraded.modelDisplayName;
+  const providerLabel = degraded.actualProvider ? degraded.providerDisplayName : 'none';
+  const modelLabel = degraded.actualModel ? degraded.modelDisplayName : 'none';
   const modelTitle = toCleanString(llm?.actual_model || llm?.model_id || llm?.model_name);
   const sourceLabel = toCleanString(llm?.response_source || llm?.source || 'direct');
   const runtimeEngineLabel = toCleanString(llm?.runtime_engine || safeMetadata?.runtime_engine || 'N/A');
@@ -776,6 +819,12 @@ export const deriveResponseDetailsPresentation = (
   const memoryDegradedLabel = safeMetadata.memory_degraded ? 'yes' : 'no';
   const writebackStatusLabel = toCleanString(safeMetadata.memory_writeback_status || 'N/A');
   const capabilityWarning = degraded.capabilityWarning;
+  const providerAttempts =
+    Array.isArray(llm?.provider_attempts)
+      ? (llm.provider_attempts as ProviderAttempt[])
+      : Array.isArray(safeMetadata.provider_attempts)
+        ? (safeMetadata.provider_attempts as ProviderAttempt[])
+        : undefined;
 
   return {
     hasMetadataDetails,
@@ -806,6 +855,11 @@ export const deriveResponseDetailsPresentation = (
     memoryDegradedLabel,
     writebackStatusLabel,
     capabilityWarning,
+    providerAttempts,
+    degradationReason: degraded.visibleDegradedNotice,
+    responseSourceValue: sourceLabel,
+    degradedMode: degraded.isDegraded,
+    degradationType: degraded.degradedStatusLabel,
   };
 };
 
@@ -927,17 +981,20 @@ const ensureRuntimeModeMetadata = (
 
   const llm = (isRecord(m.llm) ? { ...m.llm } : {}) as LlmMetadata;
 
-  llm.provider = llm.provider || SYSTEM_PROVIDER;
   llm.source = llm.source || 'runtime_control_plane';
-  llm.model_name =
-    llm.model_name ||
-    (runtimeMode === 'maintenance'
-      ? 'Maintenance'
-      : runtimeMode === 'emergency_fallback'
-        ? 'Emergency Fallback'
-        : runtimeMode === 'degraded'
-          ? 'Degraded Mode'
-          : 'Runtime Control');
+  llm.provider = llm.provider || null;
+  if (runtimeMode === 'emergency_fallback') {
+    llm.actual_provider = null;
+    llm.actual_model = null;
+    llm.provider = null;
+    llm.model_id = null;
+    llm.model_name = null;
+  } else {
+    llm.actual_provider = null;
+    llm.actual_model = null;
+    llm.model_id = null;
+    llm.model_name = null;
+  }
 
   if (runtimeMode === 'maintenance' || runtimeMode === 'emergency_fallback') {
     m.degraded_mode = true;
@@ -997,14 +1054,23 @@ const ensureProviderMismatchMetadata = (
   const m = metadata as ChatMetadata;
   const llm = (isRecord(m.llm) ? { ...m.llm } : {}) as LlmMetadata;
 
+  const responseSource = toCleanString(llm.response_source || m.response_source || m.mode);
+  const fallbackLevel = toCleanString(llm.fallback_level || m.fallback_level);
+  const isEmergencyStatic =
+    responseSource === 'emergency_static' ||
+    fallbackLevel === '99' ||
+    isKnownRuntimeControlMode(m.mode);
+
   const requestedProvider = normalizeProviderName(llm.requested_provider || m.requested_provider);
   const requestedModel = normalizeModelName(llm.requested_model || m.requested_model);
-  const actualProvider = normalizeProviderName(
-    llm.actual_provider || m.actual_provider || llm.provider,
-  );
-  const actualModel = normalizeModelName(
-    llm.actual_model || m.actual_model || llm.model_id || llm.model_name,
-  );
+  const actualProvider = isEmergencyStatic
+    ? ''
+    : normalizeProviderName(llm.actual_provider || m.actual_provider || llm.provider);
+  const actualModel = isEmergencyStatic
+    ? ''
+    : normalizeModelName(
+        llm.actual_model || m.actual_model || llm.model_id || llm.model_name,
+      );
 
   const providerChanged = Boolean(
     requestedProvider &&

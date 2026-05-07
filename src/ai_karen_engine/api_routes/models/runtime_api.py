@@ -7,13 +7,10 @@ Consumed by both settings and chat interfaces to ensure architectural alignment.
 
 import logging
 from typing import Any, Dict, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
-from ai_karen_engine.core.model_runtime.provider_registry_service import (
-    get_provider_registry_service,
-    HealthStatus,
-)
-from ai_karen_engine.integrations.registry import get_registry
+from ai_karen_engine.auth.session import get_current_user
+from ai_karen_engine.api_routes.models.settings import build_model_settings_payload
 from ai_karen_engine.utils.dependency_checks import import_fastapi, import_pydantic
 
 APIRouter, Depends = import_fastapi("APIRouter", "Depends")
@@ -41,13 +38,31 @@ class RuntimeModel(BaseModel):
 class RuntimeProvider(BaseModel):
     id: str
     label: str
+    provider_label: Optional[str] = None
+    category: str  # builtin, local, external, custom
     enabled: bool
     configured: bool
     healthy: bool
     runtime_engine: str
+    transport: str
+    compatibility_profile: Optional[str] = None
+    default_model: Optional[str] = None
+    selected_model: Optional[str] = None
+    api_key_env_var: Optional[str] = None
+    api_key_header: Optional[str] = None
+    api_key_prefix: Optional[str] = None
+    default_base_url: Optional[str] = None
+    base_url: Optional[str] = None
+    docs_url: Optional[str] = None
+    required_config_fields: List[str] = Field(default_factory=list)
+    safe_diagnostic_metadata: Dict[str, Any] = Field(default_factory=dict)
     models: List[RuntimeModel]
     health: ProviderHealthInfo
     degradation_reason: Optional[str] = None
+    allowed_for_current_user: bool = True
+    requires_api_key: bool = False
+    requires_base_url: bool = False
+    runtime_config_hash: Optional[str] = None
 
 
 class RuntimeProviderCatalog(BaseModel):
@@ -55,74 +70,108 @@ class RuntimeProviderCatalog(BaseModel):
     default_provider: str
     default_model: str
     fallback_order: List[str]
+    catalog_version: str = "1.0.0"
+    runtime_config_hash: Optional[str] = None
 
 
 @router.get("/providers", response_model=RuntimeProviderCatalog)
-async def get_runtime_provider_catalog():
+async def get_runtime_provider_catalog(
+    current_user: Any = Depends(get_current_user),
+):
     """
     Get the canonical provider and model catalog for the entire runtime.
     This is the ONE TRUE SOURCE for provider/model selection UI.
     """
     try:
-        registry_service = get_provider_registry_service()
-        base_registry = get_registry()
-        
-        system_status = registry_service.get_system_status()
-        provider_details = system_status.get("provider_details", {})
-        
+        settings_response = await build_model_settings_payload()
+        runtime_config_hash = None
+
         catalog_providers = []
-        
-        for provider_id, status in provider_details.items():
-            # Get model info from base registry
-            provider_info = base_registry.get_provider_info(provider_id)
-            
-            models = []
-            if provider_info and hasattr(provider_info, "models"):
-                for m in provider_info.models:
-                    models.append(RuntimeModel(
-                        id=m.name,
-                        label=m.name,
-                        available=status.get("is_available", False),
-                        default=(m.name == provider_info.default_model),
-                        capabilities=m.capabilities
-                    ))
-            
-            # If no models found in registry, check if provider has a default
-            if not models and provider_info and provider_info.default_model:
-                models.append(RuntimeModel(
-                    id=provider_info.default_model,
-                    label=provider_info.default_model,
-                    available=status.get("is_available", False),
-                    default=True,
-                    capabilities=["chat"]
-                ))
+        for provider in settings_response.get("providers", []):
+            provider_type = str(provider.get("provider_type") or provider.get("type") or "external").lower()
+            provider_id = str(provider.get("id") or "")
+            if provider_id == "ollama" or provider_type == "local":
+                category = "local"
+            elif provider_type == "builtin":
+                category = "builtin"
+            elif provider_type == "custom":
+                category = "custom"
+            else:
+                category = "external"
+
+            runtime_engine = str(provider.get("runtime_engine") or provider_id or "").replace("builtin_", "")
+            transport = "process" if category == "builtin" else "http"
+            safe_metadata = provider.get("safe_diagnostic_metadata") or {}
+            raw_models = provider.get("models") or []
+            models = [
+                RuntimeModel(
+                    id=str(model.get("id") or ""),
+                    label=str(model.get("name") or model.get("label") or model.get("id") or ""),
+                    available=bool(model.get("is_installed", model.get("available", True))),
+                    default=str(model.get("id") or "") == str(provider.get("selected_model") or ""),
+                    capabilities=list(model.get("capabilities") or []),
+                )
+                for model in raw_models
+                if model.get("id")
+            ]
+            if not models and provider.get("selected_model"):
+                models = [
+                    RuntimeModel(
+                        id=str(provider["selected_model"]),
+                        label=str(provider["selected_model"]),
+                        available=True,
+                        default=True,
+                        capabilities=list(safe_metadata.get("capabilities") or ["chat"]),
+                    )
+                ]
 
             catalog_providers.append(RuntimeProvider(
                 id=provider_id,
-                label=provider_id.replace("_", " ").title(),
-                enabled=status.get("is_available", False), # Simplified for now
-                configured=status.get("has_api_key", True),
-                healthy=(status.get("health_status") == HealthStatus.HEALTHY.value),
-                runtime_engine=status.get("runtime_engine") or provider_id.replace("builtin_", ""),
+                label=str(provider.get("display_name") or provider_id),
+                provider_label=str(provider.get("display_name") or provider_id),
+                category=category,
+                enabled=bool(provider.get("enabled", True)),
+                configured=bool(provider.get("is_configured", False)),
+                healthy=bool(provider.get("healthy", True)),
+                runtime_engine=runtime_engine,
+                transport=transport,
+                compatibility_profile=safe_metadata.get("compatibility_profile"),
+                default_model=provider.get("selected_model") or provider.get("default_model"),
+                selected_model=provider.get("selected_model"),
+                api_key_env_var=provider.get("api_key_env_var"),
+                api_key_header=provider.get("api_key_header"),
+                api_key_prefix=provider.get("api_key_prefix"),
+                default_base_url=provider.get("default_base_url"),
+                base_url=provider.get("base_url"),
+                docs_url=provider.get("doc_url"),
+                required_config_fields=list(provider.get("required_config_fields") or []),
+                safe_diagnostic_metadata=safe_metadata,
                 models=models,
                 health=ProviderHealthInfo(
-                    status=status.get("health_status", "unknown"),
-                    latency_ms=status.get("latency_ms"),
-                    last_checked_at=datetime.utcnow() # Should come from real health check
+                    status="healthy" if provider.get("healthy", True) else "degraded",
+                    latency_ms=None,
+                    last_checked_at=datetime.now(timezone.utc),
                 ),
-                degradation_reason=status.get("error_message")
+                degradation_reason=provider.get("degraded_reason"),
+                allowed_for_current_user=bool(provider.get("user_selectable", True) and provider.get("policy_allowed", True)),
+                requires_api_key=bool(provider.get("api_key_env_var") or provider.get("requires_api_key")),
+                requires_base_url=bool(provider.get("supports_base_url_override")),
+                runtime_config_hash=runtime_config_hash,
             ))
+
+        default_provider = settings_response.get("default_provider") or settings_response.get("selected_provider") or "builtin_transformers"
+        default_model = settings_response.get("default_model") or settings_response.get("selected_model") or "auto"
+        fallback_order = settings_response.get("fallback_hierarchy") or ["builtin_transformers", "builtin_vllm", "openai", "gemini"]
 
         return RuntimeProviderCatalog(
             providers=catalog_providers,
-            default_provider="builtin_transformers",
-            default_model="auto",
-            fallback_order=["requested", "builtin_transformers", "builtin_vllm", "ollama", "openai"]
+            default_provider=default_provider,
+            default_model=default_model,
+            fallback_order=fallback_order,
+            runtime_config_hash=runtime_config_hash,
         )
-        
     except Exception as e:
         logger.error(f"Error building runtime provider catalog: {e}")
-        # Return a minimal valid catalog on error to keep UI functional
         return RuntimeProviderCatalog(
             providers=[],
             default_provider="builtin_transformers",

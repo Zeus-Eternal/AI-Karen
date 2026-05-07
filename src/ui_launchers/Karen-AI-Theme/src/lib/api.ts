@@ -1,5 +1,7 @@
 "use client";
 
+import type { RuntimeProviderCatalogResponse } from '@/lib/model-runtime-inventory';
+
 // API service for HTTP requests
 const SAME_ORIGIN_API_BASE_URL = '';
 
@@ -709,7 +711,7 @@ class ApiClient {
    * Get the unified provider catalog from the backend.
    * This is the single source of truth for all provider/model selection UI.
    */
-  async getRuntimeProviderCatalog(): Promise<any> {
+  async getRuntimeProviderCatalog(): Promise<RuntimeProviderCatalogResponse> {
     return this.get('/api/runtime/providers');
   }
 

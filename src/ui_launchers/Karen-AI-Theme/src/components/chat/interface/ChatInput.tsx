@@ -34,6 +34,7 @@ interface ChatInputProps {
   onStopRequest: () => void;
 
   // Provider settings
+  providers: ProviderDetails[];
   selectableProviders: ProviderDetails[];
   selectedProvider: string;
   selectedModel: string;
@@ -82,6 +83,7 @@ export function ChatInput({
   onMicClick,
   onSuggestStarter,
   onStopRequest,
+  providers,
   selectableProviders,
   selectedProvider,
   selectedModel,
@@ -183,6 +185,7 @@ export function ChatInput({
           {/* Provider/session controls live above the input so the active runtime is visible before submit. */}
           <div className="flex flex-wrap gap-2">
             <ProviderSettingsModal
+              providers={providers}
               selectableProviders={selectableProviders}
               selectedProvider={selectedProvider}
               selectedModel={selectedModel}

@@ -67,7 +67,7 @@
     },
     "local_first_mode": true
   },
-  "last_selected_model": "qwen3:4b",
+  "last_selected_model": "gpt2",
   "use_memory": true,
   "context_length": 512,
   "decay": 0.1,
@@ -142,11 +142,12 @@
       }
     }
   },
-  "provider": "ollama",
-  "model": "qwen3:4b",
+  "provider": "builtin_transformers",
+  "model": "gpt2",
   "model_providers": {
     "builtin_transformers": {
-      "last_model": "gpt2"
+      "last_model": "gpt2",
+      "base_url": ""
     },
     "builtin_vllm": {
       "last_model": "gpt2",

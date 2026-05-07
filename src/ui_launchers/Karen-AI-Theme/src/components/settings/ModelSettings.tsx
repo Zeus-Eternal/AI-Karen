@@ -168,6 +168,11 @@ export default function ModelSettings() {
     return getRuntimeDisplayName(selectedProviderDetails.id, selectedProviderDetails.display_name);
   }, [selectedProviderDetails]);
 
+  const connectionTarget = useMemo(() => {
+    const value = selectedProviderDetails?.safe_diagnostic_metadata?.connection_target;
+    return typeof value === 'string' ? value : '';
+  }, [selectedProviderDetails]);
+
   const usesRuntimeOptions = Boolean(selectedProviderDetails?.runtime_options?.length);
 
   const selectedRuntimeOption = useMemo(() => {
@@ -993,10 +998,10 @@ export default function ModelSettings() {
                         <span className="uppercase tracking-widest text-primary/80">{selectedProviderDetails.runtime_engine}</span>
                       </div>
                     )}
-                    {selectedProviderDetails.safe_diagnostic_metadata?.connection_target && (
+                    {connectionTarget && (
                       <div className="flex items-center justify-between text-xs font-semibold">
                         <span className="text-muted-foreground">Connection Target</span>
-                        <span className="max-w-[120px] truncate font-mono text-[10px] text-primary/70">{selectedProviderDetails.safe_diagnostic_metadata.connection_target}</span>
+                        <span className="max-w-[120px] truncate font-mono text-[10px] text-primary/70">{connectionTarget}</span>
                       </div>
                     )}
                     {selectedProviderDetails.degraded_reason && (

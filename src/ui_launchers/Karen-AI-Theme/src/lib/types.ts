@@ -53,6 +53,56 @@ export interface AgentStepEvent {
   metadata?: Record<string, unknown>;
 }
 
+export type ExecutionStatus =
+  | 'pending'
+  | 'running'
+  | 'completed'
+  | 'failed'
+  | 'skipped'
+  | 'blocked'
+  | 'requires_approval'
+  | 'scheduled'
+  | 'cancelled'
+  | 'requires_confirmation';
+
+export interface TraceEvent {
+  id?: string;
+  type: string;
+  label?: string;
+  status: ExecutionStatus;
+  latency_ms?: number;
+  metadata?: Record<string, unknown>;
+  error?: string;
+}
+
+export interface AutomationMetadata {
+  draft?: {
+    draft_id: string;
+    risk_level: 'low' | 'medium' | 'high' | string;
+    name: string;
+    trigger: {
+      type: 'manual' | 'schedule' | string;
+      schedule?: string;
+    };
+    goal: string;
+    execution: {
+      agent_name?: string;
+      agent_id?: string;
+      tools: Array<{ name?: string }>;
+    };
+    memory: {
+      write_mode: string;
+    };
+    approval: {
+      required_before_execution: boolean;
+    };
+    notification: {
+      channels: string[];
+    };
+    warnings?: string[];
+  } | null;
+}
+
 // Settings types
 export type MemoryDepth = "short" | "medium" | "long";
 export type PersonalityTone = "neutral" | "friendly" | "formal" | "humorous";

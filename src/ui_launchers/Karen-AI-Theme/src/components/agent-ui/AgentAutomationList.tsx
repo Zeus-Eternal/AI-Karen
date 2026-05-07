@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Play, Pause, Trash2, Edit3, Calendar, History, Shield, AlertCircle } from 'lucide-react';
+import { Play, Pause, Trash2, Edit3, Calendar, History, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Automation {
@@ -29,8 +29,8 @@ export const AgentAutomationList: React.FC = () => {
         const response = await fetch('/api/automations/');
         const data = await response.json();
         setAutomations(data);
-      } catch (err) {
-        console.error('Failed to fetch automations', err);
+        } catch (err: unknown) {
+          console.error('Failed to fetch automations', err);
       } finally {
         setLoading(false);
       }

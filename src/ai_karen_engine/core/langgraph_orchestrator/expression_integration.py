@@ -153,8 +153,8 @@ def convert_expression_result_to_metadata(
         result_metadata = result.metadata or {}
     elif isinstance(result, dict):
         # It's already a dict
-        provider = result.get("provider") or result.get("actual_provider", "unknown")
-        model = result.get("model") or result.get("actual_model", "auto")
+        provider = result.get("provider") or result.get("actual_provider")
+        model = result.get("model") or result.get("actual_model")
         engine_id = result.get("engine_id", "unknown")
         engine_mode = result.get("engine_mode", "unknown")
         runtime_engine = result.get("runtime_engine")
@@ -167,8 +167,8 @@ def convert_expression_result_to_metadata(
         result_metadata = result.get("metadata", {})
     else:
         # Fallback for unknown result types
-        provider = "unknown"
-        model = "auto"
+        provider = None
+        model = None
         engine_id = "unknown"
         engine_mode = "unknown"
         runtime_engine = None

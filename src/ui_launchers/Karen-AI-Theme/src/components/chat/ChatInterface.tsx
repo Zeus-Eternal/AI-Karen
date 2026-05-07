@@ -11,7 +11,11 @@ import {
   normalizeBackendChatResponse,
   normalizeConversationMessage,
 } from '@/lib/chat-response';
-import { normalizeModelSettingsResponse, type RuntimeSettingsResponse } from '@/lib/model-runtime-inventory';
+import {
+  normalizeRuntimeProviderCatalogResponse,
+  type RuntimeProviderCatalogResponse,
+  type NormalizedRuntimeInventory,
+} from '@/lib/model-runtime-inventory';
 import { useMessageInjection } from '@/providers/MessageInjectionProvider';
 // Constants and utilities
 import { getStreamingStatus } from './const/getStreamingStatus';
@@ -75,7 +79,7 @@ interface SessionContextType {
   updateSessionTitle: (sessionId: string, newTitle: string) => Promise<boolean>;
 }
 
-type ModelSettingsResponse = RuntimeSettingsResponse;
+type ModelSettingsResponse = RuntimeProviderCatalogResponse;
 
 const SESSION_BOOTSTRAP_SUPPRESSION_WINDOW_MS = 1500;
 
@@ -809,7 +813,7 @@ export default function ChatInterface() {
   const [speechRecognitionSupported, setSpeechRecognitionSupported] = useState(true);
   const [shouldSubmitVoiceInput, setShouldSubmitVoiceInput] = useState(false);
   const [isSuggestingStarter, setIsSuggestingStarter] = useState(false);
-  const [modelSettings, setModelSettings] = useState<RuntimeSettingsResponse | null>(null);
+  const [modelSettings, setModelSettings] = useState<NormalizedRuntimeInventory | null>(null);
   const [selectedProvider, setSelectedProvider] = useState('');
   const [selectedModel, setSelectedModel] = useState('');
   const [isUpdatingModelSelection, setIsUpdatingModelSelection] = useState(false);
@@ -835,9 +839,9 @@ export default function ChatInterface() {
 
   const loadModelSettings = useCallback(async () => {
     try {
-      const response = await apiClient.get<ModelSettingsResponse>('/api/settings/model');
-      const normalized = normalizeModelSettingsResponse(response);
-      setModelSettings(normalized as any);
+      const response = await apiClient.get<ModelSettingsResponse>('/api/runtime/providers');
+      const normalized = normalizeRuntimeProviderCatalogResponse(response);
+      setModelSettings(normalized);
 
       // Check if selected provider is still available and configured
       const selectableProviders = normalized.selectableProviders;
@@ -863,7 +867,13 @@ export default function ChatInterface() {
         const modelExists = selectedProvider?.models.some(m => m.id === modelId);
         
         if (selectedProvider && !modelExists) {
-           setSelectedModel(selectedProvider.selected_model || selectedProvider.default_model || selectedProvider.models?.[0]?.id || '');
+           setSelectedModel(
+             selectedProvider.selected_model ||
+             selectedProvider.default_model ||
+             modelId ||
+             selectedProvider.models?.[0]?.id ||
+             ''
+           );
         } else {
            setSelectedModel(normalized.selected_model);
         }
@@ -968,21 +978,30 @@ export default function ChatInterface() {
     const degradedReason = getDegradationReasonLabel(degradedReasonRaw) || degradedReasonRaw;
     const statusRaw = asText(metadata.status);
     const status = getDegradationReasonLabel(statusRaw) || statusRaw;
+    const responseSource = asText(llm.response_source) || asText(metadata.response_source);
+    const fallbackLevel = asText(llm.fallback_level);
+    const isEmergencyStatic = responseSource === 'emergency_static' || fallbackLevel === '99';
+    const actualProvider = isEmergencyStatic
+      ? undefined
+      : asText(llm.actual_provider) || asText(llm.provider) || asText(metadata.actual_provider);
+    const actualModel = isEmergencyStatic
+      ? undefined
+      : asText(llm.actual_model) || asText(llm.model_id) || asText(metadata.actual_model);
 
     return {
       requestedProvider: asText(llm.requested_provider) || asText(metadata.requested_provider),
-      actualProvider: asText(llm.actual_provider) || asText(llm.provider) || asText(metadata.actual_provider),
+      actualProvider,
       requestedModel: asText(llm.requested_model) || asText(metadata.requested_model),
-      actualModel: asText(llm.actual_model) || asText(llm.model_id) || asText(metadata.actual_model),
-      runtimeEngine: asText(metadata.execution_path) || asText(llm.runtime_engine),
-      fallbackLevel: asText(llm.fallback_level),
+      actualModel,
+      runtimeEngine: isEmergencyStatic ? undefined : asText(metadata.execution_path) || asText(llm.runtime_engine),
+      fallbackLevel,
       correlationId: asText(metadata.correlation_id),
       requestId: asText(metadata.request_id),
-      status,
-      responseSource: asText(metadata.response_source) || asText(metadata.execution_path),
+      status: isEmergencyStatic ? 'emergency unavailable' : status,
+      responseSource,
       usedFallback: Boolean(llm.used_fallback || llm.is_fallback || metadata.used_fallback),
-      degradedReason,
-      showCircuitWarning: Boolean(metadata.circuit_breaker_open || metadata.dependency_degraded || degradedReason),
+      degradedReason: isEmergencyStatic ? degradedReason || 'No configured provider could generate a response.' : degradedReason,
+      showCircuitWarning: Boolean(metadata.circuit_breaker_open || metadata.dependency_degraded || degradedReason || isEmergencyStatic),
     };
   }, [messages]);
   const selectableProviders = useMemo(() => {
@@ -2020,6 +2039,7 @@ export default function ChatInterface() {
         onSuggestStarter={handleSuggestStarter}
         onStopRequest={stopActiveRequest}
         selectableProviders={selectableProviders}
+        providers={modelSettings?.providers ?? []}
         selectedProvider={selectedProvider}
         selectedModel={selectedModel}
         applyModelSelection={handleApplyModelSelection}

@@ -10,14 +10,11 @@ import {
   Sparkles,
   XCircle,
   InfoIcon,
-  ChevronUp,
-  ChevronDown,
   Activity,
   Cloud,
   ArrowRight,
   ShieldCheck,
   Zap,
-  Box,
 } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { Label } from '../ui/label';
@@ -28,11 +25,39 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/utils';
-import { normalizeModelSettingsResponse } from '@/lib/model-runtime-inventory';
+import { normalizeModelSettingsResponse, type RuntimeSettingsResponse } from '@/lib/model-runtime-inventory';
+
+interface ExpressionEngineConfig {
+  enabled?: boolean;
+  fallback_eligible?: boolean;
+  type?: string;
+  metadata?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+interface ExpressionSettingsResponse {
+  active_engine: string;
+  fallback_order?: string[];
+  engines?: Record<string, ExpressionEngineConfig>;
+}
+
+type EngineGroup = {
+  builtin: Array<ExpressionEngineConfig & { id: string }>;
+  local: Array<ExpressionEngineConfig & { id: string }>;
+  cloud: Array<ExpressionEngineConfig & { id: string }>;
+};
+
+const asString = (value: unknown, fallback = ''): string => {
+  return typeof value === 'string' && value.trim() ? value.trim() : fallback;
+};
+
+const getMetadataString = (value: unknown, fallback = 'auto'): string => {
+  return asString(value, fallback);
+};
 
 export default function ExpressionSettings() {
-  const [exprSettings, setExprSettings] = useState<any>(null);
-  const [modelSettings, setModelSettings] = useState<any>(null);
+  const [exprSettings, setExprSettings] = useState<ExpressionSettingsResponse | null>(null);
+  const [modelSettings, setModelSettings] = useState<ReturnType<typeof normalizeModelSettingsResponse> | null>(null);
   const [activeEngine, setActiveEngine] = useState('builtin');
   const [fallbackOrder, setFallbackOrder] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -43,15 +68,15 @@ export default function ExpressionSettings() {
     setIsLoading(true);
     try {
       const [exprRes, modelRes] = await Promise.all([
-        apiClient.get<any>('/api/settings/model/expression'),
-        apiClient.get<any>('/api/settings/model')
+        apiClient.get<ExpressionSettingsResponse>('/api/settings/model/expression'),
+        apiClient.get<RuntimeSettingsResponse>('/api/settings/model'),
       ]);
+      const normalizedModelRes = normalizeModelSettingsResponse(modelRes);
       setExprSettings(exprRes);
-      setModelSettings(modelRes);
+      setModelSettings(normalizedModelRes);
       setActiveEngine(exprRes.active_engine);
       setFallbackOrder(exprRes.fallback_order || []);
-    } catch (error) {
-      console.error('Failed to load settings:', error);
+    } catch {
       toast({
         title: 'Initialization Error',
         description: 'Could not synchronize expression and provider systems.',
@@ -64,10 +89,10 @@ export default function ExpressionSettings() {
 
   useEffect(() => { void loadData(); }, [loadData]);
 
-  const handleSave = async (engineConfigs?: any, newFallbackOrder?: string[]) => {
+  const handleSave = async (engineConfigs?: Record<string, Record<string, unknown>>, newFallbackOrder?: string[]) => {
     setIsSaving(true);
     try {
-      const payload: any = {
+      const payload: Record<string, unknown> = {
         active_engine: activeEngine,
         fallback_order: newFallbackOrder || fallbackOrder,
       };
@@ -75,12 +100,12 @@ export default function ExpressionSettings() {
         payload.engine_configs = engineConfigs;
       }
       
-      const response = await apiClient.put<any>('/api/settings/model/expression', payload);
+      const response = await apiClient.put<ExpressionSettingsResponse>('/api/settings/model/expression', payload);
       setExprSettings(response);
       setActiveEngine(response.active_engine);
-      setFallbackOrder(response.fallback_order);
+      setFallbackOrder(response.fallback_order || []);
       toast({ title: 'System Updated', description: 'Expression configuration saved.' });
-    } catch (error) {
+    } catch {
       toast({
         title: 'Update Failed',
         description: 'The configuration could not be saved.',
@@ -107,20 +132,21 @@ export default function ExpressionSettings() {
   };
 
   // Group engines by their taxonomy class (use expression settings data)
-  const groupedEngines = useMemo(() => {
+  const groupedEngines = useMemo<EngineGroup>(() => {
     if (!exprSettings?.engines) return { builtin: [], local: [], cloud: [] };
 
-    const groups: any = { builtin: [], local: [], cloud: [] };
-    Object.entries(exprSettings?.engines || {}).forEach(([engineId, engineConfig]: [string, any]) => {
+    const groups: EngineGroup = { builtin: [], local: [], cloud: [] };
+    Object.entries(exprSettings?.engines || {}).forEach(([engineId, engineConfig]) => {
+      const config = engineConfig as ExpressionEngineConfig;
       // Determine category based on engine type
-      if (engineConfig.type === 'builtin_provider_engine' || engineId === 'builtin') {
-        groups.builtin.push({ id: engineId, ...engineConfig });
-      } else if (engineConfig.type === 'openai_compatible' && !engineConfig.fallback_eligible) {
+      if (config.type === 'builtin_provider_engine' || engineId === 'builtin') {
+        groups.builtin.push({ id: engineId, ...config });
+      } else if (config.type === 'openai_compatible' && !config.fallback_eligible) {
         // Local openai-compatible engines (llama_cpp_server, openai_compatible_local)
-        groups.local.push({ id: engineId, ...engineConfig });
-      } else if (engineConfig.fallback_eligible) {
+        groups.local.push({ id: engineId, ...config });
+      } else if (config.fallback_eligible) {
         // External engines that support fallback (openai, gemini, glm)
-        groups.cloud.push({ id: engineId, ...engineConfig });
+        groups.cloud.push({ id: engineId, ...config });
       }
     });
     return groups;
@@ -142,8 +168,8 @@ export default function ExpressionSettings() {
 
   const getProviderIcon = (providerId: string) => {
     if (providerId.startsWith('builtin')) return Settings2;
-    if (groupedEngines.local.find((e: any) => e.id === providerId)) return Activity;
-    if (groupedEngines.cloud.find((e: any) => e.id === providerId)) return Cloud;
+    if (groupedEngines.local.find((engine) => engine.id === providerId)) return Activity;
+    if (groupedEngines.cloud.find((engine) => engine.id === providerId)) return Cloud;
     if (providerId === 'builtin') return Settings2;
     if (providerId === 'local') return Activity;
     if (providerId === 'cloud') return Cloud;
@@ -154,23 +180,25 @@ export default function ExpressionSettings() {
     if (providerId === 'builtin') return 'Built-In (Local Runtimes)';
     if (providerId === 'local') return 'Local AI (Ollama/LM Studio)';
     if (providerId === 'cloud') return 'Cloud AI (Managed APIs)';
-    const p = modelSettings?.providers?.find((p: any) => p.id === providerId);
+    const p = modelSettings?.providers?.find((provider) => provider.id === providerId);
     return p?.display_name || providerId;
   };
 
   // Helper to get models for a provider
-  const getModelsForProvider = (providerId: string) => {
+  const getModelsForProvider = (providerId: string): Array<{ id: string; name: string; family?: string; source?: string }> => {
     if (providerId === 'builtin') {
         // Collect models from both vLLM and Transformers
-        const all = [...(groupedProviders.builtin.flatMap((p: any) => p.models || []))];
+        const all = [...groupedProviders.builtin.flatMap((provider) => provider.models || [])];
         // Dedupe
-        return Array.from(new Set(all.map(m => m.id))).map(id => all.find(m => m.id === id));
+        return Array.from(new Set(all.map((model) => model.id)))
+          .map((id) => all.find((model) => model.id === id))
+          .filter((model): model is NonNullable<typeof model> => Boolean(model));
     }
     
-    if (providerId === 'local') return groupedProviders.local.flatMap((p: any) => p.models || []);
-    if (providerId === 'cloud') return groupedProviders.cloud.flatMap((p: any) => p.models || []);
+    if (providerId === 'local') return groupedProviders.local.flatMap((provider) => provider.models || []);
+    if (providerId === 'cloud') return groupedProviders.cloud.flatMap((provider) => provider.models || []);
     
-    const p = modelSettings?.providers?.find((p: any) => p.id === providerId);
+    const p = modelSettings?.providers?.find((provider) => provider.id === providerId);
     return p?.models || [];
   };
 
@@ -183,15 +211,15 @@ export default function ExpressionSettings() {
   }
 
   // Configuration for the CURRENTLY SELECTED engine/provider in the activeEngine dropdown
-  const currentEngineConfig = exprSettings?.engines[activeEngine] || {
+  const currentEngineConfig = exprSettings?.engines?.[activeEngine] || {
     enabled: true,
     fallback_eligible: true,
     metadata: {}
   };
 
   const currentModels = getModelsForProvider(activeEngine);
-  const preferredSubProvider = currentEngineConfig.metadata?.preferred_provider || 'auto';
-  const preferredModel = currentEngineConfig.metadata?.preferred_model || 'auto';
+  const preferredSubProvider = getMetadataString(currentEngineConfig.metadata?.preferred_provider);
+  const preferredModel = getMetadataString(currentEngineConfig.metadata?.preferred_model);
 
   return (
     <div className="space-y-6">
@@ -202,7 +230,7 @@ export default function ExpressionSettings() {
               <CardTitle className="text-xl font-bold flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-primary" /> Expression Engine Management
               </CardTitle>
-              <CardDescription>Direct Kari's cognition through your configured model providers.</CardDescription>
+              <CardDescription>Direct Kari&apos;s cognition through your configured model providers.</CardDescription>
             </div>
             <TooltipProvider>
               <Tooltip>
@@ -246,8 +274,8 @@ export default function ExpressionSettings() {
                     
                     <SelectGroup>
                        <SelectLabel className="text-[10px] uppercase tracking-widest text-muted-foreground py-2 border-t mt-2">Named Providers</SelectLabel>
-                       {modelSettings?.providers?.map((p: any) => (
-                         <SelectItem key={p.id} value={p.id}>{p.display_name}</SelectItem>
+                       {modelSettings?.providers?.map((provider) => (
+                         <SelectItem key={provider.id} value={provider.id}>{provider.display_name}</SelectItem>
                        ))}
                     </SelectGroup>
                   </SelectContent>
@@ -271,7 +299,7 @@ export default function ExpressionSettings() {
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
                             <h4 className="text-sm font-bold uppercase tracking-tight">{getProviderLabel(activeEngine)}</h4>
-                            {exprSettings.active_engine === activeEngine && (
+                            {exprSettings?.active_engine === activeEngine && (
                               <Badge className="h-5 text-[8px] bg-primary text-primary-foreground border-none uppercase tracking-widest px-2">Current Primary</Badge>
                             )}
                             <Badge variant={currentEngineConfig.enabled ? "outline" : "secondary"} className={cn("h-5 text-[8px] uppercase px-1.5 font-bold", currentEngineConfig.enabled ? "text-emerald-500 border-emerald-500/30" : "")}>
@@ -284,14 +312,14 @@ export default function ExpressionSettings() {
 
                       <div className="flex flex-wrap items-center gap-3">
                         <Button 
-                          variant={exprSettings.active_engine === activeEngine ? "secondary" : "default"}
+                          variant={exprSettings?.active_engine === activeEngine ? "secondary" : "default"}
                           size="sm"
                           className="h-9 text-[10px] font-bold uppercase tracking-widest shadow-sm min-w-[120px]"
                           onClick={() => handleSave()}
-                          disabled={isSaving || exprSettings.active_engine === activeEngine || !currentEngineConfig.enabled}
+                          disabled={isSaving || exprSettings?.active_engine === activeEngine || !currentEngineConfig.enabled}
                         >
-                          {exprSettings.active_engine === activeEngine ? <ShieldCheck className="h-4 w-4 mr-2" /> : <Zap className="h-4 w-4 mr-2" />}
-                          {exprSettings.active_engine === activeEngine ? "Primary Active" : "Set as Primary"}
+                          {exprSettings?.active_engine === activeEngine ? <ShieldCheck className="h-4 w-4 mr-2" /> : <Zap className="h-4 w-4 mr-2" />}
+                          {exprSettings?.active_engine === activeEngine ? "Primary Active" : "Set as Primary"}
                         </Button>
                         
                         <div className="flex items-center bg-background/50 rounded-xl border border-border/60 p-1 shadow-inner gap-1">
@@ -352,8 +380,8 @@ export default function ExpressionSettings() {
                              </SelectTrigger>
                              <SelectContent>
                                <SelectItem value="auto">Automatic (Healthy Default)</SelectItem>
-                               {(activeEngine === 'local' ? groupedProviders.local : groupedProviders.cloud).map((p: any) => (
-                                 <SelectItem key={p.id} value={p.id}>{p.display_name}</SelectItem>
+                               {(activeEngine === 'local' ? groupedProviders.local : groupedProviders.cloud).map((provider) => (
+                                 <SelectItem key={provider.id} value={provider.id}>{provider.display_name}</SelectItem>
                                ))}
                              </SelectContent>
                            </Select>
@@ -376,11 +404,11 @@ export default function ExpressionSettings() {
                             </SelectTrigger>
                             <SelectContent className="max-h-[300px]">
                               <SelectItem value="auto">Automatic Selection</SelectItem>
-                              {currentModels.map((m: any) => (
-                                <SelectItem key={m.id} value={m.id} className="text-[10px]">
+                              {currentModels.map((model) => (
+                                <SelectItem key={model.id} value={model.id} className="text-[10px]">
                                    <div className="flex flex-col">
-                                      <span className="font-bold">{m.name}</span>
-                                      <span className="text-[9px] opacity-60 uppercase">{m.family} • {m.id}</span>
+                                      <span className="font-bold">{model.name}</span>
+                                      <span className="text-[9px] opacity-60 uppercase">{model.family} • {model.id}</span>
                                    </div>
                                 </SelectItem>
                               ))}
@@ -418,12 +446,12 @@ export default function ExpressionSettings() {
                   variant="default"
                   size="sm"
                   className="h-8 text-[10px] font-bold uppercase tracking-widest shadow-md"
-                  onClick={() => handleSave(null, fallbackOrder)}
-                  disabled={isSaving || (
+                  onClick={() => handleSave(undefined, fallbackOrder)}
+                  disabled={Boolean(isSaving || (
                     exprSettings && 
                     JSON.stringify(exprSettings.fallback_order) === JSON.stringify(fallbackOrder) &&
                     exprSettings.active_engine === activeEngine
-                  )}
+                  ))}
                 >
                   {isSaving ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Save className="h-3 w-3 mr-2" />}
                   Save Expression
@@ -466,8 +494,8 @@ export default function ExpressionSettings() {
                              
                              <SelectGroup>
                                <SelectLabel className="text-[9px] uppercase tracking-tighter opacity-50 border-t mt-1">Named Providers</SelectLabel>
-                               {modelSettings?.providers?.map((p: any) => (
-                                 <SelectItem key={p.id} value={p.id} className="text-[10px] font-bold uppercase">{p.display_name}</SelectItem>
+                               {modelSettings?.providers?.map((provider) => (
+                                 <SelectItem key={provider.id} value={provider.id} className="text-[10px] font-bold uppercase">{provider.display_name}</SelectItem>
                                ))}
                              </SelectGroup>
                              
@@ -478,9 +506,9 @@ export default function ExpressionSettings() {
                       
                       {/* Show overrides if present */}
                       <div className="flex items-center gap-2 mr-3">
-                         {exprSettings?.engines?.[id]?.metadata?.preferred_model && (
+                         {asString(exprSettings?.engines?.[id]?.metadata?.preferred_model) && (
                             <Badge variant="outline" className="h-5 text-[7px] border-primary/20 bg-primary/5 text-primary">
-                               MODEL: {exprSettings?.engines?.[id]?.metadata?.preferred_model}
+                               MODEL: {asString(exprSettings?.engines?.[id]?.metadata?.preferred_model)}
                             </Badge>
                          )}
                          <Badge variant="secondary" className="h-5 text-[8px] bg-muted/40 font-mono text-muted-foreground shrink-0">

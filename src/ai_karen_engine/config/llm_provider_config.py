@@ -234,11 +234,37 @@ def get_provider_class_module(class_name: str) -> Optional[str]:
 
 
 class ProviderType(str, Enum):
-    """LLM provider types"""
+    """LLM provider types aligned with production taxonomy."""
 
+    BUILTIN = "builtin"
     LOCAL = "local"
-    REMOTE = "remote"
+    EXTERNAL = "external"
+    CUSTOM = "custom"
+
+    # Backward compatibility aliases
+    REMOTE = "external"
     HYBRID = "hybrid"
+
+
+def _normalize_provider_type_value(value: Any) -> ProviderType:
+    """Map legacy persisted provider type values to the current enum."""
+    raw = str(value or "").strip().lower().replace("-", "_")
+
+    if raw == "remote":
+        raw = "external"
+    elif raw == "builtin":
+        raw = "builtin"
+    elif raw == "local":
+        raw = "local"
+    elif raw == "custom":
+        raw = "custom"
+    elif raw == "hybrid":
+        raw = "hybrid"
+
+    try:
+        return ProviderType(raw)
+    except ValueError:
+        return ProviderType.EXTERNAL
 
 
 class AuthenticationType(str, Enum):
@@ -373,7 +399,7 @@ class ProviderConfig:
         """Create from dictionary"""
         # Convert string enums back to enum objects
         if "provider_type" in data:
-            data["provider_type"] = ProviderType(data["provider_type"])
+            data["provider_type"] = _normalize_provider_type_value(data["provider_type"])
 
         if "authentication" in data and "type" in data["authentication"]:
             data["authentication"]["type"] = AuthenticationType(
@@ -843,7 +869,7 @@ class LLMProviderConfigManager:
             name="openai",
             display_name="OpenAI",
             description="OpenAI GPT models via API",
-            provider_type=ProviderType.REMOTE,
+            provider_type=ProviderType.EXTERNAL,
             priority=80,
             endpoint=ProviderEndpoint(
                 base_url="https://api.openai.com/v1",
@@ -911,7 +937,7 @@ class LLMProviderConfigManager:
             name="gemini",
             display_name="Google Gemini",
             description="Google Gemini models via API",
-            provider_type=ProviderType.REMOTE,
+            provider_type=ProviderType.EXTERNAL,
             priority=75,
             endpoint=ProviderEndpoint(
                 base_url="https://generativelanguage.googleapis.com/v1beta",
@@ -963,7 +989,7 @@ class LLMProviderConfigManager:
             name="deepseek",
             display_name="DeepSeek",
             description="DeepSeek models optimized for coding and reasoning",
-            provider_type=ProviderType.REMOTE,
+            provider_type=ProviderType.EXTERNAL,
             priority=70,
             endpoint=ProviderEndpoint(
                 base_url="https://api.deepseek.com",
@@ -1014,7 +1040,7 @@ class LLMProviderConfigManager:
             name="builtin_transformers",
             display_name="Transformers",
             description="Built-in Transformers runtime for local embeddings and fallback text generation",
-            provider_type=ProviderType.LOCAL,
+            provider_type=ProviderType.BUILTIN,
             priority=96,
             models=[
                 ProviderModel(
@@ -1091,7 +1117,7 @@ class LLMProviderConfigManager:
             name="builtin_vllm",
             display_name="vLLM",
             description="Primary built-in runtime for high-throughput text generation and streaming.",
-            provider_type=ProviderType.LOCAL,
+            provider_type=ProviderType.BUILTIN,
             priority=95,
             endpoint=ProviderEndpoint(
                 base_url=os.getenv("KAREN_BUILTIN_VLLM_BASE_URL", "http://vllm:8000/v1"),
@@ -1119,7 +1145,7 @@ class LLMProviderConfigManager:
         )
         self.add_provider(vllm_config)
 
-        # Ollama remains a supported local runtime option alongside local GGUF runtimes.
+        # Ollama remains a supported local runtime option.
 
         logger.info("Created default LLM provider configurations")
 
@@ -1186,7 +1212,7 @@ class LLMProviderConfigManager:
                 name="anthropic",
                 display_name="Anthropic Claude",
                 description="Anthropic Claude models via the Messages API",
-                provider_type=ProviderType.REMOTE,
+                provider_type=ProviderType.EXTERNAL,
                 priority=78,
                 endpoint=ProviderEndpoint(
                     base_url="https://api.anthropic.com/v1",
@@ -1247,7 +1273,7 @@ class LLMProviderConfigManager:
                 name="meta",
                 display_name="Meta AI",
                 description="Meta-hosted or Meta-aligned Llama endpoints",
-                provider_type=ProviderType.REMOTE,
+                provider_type=ProviderType.EXTERNAL,
                 priority=76,
                 endpoint=ProviderEndpoint(
                     base_url="https://llama-api.meta.ai/v1",
@@ -1295,7 +1321,7 @@ class LLMProviderConfigManager:
                 name="mistral",
                 display_name="Mistral AI",
                 description="Mistral AI hosted models and code models",
-                provider_type=ProviderType.REMOTE,
+                provider_type=ProviderType.EXTERNAL,
                 priority=74,
                 endpoint=ProviderEndpoint(
                     base_url="https://api.mistral.ai/v1",
@@ -1353,7 +1379,7 @@ class LLMProviderConfigManager:
                 name="groq",
                 display_name="Groq",
                 description="Groq low-latency OpenAI-compatible inference",
-                provider_type=ProviderType.REMOTE,
+                provider_type=ProviderType.EXTERNAL,
                 priority=73,
                 endpoint=ProviderEndpoint(
                     base_url="https://api.groq.com/openai/v1",
@@ -1410,7 +1436,7 @@ class LLMProviderConfigManager:
                 name="azure",
                 display_name="Microsoft Azure AI",
                 description="Azure OpenAI and Microsoft-hosted Phi deployments",
-                provider_type=ProviderType.REMOTE,
+                provider_type=ProviderType.EXTERNAL,
                 priority=72,
                 endpoint=ProviderEndpoint(
                     base_url="https://YOUR_RESOURCE_NAME.openai.azure.com/openai/v1",
@@ -1458,7 +1484,7 @@ class LLMProviderConfigManager:
                 name="xai",
                 display_name="xAI",
                 description="xAI Grok models via the Inference API",
-                provider_type=ProviderType.REMOTE,
+                provider_type=ProviderType.EXTERNAL,
                 priority=72,
                 endpoint=ProviderEndpoint(
                     base_url="https://api.x.ai/v1",
@@ -1515,7 +1541,7 @@ class LLMProviderConfigManager:
                 name="amazon-nova",
                 display_name="Amazon Nova",
                 description="Amazon Nova family via Bedrock-compatible runtime",
-                provider_type=ProviderType.REMOTE,
+                provider_type=ProviderType.EXTERNAL,
                 priority=71,
                 endpoint=ProviderEndpoint(
                     base_url="https://bedrock-runtime.us-east-1.amazonaws.com",
@@ -1562,7 +1588,7 @@ class LLMProviderConfigManager:
                 name="qwen",
                 display_name="Qwen",
                 description="Alibaba Cloud Model Studio Qwen models in OpenAI-compatible mode",
-                provider_type=ProviderType.REMOTE,
+                provider_type=ProviderType.EXTERNAL,
                 priority=71,
                 endpoint=ProviderEndpoint(
                     base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
@@ -1618,7 +1644,7 @@ class LLMProviderConfigManager:
                 name="moonshot",
                 display_name="Moonshot AI (Kimi)",
                 description="Moonshot AI Kimi models via OpenAI-compatible API",
-                provider_type=ProviderType.REMOTE,
+                provider_type=ProviderType.EXTERNAL,
                 priority=69,
                 endpoint=ProviderEndpoint(
                     base_url="https://api.moonshot.ai/v1",
@@ -1665,7 +1691,7 @@ class LLMProviderConfigManager:
                 name="zai",
                 display_name="Z.ai",
                 description="Z.ai GLM models via the official general PaaS chat completions API",
-                provider_type=ProviderType.REMOTE,
+                provider_type=ProviderType.EXTERNAL,
                 priority=70,
                 endpoint=ProviderEndpoint(
                     base_url="https://api.z.ai/api/paas/v4",
@@ -1755,7 +1781,7 @@ class LLMProviderConfigManager:
                 name="together",
                 display_name="Together AI",
                 description="Affordable multi-model inference via Together AI",
-                provider_type=ProviderType.REMOTE,
+                provider_type=ProviderType.EXTERNAL,
                 priority=67,
                 endpoint=ProviderEndpoint(
                     base_url="https://api.together.xyz/v1",
@@ -1802,7 +1828,7 @@ class LLMProviderConfigManager:
                 name="fireworks",
                 display_name="Fireworks AI",
                 description="Fast OpenAI-compatible serverless inference",
-                provider_type=ProviderType.REMOTE,
+                provider_type=ProviderType.EXTERNAL,
                 priority=66,
                 endpoint=ProviderEndpoint(
                     base_url="https://api.fireworks.ai/inference/v1",
@@ -1849,7 +1875,7 @@ class LLMProviderConfigManager:
                 name="deepinfra",
                 display_name="DeepInfra",
                 description="Affordable hosted open-weight model inference",
-                provider_type=ProviderType.REMOTE,
+                provider_type=ProviderType.EXTERNAL,
                 priority=65,
                 endpoint=ProviderEndpoint(
                     base_url="https://api.deepinfra.com/v1/openai",
@@ -1896,7 +1922,7 @@ class LLMProviderConfigManager:
                 name="siliconflow",
                 display_name="SiliconFlow",
                 description="Cost-efficient Chinese and open-weight model hosting",
-                provider_type=ProviderType.REMOTE,
+                provider_type=ProviderType.EXTERNAL,
                 priority=64,
                 endpoint=ProviderEndpoint(
                     base_url="https://api.siliconflow.cn/v1",
@@ -1942,7 +1968,7 @@ class LLMProviderConfigManager:
                 name="cohere",
                 display_name="Cohere",
                 description="Cohere Command models for enterprise chat and tools",
-                provider_type=ProviderType.REMOTE,
+                provider_type=ProviderType.EXTERNAL,
                 priority=63,
                 endpoint=ProviderEndpoint(
                     base_url="https://api.cohere.com/v1",
@@ -1989,7 +2015,7 @@ class LLMProviderConfigManager:
                 name="novita",
                 display_name="Novita AI",
                 description="Low-cost hosted inference via OpenAI-compatible API",
-                provider_type=ProviderType.REMOTE,
+                provider_type=ProviderType.EXTERNAL,
                 priority=62,
                 endpoint=ProviderEndpoint(
                     base_url="https://api.novita.ai/v3/openai",
@@ -2036,7 +2062,7 @@ class LLMProviderConfigManager:
                 name="gmi-cloud",
                 display_name="GMI Cloud",
                 description="Hosted open-weight inference via OpenAI-compatible API",
-                provider_type=ProviderType.REMOTE,
+                provider_type=ProviderType.EXTERNAL,
                 priority=61,
                 endpoint=ProviderEndpoint(
                     base_url="https://api.gmi-serving.com/v1",
@@ -2083,7 +2109,7 @@ class LLMProviderConfigManager:
                 name="ollama",
                 display_name="Ollama",
                 description="Local runtime with cloud-connected model registry and pulling capabilities",
-                provider_type=ProviderType.HYBRID,
+                provider_type=ProviderType.LOCAL,
                 priority=68,
                 endpoint=ProviderEndpoint(
                     base_url=DEFAULT_OLLAMA_BASE_URL,
@@ -2104,7 +2130,7 @@ class LLMProviderConfigManager:
                 name="custom",
                 display_name="Custom",
                 description="Bring-your-own provider using a custom OpenAI-compatible or vendor endpoint",
-                provider_type=ProviderType.HYBRID,
+                provider_type=ProviderType.CUSTOM,
                 priority=60,
                 endpoint=ProviderEndpoint(
                     base_url="",

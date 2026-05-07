@@ -5,7 +5,7 @@ import time
 from typing import Any, Dict, Optional, Tuple
 
 from ai_karen_engine.services.provider_runtime import ProviderRuntime
-from ai_karen_engine.core.model_runtime.runtime_contracts import ProviderExecutionResult
+from ai_karen_engine.core.model_runtime.runtime_contracts import ProviderExecutionResult, ProviderRouteDecision
 from .response_contracts import ResponseContract
 from .response_prompt_builder import ResponsePromptBuilder
 from .response_sanitizer import ResponseSanitizer
@@ -50,6 +50,7 @@ class ResponseSynthesizer:
                 "runtime_metadata": contract.runtime_metadata,
             },
             stream=stream,
+            preferred_provider=prefs.get("preferred_llm_provider") or prefs.get("provider"),
             preferred_model=prefs.get("preferred_model") or prefs.get("model"),
             conversation_id=conversation_id,
         )
@@ -59,14 +60,46 @@ class ResponseSynthesizer:
         
         # 2. Execute
         if route_decision:
-            exec_result = await self.provider_runtime.execute(route_decision, request, user_preferences=prefs)
+            exec_result = await self.provider_runtime.execute_chat(route_decision, request, user_preferences=prefs)
             text = exec_result.text
             metadata = self._build_metadata_from_result(exec_result)
         else:
-            # Fallback if no route could be determined
-            logger.warning("No route decision available for synthesis; using emergency fallback.")
-            text = "I'm having trouble connecting to my brain right now. Please try again."
-            metadata = {"response_source": "static_fallback", "degraded_mode": True}
+            logger.warning("No route decision available for synthesis; returning emergency static truth.")
+            exec_result = self.provider_runtime._build_emergency_result(  # noqa: SLF001
+                decision=ProviderRouteDecision(
+                    requested_provider=prefs.get("preferred_llm_provider") or prefs.get("provider"),
+                    requested_model=prefs.get("preferred_model") or prefs.get("model"),
+                    selected_provider=None,
+                    selected_model=None,
+                    provider_category=None,
+                    compatibility_profile=None,
+                    runtime_engine=None,
+                    transport=None,
+                    selection_source="no_route",
+                    fallback_level=99,
+                    degraded_mode=True,
+                    degradation_type="fallback_exhausted",
+                    degradation_reason="No configured provider could generate a response.",
+                    provider_healthy=False,
+                    model_available=False,
+                    allowed_for_current_user=False,
+                    correlation_id=conversation_id or "",
+                ),
+                request=request,
+                correlation_id=conversation_id or "",
+                start_time=time.time(),
+                provider_attempts=[{
+                    "provider": None,
+                    "model": None,
+                    "status": "failed",
+                    "error_type": "provider_missing",
+                    "error_message": "No provider decision was available.",
+                    "latency_ms": 0.0,
+                }],
+                degraded_message="I'm having trouble connecting to my brain right now. Please try again.",
+            )
+            text = exec_result.text
+            metadata = self._build_metadata_from_result(exec_result)
         
         # Validation and potential retry
         validation = self.validator.validate(text, contract)
@@ -94,7 +127,7 @@ class ResponseSynthesizer:
             # Re-route for retry might choose a different model if needed, but we'll stick to same for now or let router decide
             retry_decision = await self.llm_router.select_provider(retry_request, user_preferences=prefs)
             if retry_decision:
-                retry_result = await self.provider_runtime.execute(retry_decision, retry_request, user_preferences=prefs)
+                retry_result = await self.provider_runtime.execute_chat(retry_decision, retry_request, user_preferences=prefs)
                 text = retry_result.text
                 metadata = self._build_metadata_from_result(retry_result)
             

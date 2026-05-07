@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Shield, ShieldAlert, ShieldCheck, ShieldOff, Zap } from 'lucide-react';
+import { Shield, ShieldAlert, ShieldCheck, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { StorageTierHealth } from '@/lib/database-operations-api';
 

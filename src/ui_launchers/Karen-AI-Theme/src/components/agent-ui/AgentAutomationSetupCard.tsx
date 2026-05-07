@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, Calendar, Shield, Cpu, Tool, Database, Bell } from 'lucide-react';
+import { AlertCircle, Calendar, Shield, Cpu, Database, Bell } from 'lucide-react';
 import type { AutomationMetadata } from '@/lib/types';
 
 interface AgentAutomationSetupCardProps {
@@ -61,10 +61,10 @@ export const AgentAutomationSetupCard: React.FC<AgentAutomationSetupCardProps> =
             <p>{draft.execution.agent_name || draft.execution.agent_id}</p>
           </div>
           <div className="space-y-1">
-            <label className="text-xs text-muted-foreground uppercase font-medium">Tools</label>
-            <p className="text-xs">
+              <label className="text-xs text-muted-foreground uppercase font-medium">Tools</label>
+              <p className="text-xs">
               {draft.execution.tools.length > 0 
-                ? draft.execution.tools.map((t: any) => t.name).join(', ')
+                ? draft.execution.tools.map((tool: { name?: string }) => tool.name).join(', ')
                 : 'None'}
             </p>
           </div>
@@ -85,11 +85,11 @@ export const AgentAutomationSetupCard: React.FC<AgentAutomationSetupCardProps> =
           </div>
         </div>
 
-        {draft.warnings?.length > 0 && (
+        {(draft.warnings?.length || 0) > 0 && (
           <div className="bg-yellow-500/10 border border-yellow-500/20 p-2 rounded flex gap-2 items-start">
             <AlertCircle className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
             <div className="text-[10px] text-yellow-600 dark:text-yellow-400">
-              {draft.warnings.map((w: string, i: number) => <div key={i}>{w}</div>)}
+              {draft.warnings?.map((w: string, i: number) => <div key={i}>{w}</div>)}
             </div>
           </div>
         )}

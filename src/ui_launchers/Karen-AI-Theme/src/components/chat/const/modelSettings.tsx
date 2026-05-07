@@ -1,17 +1,11 @@
 import { useCallback } from 'react';
 import { apiClient } from '@/lib/api';
 import { formatModelSwitchError } from '@/lib/model-switch-errors';
-import { normalizeModelSettingsResponse, type RuntimeSettingsResponse } from '@/lib/model-runtime-inventory';
+import { normalizeModelSettingsResponse, type NormalizedRuntimeInventory, type RuntimeSettingsResponse } from '@/lib/model-runtime-inventory';
 import type {
   ModelDetails,
   ProviderDetails,
 } from './types';
-
-interface ModelSettingsState {
-  selected_provider: string;
-  selected_model: string;
-  providers: ProviderDetails[];
-}
 
 interface ToastOptions {
   title: string;
@@ -22,7 +16,7 @@ interface ToastOptions {
 type ToastFn = (options: ToastOptions) => void;
 
 type SetModelSettings = React.Dispatch<
-  React.SetStateAction<ModelSettingsState | null>
+  React.SetStateAction<NormalizedRuntimeInventory | null>
 >;
 
 type SetStringState = React.Dispatch<React.SetStateAction<string>>;
@@ -36,9 +30,18 @@ const cleanString = (value: unknown): string => {
 };
 
 const isSelectableProvider = (provider: ProviderDetails): boolean => {
+  const providerType = cleanString(provider.provider_type).toLowerCase();
+  const isBuiltinProvider =
+    providerType === 'builtin' ||
+    provider.id === 'builtin_transformers' ||
+    provider.id === 'builtin_vllm';
+
+  if (isBuiltinProvider) {
+    return true;
+  }
+
   return (
     provider.selectable !== false &&
-    provider.is_configured === true &&
     provider.enabled !== false &&
     provider.user_selectable !== false &&
     provider.policy_allowed !== false &&
@@ -59,7 +62,7 @@ const getModelDisplayName = (model: ModelDetails | null | undefined): string => 
 };
 
 const getAllowedProviders = (
-  modelSettings: ModelSettingsState | null,
+  modelSettings: NormalizedRuntimeInventory | null,
 ): ProviderDetails[] => {
   return (modelSettings?.providers ?? [])
     .filter(isSelectableProvider)
@@ -128,7 +131,7 @@ const findModel = (
 
 export function useModelSettings() {
   const getSelectableProviders = useCallback(
-    (modelSettings: ModelSettingsState | null): ProviderDetails[] => {
+    (modelSettings: NormalizedRuntimeInventory | null): ProviderDetails[] => {
       return getAllowedProviders(modelSettings);
     },
     [],
@@ -138,7 +141,7 @@ export function useModelSettings() {
     async (
       providerId: string,
       modelId: string,
-      modelSettings: ModelSettingsState | null,
+      modelSettings: NormalizedRuntimeInventory | null,
       setModelSettings: SetModelSettings,
       setSelectedProvider: SetStringState,
       setSelectedModel: SetStringState,

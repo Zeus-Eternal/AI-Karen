@@ -103,6 +103,7 @@ from ai_karen_engine.api_routes.chat.websocket import router as websocket_router
 from ai_karen_engine.api_routes.chat.runtime import router as chat_runtime_router
 from ai_karen_engine.api_routes.models.llm import router as llm_router
 from ai_karen_engine.api_routes.models.providers import router as provider_router
+from ai_karen_engine.api_routes.models.runtime_api import router as runtime_catalog_router
 from ai_karen_engine.api_routes.models.providers import (
     public_router as provider_public_router,
 )
@@ -436,6 +437,7 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
 
     # Provider and model routers
     app.include_router(provider_router, prefix="/api/providers", tags=["providers"])
+    app.include_router(runtime_catalog_router, prefix="/api", tags=["runtime"])
     app.include_router(
         provider_public_router,
         prefix="/api/public/providers",

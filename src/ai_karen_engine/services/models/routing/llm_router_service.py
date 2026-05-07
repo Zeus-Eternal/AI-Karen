@@ -264,6 +264,7 @@ class ChatRequest:
     tools: Optional[List[str]] = None
     memory_context: Optional[str] = None
     user_preferences: Optional[Dict[str, Any]] = None
+    preferred_provider: Optional[str] = None
     preferred_model: Optional[str] = None
     platform: str = "web"
     conversation_id: Optional[str] = None
@@ -476,6 +477,60 @@ class LLMRouter:
             logger.warning(f"Authentication check failed for {provider_name}: {e}")
             return False
 
+    def _build_route_decision(
+        self,
+        *,
+        request: ChatRequest,
+        selected_provider: str,
+        selected_model: Optional[str],
+        selection_source: str,
+        fallback_level: int = 0,
+        routing_reason: Optional[str] = None,
+        latency_ms: float = 0,
+    ) -> ProviderRouteDecision:
+        """Build a canonical ProviderRouteDecision object."""
+        info = self.registry.get_provider_info(selected_provider)
+
+        provider_category = "unknown"
+        if hasattr(info, "provider_type"):
+            provider_category = str(info.provider_type.value)
+        elif isinstance(info, dict) and "provider_type" in info:
+            provider_category = str(info["provider_type"])
+
+        runtime_engine = selected_provider.replace("builtin_", "")
+        if hasattr(info, "runtime_engine"):
+            runtime_engine = info.runtime_engine
+        effective_model = self._effective_provider_model(info) or selected_model or request.preferred_model
+
+        transport = "unknown"
+        if hasattr(info, "endpoint") and hasattr(info.endpoint, "base_url"):
+            transport = "http" # Simplified
+
+        return ProviderRouteDecision(
+            requested_provider=self._normalize_provider_name(
+                request.preferred_provider
+                or (request.context or {}).get("user_preferences", {}).get("preferred_llm_provider")
+            ),
+            requested_model=self._normalize_model_name(
+                request.preferred_model or (request.context or {}).get("user_preferences", {}).get("preferred_model")
+            ),
+            selected_provider=selected_provider,
+            selected_model=self._normalize_model_name(effective_model) or selected_model or request.preferred_model or "auto",
+            provider_category=provider_category,
+            compatibility_profile=getattr(info, "compatibility_profile", None) if info else None,
+            runtime_engine=runtime_engine,
+            transport=transport,
+            selection_source=selection_source,
+            fallback_level=fallback_level,
+            degraded_mode=fallback_level > 0,
+            provider_healthy=True,
+            model_available=True,
+            allowed_for_current_user=True,
+            correlation_id=request.conversation_id or "",
+            routing_reason=routing_reason,
+            metadata={"selection_latency_ms": latency_ms}
+        )
+
     async def select_provider(
         self, request: ChatRequest, user_preferences: Optional[Dict[str, Any]] = None
     ) -> Optional[ProviderRouteDecision]:
@@ -495,7 +550,7 @@ class LLMRouter:
             await self._ensure_background_health_task()
             user_preferences = user_preferences or {}
             preferred_provider = self._normalize_provider_name(
-                user_preferences.get("preferred_llm_provider")
+                request.preferred_provider or user_preferences.get("preferred_llm_provider")
             )
             preferred_model = self._normalize_model_name(
                 request.preferred_model or user_preferences.get("preferred_model")
@@ -554,20 +609,13 @@ class LLMRouter:
                             success=True,
                         )
 
-                        return ProviderRouteDecision(
-                            requested_provider=requested_provider,
-                            requested_model=requested_model,
+                        return self._build_route_decision(
+                            request=request,
                             selected_provider=preferred_provider,
                             selected_model=preferred_model,
-                            runtime_engine=preferred_provider.replace("builtin_", ""),
                             selection_source="preferred",
-                            fallback_level=0,
-                            degraded_mode=False,
-                            degradation_reason=None,
-                            provider_healthy=is_healthy or has_readiness,
-                            model_available=True,
-                            routing_reason="preferred_provider_model_selection",
-                            metadata={"selection_latency": time.time() - selection_start}
+                            latency_ms=(time.time() - selection_start) * 1000,
+                            routing_reason="Using user-preferred provider/model"
                         )
                     else:
                         reasons = []
@@ -625,20 +673,13 @@ class LLMRouter:
                             success=True,
                         )
 
-                        return ProviderRouteDecision(
-                            requested_provider=requested_provider,
-                            requested_model=requested_model,
+                        return self._build_route_decision(
+                            request=request,
                             selected_provider=name,
                             selected_model=preferred_model,
-                            runtime_engine=name.replace("builtin_", ""),
-                            selection_source="preferred_model_resolution",
-                            fallback_level=0,
-                            degraded_mode=False,
-                            degradation_reason=None,
-                            provider_healthy=is_healthy or has_readiness,
-                            model_available=True,
-                            routing_reason="preferred_model_resolution",
-                            metadata={"selection_latency": time.time() - selection_start}
+                            selection_source="model_resolution",
+                            latency_ms=(time.time() - selection_start) * 1000,
+                            routing_reason="Resolved provider for preferred model"
                         )
                 self._structured_log(
                     logging.WARNING,
@@ -669,20 +710,13 @@ class LLMRouter:
                     model_name = info.get("default_model") if info else None
                     self._record_selection_metric(preferred_provider, "selected")
                     
-                    return ProviderRouteDecision(
-                        requested_provider=requested_provider,
-                        requested_model=requested_model,
+                    return self._build_route_decision(
+                        request=request,
                         selected_provider=preferred_provider,
                         selected_model=model_name or "auto",
-                        runtime_engine=preferred_provider.replace("builtin_", ""),
-                        selection_source="preferred_provider_selection",
-                        fallback_level=0,
-                        degraded_mode=False,
-                        degradation_reason=None,
-                        provider_healthy=True,
-                        model_available=True,
-                        routing_reason="preferred_provider_selection",
-                        metadata={"selection_latency": time.time() - selection_start}
+                        selection_source="preferred_provider",
+                        latency_ms=(time.time() - selection_start) * 1000,
+                        routing_reason="Using user-preferred provider"
                     )
 
             # Get available providers sorted by priority
@@ -733,20 +767,14 @@ class LLMRouter:
             # Determine if this is a fallback selection
             is_fallback = requested_provider is not None and requested_provider != selected_provider
             
-            return ProviderRouteDecision(
-                requested_provider=requested_provider,
-                requested_model=requested_model,
+            return self._build_route_decision(
+                request=request,
                 selected_provider=selected_provider,
                 selected_model=model_name or "auto",
-                runtime_engine=selected_provider.replace("builtin_", ""),
                 selection_source="policy" if not is_fallback else "fallback",
                 fallback_level=1 if is_fallback else 0,
-                degraded_mode=is_fallback,
-                degradation_reason="requested_provider_unavailable" if is_fallback else None,
-                provider_healthy=True,
-                model_available=True,
-                routing_reason="routing_policy_selection",
-                metadata={"selection_latency": time.time() - selection_start}
+                latency_ms=(time.time() - selection_start) * 1000,
+                routing_reason="Routing policy selection"
             )
 
         except Exception as e:
@@ -1786,9 +1814,9 @@ class LLMRouter:
             "metadata": {
                 "llm": {
                     "provider": provider_name,
-                    "model_id": model_name or "auto",
+                    "model_id": model_name,
                     "actual_provider": provider_name,
-                    "actual_model": model_name or "auto",
+                    "actual_model": model_name,
                     "source": "instrumented_call",
                 }
             }
@@ -1983,7 +2011,7 @@ class LLMRouter:
         *,
         requested_provider: Optional[str],
         requested_model: Optional[str],
-        actual_provider: str,
+        actual_provider: Optional[str],
         actual_model: Optional[str],
         response_source: str,
         source: Optional[str] = None,
@@ -1994,15 +2022,16 @@ class LLMRouter:
         used_fallback: bool = False,
         provider_error: Optional[str] = None,
         provider_health: Optional[Dict[str, Any]] = None,
+        provider_attempts: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         """Build the provider truth contract used by routes and UI."""
 
-        resolved_actual_model = actual_model or "auto"
+        resolved_actual_model = actual_model
         resolved_requested_provider = requested_provider or actual_provider
         resolved_requested_model = requested_model or resolved_actual_model
-        resolved_runtime_engine = runtime_engine or actual_provider.replace(
-            "builtin_", ""
-        )
+        resolved_runtime_engine = runtime_engine
+        if resolved_runtime_engine is None and actual_provider:
+            resolved_runtime_engine = actual_provider.replace("builtin_", "")
 
         metadata = {
             "requested_provider": resolved_requested_provider,
@@ -2024,6 +2053,8 @@ class LLMRouter:
             "used_fallback": used_fallback,
             "degradation_reason": degradation_reason,
         }
+        if provider_attempts is not None:
+            metadata["provider_attempts"] = provider_attempts
         if degradation_reason and not provider_error:
             metadata["failure_reason"] = degradation_reason
         elif provider_error:
@@ -2377,7 +2408,16 @@ class LLMRouter:
             GenerationFailed,
         )
 
-        attempted_providers = [requested_provider]
+        provider_attempts: List[Dict[str, Any]] = [
+            {
+                "provider": requested_provider,
+                "model": requested_model,
+                "status": "failed",
+                "error_type": "requested_provider_failure",
+                "error_message": failure_reason,
+                "latency_ms": 0.0,
+            }
+        ]
         fallback_level = 0
 
         for provider_name in self.RUNTIME_DEGRADED_FALLBACK_ORDER:
@@ -2386,7 +2426,6 @@ class LLMRouter:
                 continue
 
             fallback_level += 1
-            attempted_providers.append(provider_name)
 
             try:
                 # Check provider health
@@ -2396,6 +2435,14 @@ class LLMRouter:
                         f"Provider {provider_name} not found in registry",
                         extra={"provider": provider_name, "requested_provider": requested_provider}
                     )
+                    provider_attempts.append({
+                        "provider": provider_name,
+                        "model": None,
+                        "status": "failed",
+                        "error_type": "provider_missing",
+                        "error_message": "Provider not found in registry.",
+                        "latency_ms": 0.0,
+                    })
                     continue
 
                 if (
@@ -2410,11 +2457,27 @@ class LLMRouter:
                             "fallback_level": fallback_level,
                         },
                     )
+                    provider_attempts.append({
+                        "provider": provider_name,
+                        "model": self._effective_provider_model(provider_info),
+                        "status": "failed",
+                        "error_type": "deterministic_only",
+                        "error_message": "builtin_transformers is not used as a live degraded fallback here.",
+                        "latency_ms": 0.0,
+                    })
                     continue
 
                 if provider_name == "fallback":
                     # The deterministic fallback provider is not a live LLM path.
                     # It is handled by the explicit emergency/static block below.
+                    provider_attempts.append({
+                        "provider": provider_name,
+                        "model": None,
+                        "status": "failed",
+                        "error_type": "non_live_fallback",
+                        "error_message": "Deterministic fallback is reserved for emergency/static handling.",
+                        "latency_ms": 0.0,
+                    })
                     continue
 
                 if not await self._is_provider_healthy(provider_name):
@@ -2422,6 +2485,14 @@ class LLMRouter:
                         f"Provider {provider_name} is not healthy",
                         extra={"provider": provider_name, "requested_provider": requested_provider}
                     )
+                    provider_attempts.append({
+                        "provider": provider_name,
+                        "model": self._effective_provider_model(provider_info),
+                        "status": "failed",
+                        "error_type": "provider_unhealthy",
+                        "error_message": "Provider health check failed.",
+                        "latency_ms": 0.0,
+                    })
                     continue
 
                 actual_model = self._effective_provider_model(provider_info)
@@ -2437,6 +2508,14 @@ class LLMRouter:
                         f"Provider {provider_name} instance is None",
                         extra={"provider": provider_name, "requested_provider": requested_provider}
                     )
+                    provider_attempts.append({
+                        "provider": provider_name,
+                        "model": actual_model,
+                        "status": "failed",
+                        "error_type": "provider_unavailable",
+                        "error_message": "Provider instance was not available.",
+                        "latency_ms": 0.0,
+                    })
                     continue
 
                 # Invoke provider for text generation
@@ -2493,12 +2572,13 @@ class LLMRouter:
                         degradation_reason=failure_reason,
                         used_fallback=True,
                         provider_health=provider_info,
+                        provider_attempts=provider_attempts,
                     )
                     llm_metadata.update(
                         {
                             "fallback_from": requested_provider,
                             "fallback_chain": list(self.RUNTIME_DEGRADED_FALLBACK_ORDER),
-                            "attempted_providers": attempted_providers,
+                            "attempted_providers": [item["provider"] for item in provider_attempts],
                             "raw_failure_reason": failure_reason,
                         }
                     )
@@ -2522,6 +2602,14 @@ class LLMRouter:
                         "fallback_level": fallback_level,
                     }
                 )
+                provider_attempts.append({
+                    "provider": provider_name,
+                    "model": self._effective_provider_model(provider_info) if "provider_info" in locals() else None,
+                    "status": "failed",
+                    "error_type": "provider_not_available",
+                    "error_message": str(exc),
+                    "latency_ms": 0.0,
+                })
 
                 # Record provider unavailability metrics
                 if PROVIDER_METRICS_AVAILABLE and record_provider_event:
@@ -2550,6 +2638,14 @@ class LLMRouter:
                         "fallback_level": fallback_level,
                     }
                 )
+                provider_attempts.append({
+                    "provider": provider_name,
+                    "model": self._effective_provider_model(provider_info) if "provider_info" in locals() else None,
+                    "status": "failed",
+                    "error_type": "generation_failed",
+                    "error_message": str(exc),
+                    "latency_ms": 0.0,
+                })
 
                 # Record provider generation failure metrics
                 if PROVIDER_METRICS_AVAILABLE and record_provider_event:
@@ -2579,6 +2675,14 @@ class LLMRouter:
                     },
                     exc_info=True
                 )
+                provider_attempts.append({
+                    "provider": provider_name,
+                    "model": self._effective_provider_model(provider_info) if "provider_info" in locals() else None,
+                    "status": "failed",
+                    "error_type": type(exc).__name__,
+                    "error_message": str(exc),
+                    "latency_ms": 0.0,
+                })
                 continue  # Try next provider in chain
 
         # All fallbacks failed - return emergency hardcoded response
@@ -2586,7 +2690,7 @@ class LLMRouter:
             f"All runtime fallbacks failed for requested provider {requested_provider}",
             extra={
                 "requested_provider": requested_provider,
-                "attempted_providers": attempted_providers,
+                "attempted_providers": [item["provider"] for item in provider_attempts],
                 "failure_reason": failure_reason,
             }
         )
@@ -2602,12 +2706,12 @@ class LLMRouter:
                 "llm": {
                     "requested_provider": requested_provider,
                     "requested_model": requested_model,
-                    "actual_provider": "emergency_static",
-                    "actual_model": "none",
-                    "provider": "emergency_static",
-                    "model_id": "none",
-                    "model_name": "Emergency Static",
-                    "runtime_engine": "none",
+                    "actual_provider": None,
+                    "actual_model": None,
+                    "provider": None,
+                    "model_id": None,
+                    "model_name": None,
+                    "runtime_engine": None,
                     "source": "emergency_static",
                     "response_source": "emergency_static",
                     "is_degraded": True,
@@ -2617,7 +2721,8 @@ class LLMRouter:
                     "fallback_level": 99,  # Maximum fallback level
                     "degradation_reason": failure_reason,
                     "fallback_chain": list(self.RUNTIME_DEGRADED_FALLBACK_ORDER),
-                    "attempted_providers": attempted_providers,
+                    "attempted_providers": [item["provider"] for item in provider_attempts],
+                    "provider_attempts": provider_attempts,
                     "failure_reason": "All providers unavailable - emergency fallback activated",
                 },
             },

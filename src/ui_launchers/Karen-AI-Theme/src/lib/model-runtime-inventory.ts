@@ -10,6 +10,7 @@ export interface RuntimeProviderModel {
   capabilities?: string[];
   preferred_runtime?: string | null;
   compatible_runtimes?: string[];
+  default?: boolean;
 }
 
 export interface RuntimeProviderDetails {
@@ -17,10 +18,12 @@ export interface RuntimeProviderDetails {
   display_name: string;
   description?: string;
   provider_type?: string;
+  type?: string;
   selectable?: boolean;
   requires_api_key?: boolean;
   api_key_configured?: boolean;
   api_key_status?: string;
+  api_key_env_var?: string | null;
   is_configured?: boolean;
   healthy?: boolean;
   user_selectable?: boolean;
@@ -47,7 +50,10 @@ export interface RuntimeProviderDetails {
   supports_tools?: boolean;
   degraded_reason?: string | null;
   required_config_fields?: string[];
-  safe_diagnostic_metadata?: Record<string, any>;
+  safe_diagnostic_metadata?: Record<string, unknown>;
+  transport?: string;
+  runtime_display_name?: string;
+  runtime_group_label?: string;
   runtime_options?: Array<{
     source: 'host' | 'container';
     label: string;
@@ -73,12 +79,59 @@ export interface RuntimeSettingsResponse {
   active_model?: string;
   timeout_seconds?: number;
   auto_download?: boolean;
+  fallback_hierarchy?: string[];
+}
+
+export interface RuntimeProviderCatalogModel {
+  id: string;
+  label: string;
+  available?: boolean;
+  default?: boolean;
+  capabilities?: string[];
+}
+
+export interface RuntimeProviderCatalogProvider {
+  id: string;
+  label: string;
+  category?: string;
+  enabled?: boolean;
+  configured?: boolean;
+  healthy?: boolean;
+  runtime_engine?: string;
+  transport?: string;
+  compatibility_profile?: string | null;
+  api_key_env_var?: string | null;
+  api_key_header?: string | null;
+  api_key_prefix?: string | null;
+  default_base_url?: string | null;
+  base_url?: string | null;
+  docs_url?: string | null;
+  required_config_fields?: string[];
+  safe_diagnostic_metadata?: Record<string, unknown>;
+  default_model?: string | null;
+  selected_model?: string | null;
+  models?: RuntimeProviderCatalogModel[];
+  degradation_reason?: string | null;
+  allowed_for_current_user?: boolean;
+  requires_api_key?: boolean;
+  requires_base_url?: boolean;
+}
+
+export interface RuntimeProviderCatalogResponse {
+  providers: RuntimeProviderCatalogProvider[];
+  default_provider?: string;
+  default_model?: string;
+  fallback_order?: string[];
+  catalog_version?: string;
 }
 
 export interface NormalizedRuntimeProvider extends RuntimeProviderDetails {
-  runtime_display_name: string;
-  runtime_group_label: string;
+  runtime_display_name?: string;
+  runtime_group_label?: string;
   models: RuntimeProviderModel[];
+  compatibility_profile?: string | null;
+  degradation_reason?: string | null;
+  requires_base_url?: boolean;
 }
 
 export interface NormalizedRuntimeInventory {
@@ -247,7 +300,11 @@ export async function loadDynamicTransformersModels(): Promise<RuntimeProviderMo
  * Previously we blocked Transformers, but now we allow it as a valid local option.
  */
 const isProviderSelectable = (provider: RuntimeProviderDetails): boolean => {
-  return provider.is_configured !== false;
+  return (
+    provider.enabled !== false &&
+    provider.user_selectable !== false &&
+    provider.policy_allowed !== false
+  );
 };
 
 export function normalizeModelSettingsResponse(response: RuntimeSettingsResponse): NormalizedRuntimeInventory {
@@ -261,11 +318,15 @@ export function normalizeModelSettingsResponse(response: RuntimeSettingsResponse
       // Use standard model normalization for all providers.
       // The backend provides discovered models in the provider.models array.
       const normalizedModels = normalizeModels(provider, response.selected_provider, response.selected_model);
+      const providerType = String((provider as { provider_type?: string; type?: string }).provider_type || provider.type || '').toLowerCase();
       return {
         ...provider,
+        provider_type: providerType || provider.provider_type,
+        requires_api_key: provider.requires_api_key ?? provider.api_key_status === 'missing',
+        api_key_configured: provider.api_key_configured ?? provider.api_key_status === 'configured',
         selectable: provider.user_selectable,
-        runtime_display_name: getRuntimeDisplayName(provider.id, provider.display_name),
-        runtime_group_label: getRuntimeGroupLabel(provider.id),
+        runtime_display_name: getRuntimeDisplayName(provider.id, provider.display_name) || '',
+        runtime_group_label: getRuntimeGroupLabel(provider.id) || 'Custom',
         models: normalizedModels,
       };
     });
@@ -306,6 +367,115 @@ export function normalizeModelSettingsResponse(response: RuntimeSettingsResponse
     systemFallbackProvider,
     timeout_seconds: response.timeout_seconds,
     auto_download: response.auto_download,
-    fallback_hierarchy: (response as any).fallback_hierarchy,
+    fallback_hierarchy: response.fallback_hierarchy,
+  };
+}
+
+export function normalizeRuntimeProviderCatalogResponse(
+  response: RuntimeProviderCatalogResponse,
+): NormalizedRuntimeInventory {
+  const providers = (response.providers || [])
+    .map((provider) => {
+      const normalizedModels = sortProviderModels(
+        (provider.models || []).map((model) => ({
+          id: model.id,
+          name: model.label || model.id,
+          family: provider.category || 'runtime',
+          source: provider.runtime_engine || 'catalog',
+          capabilities: model.capabilities || [],
+          preferred_runtime: provider.runtime_engine || provider.category || undefined,
+        })),
+      );
+      const fallbackModelId =
+        provider.selected_model ||
+        provider.default_model ||
+        response.default_model ||
+        '';
+      const resolvedModels: RuntimeProviderModel[] =
+        normalizedModels.length > 0
+          ? normalizedModels
+          : fallbackModelId
+            ? [{
+                id: fallbackModelId,
+                name: fallbackModelId,
+                family: provider.category || 'runtime',
+                source: provider.runtime_engine || 'catalog',
+                capabilities: ['chat'],
+                preferred_runtime: provider.runtime_engine || provider.category || undefined,
+                default: true,
+              }]
+            : [];
+
+      const normalizedProvider: NormalizedRuntimeProvider = {
+        id: provider.id,
+        display_name: provider.label || provider.id,
+        description: provider.degradation_reason || undefined,
+        provider_type: provider.category || 'external',
+        selectable: provider.enabled !== false && provider.allowed_for_current_user !== false,
+        requires_api_key: Boolean(provider.requires_api_key),
+        api_key_env_var: provider.api_key_env_var || null,
+        api_key_configured: provider.configured !== false,
+        is_configured: provider.configured !== false,
+        healthy: provider.healthy !== false,
+        user_selectable: provider.allowed_for_current_user !== false,
+        enabled: provider.enabled !== false,
+        policy_allowed: provider.allowed_for_current_user !== false,
+        policy_rejection_reason: provider.allowed_for_current_user === false ? 'not_allowed_for_current_user' : null,
+        runtime_engine: provider.runtime_engine || provider.id.replace('builtin_', ''),
+        transport: provider.transport,
+        compatibility_profile: provider.compatibility_profile || undefined,
+        degradation_reason: provider.degradation_reason || null,
+        requires_base_url: Boolean(provider.requires_base_url),
+        api_key_header: provider.api_key_header || undefined,
+        api_key_prefix: provider.api_key_prefix || undefined,
+        default_base_url: provider.default_base_url || undefined,
+        base_url: provider.base_url || undefined,
+        docs_url: provider.docs_url || undefined,
+        required_config_fields: provider.required_config_fields || [],
+        safe_diagnostic_metadata: provider.safe_diagnostic_metadata || {},
+        models: resolvedModels,
+        default_model: provider.default_model || resolvedModels.find((model) => model.default)?.id || resolvedModels[0]?.id || response.default_model || null,
+        selected_model: provider.selected_model || resolvedModels.find((model) => model.default)?.id || resolvedModels[0]?.id || response.default_model || null,
+        runtime_display_name: getRuntimeDisplayName(provider.id, provider.label) || '',
+        runtime_group_label: getRuntimeGroupLabel(provider.id) || 'Custom',
+      };
+
+      return normalizedProvider;
+    })
+    .sort((a, b) =>
+      sortRank(a) - sortRank(b) ||
+      getRuntimeDisplayName(a.id, a.display_name).localeCompare(getRuntimeDisplayName(b.id, b.display_name))
+    );
+
+  const selectableProviders = providers.filter((provider) => isProviderSelectable(provider));
+  const builtInProviders = providers.filter((provider) => getRuntimeProviderBucket(provider) === 'builtIn');
+  const localProviders = providers.filter((provider) => getRuntimeProviderBucket(provider) === 'local');
+  const customProviders = providers.filter((provider) => getRuntimeProviderBucket(provider) === 'custom');
+  const thirdPartyProviders = providers.filter((provider) => getRuntimeProviderBucket(provider) === 'thirdParty');
+
+  const selectedProvider =
+    providers.find((provider) => provider.id === response.default_provider)?.id ||
+    selectableProviders[0]?.id ||
+    providers[0]?.id ||
+    '';
+  const selectedModel =
+    response.default_model ||
+    providers.find((provider) => provider.id === selectedProvider)?.selected_model ||
+    providers.find((provider) => provider.id === selectedProvider)?.models[0]?.id ||
+    '';
+
+  return {
+    selected_provider: selectedProvider,
+    selected_model: selectedModel,
+    providers,
+    selectableProviders,
+    builtInProviders,
+    localProviders,
+    thirdPartyProviders,
+    customProviders,
+    systemFallbackProvider: providers.find((provider) => provider.id === SYSTEM_FALLBACK_PROVIDER_ID) || null,
+    timeout_seconds: undefined,
+    auto_download: undefined,
+    fallback_hierarchy: response.fallback_order,
   };
 }
