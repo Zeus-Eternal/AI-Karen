@@ -11,7 +11,6 @@ BUILTIN_EXPRESSION_ENGINES: set[str] = {
 
 LOCAL_PROVIDER_OPTIONS: set[str] = {
     "ollama",
-    "llama_cpp_server",
     "lm_studio",
     "openai_compatible_local",
 }

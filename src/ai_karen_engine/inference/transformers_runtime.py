@@ -7,8 +7,7 @@ import threading
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, Union
 
-from ai_karen_engine.integrations.llm_utils import LLMProviderBase
-from ai_karen_engine.services.response import ResponseSanitizer
+from ai_karen_engine.integrations.llm_utils import LLMProviderBase, ProviderNotAvailable, GenerationFailed
 
 logger = logging.getLogger(__name__)
 
@@ -124,7 +123,10 @@ class TransformersRuntime(LLMProviderBase):
                 return False
 
     def generate(self, prompt: str, **kwargs: Any) -> str:
-        """Generate text using warmed pipeline or fallback."""
+        """Generate text using a real transformers pipeline."""
+        if not self._pipeline and self._transformers_available:
+            self.warm(self.model_path)
+
         if self._pipeline:
             try:
                 max_new_tokens = kwargs.get("max_new_tokens") or kwargs.get("max_tokens") or 128
@@ -133,29 +135,30 @@ class TransformersRuntime(LLMProviderBase):
                     temperature = 0.7
                 else:
                     temperature = float(temperature)
-                
+
                 result = self._pipeline(
-                    prompt, 
+                    prompt,
                     max_new_tokens=max_new_tokens,
                     temperature=temperature,
                     do_sample=temperature > 0,
                     pad_token_id=self._pipeline.tokenizer.eos_token_id
                 )
-                
+
                 if result and isinstance(result, list) and "generated_text" in result[0]:
                     generated = result[0]["generated_text"]
-                    # Strip prompt if it's echoed
                     if generated.startswith(prompt):
                         generated = generated[len(prompt):].strip()
-                    return generated
+                    if generated:
+                        return generated
             except Exception as e:
-                logger.warning(f"Transformers generation failed: {e}. Falling back.")
+                logger.warning(f"Transformers generation failed: {e}.")
 
-        return self._fallback_generate(prompt, **kwargs)
+        if not self._transformers_available:
+            raise ProviderNotAvailable("Transformers runtime is not available")
+        raise GenerationFailed("Transformers generation failed")
 
     def stream(self, prompt: str, **kwargs: Any) -> Iterator[str]:
-        for token in self._fallback_generate(prompt, **kwargs).split():
-            yield token
+        raise ProviderNotAvailable("Streaming unavailable without active transformers pipeline")
 
     def generate_text(self, prompt: str, **kwargs: Any) -> str:
         """LLMProviderBase interface method - delegates to generate()."""

@@ -1262,13 +1262,14 @@ class LLMRouter:
                                 or (user_preferences or {}).get("preferred_model")
                             )
                             or "unknown",
-                            actual_provider="emergency_static",
+                            actual_provider=None,
                             actual_model="none",
                             runtime_engine="none",
                             response_source="emergency_static",
                             degraded_mode=True,
                             fallback_level=99,
-                            degradation_reason="all_live_providers_unavailable",
+                            degradation_type="fallback_exhausted",
+                            degradation_reason="No configured provider could generate a response.",
                             used_fallback=True,
                             provider_error="No suitable provider available",
                         )

@@ -288,16 +288,20 @@ class ChatRuntimeHelper:
         return None
 
     @staticmethod
-    def validate_model(model: Optional[str]):
-        """Validate model selection against available models."""
-        from ai_karen_engine.config.config_manager import get_config_value
+    async def validate_provider_model(provider: Optional[str], model: Optional[str]) -> None:
+        """Validate provider/model against canonical runtime provider catalog."""
+        if not provider and not model:
+            return
+        from ai_karen_engine.api_routes.models.runtime_api import get_runtime_provider_catalog
 
-        available_models = get_config_value("available_models", [])
-        if model and model not in available_models:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Model '{model}' not available. Available models: {available_models}",
-            )
+        catalog = await get_runtime_provider_catalog(current_user={"user_id":"system"})
+        providers = {p.id: p for p in (catalog.providers or [])}
+        if provider and provider not in providers:
+            raise HTTPException(status_code=400, detail=f"Provider '{provider}' not available in runtime catalog")
+        if provider and model and model != "auto":
+            provider_models = {m.id for m in (providers.get(provider).models or [])}
+            if provider_models and model not in provider_models:
+                raise HTTPException(status_code=400, detail=f"Model '{model}' not available for provider '{provider}'")
 
     @staticmethod
     async def get_user_provider_preferences() -> Dict[str, str]:
@@ -490,12 +494,12 @@ async def create_chat_response(
 
         # 2. Basic Validation & Normalization
         session_id = SecurityValidator.sanitize_session_id(request.session_id)
-        ChatRuntimeHelper.validate_model(request.preferred_model or request.model)
         validated_messages = ChatRuntimeHelper.normalize_messages(request.messages)
 
         # Get user's preferred provider/model from settings
         user_preferences = await ChatRuntimeHelper.get_user_provider_preferences()
         preferred_provider, preferred_model = ChatRuntimeHelper.resolve_preferred_provider_model(request, user_preferences)
+        await ChatRuntimeHelper.validate_provider_model(preferred_provider, preferred_model)
 
         # 3. Log request start
         structured_logger.log_event(
